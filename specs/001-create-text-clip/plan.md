@@ -18,13 +18,13 @@ Implement the core text clip capture workflow: users open `NewClipView`, enter o
 
 **Storage**: SwiftData local store is the source of truth. Replace the starter `Item` timestamp model with `ClipItem` or add `ClipItem` to the schema, using default values and no unsupported uniqueness constraints so the model remains suitable for future SwiftData plus CloudKit replication.
 
-**Testing**: Swift Testing in `NextPasteTests` for model creation and validation; XCTest UI automation in `NextPasteUITests` for the create text clip flow. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and scoped `-only-testing` commands.
+**Testing**: Swift Testing in `NextPasteTests` for model creation and validation; XCTest UI automation in `NextPasteUITests` for the create text clip flow. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and scoped `-only-testing` commands. Offline/local-first behavior is validated with an automated test or documented local test-mode run that proves text creation and history review do not require CloudKit, network reachability, or external services.
 
 **Target Platform**: Apple multi-platform target matrix from the Xcode project: iOS `26.5`, macOS `26.5`, and visionOS `26.5` across `iphoneos`, `iphonesimulator`, `macosx`, `xros`, and `xrsimulator`.
 
 **Project Type**: Single Xcode SwiftUI app with one app target, one Swift Testing unit test target, and one XCTest UI test target.
 
-**Performance Goals**: Text validation and SwiftData insertion should complete immediately for typical pasted text, with the history list updating in the same app session. Long text must be preserved in full while the list presents a readable preview.
+**Performance Goals**: Text validation and SwiftData insertion should complete immediately for typical pasted text, with the history list updating in the same app session. Long text must be preserved in full while the list presents a readable preview. HomeView preview text is display-only: replace newlines with spaces, show at most 120 characters plus an ellipsis when truncated, and never mutate `ClipItem.textContent`.
 
 **Constraints**: Local-first behavior is mandatory. Core creation and history review must work without network access. User-entered text must not be sent to external services. No third-party analytics, Firebase, React Native, Flutter, or other cross-platform frameworks. CloudKit, Vision, and Foundation Models usage must preserve explicit scope, user privacy, and offline fallbacks.
 
@@ -87,7 +87,7 @@ NextPasteUITests/
 └── CreateTextClipUITests.swift
 ```
 
-**Structure Decision**: Keep the existing single Xcode project and file-system-synchronized groups. Add source files directly under `NextPaste/`, unit tests under `NextPasteTests/`, and UI automation under `NextPasteUITests/`. Preserve compile-time platform checks for macOS, iOS, and visionOS differences.
+**Structure Decision**: Keep the existing single Xcode project and file-system-synchronized groups. Add source files directly under `NextPaste/`, unit tests under `NextPasteTests/`, and UI automation under `NextPasteUITests/`. Preserve compile-time platform checks for macOS, iOS, and visionOS differences. `NewClipView.swift` owns save failure presentation and cancel/dismiss no-insert behavior; no separate service is required unless implementation complexity grows.
 
 ## Phase 0 Research Summary
 
