@@ -38,3 +38,8 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 - The project uses Xcode’s file-system-synchronized groups (`PBXFileSystemSynchronizedRootGroup`). In practice, adding source files inside `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/` is the expected way to extend each target.
 - App configuration is split across generated build settings and checked-in overrides: `project.pbxproj` enables generated Info.plist entries, while `NextPaste/Info.plist` adds `UIBackgroundModes`, and `NextPaste.entitlements` carries push/iCloud capability settings. Capability changes may need updates in more than one of those places.
 - The project is configured for multiple Apple platforms (`iphoneos`, `iphonesimulator`, `macosx`, `xros`, `xrsimulator`), so avoid changes that assume a single-platform app unless the target matrix is intentionally being reduced.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+<!-- SPECKIT END -->
