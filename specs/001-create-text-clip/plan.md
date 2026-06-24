@@ -24,7 +24,7 @@ Implement the core text clip capture workflow: users open `NewClipView`, enter o
 
 **Project Type**: Single Xcode SwiftUI app with one app target, one Swift Testing unit test target, and one XCTest UI test target.
 
-**Performance Goals**: Text validation and SwiftData insertion should complete immediately for typical pasted text, with the history list updating in the same app session. Long text must be preserved in full while the list presents a readable preview. HomeView preview text is display-only: replace newlines with spaces, show at most 120 characters plus an ellipsis when truncated, and never mutate `ClipItem.textContent`.
+**Performance Goals**: Text validation and SwiftData insertion should complete within 250 ms for pasted text up to 10,000 characters on supported devices, with the history list updating in the same app session. Long text must be preserved in full while the list presents a readable preview. HomeView preview text is display-only: replace newlines with spaces, show at most 120 characters plus an ellipsis when truncated, and never mutate `ClipItem.textContent`.
 
 **Constraints**: Local-first behavior is mandatory. Core creation and history review must work without network access. User-entered text must not be sent to external services. No third-party analytics, Firebase, React Native, Flutter, or other cross-platform frameworks. CloudKit, Vision, and Foundation Models usage must preserve explicit scope, user privacy, and offline fallbacks.
 
