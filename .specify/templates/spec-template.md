@@ -16,6 +16,8 @@
   you should still have a viable MVP (Minimum Viable Product) that delivers value.
 
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
+  Each story must state the actionable outcome created from saved text or images, plus any privacy,
+  offline, and AI-output validation expectations relevant to that journey.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
   - Tested independently
@@ -92,11 +94,16 @@
 - **FR-003**: Users MUST be able to [key interaction, e.g., "reset their password"]
 - **FR-004**: System MUST [data requirement, e.g., "persist user preferences"]
 - **FR-005**: System MUST [behavior, e.g., "log all security events"]
+- **FR-006**: System MUST define how saved content becomes a measurable next action or insight
+- **FR-007**: System MUST describe local-first behavior and offline availability for the feature
+- **FR-008**: System MUST document whether user content leaves the device and the explicit approval
+  required before transmission
+- **FR-009**: System MUST define validation schemas or typed contracts for AI-generated outputs
 
 *Example of marking unclear requirements:*
 
-- **FR-006**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
-- **FR-007**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
+- **FR-010**: System MUST authenticate users via [NEEDS CLARIFICATION: auth method not specified - email/password, SSO, OAuth?]
+- **FR-011**: System MUST retain user data for [NEEDS CLARIFICATION: retention period not specified]
 
 ### Key Entities *(include if feature involves data)*
 
@@ -116,6 +123,8 @@
 - **SC-002**: [Measurable metric, e.g., "System handles 1000 concurrent users without degradation"]
 - **SC-003**: [User satisfaction metric, e.g., "90% of users successfully complete primary task on first attempt"]
 - **SC-004**: [Business metric, e.g., "Reduce support tickets related to [X] by 50%"]
+- **SC-005**: [Productivity metric, e.g., "Users can turn captured content into a suggested next action in under 10 seconds"]
+- **SC-006**: [Privacy/offline metric, e.g., "Core capture and retrieval work without network access in 100% of tested scenarios"]
 
 ## Assumptions
 

@@ -40,7 +40,21 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- **AI-first outcome**: Feature transforms saved text/images into summaries, categories, decisions,
+  reminders, follow-ups, or another measurable next action. Non-productivity work is rejected or
+  explicitly justified as enabling an actionable workflow.
+- **Local-first design**: SwiftData local storage is the source of truth. Offline capture, browsing,
+  retrieval, and access to previously generated insights are defined and tested where technically
+  possible. CloudKit is replication, not a prerequisite for core use.
+- **Privacy by default**: No third-party analytics SDKs or unnecessary third-party services. Any user
+  content transmission requires explicit approval, documented data scope, retention assumptions, and
+  local fallback behavior. Prefer Vision and Foundation Models/on-device AI.
+- **Test-first coverage**: Automated tests are planned for each new requirement. Critical flows include
+  UI or integration tests. AI outputs have typed schemas/contracts and tests for valid, malformed, and
+  failure responses.
+- **Native simplicity**: SwiftUI, SwiftData, CloudKit, Vision OCR, and Foundation Models are the default
+  choices. Any dependency or platform deviation is justified with a concrete capability gap and privacy
+  impact.
 
 ## Project Structure
 

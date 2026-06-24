@@ -15,6 +15,7 @@
   - Feature requirements from spec.md
   - Technical context from plan.md
   - Implementation details from tasks.md
+  - Constitution gates: AI-first outcome, local-first behavior, privacy, tests, and native simplicity
   
   DO NOT keep these sample items in the generated checklist file.
   ============================================================================
@@ -25,6 +26,14 @@
 - [ ] CHK001 First checklist item with clear action
 - [ ] CHK002 Second checklist item
 - [ ] CHK003 Third checklist item
+
+## Constitution Gates
+
+- [ ] CHKXXX Feature creates a measurable action or insight from saved content
+- [ ] CHKXXX Local-first and offline behavior are reviewed
+- [ ] CHKXXX User-content transmission requires explicit approval and documented scope
+- [ ] CHKXXX Automated tests cover new requirements, critical flows, and AI output contracts
+- [ ] CHKXXX Dependencies follow Apple-native defaults or include approved justification
 
 ## [Category 2]
 
