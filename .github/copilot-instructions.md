@@ -43,6 +43,8 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 - The project is configured for multiple Apple platforms (`iphoneos`, `iphonesimulator`, `macosx`, `xros`, `xrsimulator`), so avoid changes that assume a single-platform app unless the target matrix is intentionally being reduced.
 
 <!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
+Current Spec Kit plan: `specs/001-create-text-clip/plan.md`
+
+Read this plan for the active feature's technical context, project structure,
+validation guide, contracts, and Apple-native framework boundaries.
 <!-- SPECKIT END -->
