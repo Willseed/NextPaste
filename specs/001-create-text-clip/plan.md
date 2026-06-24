@@ -75,16 +75,22 @@ NextPaste/
 ├── NextPasteApp.swift     # Add ClipItem to the SwiftData schema
 ├── ClipItem.swift         # New SwiftData @Model for saved clips
 ├── ClipValidation.swift   # Local validation helper for text input
+├── ClipRowView.swift      # History row preview formatting for saved text clips
 ├── ContentView.swift      # Route to HomeView/NewClipView or remain as shell
 ├── HomeView.swift         # SwiftData @Query history sorted newest first
 └── NewClipView.swift      # TextEditor input, validation, save, dismiss
 
 NextPasteTests/
+├── SwiftDataTestSupport.swift
 ├── ClipItemTests.swift
+├── ClipHistoryTests.swift
 └── ClipValidationTests.swift
 
 NextPasteUITests/
-└── CreateTextClipUITests.swift
+├── UITestAppLauncher.swift
+├── CreateTextClipUITests.swift
+├── HistoryListUITests.swift
+└── EmptyTextClipUITests.swift
 ```
 
 **Structure Decision**: Keep the existing single Xcode project and file-system-synchronized groups. Add source files directly under `NextPaste/`, unit tests under `NextPasteTests/`, and UI automation under `NextPasteUITests/`. Preserve compile-time platform checks for macOS, iOS, and visionOS differences. `NewClipView.swift` owns save failure presentation and cancel/dismiss no-insert behavior; no separate service is required unless implementation complexity grows.

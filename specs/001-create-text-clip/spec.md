@@ -17,6 +17,7 @@
 - Q: How should createdAt and updatedAt be set when a text clip is first created? → A: Use the same timestamp value for both createdAt and updatedAt.
 - Q: What validation message should appear for empty or whitespace-only text? → A: Show exactly "Enter text to save a clip."
 - Q: How should long text clips appear in HomeView history? → A: Show a preview derived from the original text by replacing newlines with spaces and limiting the visible preview to 120 characters plus an ellipsis when truncated; the full original text remains stored in textContent.
+- Q: What message should NewClipView show when saving a non-empty text clip fails? → A: Show exactly "Clip was not saved. Try again." using accessibility identifier `save-error-message`, keep the draft editable, and do not insert a partial clip.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -34,7 +35,7 @@ As a user, I want to open the new clip screen, paste plain text, and save it as 
 2. **Given** a text clip is saved, **When** the saved clip is inspected, **Then** textContent contains the original pasted text.
 3. **Given** a text clip is saved, **When** the saved clip is inspected, **Then** contentType equals "text" and createdAt and updatedAt are recorded with the same creation timestamp.
 4. **Given** a text clip is saved successfully, **When** the save completes, **Then** NewClipView closes and HomeView history is shown with the new clip visible.
-5. **Given** saving a non-empty text clip fails, **When** the save attempt completes with an error, **Then** NewClipView remains open, the original draft text remains editable, no partial clip is shown in history, and the app communicates that the clip was not saved.
+5. **Given** saving a non-empty text clip fails, **When** the save attempt completes with an error, **Then** NewClipView remains open, the original draft text remains editable, no partial clip is shown in history, and the app shows exactly "Clip was not saved. Try again." with accessibility identifier `save-error-message`.
 
 ---
 
@@ -72,7 +73,7 @@ As a user, I want the app to prevent empty text from being saved so my history r
 
 - When pasted text is very long, the app preserves the full original text in the saved clip while keeping the history list readable.
 - When the user leaves NewClipView before saving, no new clip is created.
-- When saving fails, the app keeps the pasted text available for correction or retry and communicates that the clip was not saved.
+- When saving fails, the app keeps the pasted text available for correction or retry and shows exactly "Clip was not saved. Try again." with accessibility identifier `save-error-message`.
 - When the device has no network connection, users can still create and review text clips locally.
 
 ## Requirements *(mandatory)*
@@ -92,10 +93,11 @@ As a user, I want the app to prevent empty text from being saved so my history r
 - **FR-010**: System MUST show saved text clips in the HomeView history list after the user returns from the creation flow.
 - **FR-010a**: System MUST automatically dismiss NewClipView after a successful save and return the user to HomeView history with the newly saved text clip visible.
 - **FR-010b**: System MUST sort HomeView history by createdAt descending so the newest saved text clip appears first.
+- **FR-010c**: System MUST keep NewClipView open when saving a non-empty text clip fails, preserve the draft text, avoid showing a partial history item, and show exactly "Clip was not saved. Try again." with accessibility identifier `save-error-message`.
 - **FR-011**: System MUST keep text clip creation and history review available without network access.
 - **FR-012**: System MUST keep user-entered text on the device for this feature and MUST NOT transmit clip content to external services as part of text clip creation.
 - **FR-013**: System MUST make saved text clips available as source material for future AI-assisted actions, while this feature itself does not generate AI output.
-- **FR-014**: System MUST include automated coverage for ClipItem creation, empty text validation, and the create text clip user flow.
+- **FR-014**: System MUST include automated coverage for ClipItem creation, empty text validation, HomeView preview formatting for FR-008a, save-failure messaging for FR-010c, and the create text clip user flow.
 
 ### Key Entities
 

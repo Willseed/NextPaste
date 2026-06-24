@@ -47,16 +47,16 @@
 ### Tests For User Story 1
 
 - [ ] T005 [P] [US1] Add failing `ClipItem` creation tests for id, `contentType`, text preservation, and timestamp parity in `NextPasteTests/ClipItemTests.swift`
-- [ ] T006 [P] [US1] Add failing create text clip UI tests for opening `NewClipView`, entering text, saving, dismissing, seeing history text, and preserving the draft with an error message when save fails in `NextPasteUITests/CreateTextClipUITests.swift`
+- [ ] T006 [P] [US1] Add failing create text clip UI tests for opening `NewClipView`, entering text, saving, dismissing, seeing history text, and preserving the draft with exact `save-error-message` text "Clip was not saved. Try again." when save fails in `NextPasteUITests/CreateTextClipUITests.swift`
 
 ### Implementation For User Story 1
 
 - [ ] T007 [US1] Create SwiftData `ClipItem` model with `id`, `contentType`, `textContent`, `createdAt`, and `updatedAt` in `NextPaste/ClipItem.swift`
 - [ ] T008 [US1] Replace the starter SwiftData schema entry with `ClipItem.self` and keep test-mode storage support working in `NextPaste/NextPasteApp.swift`
-- [ ] T009 [US1] Create `NewClipView` with text editor, save/cancel controls, and `clip-text-editor`, `save-clip-button`, `cancel-new-clip-button` accessibility identifiers in `NextPaste/NewClipView.swift`
+- [ ] T009 [US1] Create `NewClipView` with text editor, save/cancel controls, and `clip-text-editor`, `save-clip-button`, `cancel-new-clip-button`, `save-error-message` accessibility identifiers in `NextPaste/NewClipView.swift`
 - [ ] T010 [US1] Create `HomeView` shell with `new-clip-button`, `clip-history-list`, sheet or navigation presentation of `NewClipView`, and basic clip visibility in `NextPaste/HomeView.swift`
 - [ ] T011 [US1] Update the root view to host `HomeView` while preserving platform navigation behavior in `NextPaste/ContentView.swift`
-- [ ] T012 [US1] Implement successful local SwiftData insert, automatic dismiss after save, and save-failure handling that retains draft text and prevents partial history insertion in `NextPaste/NewClipView.swift`
+- [ ] T012 [US1] Implement successful local SwiftData insert, automatic dismiss after save, and save-failure handling that retains draft text, prevents partial history insertion, and shows exactly "Clip was not saved. Try again." via `save-error-message` in `NextPaste/NewClipView.swift`
 - [ ] T013 [US1] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipItemTests test` for `NextPasteTests/ClipItemTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/CreateTextClipUITests test` for `NextPasteUITests/CreateTextClipUITests.swift`; if either command fails, stop and fix the failing tests before continuing
 
 **Checkpoint**: MVP is functional and testable: non-empty text can be saved locally and seen in history after dismissal.
@@ -71,8 +71,8 @@
 
 ### Tests For User Story 2
 
-- [ ] T014 [P] [US2] Add failing newest-first history ordering test using local SwiftData clips in `NextPasteTests/ClipHistoryTests.swift`
-- [ ] T015 [P] [US2] Add failing history UI test that creates two clips, asserts the newer text appears before the older text, and validates local-store history review without CloudKit or network-dependent code paths in `NextPasteUITests/HistoryListUITests.swift`
+- [ ] T014 [P] [US2] Add failing newest-first history ordering and FR-008a preview-formatting tests using local SwiftData clips in `NextPasteTests/ClipHistoryTests.swift`, covering newline replacement with spaces, 120-character preview truncation with an ellipsis, and unchanged stored `textContent`
+- [ ] T015 [P] [US2] Add failing history UI test that creates two clips, asserts the newer text appears before the older text, verifies a long multiline clip is shown with the FR-008a preview format, and validates local-store history review without CloudKit or network-dependent code paths in `NextPasteUITests/HistoryListUITests.swift`
 
 ### Implementation For User Story 2
 
