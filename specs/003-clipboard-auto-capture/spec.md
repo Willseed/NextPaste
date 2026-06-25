@@ -8,6 +8,14 @@
 
 **Input**: User description: "Automatically save clipboard text changes while the app is running so copied text becomes part of clip history without pressing Save. Support text first, create ClipItem records automatically, deduplicate repeats, ignore empty or whitespace-only text, refresh history after capture, preserve existing copy/delete/pin row actions, and keep manual clip creation as a fallback. Exclude background monitoring while closed, images, OCR, AI analysis, cloud sync, share extension, Shortcuts, remote transmission, and third-party analytics."
 
+## Clarifications
+
+### Session 2026-06-25
+
+- Q: Does automatic capture continue while NextPaste is backgrounded or minimized? → A: Yes, capture clipboard changes whenever NextPaste is running, including when backgrounded or minimized.
+- Q: When does clipboard monitoring start and stop? → A: Start monitoring as soon as NextPaste launches, and stop only when the app terminates.
+- Q: How do users know a clipboard item was captured? → A: No separate notification; users know capture succeeded because the new item appears in the refreshed history list.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Capture copied text automatically (Priority: P1)
@@ -23,11 +31,11 @@ value, and confirming that a new history item appears without pressing Save.
 
 **Acceptance Scenarios**:
 
-1. **Given** NextPaste is running, **When** the user copies a new non-empty text value,
+1. **Given** NextPaste has launched and is still running, **When** the user copies a new non-empty text value while the app is foregrounded, backgrounded, or minimized,
    **Then** the app adds a new clip to history without requiring the user to press Save.
 2. **Given** a new text value is captured automatically, **When** the capture completes,
-   **Then** the history list refreshes during the same app session and shows the new clip using the
-   current history ordering rules.
+   **Then** the history list refreshes during the same app session, shows the new clip using the
+   current history ordering rules, and serves as the only required user-visible confirmation of capture.
 3. **Given** NextPaste is not running, **When** the user copies text in another app, **Then** no
    automatic capture is expected until NextPaste is running again.
 
@@ -95,7 +103,7 @@ available as a fallback.
 
 ### Functional Requirements
 
-- **FR-001**: System MUST detect clipboard text changes automatically while NextPaste is running.
+- **FR-001**: System MUST begin detecting clipboard text changes automatically when NextPaste launches and continue until the app terminates.
 - **FR-002**: System MUST treat clipboard text capture as the primary source of new clip history
   entries for this feature.
 - **FR-003**: When the clipboard changes to a new non-empty text value, System MUST create a new
@@ -132,6 +140,8 @@ available as a fallback.
 - **FR-018**: Automated tests MUST cover clipboard change detection, duplicate-text rejection, empty
   or whitespace-only text rejection, history refresh after capture, and regression coverage
   confirming existing copy, delete, and pin row actions still work.
+- **FR-019**: Automatic capture MUST continue while NextPaste remains running in the foreground, background, or minimized state, and MUST stop once the app is terminated.
+- **FR-020**: System MUST use the refreshed history list as the required user-visible confirmation of successful automatic capture and MUST NOT require a separate notification for each captured clip.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -167,7 +177,7 @@ available as a fallback.
   other saved clips.
 - Manual clip creation already exists and remains available for times when a user wants to save text
   directly instead of relying on automatic capture.
-- This feature applies only while NextPaste is open and running; no automatic capture is expected
-  after the app is closed.
+- This feature applies from app launch until app termination, including while NextPaste is
+  backgrounded or minimized; no automatic capture is expected after the app is closed.
 - No user consent prompt is required for this feature because clipboard content stays on-device and
   no off-device transmission is introduced.
