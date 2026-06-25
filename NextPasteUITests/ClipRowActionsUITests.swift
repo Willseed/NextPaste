@@ -55,12 +55,7 @@ final class ClipRowActionsUITests: XCTestCase {
         try saveClip(clipToKeep, in: app)
         assertClipRowIdentifierExists(in: app)
 
-        let rowToDelete = app.staticTexts[clipToDelete]
-        XCTAssertTrue(rowToDelete.waitForExistence(timeout: 5))
-        rowToDelete.swipeLeft()
-
-        let deleteButton = app.buttons["delete-clip-button"]
-        XCTAssertTrue(deleteButton.waitForExistence(timeout: 5))
+        let deleteButton = revealDeleteAction(for: clipToDelete, in: app)
         XCTAssertTrue(deleteButton.accessibleText.localizedCaseInsensitiveContains("Delete"))
         deleteButton.tap()
 
@@ -79,10 +74,7 @@ final class ClipRowActionsUITests: XCTestCase {
         assertClipRowIdentifierExists(in: app)
 
         XCTAssertTrue(waitFor(app.staticTexts[newerUnpinned], toAppearAbove: app.staticTexts[olderPinTarget]))
-        app.staticTexts[olderPinTarget].swipeRight()
-
-        let pinButton = app.buttons["pin-clip-button"]
-        XCTAssertTrue(pinButton.waitForExistence(timeout: 5))
+        let pinButton = revealPinAction(for: olderPinTarget, in: app)
         XCTAssertTrue(pinButton.accessibleText.localizedCaseInsensitiveContains("Pin"))
         pinButton.tap()
 
@@ -90,8 +82,7 @@ final class ClipRowActionsUITests: XCTestCase {
         XCTAssertTrue(pinnedIcon.waitForExistence(timeout: 5))
         XCTAssertTrue(waitFor(app.staticTexts[olderPinTarget], toAppearAbove: app.staticTexts[newerUnpinned]))
 
-        app.staticTexts[olderPinTarget].swipeRight()
-        XCTAssertTrue(app.buttons["pin-clip-button"].waitForExistence(timeout: 5))
+        _ = revealPinAction(for: olderPinTarget, in: app)
         app.buttons["pin-clip-button"].tap()
 
         XCTAssertTrue(waitForDisappearance(of: app.descendants(matching: .any)["pinned-clip-icon"]))
@@ -113,18 +104,47 @@ final class ClipRowActionsUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
         XCTAssertEqual(clipboardString(), clipToPinAndCopy)
 
-        app.staticTexts[clipToPinAndCopy].swipeRight()
-        XCTAssertTrue(app.buttons["pin-clip-button"].waitForExistence(timeout: 5))
+        _ = revealPinAction(for: clipToPinAndCopy, in: app)
         app.buttons["pin-clip-button"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["pinned-clip-icon"].waitForExistence(timeout: 5))
         XCTAssertTrue(waitFor(app.staticTexts[clipToPinAndCopy], toAppearAbove: app.staticTexts[clipToDelete]))
 
-        app.staticTexts[clipToDelete].swipeLeft()
-        XCTAssertTrue(app.buttons["delete-clip-button"].waitForExistence(timeout: 5))
+        _ = revealDeleteAction(for: clipToDelete, in: app)
         app.buttons["delete-clip-button"].tap()
 
         XCTAssertFalse(app.staticTexts[clipToDelete].waitForExistence(timeout: 2))
         XCTAssertTrue(app.staticTexts[clipToPinAndCopy].exists)
+    }
+
+    @MainActor
+    func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
+        let app = UITestAppLauncher.launchAutoCaptureApp()
+        let autoCaptured = "Auto-captured row action clip"
+        let keepClip = "Keep local auto-captured companion"
+
+        addTeardownBlock {
+            app.terminate()
+        }
+
+        setClipboardString(autoCaptured)
+        XCTAssertTrue(app.staticTexts[autoCaptured].waitForExistence(timeout: 5))
+
+        setClipboardString(keepClip)
+        XCTAssertTrue(app.staticTexts[keepClip].waitForExistence(timeout: 5))
+
+        app.staticTexts[autoCaptured].tap()
+        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
+        XCTAssertEqual(clipboardString(), autoCaptured)
+
+        _ = revealPinAction(for: autoCaptured, in: app)
+        app.buttons["pin-clip-button"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["pinned-clip-icon"].waitForExistence(timeout: 5))
+
+        _ = revealDeleteAction(for: keepClip, in: app)
+        app.buttons["delete-clip-button"].tap()
+
+        XCTAssertTrue(app.staticTexts[autoCaptured].exists)
+        XCTAssertFalse(app.staticTexts[keepClip].waitForExistence(timeout: 2))
     }
 
     @MainActor
@@ -159,6 +179,38 @@ final class ClipRowActionsUITests: XCTestCase {
         let rowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
         let row = app.descendants(matching: .any).matching(rowPredicate).element
         XCTAssertTrue(row.waitForExistence(timeout: 5))
+    }
+
+    private func revealDeleteAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
+        let row = app.staticTexts[clipText]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let button = app.buttons["delete-clip-button"]
+
+        for _ in 0..<3 {
+            row.swipeLeft()
+            if button.waitForExistence(timeout: 1) {
+                return button
+            }
+        }
+
+        XCTFail("Delete action was not revealed for \(clipText)")
+        return button
+    }
+
+    private func revealPinAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
+        let row = app.staticTexts[clipText]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        let button = app.buttons["pin-clip-button"]
+
+        for _ in 0..<3 {
+            row.swipeRight()
+            if button.waitForExistence(timeout: 1) {
+                return button
+            }
+        }
+
+        XCTFail("Pin action was not revealed for \(clipText)")
+        return button
     }
 
     private func waitFor(_ upperElement: XCUIElement, toAppearAbove lowerElement: XCUIElement, timeout: TimeInterval = 5) -> Bool {

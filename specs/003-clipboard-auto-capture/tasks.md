@@ -16,8 +16,8 @@
 
 **Purpose**: Prepare shared test and UI-launch infrastructure used by all macOS clipboard auto-capture work.
 
-- [ ] T001 [P] [FR-018, FR-019, SC-001] Extend clipboard auto-capture test helpers and deterministic in-memory support in NextPasteTests/SwiftDataTestSupport.swift
-- [ ] T002 [P] [FR-018, FR-019, SC-001] Extend clipboard auto-capture UI launch helpers and simulated app arguments in NextPasteUITests/UITestAppLauncher.swift
+- [X] T001 [P] [FR-018, FR-019, SC-001] Extend clipboard auto-capture test helpers and deterministic in-memory support in NextPasteTests/SwiftDataTestSupport.swift
+- [X] T002 [P] [FR-018, FR-019, SC-001] Extend clipboard auto-capture UI launch helpers and simulated app arguments in NextPasteUITests/UITestAppLauncher.swift
 
 ---
 
@@ -27,9 +27,9 @@
 
 **⚠️ CRITICAL**: Complete this phase before starting user story implementation.
 
-- [ ] T003 [P] [FR-001, FR-007, FR-019] Create pasteboard reader and scheduler abstractions for monitoring seams in NextPaste/ClipboardMonitorClient.swift
-- [ ] T004 [P] [FR-003, FR-007, FR-008, FR-017] Create the auto-capture orchestration skeleton for validation, deduplication, and persistence in NextPaste/ClipboardCaptureService.swift
-- [ ] T005 [P] [FR-001, FR-007, FR-019] Create the polling monitor shell with start/stop lifecycle APIs in NextPaste/ClipboardMonitor.swift
+- [X] T003 [P] [FR-001, FR-007, FR-019] Create pasteboard reader and scheduler abstractions for monitoring seams in NextPaste/ClipboardMonitorClient.swift
+- [X] T004 [P] [FR-003, FR-007, FR-008, FR-017] Create the auto-capture orchestration skeleton for validation, deduplication, and persistence in NextPaste/ClipboardCaptureService.swift
+- [X] T005 [P] [FR-001, FR-007, FR-019] Create the polling monitor shell with start/stop lifecycle APIs in NextPaste/ClipboardMonitor.swift
 
 **Checkpoint**: Shared monitoring architecture is ready; user story work can begin.
 
@@ -45,16 +45,16 @@
 
 > **Write these tests first and confirm they fail before implementation.**
 
-- [ ] T006 [P] [US1] [FR-001, FR-003, FR-014, FR-018, FR-019, SC-001] Write launch-to-termination monitor lifecycle and macOS running-app capture unit tests, including foreground, backgrounded, minimized, and stop-after-termination coverage, in NextPasteTests/ClipboardCaptureTests.swift
-- [ ] T007 [P] [US1] [FR-003, FR-008, FR-012, FR-018, FR-019, FR-020, SC-001, SC-005] Write macOS UI coverage for automatic text capture, same-session history refresh, and offline capture continuity while the app is foregrounded, backgrounded, and minimized in NextPasteUITests/ClipboardAutoCaptureUITests.swift
-- [ ] T008 [P] [US1] [FR-003, FR-009, FR-016, FR-018] Extend auto-captured history ordering and local persistence assertions in NextPasteTests/ClipHistoryTests.swift
+- [X] T006 [P] [US1] [FR-001, FR-003, FR-014, FR-018, FR-019, SC-001] Write launch-to-termination monitor lifecycle and macOS running-app capture unit tests, including foreground, backgrounded, minimized, and stop-after-termination coverage, in NextPasteTests/ClipboardCaptureTests.swift
+- [X] T007 [P] [US1] [FR-003, FR-008, FR-012, FR-018, FR-019, FR-020, SC-001, SC-005] Write macOS UI coverage for automatic text capture, same-session history refresh, and offline capture continuity while the app is foregrounded, backgrounded, and minimized in NextPasteUITests/ClipboardAutoCaptureUITests.swift
+- [X] T008 [P] [US1] [FR-003, FR-009, FR-016, FR-018] Extend auto-captured history ordering and local persistence assertions in NextPasteTests/ClipHistoryTests.swift
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] [FR-001, FR-003, FR-007, FR-015, FR-019] Implement pasteboard polling, change-count tracking, and macOS running-app lifecycle behavior across foreground, backgrounded, and minimized states in NextPaste/ClipboardMonitor.swift
-- [ ] T010 [US1] [FR-003, FR-007, FR-008, FR-016, FR-020] Implement the detect -> validate -> persist clipboard capture flow with SwiftData saves in NextPaste/ClipboardCaptureService.swift
-- [ ] T011 [US1] [FR-001, FR-002, FR-019] Wire clipboard monitoring start at app launch and stop at termination, while keeping capture active whenever the macOS app process remains running, in NextPaste/NextPasteApp.swift
-- [ ] T012 [US1] [FR-008, FR-009, FR-016, FR-020] Keep history-list refresh as the visible capture confirmation in NextPaste/HomeView.swift
+- [X] T009 [US1] [FR-001, FR-003, FR-007, FR-015, FR-019] Implement pasteboard polling, change-count tracking, and macOS running-app lifecycle behavior across foreground, backgrounded, and minimized states in NextPaste/ClipboardMonitor.swift
+- [X] T010 [US1] [FR-003, FR-007, FR-008, FR-016, FR-020] Implement the detect -> validate -> persist clipboard capture flow with SwiftData saves in NextPaste/ClipboardCaptureService.swift
+- [X] T011 [US1] [FR-001, FR-002, FR-019] Wire clipboard monitoring start at app launch and stop at termination, while keeping capture active whenever the macOS app process remains running, in NextPaste/NextPasteApp.swift
+- [X] T012 [US1] [FR-008, FR-009, FR-016, FR-020] Keep history-list refresh as the visible capture confirmation in NextPaste/HomeView.swift
 
 **Checkpoint**: User Story 1 delivers MVP clipboard-first auto-capture.
 
@@ -72,16 +72,16 @@
 
 > **Write these tests first and confirm they fail before implementation.**
 
-- [ ] T013 [P] [US2] [FR-005, FR-006, FR-014, FR-017, FR-018, SC-003] Add exact-text deduplication plus image/non-text rejection unit tests in NextPasteTests/ClipboardCaptureTests.swift
-- [ ] T014 [P] [US2] [FR-004, FR-017, FR-018, SC-002] Add whitespace-only auto-capture regression tests in NextPasteTests/ClipValidationTests.swift
-- [ ] T015 [P] [US2] [FR-004, FR-006, FR-017, FR-018, SC-002, SC-003] Add UI coverage that duplicate, empty, and unchanged clipboard state observations leave history unchanged in NextPasteUITests/ClipboardAutoCaptureUITests.swift
-- [ ] T016 [P] [US2] [FR-012, FR-013, FR-017, FR-018, SC-005] Add automated offline regression tests proving automatic capture persists locally and skipped captures preserve unchanged clipboard state behavior in NextPasteTests/ClipHistoryTests.swift
+- [X] T013 [P] [US2] [FR-005, FR-006, FR-014, FR-017, FR-018, SC-003] Add exact-text deduplication plus image/non-text rejection unit tests in NextPasteTests/ClipboardCaptureTests.swift
+- [X] T014 [P] [US2] [FR-004, FR-017, FR-018, SC-002] Add whitespace-only auto-capture regression tests in NextPasteTests/ClipValidationTests.swift
+- [X] T015 [P] [US2] [FR-004, FR-006, FR-017, FR-018, SC-002, SC-003] Add UI coverage that duplicate, empty, and unchanged clipboard state observations leave history unchanged in NextPasteUITests/ClipboardAutoCaptureUITests.swift
+- [X] T016 [P] [US2] [FR-012, FR-013, FR-017, FR-018, SC-005] Add automated offline regression tests proving automatic capture persists locally and skipped captures preserve unchanged clipboard state behavior in NextPasteTests/ClipHistoryTests.swift
 
 ### Implementation for User Story 2
 
-- [ ] T017 [US2] [FR-004, FR-007, FR-017] Reuse manual validation semantics for clipboard rejection in NextPaste/ClipValidation.swift and NextPaste/ClipboardCaptureService.swift
-- [ ] T018 [US2] [FR-006, FR-007, FR-017] Implement exact-text deduplication against saved local ClipItem records in NextPaste/ClipboardCaptureService.swift
-- [ ] T019 [US2] [FR-005, FR-014, FR-015, FR-017] Ignore unchanged clipboard state observations (no new pasteboard version) and non-text/image clipboard payloads in NextPaste/ClipboardMonitor.swift
+- [X] T017 [US2] [FR-004, FR-007, FR-017] Reuse manual validation semantics for clipboard rejection in NextPaste/ClipValidation.swift and NextPaste/ClipboardCaptureService.swift
+- [X] T018 [US2] [FR-006, FR-007, FR-017] Implement exact-text deduplication against saved local ClipItem records in NextPaste/ClipboardCaptureService.swift
+- [X] T019 [US2] [FR-005, FR-014, FR-015, FR-017] Ignore unchanged clipboard state observations (no new pasteboard version) and non-text/image clipboard payloads in NextPaste/ClipboardMonitor.swift
 
 **Checkpoint**: User Story 2 keeps history clean without weakening local-first clipboard capture.
 
@@ -97,15 +97,15 @@
 
 > **Write these tests first and confirm they fail before implementation.**
 
-- [ ] T020 [P] [US3] [FR-009, FR-016, FR-018] Add compatibility tests that auto-captured clips preserve default pin and ordering behavior in NextPasteTests/ClipHistoryTests.swift
-- [ ] T021 [P] [US3] [FR-010, FR-012, FR-016, FR-018, SC-004, SC-005] Add automated offline UI regression coverage for copy, delete, and pin on auto-captured clips in NextPasteUITests/ClipRowActionsUITests.swift
-- [ ] T022 [P] [US3] [FR-011, FR-018] Add UI regression coverage that manual clip creation remains available beside auto-capture in NextPasteUITests/CreateTextClipUITests.swift
+- [X] T020 [P] [US3] [FR-009, FR-016, FR-018] Add compatibility tests that auto-captured clips preserve default pin and ordering behavior in NextPasteTests/ClipHistoryTests.swift
+- [X] T021 [P] [US3] [FR-010, FR-012, FR-016, FR-018, SC-004, SC-005] Add automated offline UI regression coverage for copy, delete, and pin on auto-captured clips in NextPasteUITests/ClipRowActionsUITests.swift
+- [X] T022 [P] [US3] [FR-011, FR-018] Add UI regression coverage that manual clip creation remains available beside auto-capture in NextPasteUITests/CreateTextClipUITests.swift
 
 ### Implementation for User Story 3
 
-- [ ] T023 [US3] [FR-009, FR-012, FR-016] Ensure auto-captured inserts use ordinary ClipItem defaults and local persistence rules in NextPaste/ClipItem.swift and NextPaste/ClipboardCaptureService.swift
-- [ ] T024 [US3] [FR-010, FR-016] Preserve existing row-action identifiers and copy behavior for auto-captured history rows in NextPaste/HomeView.swift and NextPaste/ClipboardWriter.swift
-- [ ] T025 [US3] [FR-011, FR-016] Keep manual clip creation as a fallback while sharing persistence rules with auto-capture in NextPaste/NewClipView.swift and NextPaste/ClipboardCaptureService.swift
+- [X] T023 [US3] [FR-009, FR-012, FR-016] Ensure auto-captured inserts use ordinary ClipItem defaults and local persistence rules in NextPaste/ClipItem.swift and NextPaste/ClipboardCaptureService.swift
+- [X] T024 [US3] [FR-010, FR-016] Preserve existing row-action identifiers and copy behavior for auto-captured history rows in NextPaste/HomeView.swift and NextPaste/ClipboardWriter.swift
+- [X] T025 [US3] [FR-011, FR-016] Keep manual clip creation as a fallback while sharing persistence rules with auto-capture in NextPaste/NewClipView.swift and NextPaste/ClipboardCaptureService.swift
 
 **Checkpoint**: Auto-captured clips are fully compatible with existing clip-management flows.
 
@@ -115,9 +115,9 @@
 
 **Purpose**: Finalize executable regression guidance, privacy/local-first guardrails, the remaining non-automatable excluded-scope checks, and separate usability validation.
 
-- [ ] T026 [P] [FR-014] Review only the remaining non-automatable excluded-scope checks (OCR, AI analysis, cloud synchronization, share extension behavior, Shortcuts, remote transmission, and third-party analytics) in specs/003-clipboard-auto-capture/contracts/apple-framework-boundaries.md and specs/003-clipboard-auto-capture/quickstart.md after the executable FR-014 regressions are in place
-- [ ] T027 [FR-012, FR-013, FR-018, FR-019, SC-001, SC-002, SC-003, SC-004, SC-005] Run the final macOS executable regression sweep from specs/003-clipboard-auto-capture/quickstart.md against NextPasteTests/ClipboardCaptureTests.swift, NextPasteTests/ClipHistoryTests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/ClipRowActionsUITests.swift, and NextPasteUITests/CreateTextClipUITests.swift, explicitly validating foreground, backgrounded, minimized, and offline running-app capture, SC-001 timing evidence that at least 95% of observed valid captures appear in history within 2 seconds, and offline copy/delete/pin compatibility while leaving SC-006 to separate usability validation
-- [ ] T028 [P] [SC-006] Run separate usability validation from specs/003-clipboard-auto-capture/quickstart.md for the primary "copy text and find it in history" flow without using the manual fallback; do not treat SC-006 as an automated regression gate
+- [X] T026 [P] [FR-014] Review only the remaining non-automatable excluded-scope checks (OCR, AI analysis, cloud synchronization, share extension behavior, Shortcuts, remote transmission, and third-party analytics) in specs/003-clipboard-auto-capture/contracts/apple-framework-boundaries.md and specs/003-clipboard-auto-capture/quickstart.md after the executable FR-014 regressions are in place
+- [X] T027 [FR-012, FR-013, FR-018, FR-019, SC-001, SC-002, SC-003, SC-004, SC-005] Run the final macOS executable regression sweep from specs/003-clipboard-auto-capture/quickstart.md against NextPasteTests/ClipboardCaptureTests.swift, NextPasteTests/ClipHistoryTests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/ClipRowActionsUITests.swift, and NextPasteUITests/CreateTextClipUITests.swift, explicitly validating foreground, backgrounded, minimized, and offline running-app capture, SC-001 timing evidence that at least 95% of observed valid captures appear in history within 2 seconds, and offline copy/delete/pin compatibility while leaving SC-006 to separate usability validation
+- [X] T028 [P] [SC-006] Run separate usability validation from specs/003-clipboard-auto-capture/quickstart.md for the primary "copy text and find it in history" flow without using the manual fallback; do not treat SC-006 as an automated regression gate
 
 ---
 

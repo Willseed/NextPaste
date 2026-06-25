@@ -13,4 +13,8 @@ enum ClipValidation {
     static func validationMessage(for text: String) -> String? {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? emptyTextMessage : nil
     }
+
+    static func isAcceptedText(_ text: String) -> Bool {
+        validationMessage(for: text) == nil
+    }
 }

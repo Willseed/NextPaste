@@ -6,6 +6,9 @@
 //
 
 import XCTest
+#if os(macOS)
+import AppKit
+#endif
 
 final class CreateTextClipUITests: XCTestCase {
     override func setUpWithError() throws {
@@ -50,6 +53,28 @@ final class CreateTextClipUITests: XCTestCase {
     }
 
     @MainActor
+    func testManualFallbackRemainsAvailableAfterAutoCapture() throws {
+        let app = UITestAppLauncher.launchAutoCaptureApp()
+        let autoCapturedText = "Auto-captured before manual fallback"
+        let manualText = "Manual fallback clip"
+
+        addTeardownBlock {
+            app.terminate()
+        }
+
+        setClipboardString(autoCapturedText)
+        XCTAssertTrue(app.staticTexts[autoCapturedText].waitForExistence(timeout: 5))
+
+        let editor = try openNewClip(in: app)
+        editor.tap()
+        editor.typeText(manualText)
+        app.buttons["save-clip-button"].tap()
+
+        XCTAssertTrue(app.staticTexts[manualText].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[autoCapturedText].exists)
+    }
+
+    @MainActor
     private func openNewClip(in app: XCUIApplication) throws -> XCUIElement {
         let newClipButton = app.buttons["new-clip-button"]
         guard newClipButton.waitForExistence(timeout: 5) else {
@@ -61,6 +86,13 @@ final class CreateTextClipUITests: XCTestCase {
         let editor = app.textViews["clip-text-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         return editor
+    }
+
+    private func setClipboardString(_ text: String) {
+#if os(macOS)
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(text, forType: .string)
+#endif
     }
 }
 

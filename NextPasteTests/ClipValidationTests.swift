@@ -25,6 +25,16 @@ struct ClipValidationTests {
         #expect(ClipValidation.validationMessage(for: "Meeting notes") == nil)
     }
 
+    @MainActor
+    @Test("auto-capture rejects whitespace-only text without saving history")
+    func autoCaptureRejectsWhitespaceOnlyTextWithoutSavingHistory() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let service = ClipboardCaptureService(modelContext: context)
+
+        #expect(service.captureClipboardText("  \n\t  ") == .ignored(.emptyOrWhitespace))
+        #expect(try SwiftDataTestSupport.fetchHistoryTexts(in: context).isEmpty)
+    }
+
     @Test("does not trim or mutate original valid text")
     func doesNotTrimOrMutateOriginalValidText() {
         let originalText = "  keep leading and trailing whitespace  "

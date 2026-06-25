@@ -151,4 +151,55 @@ struct ClipHistoryTests {
 
         #expect(ClipRowView.previewText(for: clip) == originalText)
     }
+
+    @MainActor
+    @Test("auto-captured clips persist locally and sort with newest first inside unpinned history")
+    func autoCapturedClipsPersistLocallyAndSortNewestFirst() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let service = ClipboardCaptureService(modelContext: context)
+
+        #expect(service.captureClipboardText("Older auto clip", observedAt: Date(timeIntervalSince1970: 100)) == .captured("Older auto clip"))
+        #expect(service.captureClipboardText("Newer auto clip", observedAt: Date(timeIntervalSince1970: 200)) == .captured("Newer auto clip"))
+
+        let clips = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(clips.map(\.textContent) == ["Newer auto clip", "Older auto clip"])
+        #expect(clips.allSatisfy { $0.contentType == "text" && $0.isPinned == false })
+    }
+
+    @MainActor
+    @Test("duplicate, skipped, and offline local capture attempts preserve history ordering and state")
+    func duplicateSkippedAndOfflineCaptureAttemptsPreserveHistoryState() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let service = ClipboardCaptureService(modelContext: context)
+
+        #expect(service.captureClipboardText("Offline local clip", observedAt: Date(timeIntervalSince1970: 100)) == .captured("Offline local clip"))
+        #expect(service.captureClipboardText("Offline local clip", observedAt: Date(timeIntervalSince1970: 200)) == .ignored(.duplicate))
+        #expect(service.captureClipboardText(nil, observedAt: Date(timeIntervalSince1970: 300)) == .ignored(.nonText))
+
+        let clips = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(clips.count == 1)
+        #expect(clips.first?.textContent == "Offline local clip")
+    }
+
+    @MainActor
+    @Test("auto-captured clips keep default pin state and remain compatible with pin ordering")
+    func autoCapturedClipsKeepDefaultPinStateAndRemainCompatibleWithPinOrdering() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let service = ClipboardCaptureService(modelContext: context)
+
+        #expect(service.captureClipboardText("Older auto clip", observedAt: Date(timeIntervalSince1970: 100)) == .captured("Older auto clip"))
+        #expect(service.captureClipboardText("Newer auto clip", observedAt: Date(timeIntervalSince1970: 200)) == .captured("Newer auto clip"))
+
+        let clips = try SwiftDataTestSupport.fetchHistory(in: context)
+        guard let older = clips.last else {
+            Issue.record("Expected captured clips in history")
+            return
+        }
+
+        #expect(older.isPinned == false)
+        older.togglePinned()
+        try context.save()
+
+        #expect(try SwiftDataTestSupport.fetchHistoryTexts(in: context) == ["Older auto clip", "Newer auto clip"])
+    }
 }

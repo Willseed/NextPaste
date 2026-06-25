@@ -7,6 +7,9 @@
 
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 @main
 struct NextPasteApp: App {
@@ -33,12 +36,33 @@ struct NextPasteApp: App {
 
     var body: some Scene {
         WindowGroup("NextPaste") {
-            ContentView()
+            ClipboardMonitorHostView {
+                ContentView()
+            }
                 .frame(minWidth: 520, minHeight: 380)
         }
 #if os(macOS)
         .defaultSize(width: 640, height: 480)
 #endif
         .modelContainer(sharedModelContainer)
+    }
+}
+
+private struct ClipboardMonitorHostView<Content: View>: View {
+    @Environment(\.modelContext) private var modelContext
+    let content: () -> Content
+
+    var body: some View {
+        content()
+            .task {
+                await MainActor.run {
+                    ClipboardMonitorLifecycleController.shared.startIfNeeded(using: modelContext)
+                }
+            }
+#if os(macOS)
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
+                ClipboardMonitorLifecycleController.shared.stop()
+            }
+#endif
     }
 }

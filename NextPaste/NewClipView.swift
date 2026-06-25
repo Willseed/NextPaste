@@ -80,10 +80,8 @@ struct NewClipView: View {
                 throw SaveFailure.simulated
             }
 
-            let createdAt = Date()
-            let clip = ClipItem(textContent: draftText, createdAt: createdAt)
-            modelContext.insert(clip)
-            try modelContext.save()
+            let service = ClipboardCaptureService(modelContext: modelContext)
+            try service.saveManualTextClip(draftText)
             dismiss()
         } catch {
             modelContext.rollback()
