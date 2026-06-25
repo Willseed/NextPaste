@@ -18,13 +18,13 @@ Implement row actions for saved text clips in `HomeView`: tapping a clip row cop
 
 **Storage**: SwiftData local store is the source of truth. `ClipItem` gains `isPinned: Bool` with a default false value. Existing local clips without stored pin state are treated as unpinned, preserving current history semantics until a user pins a row.
 
-**Testing**: Swift Testing in `NextPasteTests` for `isPinned` defaults, pin toggling, delete persistence, and pinned-first sorting. XCTest UI automation in `NextPasteUITests` for row copy feedback, left-swipe delete, right-swipe pin toggle, pinned icon display, and pinned-above-unpinned ordering. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and scoped `-only-testing` commands.
+**Testing**: Swift Testing in `NextPasteTests` for `isPinned` defaults, legacy local clip defaulting, pin toggling, delete persistence, pinned-first sorting, clipboard success/failure behavior where testable, offline/local-first invariants, and deterministic sort-scale behavior. XCTest UI automation in `NextPasteUITests` for row copy feedback, clipboard failure feedback absence through an injectable failure mode, left-swipe delete, right-swipe pin toggle, trash/pin icon representation, pinned icon display, pinned-above-unpinned ordering, and offline/local-first row actions. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and scoped `-only-testing` commands.
 
 **Target Platform**: Apple multi-platform target matrix from the Xcode project: iOS `26.5`, macOS `26.5`, and visionOS `26.5` across `iphoneos`, `iphonesimulator`, `macosx`, `xros`, and `xrsimulator`.
 
 **Project Type**: Single Xcode SwiftUI app with one app target, one Swift Testing unit test target, and one XCTest UI test target.
 
-**Performance Goals**: Row copy, delete, and pin actions should visibly complete in the same app session within 250 ms for normal local histories. Sorting should remain deterministic for at least 1,000 local text clips by using persisted fields rather than post-render UI ordering.
+**Performance Goals**: Row copy, delete, and pin actions should feel immediate for normal local histories; approximately 250 ms is non-gating UX guidance, not a release validation gate. Sorting must remain deterministic for at least 1,000 local text clips by using persisted fields rather than post-render UI ordering, and the task list includes automated sort-scale validation for the 1,000-clip ordering scenario.
 
 **Constraints**: Local-first behavior is mandatory. Copy, delete, pin, and history ordering must work without network access. Copying must not mutate stored text. Delete and pin must operate only on local SwiftData state. The feature must not add CloudKit sync, OCR, AI analysis, Firebase, third-party analytics, remote transmission, undo delete, multi-select actions, or background clipboard monitoring.
 
@@ -47,7 +47,7 @@ Implement row actions for saved text clips in `HomeView`: tapping a clip row cop
 - **AI-first outcome**: PASS. Contracts preserve original `textContent` and define copy/pin/delete as retrieval and organization actions that support future action-oriented workflows.
 - **Local-first design**: PASS. Data model and contracts keep all state in SwiftData; copy uses the local clip value, delete removes the local object, and pin toggles a local Boolean field.
 - **Privacy by default**: PASS. Apple framework boundaries prohibit remote transmission, analytics SDKs, OCR, AI analysis, and sync for this feature. Clipboard behavior is explicit and user-initiated.
-- **Test-first coverage**: PASS. Quickstart validation maps unit and UI tests to copy, feedback, delete, pin, pinned indicator, pinned-first ordering, and migration/default behavior for existing clips.
+- **Test-first coverage**: PASS. Quickstart validation maps unit and UI tests to copy, copy failure, feedback, delete, pin, pinned indicator, trash/pin action icon representation, pinned-first ordering, offline/local-first row actions, sort-scale validation, and migration/default behavior for existing clips.
 - **Native simplicity**: PASS. The design stays inside existing files and test targets with a small platform clipboard boundary. No constitution exceptions are present.
 
 ## Project Structure

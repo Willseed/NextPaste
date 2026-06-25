@@ -29,6 +29,7 @@ As a user, I want to tap a saved text clip in history and copy its original text
 1. **Given** a saved text clip exists, **When** the user taps that clip's row, **Then** the clip's original textContent is copied to the system clipboard.
 2. **Given** copying succeeds, **When** the copy operation completes, **Then** the app displays exactly "Copied".
 3. **Given** a saved text clip is copied, **When** the clip is inspected afterward, **Then** the stored textContent remains unchanged.
+4. **Given** a saved text clip exists, **When** the user taps that clip's row and the clipboard write fails, **Then** the app does not display "Copied" and the stored clip remains unchanged.
 
 ---
 
@@ -65,6 +66,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 5. **Given** multiple pinned text clips exist, **When** the user views history, **Then** pinned clips are sorted by createdAt descending.
 6. **Given** multiple unpinned text clips exist, **When** the user views history, **Then** unpinned clips are sorted by createdAt descending.
 7. **Given** saved text clips were created before isPinned existed, **When** history is shown after this feature is available, **Then** those clips are treated as unpinned and sorted with unpinned clips by createdAt descending.
+8. **Given** saved text clips were created before isPinned existed, **When** automated defaulting behavior is validated, **Then** those clips are verified as unpinned without requiring network access or remote migration.
 
 ### Edge Cases
 
@@ -101,8 +103,11 @@ As a user, I want to pin important text clips from the row so I can return to hi
 - **FR-018**: Within the unpinned group, clips MUST be sorted by createdAt descending.
 - **FR-019**: Copy, delete, pin, and history ordering MUST work without network access and MUST use local saved clip data for this feature.
 - **FR-020**: This feature MUST NOT transmit clip content to external services or introduce cloud synchronization, OCR, AI analysis, analytics, remote storage, or background clipboard monitoring.
-- **FR-021**: Automated tests MUST cover the isPinned default value, pin toggle behavior, pinned-first sorting, row tap copy with "Copied" feedback, left-swipe deletion, right-swipe pin toggling, pinned icon display, and pinned-above-unpinned history ordering.
+- **FR-021**: Automated tests MUST cover the isPinned default value, legacy local clip defaulting, pin toggle behavior, pinned-first sorting, row tap copy with "Copied" feedback, clipboard copy failure without "Copied" feedback, left-swipe deletion, right-swipe pin toggling, pinned icon display, trash/pin swipe action icon representation, pinned-above-unpinned history ordering, and offline/local-first row actions.
 - **FR-022**: Saved text clips MUST remain available as source material for future action-oriented workflows; this feature improves retrieval and reuse but does not generate AI output.
+- **FR-023**: If the system clipboard write fails, the app MUST NOT display "Copied" and MUST NOT mutate the selected clip.
+- **FR-024**: Automated tests MUST include an offline/local-first scenario proving copy, delete, pin, and history ordering do not require network access, CloudKit sync, OCR, AI analysis, analytics, or remote transmission.
+- **FR-025**: Automated tests MUST verify existing local text clips without stored pin state are treated as isPinned false.
 
 ### Key Entities
 
@@ -121,7 +126,8 @@ As a user, I want to pin important text clips from the row so I can return to hi
 - **SC-005**: In 100% of ordering checks, pinned clips appear above unpinned clips, with each group sorted newest first.
 - **SC-006**: 100% of newly created text clips and existing local text clips without stored pin state are unpinned by default.
 - **SC-007**: Copy, delete, pin, and history ordering work without network access in 100% of tested scenarios.
-- **SC-008**: Automated tests cover all functional requirements listed for copy feedback, delete, pin, pinned indicator, and pinned-first ordering before the feature is considered complete.
+- **SC-008**: Automated tests cover all functional requirements listed for copy feedback, copy failure, delete, pin, pinned indicator, legacy pin defaulting, offline/local-first behavior, and pinned-first ordering before the feature is considered complete.
+- **SC-009**: 100% of clipboard failure checks do not show "Copied" and do not mutate the selected clip.
 
 ## Assumptions
 
