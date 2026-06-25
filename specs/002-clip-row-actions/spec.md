@@ -8,6 +8,12 @@
 
 **Input**: User description: "Build row-level actions for saved text clips in NextPaste. Users can tap any clip row to copy its textContent to the system clipboard and see 'Copied' after success. Users can swipe left to reveal a delete action with a trash icon that removes the clip from local storage. Users can swipe right to reveal a pin action with a pin icon that toggles pinned state. Pinned clips display a pin icon and appear at the top of the history list. Within pinned and unpinned groups, clips remain sorted by createdAt descending. Add isPinned to ClipItem with default false. Out of scope: image clips, OCR, AI analysis, CloudKit sync, undo delete, multi-select actions, background clipboard monitoring. Include unit and UI coverage for copy, delete, pin, pinned indicators, and pinned-first ordering."
 
+## Clarifications
+
+### Session 2026-06-25
+
+- Q: How should pre-existing local text clips behave after isPinned is added? → A: Existing saved text clips become unpinned.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reuse a saved text clip immediately (Priority: P1)
@@ -58,6 +64,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 4. **Given** pinned and unpinned text clips exist, **When** the user views history, **Then** all pinned clips appear above all unpinned clips.
 5. **Given** multiple pinned text clips exist, **When** the user views history, **Then** pinned clips are sorted by createdAt descending.
 6. **Given** multiple unpinned text clips exist, **When** the user views history, **Then** unpinned clips are sorted by createdAt descending.
+7. **Given** saved text clips were created before isPinned existed, **When** history is shown after this feature is available, **Then** those clips are treated as unpinned and sorted with unpinned clips by createdAt descending.
 
 ### Edge Cases
 
@@ -66,6 +73,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 - When a pinned clip is deleted, it is removed from both the pinned group and local saved clips.
 - When a deleted clip was the only pinned clip, the history list updates so remaining unpinned clips continue to appear newest first.
 - When a pin is toggled repeatedly, the final displayed state matches the final saved pinned state.
+- When pre-existing local text clips do not yet have stored pin state, the app treats them as unpinned.
 - When the device has no network connection, copy, delete, pin, and history ordering still work from local storage.
 - Image clips, OCR output, AI analysis results, synchronized cloud records, multi-select state, and background clipboard capture are not affected by this feature.
 
@@ -83,7 +91,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 - **FR-008**: Users MUST be able to reveal a row-level pin action by swiping right on a saved text clip.
 - **FR-009**: The pin action MUST be represented with a pin icon and exposed with accessibility identifier `pin-clip-button`.
 - **FR-010**: Activating the pin action MUST toggle only the selected clip's pinned state.
-- **FR-011**: Every saved text clip MUST have an isPinned value that defaults to false for newly created clips.
+- **FR-011**: Every saved text clip MUST have an isPinned value. Newly created clips and existing local text clips without stored pin state MUST default to false.
 - **FR-012**: Pinned clips MUST display a visible pin icon with accessibility identifier `pinned-clip-icon`.
 - **FR-013**: The history list MUST expose accessibility identifier `clip-history-list`.
 - **FR-014**: Each clip row MUST expose an accessibility identifier in the format `clip-row-{id}` where `{id}` identifies the row's clip.
@@ -98,7 +106,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 
 ### Key Entities
 
-- **ClipItem**: A saved user clip. Key attributes for this feature are id, textContent, createdAt, and isPinned. New clips default to isPinned false.
+- **ClipItem**: A saved user clip. Key attributes for this feature are id, textContent, createdAt, and isPinned. New clips and existing local clips without stored pin state default to isPinned false.
 - **Text Clip**: A ClipItem containing saved text content. Only text clips are in scope for row-level copy, delete, and pin actions in this feature.
 - **History List**: The user's local list of saved text clips, ordered with pinned clips first and newest clips first within each pinned state group.
 
@@ -111,7 +119,7 @@ As a user, I want to pin important text clips from the row so I can return to hi
 - **SC-003**: 100% of successful delete actions remove exactly one selected clip from history and local saved clips.
 - **SC-004**: 100% of pin toggle actions update exactly one selected clip and display the correct pinned or unpinned state after the action completes.
 - **SC-005**: In 100% of ordering checks, pinned clips appear above unpinned clips, with each group sorted newest first.
-- **SC-006**: 100% of newly created text clips are unpinned by default.
+- **SC-006**: 100% of newly created text clips and existing local text clips without stored pin state are unpinned by default.
 - **SC-007**: Copy, delete, pin, and history ordering work without network access in 100% of tested scenarios.
 - **SC-008**: Automated tests cover all functional requirements listed for copy feedback, delete, pin, pinned indicator, and pinned-first ordering before the feature is considered complete.
 
