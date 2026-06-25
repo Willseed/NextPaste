@@ -40,21 +40,23 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-- **AI-first outcome**: Feature transforms saved text/images into summaries, categories, decisions,
-  reminders, follow-ups, or another measurable next action. Non-productivity work is rejected or
-  explicitly justified as enabling an actionable workflow.
-- **Local-first design**: SwiftData local storage is the source of truth. Offline capture, browsing,
-  retrieval, and access to previously generated insights are defined and tested where technically
-  possible. CloudKit is replication, not a prerequisite for core use.
-- **Privacy by default**: No third-party analytics SDKs or unnecessary third-party services. Any user
-  content transmission requires explicit approval, documented data scope, retention assumptions, and
-  local fallback behavior. Prefer Vision and Foundation Models/on-device AI.
-- **Test-first coverage**: Automated tests are planned for each new requirement. Critical flows include
-  UI or integration tests. AI outputs have typed schemas/contracts and tests for valid, malformed, and
-  failure responses.
-- **Native simplicity**: SwiftUI, SwiftData, CloudKit, Vision OCR, and Foundation Models are the default
-  choices. Any dependency or platform deviation is justified with a concrete capability gap and privacy
-  impact.
+- **Clipboard-first product**: The primary trigger is clipboard change detection, and the default
+  workflow is `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
+  Manual clip creation is secondary and optional.
+- **Local-first architecture**: SwiftData local storage is the source of truth. Clipboard capture,
+  browsing, retrieval, sorting, and row actions work without network access. CloudKit is optional
+  replication, not a prerequisite for core use.
+- **Privacy by default**: Clipboard monitoring stays on-device. No Firebase, analytics SDKs,
+  advertising SDKs, or third-party telemetry. Any clipboard-data transmission requires explicit
+  user opt-in, documented data scope, retention assumptions, and local fallback behavior.
+- **Automatic capture**: The plan defines content-type identification, duplicate handling,
+  persistence, and history refresh behavior for clipboard changes while the app is running.
+- **Test-first coverage**: Automated tests are planned for each new requirement. Clipboard behavior
+  includes monitoring, deduplication, local persistence, row actions, sorting, and offline
+  coverage. Features with AI outputs add typed contract validation and failure tests.
+- **Native simplicity**: SwiftUI, SwiftData, Observation, Vision, Foundation Models, Foundation,
+  and CloudKit are the default choices. Any dependency or platform deviation is justified with a
+  concrete capability gap and privacy impact.
 
 ## Project Structure
 

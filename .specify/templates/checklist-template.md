@@ -15,7 +15,8 @@
   - Feature requirements from spec.md
   - Technical context from plan.md
   - Implementation details from tasks.md
-  - Constitution gates: AI-first outcome, local-first behavior, privacy, tests, and native simplicity
+  - Constitution gates: clipboard-first product, local-first behavior, privacy, automatic capture,
+    tests, and native simplicity
   
   DO NOT keep these sample items in the generated checklist file.
   ============================================================================
@@ -29,10 +30,13 @@
 
 ## Constitution Gates
 
-- [ ] CHKXXX Feature creates a measurable action or insight from saved content
+- [ ] CHKXXX Feature treats clipboard change detection as the primary source of new clips
 - [ ] CHKXXX Local-first and offline behavior are reviewed
-- [ ] CHKXXX User-content transmission requires explicit approval and documented scope
-- [ ] CHKXXX Automated tests cover new requirements, critical flows, and AI output contracts
+- [ ] CHKXXX Clipboard monitoring stays on-device and user-content transmission requires explicit
+  approval and documented scope
+- [ ] CHKXXX Automatic capture covers detect, validate, deduplicate, persist, and refresh behavior
+- [ ] CHKXXX Automated tests cover new requirements, clipboard behavior, critical flows, and AI
+  output contracts where applicable
 - [ ] CHKXXX Dependencies follow Apple-native defaults or include approved justification
 
 ## [Category 2]

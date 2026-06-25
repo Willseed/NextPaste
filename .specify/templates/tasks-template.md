@@ -9,9 +9,10 @@ description: "Task list template for feature implementation"
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Tests**: Automated tests are REQUIRED by the constitution for every new feature. Include test tasks
-that map to the feature specification, critical UI flows, privacy/offline behavior, and AI output
-validation contracts where applicable.
+**Tests**: Automated tests are REQUIRED by the constitution for every new feature. Include test
+tasks that map to the feature specification, clipboard monitoring, deduplication, local
+persistence, row actions, sorting, privacy/offline behavior, and AI output validation contracts
+where applicable.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -65,12 +66,12 @@ validation contracts where applicable.
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Setup database schema and migrations framework
-- [ ] T005 [P] Implement authentication/authorization framework
-- [ ] T006 [P] Setup API routing and middleware structure
+- [ ] T004 Create local persistence models and clipboard history schema
+- [ ] T005 [P] Implement clipboard monitoring pipeline
+- [ ] T006 [P] Define content-type identification and deduplication rules
 - [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure error handling and logging infrastructure
-- [ ] T009 Setup environment configuration management
+- [ ] T008 Configure explicit error reporting for local capture failures
+- [ ] T009 Setup feature flags or settings for optional sync/export flows
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -86,18 +87,22 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T011 [P] [US1] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
-- [ ] T012 [P] [US1] AI output validation test for [schema/contract] in NextPasteTests/[Name]AIOutputTests.swift
+- [ ] T010 [P] [US1] Unit test for clipboard monitoring or deduplication behavior in
+  NextPasteTests/[Name]Tests.swift
+- [ ] T011 [P] [US1] UI test for [critical clipboard/history journey] in
+  NextPasteUITests/[Name]UITests.swift
+- [ ] T012 [P] [US1] Persistence or sorting regression test for captured clips in
+  NextPasteTests/[Name]PersistenceTests.swift
 
 ### Implementation for User Story 1
 
 - [ ] T013 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
-- [ ] T014 [P] [US1] Create SwiftData model [Entity2] in NextPaste/[Entity2].swift
-- [ ] T015 [US1] Implement [Service] in NextPaste/[Service].swift (depends on T013, T014)
-- [ ] T016 [US1] Implement SwiftUI flow for [feature] in NextPaste/[View].swift
-- [ ] T017 [US1] Add schema validation and error handling for AI output
-- [ ] T018 [US1] Add explicit consent handling for any user-content transmission
+- [ ] T014 [P] [US1] Create clipboard observation or capture service in
+  NextPaste/[ClipboardService].swift
+- [ ] T015 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
+- [ ] T016 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
+- [ ] T017 [US1] Add explicit consent handling for any optional user-content transmission
+- [ ] T018 [US1] Add type-identification handling for supported clipboard content
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -113,7 +118,8 @@ Examples of foundational tasks (adjust based on your project):
 
 - [ ] T019 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
 - [ ] T020 [P] [US2] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
-- [ ] T021 [P] [US2] Offline/privacy behavior test for [scenario] in NextPasteTests/[Name]PrivacyTests.swift
+- [ ] T021 [P] [US2] Offline/privacy behavior test for [scenario] in
+  NextPasteTests/[Name]PrivacyTests.swift
 
 ### Implementation for User Story 2
 
@@ -159,8 +165,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
 - [ ] TXXX [P] Additional regression tests in NextPasteTests/
-- [ ] TXXX Privacy review for consent, local storage, and data transmission
-- [ ] TXXX Offline support review for local-first behavior
+- [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
+- [ ] TXXX Offline support review for local-first clipboard behavior
 - [ ] TXXX Run quickstart.md validation
 
 ---
@@ -186,7 +192,7 @@ Examples of foundational tasks (adjust based on your project):
 
 - Tests MUST be written and FAIL before implementation
 - Models before services
-- Services before endpoints
+- Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
 - Story complete before moving to next priority
 

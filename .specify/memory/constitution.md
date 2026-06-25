@@ -1,15 +1,15 @@
 <!--
 Sync Impact Report
-Version change: unratified template -> 1.0.0
+Version change: 1.0.0 -> 2.0.0
 Modified principles:
-- PRINCIPLE_1_NAME -> I. AI-First Product Design
-- PRINCIPLE_2_NAME -> II. Local-First Architecture
-- PRINCIPLE_3_NAME -> III. Privacy by Default
-- PRINCIPLE_4_NAME -> IV. Test-First Development
-- PRINCIPLE_5_NAME -> V. Simplicity Over Complexity
+- I. AI-First Product Design -> I. Clipboard-First Product
+- II. Local-First Architecture -> II. Local-First Architecture
+- III. Privacy by Default -> III. Privacy by Default
+- IV. Test-First Development -> IV. Automatic Capture
+- V. Simplicity Over Complexity -> V. Test-First Development
+- Added principle: VI. Simplicity and Apple-Native Stack
 Added sections:
-- Technical Constraints
-- Development Workflow & Quality Gates
+- None
 Removed sections:
 - None
 Templates requiring updates:
@@ -26,75 +26,87 @@ Follow-up TODOs: None
 
 ## Core Principles
 
-### I. AI-First Product Design
+### I. Clipboard-First Product
 
-Every feature MUST help users turn saved text or images into actionable outcomes: summaries,
-categories, decisions, reminders, follow-ups, or other next steps. AI-generated insights are a
-core product capability, not a garnish; specifications MUST define how a feature improves user
-productivity or reduces manual interpretation. Features that do not create, improve, validate,
-or safely support actionable content workflows MUST be rejected or deferred.
+The system clipboard is the primary source of clips. When the app is running and the system
+clipboard changes, NextPaste MUST automatically save the new clipboard content as a local clip
+without requiring user confirmation. Manual clip creation is secondary and optional. The default
+workflow for core product behavior MUST remain `Clipboard Changed -> Detect -> Validate ->
+Deduplicate -> Persist -> Refresh UI`.
 
-Rationale: NextPaste exists to transform copied content into actions, so product scope must stay
-anchored to concrete user progress instead of passive storage.
+Rationale: NextPaste now exists first to capture clipboard history reliably and instantly, so the
+product must optimize for passive capture instead of manual save flows.
 
 ### II. Local-First Architecture
 
-User data MUST be stored locally first using SwiftData-backed models before any cloud dependency
-is introduced. Core capture, browsing, search, and previously generated insight access MUST work
-offline whenever technically possible. CloudKit synchronization is secondary to local availability
-and MUST be designed as replication of local state, not as the source of truth.
+Clipboard capture MUST work without internet, CloudKit, AI services, or external APIs. All
+captured clipboard content MUST be saved locally first using SwiftData-backed models before any
+optional sync or network feature runs. Network failure MUST NOT block clipboard monitoring,
+capture, persistence, sorting, retrieval, or history display. CloudKit synchronization is
+secondary and MUST be designed as replication of local state, not as the source of truth.
 
-Rationale: Clipboard-derived content is often needed in the moment, including without network
-access, and local ownership keeps the product reliable and predictable.
+Rationale: Clipboard history is only trustworthy when capture and recall continue to work
+regardless of connectivity or remote service state.
 
 ### III. Privacy by Default
 
-User content is private by default. The app MUST NOT include third-party analytics SDKs, behavioral
-tracking SDKs, or unnecessary third-party services. User content MUST NOT be transmitted to external
-services without explicit user approval for the specific operation. AI and OCR features SHOULD prefer
-Apple Vision, Foundation Models, and other on-device capabilities whenever they can satisfy the user
-need. Any feature that requires remote processing MUST document the data sent, user consent flow,
-retention assumptions, and local fallback behavior before implementation.
+Clipboard content belongs to the user. Clipboard monitoring and capture MUST happen on-device. The
+app MUST NOT transmit clipboard data outside the device unless the user explicitly enables sync,
+export, or another clearly scoped transmission flow. The app MUST NOT include Firebase, analytics
+SDKs, advertising SDKs, behavioral telemetry, or other third-party telemetry. Any remote
+processing feature requires explicit user consent, documented data scope, retention assumptions,
+and a local-first fallback before implementation.
 
-Rationale: NextPaste handles arbitrary copied text and images, which may include sensitive personal,
-professional, or credential-adjacent information.
+Rationale: Clipboard history can contain highly sensitive personal and professional information, so
+trust depends on keeping monitoring and storage private by default.
 
-### IV. Test-First Development
+### IV. Automatic Capture
 
-New features MUST include automated tests mapped to their specification requirements before they are
-considered complete. Critical user flows, including capture, retrieval, AI insight generation, consent,
-and sync conflict handling, MUST include UI or integration coverage. AI outputs MUST be validated
-against defined schemas or typed result contracts, with tests for valid output, malformed output, and
-failure states. Regressions MUST be prevented through repeatable verification using the project test
-targets and any feature-specific checks documented in the plan.
+When clipboard content changes while the app is running, the app MUST detect the new content,
+identify the content type, ignore duplicate content, persist a new clip, and refresh the history
+list. Users MUST NOT need to press Save for normal clipboard capture. Any feature that interrupts,
+delays, or bypasses the automatic capture pipeline requires explicit justification in the
+specification and plan.
 
-Rationale: AI-assisted workflows can fail subtly, and a local-first privacy product must prove that
-data handling, consent, and generated outcomes remain correct as features evolve.
+Rationale: Automatic capture is the core product behavior and the main promise of a
+clipboard-first app.
 
-### V. Simplicity Over Complexity
+### V. Test-First Development
 
-Implementation MUST prefer Apple native frameworks and the smallest design that satisfies the
-specification. SwiftUI, SwiftData, CloudKit, Vision OCR, and Foundation Models are the default choices
-for UI, persistence, sync, OCR, and AI. Dependencies MUST be justified by a concrete capability gap,
-must not duplicate platform functionality, and must not weaken privacy or offline guarantees. Firebase,
-React Native, Flutter, and unnecessary third-party SDKs are prohibited unless this constitution is
-amended with explicit rationale. MVP delivery speed is preferred over premature optimization, provided
-privacy, offline behavior, and tests remain intact.
+Every new feature MUST include automated tests before it is considered complete. Clipboard behavior
+MUST be tested, including monitoring, content-type identification, deduplication, local
+persistence, row actions, sorting, and offline behavior. Critical user flows, including capture,
+retrieval, consent, and optional sync/export behaviors, MUST include UI or integration coverage.
+Features that add AI output MUST also validate typed result contracts and failure behavior.
 
-Rationale: A focused native stack reduces maintenance burden, improves platform fit, and keeps the
-product small enough to ship quickly without compromising trust.
+Rationale: Clipboard-first behavior is easy to regress in subtle ways, and automated coverage is
+required to keep capture, privacy, and history behavior reliable as the app evolves.
+
+### VI. Simplicity and Apple-Native Stack
+
+Implementation MUST prefer Apple-native frameworks and the smallest design that satisfies the
+specification. Approved technologies are SwiftUI, SwiftData, Observation, Vision, Foundation
+Models, Foundation, and CloudKit. CloudKit is optional synchronization and MUST NOT be required
+for clipboard capture. Dependencies or abstractions MUST be justified by a concrete capability gap,
+must not duplicate platform functionality, and must not weaken privacy or offline guarantees.
+Firebase, analytics SDKs, advertising SDKs, and unnecessary third-party dependencies are
+prohibited unless this constitution is amended first.
+
+Rationale: A focused Apple-native stack keeps the capture path fast, understandable, local-first,
+and easier to maintain.
 
 ## Technical Constraints
 
-NextPaste is an iOS-first product built with SwiftUI. Persistence MUST use SwiftData for local storage,
-and CloudKit MAY be used for synchronization only after local behavior is defined and tested. Vision
-Framework is the default OCR path for extracting text from images. Foundation Models and Apple
-on-device AI capabilities are the default AI implementation path when available and suitable.
+NextPaste is a clipboard-first Apple app built with SwiftUI. Persistence MUST use SwiftData for
+local storage, and clipboard monitoring MUST rely on Apple-native platform APIs. CloudKit MAY be
+used only as optional synchronization after local clipboard behavior is defined, implemented, and
+tested. Vision is the default OCR path for image clips, and Foundation Models are an optional
+on-device analysis path that MUST remain outside the required clipboard capture pipeline.
 
-Specifications and plans MUST identify any deviation from these defaults, explain why Apple-native or
-on-device options are insufficient, document privacy impact, and add tests covering the deviation.
-No feature may introduce Firebase, React Native, Flutter, third-party analytics, or broad third-party
-SDK adoption without a constitution amendment.
+Specifications and plans MUST identify any deviation from these defaults, explain why Apple-native
+or on-device options are insufficient, document privacy impact, and add tests covering the
+deviation. No feature may introduce Firebase, analytics SDKs, advertising SDKs, React Native,
+Flutter, or broad third-party SDK adoption without a constitution amendment.
 
 ## Development Workflow & Quality Gates
 
@@ -102,30 +114,36 @@ Feature work MUST flow through the Spec Kit lifecycle in this order unless an ex
 documented: `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`,
 `/speckit.analyze`, and `/speckit.implement`.
 
-Each specification MUST define measurable acceptance criteria, traceable functional requirements,
-privacy expectations, offline behavior, and the user productivity outcome. Each plan MUST pass a
-Constitution Check before Phase 0 research and again after Phase 1 design. Each task list MUST map
-implementation and test tasks back to specification requirements and user stories.
+Each specification MUST define the clipboard-triggered user flow, content-type handling,
+deduplication rules, measurable acceptance criteria, privacy expectations, offline behavior, and
+any optional manual creation or sync/export scope. Each plan MUST pass a Constitution Check before
+Phase 0 research and again after Phase 1 design. Each task list MUST map implementation and test
+tasks back to specification requirements and user stories, including clipboard monitoring and local
+persistence coverage where applicable.
 
-Before release, reviewers MUST verify that all requirements trace to implementation tasks, all tasks
-map back to a specification, acceptance criteria are measurable, automated tests cover new behavior,
-AI outputs use defined validation contracts, and privacy plus offline support have been reviewed.
+Before release, reviewers MUST verify that all requirements trace to implementation tasks, all
+tasks map back to a specification, acceptance criteria are measurable, automated tests cover new
+behavior, clipboard capture stays local-first, and privacy plus offline support have been
+reviewed.
 
 ## Governance
 
-This constitution supersedes conflicting project practices, templates, and implementation plans. When
-conflicts are found, the constitution governs unless it is amended first.
+This constitution supersedes conflicting project practices, templates, and implementation plans.
+When conflicts are found, the constitution governs unless it is amended first.
 
-Amendments MUST include the proposed text, rationale, impact on existing specifications or features,
-and migration guidance for affected templates or code. Amendments require explicit project-owner
-approval before dependent artifacts are updated. Any amendment that removes or redefines a core
-principle in a backward-incompatible way requires a MAJOR version bump. Adding a new principle,
-mandatory section, or materially expanding governance requires a MINOR version bump. Clarifications,
-wording changes, and non-semantic corrections require a PATCH version bump.
+Every constitution amendment MUST include the proposed text, rationale, impact on existing
+specifications or features, migration guidance for affected templates or code, and a Sync Impact
+Report. Amendments require explicit project-owner approval before dependent artifacts are updated.
+Every amendment MUST increment the constitution version. Any amendment that removes or redefines a
+core principle in a backward-incompatible way requires a MAJOR version bump. Adding a new
+principle, mandatory section, or materially expanding governance requires a MINOR version bump.
+Clarifications, wording changes, and non-semantic corrections require a PATCH version bump. A
+product-direction change that redefines the primary source or capture behavior of clips is a MAJOR
+change.
 
-Every `/speckit.plan` output MUST include a Constitution Check. Every `/speckit.analyze` review MUST
-flag contradictions between spec, plan, tasks, and this constitution. Release readiness review MUST
-confirm compliance with AI-first value, local-first behavior, privacy consent, automated testing,
-and simplicity constraints.
+Every `/speckit.plan` output MUST include a Constitution Check. Every `/speckit.analyze` review
+MUST flag contradictions between spec, plan, tasks, and this constitution. Release readiness
+review MUST confirm compliance with clipboard-first behavior, local-first storage, privacy
+protections, automated testing, and Apple-native simplicity constraints.
 
-**Version**: 1.0.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-24
+**Version**: 2.0.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-25
