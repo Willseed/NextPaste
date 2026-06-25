@@ -10,23 +10,35 @@ import SwiftData
 
 @main
 struct NextPasteApp: App {
-    var sharedModelContainer: ModelContainer = {
+    let sharedModelContainer: ModelContainer
+
+    init() {
+        sharedModelContainer = Self.makeModelContainer(
+            isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")
+        )
+    }
+
+    static func makeModelContainer(isStoredInMemoryOnly: Bool = false) -> ModelContainer {
         let schema = Schema([
-            Item.self,
+            ClipItem.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isStoredInMemoryOnly)
 
         do {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+    }
 
     var body: some Scene {
-        WindowGroup {
+        WindowGroup("NextPaste") {
             ContentView()
+                .frame(minWidth: 520, minHeight: 380)
         }
+#if os(macOS)
+        .defaultSize(width: 640, height: 480)
+#endif
         .modelContainer(sharedModelContainer)
     }
 }

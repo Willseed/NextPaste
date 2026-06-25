@@ -20,8 +20,8 @@
 
 **Purpose**: Establish a deterministic starting point and UI test launch path before feature implementation.
 
-- [ ] T001 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' build` from the repository root and record any feature-relevant baseline failures in `specs/001-create-text-clip/quickstart.md`
-- [ ] T002 [P] Create UI test launch helper with `-ui-testing` arguments in `NextPasteUITests/UITestAppLauncher.swift`
+- [X] T001 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' build` from the repository root and record any feature-relevant baseline failures in `specs/001-create-text-clip/quickstart.md`
+- [X] T002 [P] Create UI test launch helper with `-ui-testing` arguments in `NextPasteUITests/UITestAppLauncher.swift`
 
 ---
 
@@ -31,8 +31,8 @@
 
 **CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T003 Update app model-container creation to support an in-memory store for `-ui-testing` launches in `NextPaste/NextPasteApp.swift`
-- [ ] T004 [P] Create reusable in-memory SwiftData test container support for `ClipItem` tests in `NextPasteTests/SwiftDataTestSupport.swift`
+- [X] T003 Update app model-container creation to support an in-memory store for `-ui-testing` launches in `NextPaste/NextPasteApp.swift`
+- [X] T004 [P] Create reusable in-memory SwiftData test container support for `ClipItem` tests in `NextPasteTests/SwiftDataTestSupport.swift`
 
 **Checkpoint**: Test harness and app launch support are ready for story-specific tests.
 
@@ -46,18 +46,18 @@
 
 ### Tests For User Story 1
 
-- [ ] T005 [P] [US1] Add failing `ClipItem` creation tests for id, `contentType`, text preservation, and timestamp parity in `NextPasteTests/ClipItemTests.swift`
-- [ ] T006 [P] [US1] Add failing create text clip UI tests for opening `NewClipView`, entering text, saving, dismissing, seeing history text, and preserving the draft with exact `save-error-message` text "Clip was not saved. Try again." when save fails in `NextPasteUITests/CreateTextClipUITests.swift`
+- [X] T005 [P] [US1] Add failing `ClipItem` creation tests for id, `contentType`, text preservation, and timestamp parity in `NextPasteTests/ClipItemTests.swift`
+- [X] T006 [P] [US1] Add failing create text clip UI tests for opening `NewClipView`, entering text, saving, dismissing, seeing history text, and preserving the draft with exact `save-error-message` text "Clip was not saved. Try again." when save fails in `NextPasteUITests/CreateTextClipUITests.swift`
 
 ### Implementation For User Story 1
 
-- [ ] T007 [US1] Create SwiftData `ClipItem` model with `id`, `contentType`, `textContent`, `createdAt`, and `updatedAt` in `NextPaste/ClipItem.swift`
-- [ ] T008 [US1] Replace the starter SwiftData schema entry with `ClipItem.self` and keep test-mode storage support working in `NextPaste/NextPasteApp.swift`
-- [ ] T009 [US1] Create `NewClipView` with text editor, save/cancel controls, and `clip-text-editor`, `save-clip-button`, `cancel-new-clip-button`, `save-error-message` accessibility identifiers in `NextPaste/NewClipView.swift`
-- [ ] T010 [US1] Create `HomeView` shell with `new-clip-button`, `clip-history-list`, sheet or navigation presentation of `NewClipView`, and basic clip visibility in `NextPaste/HomeView.swift`
-- [ ] T011 [US1] Update the root view to host `HomeView` while preserving platform navigation behavior in `NextPaste/ContentView.swift`
-- [ ] T012 [US1] Implement successful local SwiftData insert, automatic dismiss after save, and save-failure handling that retains draft text, prevents partial history insertion, and shows exactly "Clip was not saved. Try again." via `save-error-message` in `NextPaste/NewClipView.swift`
-- [ ] T013 [US1] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipItemTests test` for `NextPasteTests/ClipItemTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/CreateTextClipUITests test` for `NextPasteUITests/CreateTextClipUITests.swift`; if either command fails, stop and fix the failing tests before continuing
+- [X] T007 [US1] Create SwiftData `ClipItem` model with `id`, `contentType`, `textContent`, `createdAt`, and `updatedAt` in `NextPaste/ClipItem.swift`
+- [X] T008 [US1] Replace the starter SwiftData schema entry with `ClipItem.self` and keep test-mode storage support working in `NextPaste/NextPasteApp.swift`
+- [X] T009 [US1] Create `NewClipView` with text editor, save/cancel controls, and `clip-text-editor`, `save-clip-button`, `cancel-new-clip-button`, `save-error-message` accessibility identifiers in `NextPaste/NewClipView.swift`
+- [X] T010 [US1] Create `HomeView` shell with `new-clip-button`, `clip-history-list`, sheet or navigation presentation of `NewClipView`, and basic clip visibility in `NextPaste/HomeView.swift`
+- [X] T011 [US1] Update the root view to host `HomeView` while preserving platform navigation behavior in `NextPaste/ContentView.swift`
+- [X] T012 [US1] Implement successful local SwiftData insert, automatic dismiss after save, and save-failure handling that retains draft text, prevents partial history insertion, and shows exactly "Clip was not saved. Try again." via `save-error-message` in `NextPaste/NewClipView.swift`
+- [X] T013 [US1] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipItemTests test` for `NextPasteTests/ClipItemTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/CreateTextClipUITests test` for `NextPasteUITests/CreateTextClipUITests.swift`; if either command fails, stop and fix the failing tests before continuing
 
 **Checkpoint**: MVP is functional and testable: non-empty text can be saved locally and seen in history after dismissal.
 
@@ -71,16 +71,16 @@
 
 ### Tests For User Story 2
 
-- [ ] T014 [P] [US2] Add failing newest-first history ordering and FR-008a preview-formatting tests using local SwiftData clips in `NextPasteTests/ClipHistoryTests.swift`, covering newline replacement with spaces, 120-character preview truncation with an ellipsis, and unchanged stored `textContent`
-- [ ] T015 [P] [US2] Add failing history UI test that creates two clips, asserts the newer text appears before the older text, verifies a long multiline clip is shown with the FR-008a preview format, and validates local-store history review without CloudKit or network-dependent code paths in `NextPasteUITests/HistoryListUITests.swift`
+- [X] T014 [P] [US2] Add failing newest-first history ordering and FR-008a preview-formatting tests using local SwiftData clips in `NextPasteTests/ClipHistoryTests.swift`, covering newline replacement with spaces, 120-character preview truncation with an ellipsis, and unchanged stored `textContent`
+- [X] T015 [P] [US2] Add failing history UI test that creates two clips, asserts the newer text appears before the older text, verifies a long multiline clip is shown with the FR-008a preview format, and validates local-store history review without CloudKit or network-dependent code paths in `NextPasteUITests/HistoryListUITests.swift`
 
 ### Implementation For User Story 2
 
-- [ ] T016 [US2] Add reusable descending `createdAt` history sort descriptors or equivalent ordering support in `NextPaste/ClipItem.swift`
-- [ ] T017 [P] [US2] Create readable text clip row preview in `NextPaste/ClipRowView.swift` that replaces newlines with spaces, limits visible preview text to 120 characters plus an ellipsis when truncated, and never mutates stored `textContent`
-- [ ] T018 [US2] Implement SwiftData `@Query` history sorted by `createdAt` descending and an empty state in `NextPaste/HomeView.swift`
-- [ ] T019 [US2] Integrate `ClipRowView` into the `clip-history-list` display in `NextPaste/HomeView.swift`
-- [ ] T020 [US2] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipHistoryTests test` for `NextPasteTests/ClipHistoryTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/HistoryListUITests test` for `NextPasteUITests/HistoryListUITests.swift`; if either command fails, stop and fix the failing tests before continuing
+- [X] T016 [US2] Add reusable descending `createdAt` history sort descriptors or equivalent ordering support in `NextPaste/ClipItem.swift`
+- [X] T017 [P] [US2] Create readable text clip row preview in `NextPaste/ClipRowView.swift` that replaces newlines with spaces, limits visible preview text to 120 characters plus an ellipsis when truncated, and never mutates stored `textContent`
+- [X] T018 [US2] Implement SwiftData `@Query` history sorted by `createdAt` descending and an empty state in `NextPaste/HomeView.swift`
+- [X] T019 [US2] Integrate `ClipRowView` into the `clip-history-list` display in `NextPaste/HomeView.swift`
+- [X] T020 [US2] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipHistoryTests test` for `NextPasteTests/ClipHistoryTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/HistoryListUITests test` for `NextPasteUITests/HistoryListUITests.swift`; if either command fails, stop and fix the failing tests before continuing
 
 **Checkpoint**: History review is independently testable with local data and newest-first ordering.
 
@@ -94,14 +94,14 @@
 
 ### Tests For User Story 3
 
-- [ ] T021 [P] [US3] Add failing validation tests for empty text, whitespace-only text, valid text, original-text preservation, and exact validation message "Enter text to save a clip." in `NextPasteTests/ClipValidationTests.swift`
-- [ ] T022 [P] [US3] Add failing empty-save and cancel/dismiss UI tests for `text-validation-message`, staying on `NewClipView` after invalid save, and no new history row after invalid save or cancel in `NextPasteUITests/EmptyTextClipUITests.swift`
+- [X] T021 [P] [US3] Add failing validation tests for empty text, whitespace-only text, valid text, original-text preservation, and exact validation message "Enter text to save a clip." in `NextPasteTests/ClipValidationTests.swift`
+- [X] T022 [P] [US3] Add failing empty-save and cancel/dismiss UI tests for `text-validation-message`, staying on `NewClipView` after invalid save, and no new history row after invalid save or cancel in `NextPasteUITests/EmptyTextClipUITests.swift`
 
 ### Implementation For User Story 3
 
-- [ ] T023 [US3] Implement local whitespace/newline validation helper and exact validation message "Enter text to save a clip." in `NextPaste/ClipValidation.swift`
-- [ ] T024 [US3] Integrate validation failure state, `text-validation-message` accessibility identifier, and cancel/dismiss no-insert behavior into `NextPaste/NewClipView.swift`
-- [ ] T025 [US3] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipValidationTests test` for `NextPasteTests/ClipValidationTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/EmptyTextClipUITests test` for `NextPasteUITests/EmptyTextClipUITests.swift`; if either command fails, stop and fix the failing tests before continuing
+- [X] T023 [US3] Implement local whitespace/newline validation helper and exact validation message "Enter text to save a clip." in `NextPaste/ClipValidation.swift`
+- [X] T024 [US3] Integrate validation failure state, `text-validation-message` accessibility identifier, and cancel/dismiss no-insert behavior into `NextPaste/NewClipView.swift`
+- [X] T025 [US3] Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipValidationTests test` for `NextPasteTests/ClipValidationTests.swift` and `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/EmptyTextClipUITests test` for `NextPasteUITests/EmptyTextClipUITests.swift`; if either command fails, stop and fix the failing tests before continuing
 
 **Checkpoint**: Empty text is blocked locally, the draft remains editable, and no invalid `ClipItem` is inserted.
 
@@ -111,12 +111,12 @@
 
 **Purpose**: Confirm privacy, local-first behavior, native framework boundaries, and final validation across all stories.
 
-- [ ] T026 [P] Remove the obsolete starter timestamp-only model after all references use `ClipItem` in `NextPaste/Item.swift`
-- [ ] T027 [P] Review-only: verify `ClipItem` has CloudKit-compatible SwiftData defaults and no unsupported uniqueness constraints in `NextPaste/ClipItem.swift` without enabling CloudKit sync or adding CloudKit runtime code
-- [ ] T028 [P] Review the save path for no Vision OCR, Foundation Models output generation, Firebase, third-party analytics, or remote user-content transmission in `NextPaste/NewClipView.swift`
-- [ ] T029 [P] Update final test class names or commands if implementation names differ in `specs/001-create-text-clip/quickstart.md`
-- [ ] T030 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/HistoryListUITests test` for offline/local-first validation of FR-011 and SC-006 using the `-ui-testing` local-store mode; if this command fails, stop and fix the failing offline behavior before continuing
-- [ ] T031 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` from the repository root; if this command fails, record release-blocking failures in `specs/001-create-text-clip/quickstart.md`, stop, and fix the failing tests before continuing
+- [X] T026 [P] Remove the obsolete starter timestamp-only model after all references use `ClipItem` in `NextPaste/Item.swift`
+- [X] T027 [P] Review-only: verify `ClipItem` has CloudKit-compatible SwiftData defaults and no unsupported uniqueness constraints in `NextPaste/ClipItem.swift` without enabling CloudKit sync or adding CloudKit runtime code
+- [X] T028 [P] Review the save path for no Vision OCR, Foundation Models output generation, Firebase, third-party analytics, or remote user-content transmission in `NextPaste/NewClipView.swift`
+- [X] T029 [P] Update final test class names or commands if implementation names differ in `specs/001-create-text-clip/quickstart.md`
+- [X] T030 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/HistoryListUITests test` for offline/local-first validation of FR-011 and SC-006 using the `-ui-testing` local-store mode; if this command fails, stop and fix the failing offline behavior before continuing
+- [X] T031 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` from the repository root; if this command fails, record release-blocking failures in `specs/001-create-text-clip/quickstart.md`, stop, and fix the failing tests before continuing
 
 ---
 

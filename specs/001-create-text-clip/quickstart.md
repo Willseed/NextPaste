@@ -34,6 +34,22 @@ UI flow test only, after `CreateTextClipUITests` exists:
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/CreateTextClipUITests test
 ```
 
+Feature unit tests:
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipItemTests test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipHistoryTests test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipValidationTests test
+```
+
+Feature UI tests:
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/CreateTextClipUITests test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/HistoryListUITests test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/EmptyTextClipUITests test
+```
+
 Expected outcome: tests cover `ClipItem` creation, timestamp parity, empty and whitespace-only validation, newest-first history sorting, and the create text clip UI flow.
 
 ## Manual Validation Scenario: Save Text Clip

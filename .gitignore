@@ -5,7 +5,15 @@
 # Local build/test outputs
 DerivedData/
 build/
+.build/
+*.swiftpm/
+Packages/
 *.xcresult
 
 # macOS Finder metadata
 .DS_Store
+Thumbs.db
+*.tmp
+*.swp
+.vscode/
+.idea/
