@@ -1,6 +1,6 @@
 # Implementation Plan: Clipboard Auto Capture
 
-**Branch**: `[main]` | **Date**: 2026-06-25 | **Spec**: [spec.md](spec.md)
+**Branch**: `[003-clipboard-auto-capture]` | **Date**: 2026-06-25 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `specs/003-clipboard-auto-capture/spec.md`
 
@@ -8,7 +8,7 @@
 
 ## Summary
 
-Implement an app-scoped clipboard monitor for NextPaste that starts at launch and stops at termination, watches the system clipboard while the app remains running, and automatically creates local text `ClipItem` records for each new distinct non-empty text value. The pipeline remains `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`, uses SwiftData as the source of truth, refreshes the history list through existing `@Query` behavior, keeps copy/delete/pin row actions compatible with auto-captured clips, and retains manual clip creation as a secondary fallback.
+Implement a macOS-only, app-scoped clipboard monitor for NextPaste that starts at app launch, remains active until app termination, continues watching the system clipboard while the app is foregrounded, backgrounded, or minimized but still running, and automatically creates local text `ClipItem` records for each new distinct non-empty text value. The pipeline remains `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`, uses SwiftData as the source of truth, refreshes the history list through existing `@Query` behavior, keeps copy/delete/pin row actions compatible with auto-captured clips, and retains manual clip creation as a secondary fallback.
 
 ## Technical Context
 
@@ -18,17 +18,17 @@ Implement an app-scoped clipboard monitor for NextPaste that starts at launch an
 
 **Storage**: SwiftData local storage remains the only source of truth. Automatically captured text creates the same local `ClipItem` model used by manual creation and row actions. No Firebase, analytics store, remote API, or CloudKit sync participates in the capture path.
 
-**Testing**: Swift Testing in `NextPasteTests` for monitor polling logic, text validation, duplicate rejection, non-text rejection, persistence, ordering, and local-only behavior using in-memory SwiftData containers. XCTest UI automation in `NextPasteUITests` for end-to-end validation that copied text appears in history, whitespace/duplicate content is ignored, history refreshes automatically, and copy/delete/pin/manual fallback remain functional under the `-ui-testing` in-memory store. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` plus scoped `-only-testing` commands.
+**Testing**: Swift Testing in `NextPasteTests` for monitor polling logic, launch-to-termination lifecycle coverage, continued capture while the macOS app is backgrounded or minimized but still running, text validation, duplicate rejection, non-text rejection, unchanged-history outcomes, persistence, ordering, privacy/local-only behavior, and explicit offline capture plus row-action behavior using in-memory SwiftData containers. XCTest UI automation in `NextPasteUITests` for end-to-end validation that copied text appears in history, whitespace/duplicate/non-text content leaves history unchanged, history refreshes automatically, and copy/delete/pin/manual fallback remain functional without network access under the `-ui-testing` in-memory store; automated regression targets remain SC-001 through SC-005, while SC-006 is tracked as a usability-only outcome outside executable regression. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` plus scoped `-only-testing` commands.
 
-**Target Platform**: Apple target matrix from the Xcode project: iOS `26.5`, macOS `26.5`, and visionOS `26.5`. Feature validation is centered on macOS runtime behavior because automatic clipboard monitoring while backgrounded or minimized relies on the running macOS app process and `NSPasteboard`.
+**Target Platform**: macOS `26.5` only for this feature plan. Although the repository builds for multiple Apple platforms, this feature's automatic clipboard monitoring scope is explicitly limited to the running macOS app because it depends on AppKit `NSPasteboard`, including launch-to-termination monitoring and continued capture while backgrounded or minimized.
 
 **Project Type**: Single Xcode SwiftUI app with one app target, one Swift Testing unit test target, and one XCTest UI test target.
 
-**Performance Goals**: Meet spec success criteria by capturing at least 95% of observed non-empty text clipboard changes into history within 2 seconds while NextPaste is running. Preserve deterministic history ordering for at least the existing 1,000-clip test scale, and keep history refresh visually immediate in the same session after each successful capture.
+**Performance Goals**: Meet the executable spec success criteria by capturing at least 95% of observed non-empty text clipboard changes into history within 2 seconds while NextPaste is running. Preserve deterministic history ordering for at least the existing 1,000-clip test scale, keep history refresh visually immediate in the same session after each successful capture, and treat SC-006 as a separate usability-study outcome rather than an automated regression target.
 
-**Constraints**: Clipboard capture must stay on-device, local-first, and privacy-preserving. Ignore empty or whitespace-only text, ignore exact duplicate text already saved locally, ignore non-text clipboard content, keep copy/delete/pin row actions compatible, keep manual clip creation available as fallback, and do not add CloudKit sync, remote transmission, Firebase, analytics, OCR, AI analysis, share extensions, Shortcuts, or monitoring while the app is closed.
+**Constraints**: Clipboard capture must stay on-device, local-first, and privacy-preserving. Automatic capture, history refresh, and existing row actions must continue to work with network access unavailable. Ignore empty or whitespace-only text, ignore exact duplicate text already saved locally, ignore non-text clipboard content, and treat any clipboard observation that does not qualify as a new distinct non-empty text value as an unchanged clipboard state that leaves history untouched. Keep copy/delete/pin row actions compatible, keep manual clip creation available as fallback, and do not add CloudKit sync, remote transmission, Firebase, analytics, OCR, AI analysis, share extensions, Shortcuts, or monitoring while the app is closed.
 
-**Scale/Scope**: Single-user local clipboard history in the existing app. Scope covers one app-level clipboard monitoring service, integration with the existing `ClipItem` model and `HomeView` history list, and targeted unit/UI validation for automatic capture plus regression coverage for manual fallback and row actions.
+**Scale/Scope**: Single-user local clipboard history in the existing macOS app. Scope covers one app-level clipboard monitoring service, integration with the existing `ClipItem` model and `HomeView` history list, explicit launch-to-termination monitoring behavior, continued capture while the app is backgrounded or minimized but still running, SC-001 timing validation, explicit offline validation for capture plus copy/delete/pin/manual fallback behavior, and targeted unit/UI regression coverage for local-only privacy enforcement and unchanged-history outcomes.
 
 ## Constitution Check
 
@@ -37,19 +37,19 @@ Implement an app-scoped clipboard monitor for NextPaste that starts at launch an
 ### Pre-Research Gate
 
 - **Clipboard-first product**: PASS. The primary trigger is clipboard change detection while NextPaste is running, and manual clip creation remains secondary fallback only.
-- **Local-first architecture**: PASS. SwiftData local persistence remains the source of truth, and the feature explicitly excludes CloudKit, network dependence, and remote services.
-- **Privacy by default**: PASS. Clipboard monitoring is on-device only with no Firebase, analytics SDKs, third-party telemetry, or clipboard transmission.
-- **Automatic capture**: PASS. The plan is centered on `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`, including backgrounded/minimized behavior while the app is still running.
-- **Test-first development**: PASS. Unit and UI coverage are planned for monitoring, empty-text rejection, duplicate rejection, automatic refresh, regression of copy/delete/pin actions, and offline behavior.
+- **Local-first architecture**: PASS. SwiftData local persistence remains the source of truth, the feature explicitly excludes CloudKit and remote services, and planned validation keeps capture plus row actions working with network access unavailable.
+- **Privacy by default**: PASS. Clipboard monitoring is on-device only with no Firebase, analytics SDKs, third-party telemetry, or clipboard transmission, and the plan adds executable local-only/offline validation wherever practical instead of relying on documentation alone.
+- **Automatic capture**: PASS. The plan is centered on `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`, explicitly covering monitoring from app launch through app termination and continued capture while the macOS app is backgrounded or minimized but still running.
+- **Test-first development**: PASS. Unit and UI coverage are planned for lifecycle monitoring, backgrounded/minimized runtime behavior, empty-text rejection, duplicate rejection, non-text rejection, unchanged-history outcomes, automatic refresh, SC-001 timing validation, offline capture plus row-action behavior, and regression of copy/delete/pin actions; SC-006 remains a usability-only outcome outside executable regression.
 - **Simplicity and Apple-native stack**: PASS. The design stays within SwiftUI, SwiftData, Foundation, and AppKit pasteboard APIs with no extra dependencies.
 
 ### Post-Design Gate
 
 - **Clipboard-first product**: PASS. The data model and contracts keep automatic clipboard capture as the normal path for new clips, with the history list as the confirmation surface and manual creation preserved only as fallback.
-- **Local-first architecture**: PASS. Research and design keep persistence, deduplication, and list refresh entirely local through SwiftData; remote sync and transmission remain out of scope.
-- **Privacy by default**: PASS. Contracts prohibit remote transmission, analytics, and third-party SDKs. Clipboard text remains on-device unless a separately scoped feature changes that in the future.
-- **Automatic capture**: PASS. The capture contract defines launch-to-termination monitoring, text-only validation, duplicate suppression, persistence, and same-session history refresh.
-- **Test-first development**: PASS. Quickstart scenarios and planned tests cover the required clipboard pipeline plus compatibility of copy/delete/pin actions and manual fallback.
+- **Local-first architecture**: PASS. Research and design keep persistence, deduplication, list refresh, and row actions entirely local through SwiftData; offline validation is part of the executable scope, and remote sync or transmission remain out of scope.
+- **Privacy by default**: PASS. The design introduces no remote, analytics, or third-party data-handling seams, and planned tests verify local-only behavior offline wherever practical instead of depending only on review wording.
+- **Automatic capture**: PASS. The capture contract defines launch-to-termination monitoring, backgrounded/minimized capture while the macOS app remains running, text-only validation, duplicate suppression, persistence, and same-session history refresh.
+- **Test-first development**: PASS. Quickstart scenarios and planned tests cover lifecycle monitoring, SC-001 timing validation, the required clipboard pipeline, unchanged-history outcomes, offline capture plus row-action behavior, and compatibility of copy/delete/pin actions plus manual fallback; SC-006 stays in usability evaluation rather than executable regression.
 - **Simplicity and Apple-native stack**: PASS. The design introduces only a small app-scoped clipboard monitor boundary and reuses the existing `ClipItem`, `@Query`, and test infrastructure. No constitution exceptions are required.
 
 ## Project Structure
