@@ -18,8 +18,8 @@
 
 **Purpose**: Establish the test and validation surface used by all row-action stories.
 
-- [ ] T001 Create `ClipRowActionsUITests` test class scaffold and shared `saveClip(_:in:)` helper in `NextPasteUITests/ClipRowActionsUITests.swift`
-- [ ] T002 Run the baseline build command documented in `specs/002-clip-row-actions/quickstart.md` before feature implementation
+- [X] T001 Create `ClipRowActionsUITests` test class scaffold and shared `saveClip(_:in:)` helper in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T002 Run the baseline build command documented in `specs/002-clip-row-actions/quickstart.md` before feature implementation
 
 ---
 
@@ -29,11 +29,11 @@
 
 **Critical**: No user story work should begin until this phase is complete.
 
-- [ ] T003 Add failing Swift Testing coverage for `ClipItem.isPinned == false` defaults, persisted reload behavior, and legacy local clips without stored pin state being treated as unpinned in `NextPasteTests/ClipItemTests.swift`
-- [ ] T004 Add `isPinned: Bool = false` persisted state and initializer support in `NextPaste/ClipItem.swift`
-- [ ] T005 Update `ClipItem.historySortDescriptors` to sort by `isPinned` descending then `createdAt` descending in `NextPaste/ClipItem.swift`
-- [ ] T006 [P] Add `clip-row-{id}` accessibility identifier support to each row in `NextPaste/ClipRowView.swift`
-- [ ] T007 Run the scoped `ClipItemTests` command documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T003 Add failing Swift Testing coverage for `ClipItem.isPinned == false` defaults, persisted reload behavior, and legacy local clips without stored pin state being treated as unpinned in `NextPasteTests/ClipItemTests.swift`
+- [X] T004 Add `isPinned: Bool = false` persisted state and initializer support in `NextPaste/ClipItem.swift`
+- [X] T005 Update `ClipItem.historySortDescriptors` to sort by `isPinned` descending then `createdAt` descending in `NextPaste/ClipItem.swift`
+- [X] T006 [P] Add `clip-row-{id}` accessibility identifier support to each row in `NextPaste/ClipRowView.swift`
+- [X] T007 Run the scoped `ClipItemTests` command documented in `specs/002-clip-row-actions/quickstart.md`
 
 **Checkpoint**: `ClipItem` has durable unpinned defaults, history sorting has the pinned-first foundation, and rows expose stable identifiers.
 
@@ -47,15 +47,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T008 [US1] Add UI tests for row tap copy, exact clipboard text, unchanged row text, `clip-copy-feedback`, and clipboard failure behavior that does not show `Copied` in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T008 [US1] Add UI tests for row tap copy, exact clipboard text, unchanged row text, `clip-copy-feedback`, and clipboard failure behavior that does not show `Copied` in `NextPasteUITests/ClipRowActionsUITests.swift`
 
 ### Implementation for User Story 1
 
-- [ ] T009 [P] [US1] Add platform-specific system clipboard writer with injectable success/failure behavior using Apple pasteboard APIs in `NextPaste/ClipboardWriter.swift`
-- [ ] T010 [US1] Add copy feedback state and `Copied` presentation with accessibility identifier `clip-copy-feedback` in `NextPaste/HomeView.swift`
-- [ ] T011 [US1] Wire each history row tap to copy the selected clip's exact `textContent` without mutating SwiftData in `NextPaste/HomeView.swift`
-- [ ] T012 [US1] Ensure copied feedback text exposes accessible label/value equal to `Copied` in `NextPaste/HomeView.swift`
-- [ ] T013 [US1] Run the scoped `ClipRowActionsUITests` copy success and copy failure test commands documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T009 [P] [US1] Add platform-specific system clipboard writer with injectable success/failure behavior using Apple pasteboard APIs in `NextPaste/ClipboardWriter.swift`
+- [X] T010 [US1] Add copy feedback state and `Copied` presentation with accessibility identifier `clip-copy-feedback` in `NextPaste/HomeView.swift`
+- [X] T011 [US1] Wire each history row tap to copy the selected clip's exact `textContent` without mutating SwiftData in `NextPaste/HomeView.swift`
+- [X] T012 [US1] Ensure copied feedback text exposes accessible label/value equal to `Copied` in `NextPaste/HomeView.swift`
+- [X] T013 [US1] Run the scoped `ClipRowActionsUITests` copy success and copy failure test commands documented in `specs/002-clip-row-actions/quickstart.md`
 
 **Checkpoint**: User Story 1 is complete when row tap copy works independently with visible, testable feedback.
 
@@ -69,14 +69,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T014 [P] [US2] Add SwiftData unit test for deleting exactly one selected clip while preserving other clips in `NextPasteTests/ClipHistoryTests.swift`
-- [ ] T015 [US2] Add UI test for left swipe, trash icon representation, `delete-clip-button`, and selected row removal in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T014 [P] [US2] Add SwiftData unit test for deleting exactly one selected clip while preserving other clips in `NextPasteTests/ClipHistoryTests.swift`
+- [X] T015 [US2] Add UI test for left swipe, trash icon representation, `delete-clip-button`, and selected row removal in `NextPasteUITests/ClipRowActionsUITests.swift`
 
 ### Implementation for User Story 2
 
-- [ ] T016 [US2] Add local SwiftData `deleteClip(_:)` mutation with save/rollback behavior in `NextPaste/HomeView.swift`
-- [ ] T017 [US2] Add trailing swipe trash action with trash icon representation and accessibility identifier `delete-clip-button` in `NextPaste/HomeView.swift`
-- [ ] T018 [US2] Run scoped `ClipHistoryTests` and `ClipRowActionsUITests` delete checks documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T016 [US2] Add local SwiftData `deleteClip(_:)` mutation with save/rollback behavior in `NextPaste/HomeView.swift`
+- [X] T017 [US2] Add trailing swipe trash action with trash icon representation and accessibility identifier `delete-clip-button` in `NextPaste/HomeView.swift`
+- [X] T018 [US2] Run scoped `ClipHistoryTests` and `ClipRowActionsUITests` delete checks documented in `specs/002-clip-row-actions/quickstart.md`
 
 **Checkpoint**: User Story 2 is complete when delete works from the row without affecting other clips.
 
@@ -90,15 +90,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T019 [P] [US3] Add SwiftData unit tests for pin toggle behavior and pinned-first sorting in `NextPasteTests/ClipHistoryTests.swift`
-- [ ] T020 [US3] Add UI tests for right swipe, pin icon representation, `pin-clip-button`, `pinned-clip-icon`, unpin behavior, and pinned-above-unpinned ordering in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T019 [P] [US3] Add SwiftData unit tests for pin toggle behavior and pinned-first sorting in `NextPasteTests/ClipHistoryTests.swift`
+- [X] T020 [US3] Add UI tests for right swipe, pin icon representation, `pin-clip-button`, `pinned-clip-icon`, unpin behavior, and pinned-above-unpinned ordering in `NextPasteUITests/ClipRowActionsUITests.swift`
 
 ### Implementation for User Story 3
 
-- [ ] T021 [US3] Render a visible pin icon only for pinned clips with accessibility identifier `pinned-clip-icon` in `NextPaste/ClipRowView.swift`
-- [ ] T022 [US3] Add leading swipe pin action with pin icon representation and accessibility identifier `pin-clip-button` in `NextPaste/HomeView.swift`
-- [ ] T023 [US3] Add local SwiftData pin toggle mutation with save/rollback behavior in `NextPaste/HomeView.swift`
-- [ ] T024 [US3] Run scoped `ClipHistoryTests`, `ClipRowActionsUITests`, and `HistoryListUITests` commands documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T021 [US3] Render a visible pin icon only for pinned clips with accessibility identifier `pinned-clip-icon` in `NextPaste/ClipRowView.swift`
+- [X] T022 [US3] Add leading swipe pin action with pin icon representation and accessibility identifier `pin-clip-button` in `NextPaste/HomeView.swift`
+- [X] T023 [US3] Add local SwiftData pin toggle mutation with save/rollback behavior in `NextPaste/HomeView.swift`
+- [X] T024 [US3] Run scoped `ClipHistoryTests`, `ClipRowActionsUITests`, and `HistoryListUITests` commands documented in `specs/002-clip-row-actions/quickstart.md`
 
 **Checkpoint**: User Story 3 is complete when pinning is durable, visible, toggleable, and correctly sorted.
 
@@ -108,14 +108,14 @@
 
 **Purpose**: Validate privacy, offline behavior, accessibility coverage, and whole-feature stability.
 
-- [ ] T025 [P] Verify `clip-history-list`, `clip-row-{id}`, `clip-copy-feedback`, `delete-clip-button`, `pin-clip-button`, `pinned-clip-icon`, trash icon representation, and pin icon representation are asserted in `NextPasteUITests/ClipRowActionsUITests.swift`
-- [ ] T026 [P] Search row-action implementation for prohibited CloudKit sync, OCR, AI, analytics, Firebase, and background clipboard monitoring changes under `NextPaste/`
-- [ ] T027 Add automated offline/local-first coverage for FR-019/SC-007 proving copy, delete, pin, and history ordering use local SwiftData state without CloudKit, OCR, AI, analytics, remote services, or network dependency in `NextPasteUITests/ClipRowActionsUITests.swift`
-- [ ] T028 Add deterministic 1,000-clip pinned-first sorting validation in `NextPasteTests/ClipHistoryTests.swift`
-- [ ] T029 Run the unit target command documented in `specs/002-clip-row-actions/quickstart.md`
-- [ ] T030 Run the UI target command documented in `specs/002-clip-row-actions/quickstart.md`
-- [ ] T031 Run the full `xcodebuild ... test` command documented in `specs/002-clip-row-actions/quickstart.md`
-- [ ] T032 Record any final validation caveats or command updates in `specs/002-clip-row-actions/quickstart.md`
+- [X] T025 [P] Verify `clip-history-list`, `clip-row-{id}`, `clip-copy-feedback`, `delete-clip-button`, `pin-clip-button`, `pinned-clip-icon`, trash icon representation, and pin icon representation are asserted in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T026 [P] Search row-action implementation for prohibited CloudKit sync, OCR, AI, analytics, Firebase, and background clipboard monitoring changes under `NextPaste/`
+- [X] T027 Add automated offline/local-first coverage for FR-019/SC-007 proving copy, delete, pin, and history ordering use local SwiftData state without CloudKit, OCR, AI, analytics, remote services, or network dependency in `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T028 Add deterministic 1,000-clip pinned-first sorting validation in `NextPasteTests/ClipHistoryTests.swift`
+- [X] T029 Run the unit target command documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T030 Run the UI target command documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T031 Run the full `xcodebuild ... test` command documented in `specs/002-clip-row-actions/quickstart.md`
+- [X] T032 Record any final validation caveats or command updates in `specs/002-clip-row-actions/quickstart.md`
 
 ---
 

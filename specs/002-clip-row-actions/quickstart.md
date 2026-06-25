@@ -23,6 +23,18 @@ Full suite:
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
 ```
 
+If the active developer directory points at Command Line Tools, run with full Xcode explicitly:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
+```
+
+When running from a sandboxed terminal that cannot write Xcode logs or DerivedData, use full Xcode with a workspace-local DerivedData path and allow Xcode filesystem access:
+
+```bash
+DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -derivedDataPath DerivedData test
+```
+
 Unit target only:
 
 ```bash

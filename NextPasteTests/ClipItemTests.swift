@@ -24,6 +24,24 @@ struct ClipItemTests {
         #expect(clip.textContent == originalText)
         #expect(clip.createdAt == createdAt)
         #expect(clip.updatedAt == createdAt)
+        #expect(clip.isPinned == false)
+    }
+
+    @Test("defaults legacy-style text clips to unpinned after reload")
+    func defaultsLegacyStyleTextClipsToUnpinnedAfterReload() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let clip = ClipItem(
+            textContent: "Existing clip without stored pin state",
+            createdAt: Date(timeIntervalSince1970: 1_780_000_020)
+        )
+
+        context.insert(clip)
+        try context.save()
+
+        let savedClips = try context.fetch(FetchDescriptor<ClipItem>())
+        #expect(savedClips.count == 1)
+        #expect(savedClips.first?.isPinned == false)
     }
 
     @Test("persists text clips without changing submitted content")
@@ -44,5 +62,6 @@ struct ClipItemTests {
         #expect(savedClips.first?.textContent == originalText)
         #expect(savedClips.first?.createdAt == createdAt)
         #expect(savedClips.first?.updatedAt == createdAt)
+        #expect(savedClips.first?.isPinned == false)
     }
 }
