@@ -16,7 +16,7 @@
   - Technical context from plan.md
   - Implementation details from tasks.md
   - Constitution gates: clipboard-first product, local-first behavior, privacy, automatic capture,
-    tests, and native simplicity
+    tests, native simplicity, and SonarQube Project Health
   
   DO NOT keep these sample items in the generated checklist file.
   ============================================================================
@@ -38,6 +38,8 @@
 - [ ] CHKXXX Automated tests cover new requirements, clipboard behavior, critical flows, and AI
   output contracts where applicable
 - [ ] CHKXXX Dependencies follow Apple-native defaults or include approved justification
+- [ ] CHKXXX SonarQube Project Health evidence is required after implementation and before commit
+  or PR completion; feature-introduced issues must be fixed or documented as false positives
 
 ## [Category 2]
 

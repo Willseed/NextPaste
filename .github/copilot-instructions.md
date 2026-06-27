@@ -34,7 +34,8 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 
 - Follow the NextPaste constitution in `.specify/memory/constitution.md`: features must treat the
   system clipboard as the primary source of clips, preserve local-first automatic capture, protect
-  user content by default, include automated tests, and prefer Apple-native frameworks.
+  user content by default, include automated tests, prefer Apple-native frameworks, and pass the
+  post-implementation SonarQube Project Health gate with recorded evidence.
 - Preserve the SwiftData flow already in place: add new persisted types to the schema in `NextPasteApp`, fetch them with `@Query`, and write through `modelContext`.
 - Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms.
 - Unit tests and UI tests use different frameworks on purpose: `NextPasteTests` uses the newer `Testing` module, while `NextPasteUITests` still uses `XCTest`. Follow the existing framework for each target instead of mixing them.

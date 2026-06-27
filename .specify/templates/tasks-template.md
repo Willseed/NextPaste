@@ -12,7 +12,8 @@ description: "Task list template for feature implementation"
 **Tests**: Automated tests are REQUIRED by the constitution for every new feature. Include test
 tasks that map to the feature specification, clipboard monitoring, deduplication, local
 persistence, row actions, sorting, privacy/offline behavior, and AI output validation contracts
-where applicable.
+where applicable. Include post-implementation SonarQube Project Health validation and evidence
+tasks for every code or test change.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -168,6 +169,8 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
 - [ ] TXXX Offline support review for local-first clipboard behavior
 - [ ] TXXX Run quickstart.md validation
+- [ ] TXXX Run SonarQube Project Health validation for production and test code touched by the feature
+- [ ] TXXX Record SonarQube evidence before commit or PR completion
 
 ---
 
@@ -194,6 +197,7 @@ Examples of foundational tasks (adjust based on your project):
 - Models before services
 - Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
+- SonarQube Project Health validation after `/speckit.implement` and before completion
 - Story complete before moving to next priority
 
 ### Parallel Opportunities
@@ -237,7 +241,8 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
 3. Add User Story 2 → Test independently → Deploy/Demo
 4. Add User Story 3 → Test independently → Deploy/Demo
-5. Each story adds value without breaking previous stories
+5. Run SonarQube Project Health validation and record evidence before completion
+6. Each story adds value without breaking previous stories
 
 ### Parallel Team Strategy
 
@@ -258,6 +263,8 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
+- Verify SonarQube Project Health passes after implementation; fix introduced issues or document
+  false positives with justification
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

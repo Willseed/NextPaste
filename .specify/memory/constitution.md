@@ -1,13 +1,14 @@
 <!--
 Sync Impact Report
-Version change: 1.0.0 -> 2.0.0
+Version change: 2.0.0 -> 2.1.0
 Modified principles:
-- I. AI-First Product Design -> I. Clipboard-First Product
+- I. Clipboard-First Product -> I. Clipboard-First Product
 - II. Local-First Architecture -> II. Local-First Architecture
 - III. Privacy by Default -> III. Privacy by Default
-- IV. Test-First Development -> IV. Automatic Capture
-- V. Simplicity Over Complexity -> V. Test-First Development
-- Added principle: VI. Simplicity and Apple-Native Stack
+- IV. Automatic Capture -> IV. Automatic Capture
+- V. Test-First Development -> V. Test-First Development
+- VI. Simplicity and Apple-Native Stack -> VI. Simplicity and Apple-Native Stack
+- Added principle: VII. SonarQube Project Health Gate
 Added sections:
 - None
 Removed sections:
@@ -95,6 +96,26 @@ prohibited unless this constitution is amended first.
 Rationale: A focused Apple-native stack keeps the capture path fast, understandable, local-first,
 and easier to maintain.
 
+### VII. SonarQube Project Health Gate
+
+After `/speckit.implement` completes for any feature, the SonarQube Project Health dashboard MUST
+show zero unresolved issues for the implemented change before the feature is considered complete.
+The required post-implementation state is: Bugs 0, Vulnerabilities 0, Security Hotspots requiring
+review 0, Code Smells 0, Coverage violations 0, Reliability issues 0, Security issues 0, and
+Maintainability issues 0. Duplications on New Code MUST be 0, or within the configured quality gate
+threshold when SonarQube reports duplication as a percentage-based gate.
+
+Any SonarQube issue introduced by the feature MUST be fixed or explicitly documented as a false
+positive with justification. SonarQube evidence MUST be recorded before commit or PR completion and
+MAY be a SonarQube dashboard screenshot, SonarCloud URL, CI artifact, or local report. This gate
+applies to production code and test code unless a file is explicitly excluded by project policy.
+Feature specifications, plans, tasks, and checklists MUST NOT weaken, bypass, or redefine this
+gate.
+
+Rationale: Automated implementation checks are incomplete without project-health evidence from the
+quality system that reviewers use to identify reliability, security, maintainability, coverage, and
+duplication regressions.
+
 ## Technical Constraints
 
 NextPaste is a clipboard-first Apple app built with SwiftUI. Persistence MUST use SwiftData for
@@ -112,24 +133,31 @@ Flutter, or broad third-party SDK adoption without a constitution amendment.
 
 Feature work MUST flow through the Spec Kit lifecycle in this order unless an explicit exception is
 documented: `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`,
-`/speckit.analyze`, and `/speckit.implement`.
+`/speckit.analyze`, and `/speckit.implement`. After `/speckit.implement`, the SonarQube Project
+Health Gate MUST pass before the feature is complete.
 
 Each specification MUST define the clipboard-triggered user flow, content-type handling,
 deduplication rules, measurable acceptance criteria, privacy expectations, offline behavior, and
 any optional manual creation or sync/export scope. Each plan MUST pass a Constitution Check before
 Phase 0 research and again after Phase 1 design. Each task list MUST map implementation and test
 tasks back to specification requirements and user stories, including clipboard monitoring and local
-persistence coverage where applicable.
+persistence coverage where applicable. Each task list MUST include post-implementation SonarQube
+validation and evidence tasks unless the feature is explicitly documentation-only and no code or
+test files change.
 
 Before release, reviewers MUST verify that all requirements trace to implementation tasks, all
 tasks map back to a specification, acceptance criteria are measurable, automated tests cover new
 behavior, clipboard capture stays local-first, and privacy plus offline support have been
-reviewed.
+reviewed. Reviewers MUST also verify that SonarQube evidence is recorded and that no unresolved
+feature-introduced SonarQube issues remain, except documented false positives with justification.
 
 ## Governance
 
 This constitution supersedes conflicting project practices, templates, and implementation plans.
 When conflicts are found, the constitution governs unless it is amended first.
+
+The SonarQube Project Health Gate is a mandatory quality-gate policy addition. It may be changed,
+weakened, or waived only through a constitution amendment.
 
 Every constitution amendment MUST include the proposed text, rationale, impact on existing
 specifications or features, migration guidance for affected templates or code, and a Sync Impact
@@ -144,6 +172,8 @@ change.
 Every `/speckit.plan` output MUST include a Constitution Check. Every `/speckit.analyze` review
 MUST flag contradictions between spec, plan, tasks, and this constitution. Release readiness
 review MUST confirm compliance with clipboard-first behavior, local-first storage, privacy
-protections, automated testing, and Apple-native simplicity constraints.
+protections, automated testing, Apple-native simplicity constraints, and the SonarQube Project
+Health Gate. No feature specification, plan, task list, or checklist may weaken the SonarQube gate
+without first amending this constitution.
 
-**Version**: 2.0.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-25
+**Version**: 2.1.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-28

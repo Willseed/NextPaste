@@ -104,12 +104,14 @@
   refresh behavior for captured clips
 - **FR-010**: Features that add AI-generated outputs MUST define validation schemas or typed
   contracts for those outputs
+- **FR-011**: Implementation completion MUST include SonarQube Project Health evidence showing zero
+  unresolved feature-introduced issues, or documented false positives with justification
 
 *Example of marking unclear requirements:*
 
-- **FR-011**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
+- **FR-012**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
   images, files, or another scope?]
-- **FR-012**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
+- **FR-013**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
   or storage cap not specified]
 
 ### Key Entities *(include if feature involves data)*
@@ -121,7 +123,8 @@
 
 <!--
   ACTION REQUIRED: Define measurable success criteria.
-  These must be technology-agnostic and measurable.
+  These must be measurable. Prefer technology-agnostic user outcomes, and include mandated
+  project quality gates such as SonarQube Project Health when required by the constitution.
 -->
 
 ### Measurable Outcomes
@@ -134,6 +137,8 @@
   Save while the app is running"]
 - **SC-006**: [Privacy/offline metric, e.g., "Core capture and retrieval work without network
   access in 100% of tested scenarios"]
+- **SC-007**: [Quality gate metric, e.g., "SonarQube Project Health reports zero unresolved issues
+  for the implemented change, with evidence recorded before commit or PR completion"]
 
 ## Assumptions
 

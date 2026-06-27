@@ -57,6 +57,9 @@
 - **Native simplicity**: SwiftUI, SwiftData, Observation, Vision, Foundation Models, Foundation,
   and CloudKit are the default choices. Any dependency or platform deviation is justified with a
   concrete capability gap and privacy impact.
+- **SonarQube project health gate**: After `/speckit.implement`, the feature is not complete until
+  SonarQube Project Health shows zero unresolved feature-introduced issues, or documented false
+  positives with justification, and evidence is recorded before commit or PR completion.
 
 ## Project Structure
 
