@@ -40,6 +40,10 @@ struct TypographyToken: Equatable {
     var font: Font {
         .system(textStyle).weight(weight)
     }
+
+    var supportsDynamicType: Bool {
+        true
+    }
 }
 
 enum DesignTokens {
@@ -82,6 +86,7 @@ enum DesignTokens {
         static let metadata = TypographyToken(weight: .regular, textStyle: .caption)
         static let badge = TypographyToken(weight: .medium, textStyle: .caption2)
         static let feedback = TypographyToken(weight: .medium, textStyle: .callout)
+        static let dynamicTypeRoles = [display, title, body, metadata, badge, feedback]
     }
 
     enum Icons {

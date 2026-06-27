@@ -7,6 +7,9 @@
 
 import SwiftData
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
@@ -14,6 +17,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @State private var isPresentingNewClip = false
+    @State private var searchText = ""
+    @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
     @State private var revealedRowAction: RevealedRowAction?
@@ -26,13 +31,12 @@ struct HomeView: View {
             accessibilityMarkers
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
-                HStack {
-                    Text("Clips")
-                        .font(DesignTokens.Typography.title.font)
-                        .foregroundStyle(appTheme.textPrimary.color)
-
-                    Spacer()
-
+                AppToolbar(
+                    title: "Clips",
+                    searchText: $searchText,
+                    onFilter: {},
+                    onSettings: openSettingsOrShowPlaceholder
+                ) {
                     Button {
                         isPresentingNewClip = true
                     } label: {
@@ -41,9 +45,17 @@ struct HomeView: View {
                     .accessibilityIdentifier("new-clip-button")
                 }
 
+                if let settingsPlaceholderMessage {
+                    Text(settingsPlaceholderMessage)
+                        .font(DesignTokens.Typography.metadata.font)
+                        .foregroundStyle(appTheme.textSecondary.color)
+                        .accessibilityIdentifier("settings-placeholder-message")
+                        .accessibilityLabel(settingsPlaceholderMessage)
+                }
+
                 Group {
                     if clips.isEmpty {
-                        ContentUnavailableView("No clips yet", systemImage: DesignTokens.Icons.clipboard)
+                        EmptyStateView()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         ScrollView {
@@ -158,6 +170,26 @@ struct HomeView: View {
         copyFeedbackTask?.cancel()
         copiedClipID = nil
     }
+
+    private func openSettingsOrShowPlaceholder() {
+#if os(macOS)
+        _ = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if hasVisibleSettingsWindow {
+            settingsPlaceholderMessage = nil
+            return
+        }
+#endif
+
+        settingsPlaceholderMessage = "Settings are not available yet."
+    }
+
+#if os(macOS)
+    private var hasVisibleSettingsWindow: Bool {
+        NSApp.windows.contains { window in
+            window.isVisible && window.title.localizedCaseInsensitiveContains("settings")
+        }
+    }
+#endif
 
     private func deleteClip(_ clip: ClipItem) {
         do {

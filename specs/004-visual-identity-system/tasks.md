@@ -111,20 +111,20 @@
 
 ### Tests for User Story 3
 
-- [ ] T035 [P] [US3] Write failing UI tests for empty state exact headline, exact description, illustration-only-empty rule, and no populated-row illustrations in NextPasteUITests/VisualIdentityUITests.swift
-- [ ] T036 [P] [US3] Write failing UI tests for toolbar title, inline search placement, filter affordance, visible settings button, settings opening existing Settings if present or a non-blocking placeholder otherwise, keyboard reachability, and identifiers in NextPasteUITests/VisualIdentityUITests.swift
-- [ ] T037 [P] [US3] Write failing theme and accessibility tests for Dynamic Type-safe typography roles and high-contrast state role availability in NextPasteTests/ThemeContractTests.swift
+- [X] T035 [P] [US3] Write failing UI tests for empty state exact headline, exact description, illustration-only-empty rule, and no populated-row illustrations in NextPasteUITests/VisualIdentityUITests.swift
+- [X] T036 [P] [US3] Write failing UI tests for toolbar title, inline search placement, filter affordance, visible settings button, settings opening existing Settings if present or a non-blocking placeholder otherwise, keyboard reachability, and identifiers in NextPasteUITests/VisualIdentityUITests.swift
+- [X] T037 [P] [US3] Write failing theme and accessibility tests for Dynamic Type-safe typography roles and high-contrast state role availability in NextPasteTests/ThemeContractTests.swift
 
 ### Implementation for User Story 3
 
-- [ ] T038 [P] [US3] Implement AppToolbar with title, non-dominant inline search/filter placement, visible settings button/access, and SF Symbol labels in NextPaste/DesignSystem/Components/AppToolbar.swift
-- [ ] T039 [P] [US3] Implement SearchBar as a future-ready native search surface that does not enable unsupported filtering behavior in NextPaste/DesignSystem/Components/SearchBar.swift
-- [ ] T040 [P] [US3] Implement EmptyStateIllustration with warm SF Symbols or asset-backed composition for empty/onboarding only in NextPaste/DesignSystem/Illustrations/EmptyStateIllustration.swift
-- [ ] T041 [P] [US3] Implement EmptyStateView with exact "No clips yet" headline and "Copy something to get started." description in NextPaste/DesignSystem/Components/EmptyStateView.swift
-- [ ] T042 [US3] Integrate AppToolbar, SearchBar, filter/settings affordances, and EmptyStateView into the single-column shell, opening existing Settings if present and otherwise showing only a non-blocking settings placeholder in NextPaste/HomeView.swift
-- [ ] T043 [US3] Add accessibility identifiers for app-toolbar, history-search-field, history-filter-button, settings-button, empty-state-title, and empty-state-description in NextPaste/DesignSystem/Components/AppToolbar.swift and NextPaste/DesignSystem/Components/EmptyStateView.swift
-- [ ] T044 [US3] Confirm settings/filter/search are visual affordances only, settings is non-blocking when no existing Settings UI is present, and no advanced settings, OCR UI, AI UI, CloudKit UI, sync indicators, or network behavior is added in NextPaste/HomeView.swift
-- [ ] T045 [US3] Run US3 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/VisualIdentityUITests.swift
+- [X] T038 [P] [US3] Implement AppToolbar with title, non-dominant inline search/filter placement, visible settings button/access, and SF Symbol labels in NextPaste/DesignSystem/Components/AppToolbar.swift
+- [X] T039 [P] [US3] Implement SearchBar as a future-ready native search surface that does not enable unsupported filtering behavior in NextPaste/DesignSystem/Components/SearchBar.swift
+- [X] T040 [P] [US3] Implement EmptyStateIllustration with warm SF Symbols or asset-backed composition for empty/onboarding only in NextPaste/DesignSystem/Illustrations/EmptyStateIllustration.swift
+- [X] T041 [P] [US3] Implement EmptyStateView with exact "No clips yet" headline and "Copy something to get started." description in NextPaste/DesignSystem/Components/EmptyStateView.swift
+- [X] T042 [US3] Integrate AppToolbar, SearchBar, filter/settings affordances, and EmptyStateView into the single-column shell, opening existing Settings if present and otherwise showing only a non-blocking settings placeholder in NextPaste/HomeView.swift
+- [X] T043 [US3] Add accessibility identifiers for app-toolbar, history-search-field, history-filter-button, settings-button, empty-state-title, and empty-state-description in NextPaste/DesignSystem/Components/AppToolbar.swift and NextPaste/DesignSystem/Components/EmptyStateView.swift
+- [X] T044 [US3] Confirm settings/filter/search are visual affordances only, settings is non-blocking when no existing Settings UI is present, and no advanced settings, OCR UI, AI UI, CloudKit UI, sync indicators, or network behavior is added in NextPaste/HomeView.swift
+- [X] T045 [US3] Run US3 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/VisualIdentityUITests.swift
 
 **Checkpoint**: All user stories are independently functional and covered by automated checks.
 

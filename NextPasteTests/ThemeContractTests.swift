@@ -45,4 +45,27 @@ struct ThemeContractTests {
         #expect(highContrastLight.isHighContrast)
         #expect(highContrastDark.isHighContrast)
     }
+
+    @Test("typography roles remain dynamic type safe")
+    func typographyRolesRemainDynamicTypeSafe() {
+        #expect(DesignTokens.Typography.dynamicTypeRoles.count == 6)
+
+        for role in DesignTokens.Typography.dynamicTypeRoles {
+            #expect(role.supportsDynamicType)
+            #expect(role.bundlesLicensedFont == false)
+        }
+    }
+
+    @Test("high contrast themes expose explicit state roles")
+    func highContrastThemesExposeExplicitStateRoles() {
+        for appearance in [AppTheme.Appearance.highContrastLight, .highContrastDark] {
+            let theme = AppTheme(appearance: appearance)
+
+            #expect(theme.focusRing.hex.isEmpty == false)
+            #expect(theme.controlSurface.hex.isEmpty == false)
+            #expect(theme.controlBorder.hex.isEmpty == false)
+            #expect(theme.focusRing.hex != theme.selectionSurface.hex)
+            #expect(theme.controlBorder.hex != theme.controlSurface.hex)
+        }
+    }
 }
