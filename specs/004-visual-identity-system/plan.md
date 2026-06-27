@@ -14,11 +14,11 @@ Implement a centralized SwiftUI design system for the macOS NextPaste app that r
 
 **Language/Version**: Swift language mode `5.0` from the current Xcode project settings, built with the repository's current Xcode SDKs and SwiftUI/SwiftData availability.
 
-**Primary Dependencies**: SwiftUI for views, layout, environment-driven styling, toolbar composition, animations, accessibility modifiers, and SF Symbol rendering; SwiftData for existing local `ClipItem` query/persistence; Foundation for dates, identifiers, and formatting; AppKit only where existing macOS clipboard/window behavior already requires it. No third-party UI frameworks, icon packs, animation packages, analytics, telemetry, or remote services are introduced.
+**Primary Dependencies**: SwiftUI for views, layout, environment-driven styling, toolbar composition, animations, accessibility modifiers, and SF Symbol rendering; SwiftData for existing local `ClipItem` query/persistence; Foundation for dates, identifiers, and formatting; AppKit only where existing macOS clipboard/window behavior already requires it. Typography uses system font resolution only: prefer Inter when already installed on the user's system, otherwise fall back to `-apple-system` / SF Pro. No third-party UI frameworks, icon packs, animation packages, analytics, telemetry, remote services, or bundled licensed font files are introduced.
 
 **Storage**: No new persisted storage is required for the visual identity feature. Existing SwiftData `ClipItem` remains the source of truth for clipboard history, pinned state, ordering, and row actions. Visual tokens, theme roles, row presentation state, and copy feedback are non-persisted app UI definitions/state.
 
-**Testing**: Swift Testing in `NextPasteTests` for token contracts, preview formatting continuity, presentation-state rules, and row ordering compatibility where logic is separable from SwiftUI rendering. XCTest UI automation in `NextPasteUITests` for empty state copy, toolbar/search/filter/settings discoverability, copy feedback, row action regression, pinned-first visibility, keyboard/VoiceOver-friendly identifiers, and offline/local behavior using the existing `-ui-testing` in-memory store. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` plus focused `-only-testing` commands documented in [quickstart.md](quickstart.md).
+**Testing**: Swift Testing in `NextPasteTests` for token contracts, preview formatting continuity, presentation-state rules, and row ordering compatibility where logic is separable from SwiftUI rendering. XCTest UI automation in `NextPasteUITests` for empty state copy, toolbar/search/filter/settings discoverability and settings behavior, copy feedback timing (starts within 200ms, remains visible about 1.5 seconds, then fades automatically), row action regression, row-level accessibility regression that copy/delete/pin remain keyboard reachable with explicit VoiceOver labels, pinned-first visibility, keyboard/VoiceOver-friendly identifiers, and offline/local behavior using the existing `-ui-testing` in-memory store. Validate with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` plus focused `-only-testing` commands documented in [quickstart.md](quickstart.md).
 
 **Target Platform**: Native macOS app experience for this feature. The repository is configured for multiple Apple platforms, so shared SwiftUI components should remain compile-safe behind existing platform checks where needed, but design validation is scoped to macOS.
 
@@ -34,7 +34,7 @@ Implement a centralized SwiftUI design system for the macOS NextPaste app that r
 
 ### Design Token Architecture
 
-Create a `DesignSystem/Theme/` foundation that owns the token contract for color roles, spacing, typography, radius, and motion. Components consume semantic roles such as canvas, surface, card, textPrimary, textSecondary, borderSubtle, hoverSurface, selectionSurface, accentPinned, and accentSuccess instead of hard-coded visual constants. The spacing scale is fixed at 4, 8, 12, 16, 24, 32, 48, and 96; radius roles map to buttons 12, cards/rows 16, dialogs 24, and badges/pills fully rounded.
+Create a `DesignSystem/Theme/` foundation that owns the token contract for color roles, spacing, typography, radius, and motion. Components consume semantic roles such as canvas, surface, card, textPrimary, textSecondary, borderSubtle, hoverSurface, selectionSurface, accentPinned, and accentSuccess instead of hard-coded visual constants. Typography tokens request Inter only when it is available as a system font and otherwise resolve to `-apple-system` / SF Pro, with no licensed font bundling. The spacing scale is fixed at 4, 8, 12, 16, 24, 32, 48, and 96; radius roles map to buttons 12, cards/rows 16, dialogs 24, and badges/pills fully rounded.
 
 ### Theme System
 
@@ -46,7 +46,7 @@ Introduce reusable SwiftUI components instead of embedding styling inside featur
 
 | Component | Role |
 |-----------|------|
-| `AppToolbar` | Unified title, inline search/filter placement, and settings access |
+| `AppToolbar` | Unified title, inline search/filter placement, and visible settings access; opens existing Settings if present, otherwise shows a non-blocking placeholder for this feature |
 | `SearchBar` | Native future-ready search field surface tied to history |
 | `ClipboardRow` | Preview-first text clip row with timestamp/metadata and trailing state |
 | `ImageClipboardRow` | Future-ready thumbnail-first image row with shared row rhythm |
@@ -55,7 +55,7 @@ Introduce reusable SwiftUI components instead of embedding styling inside featur
 
 ### Animation Strategy
 
-Use tokenized fast functional motion only: hover, focus, selection, pin toggle, and copy feedback target 120-200ms; row insertion and delete target 180-250ms; copy feedback stays visible about 1.5 seconds before fading. Reduced Motion should reduce or disable nonessential transitions while preserving visible final states.
+Use tokenized fast functional motion only: hover, focus, selection, pin toggle, and copy feedback target 120-200ms; row insertion and delete target 180-250ms; copy feedback starts within 200ms of a successful copy, stays visible about 1.5 seconds, and fades automatically. Reduced Motion should reduce or disable nonessential transitions while preserving visible final states.
 
 ### Layout Architecture
 
@@ -67,7 +67,7 @@ Use SF Symbols for standard actions and states throughout the app. If named colo
 
 ### Accessibility Strategy
 
-Preserve or intentionally map existing UI-test identifiers and accessibility labels. Toolbar controls, search/filter/settings, rows, pin/delete/copy actions, badges, and empty-state content must be keyboard reachable and VoiceOver-readable. State must never be color-only; pinned uses symbol plus label/marker, copied uses checkmark plus `Copied`, and focus/selection use semantic focus treatment.
+Preserve or intentionally map existing UI-test identifiers and accessibility labels. Toolbar controls, search/filter/settings, rows, pin/delete/copy actions, badges, and empty-state content must be keyboard reachable and VoiceOver-readable. Row-level regression coverage must verify copy, delete, and pin actions remain keyboard reachable and expose explicit VoiceOver labels. State must never be color-only; pinned uses symbol plus label/marker, copied uses checkmark plus `Copied`, and focus/selection use semantic focus treatment.
 
 ### Migration Strategy
 

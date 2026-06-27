@@ -17,6 +17,8 @@
 - Q: What row hierarchy should guide text and image clip layouts? → A: Use preview-first rows where text preview or image thumbnail leads, timestamp/metadata are secondary, and pin/copy feedback are trailing state indicators.
 - Q: How should pinned, hover, selection, and accent states appear in populated clipboard rows? → A: Use subtle semantic states: warm surface shifts for hover/selection, and pinned clips use a pin plus a small accent marker, rail, or tint.
 - Q: What motion timing should guide copy feedback, pin toggle, delete, and row insertion? → A: Use fast functional timing: micro-interactions 120-200ms, row insert/delete 180-250ms, and copy feedback visible about 1.5s before fading.
+- Q: How should Inter typography be provided? → A: Use system-installed Inter when available; otherwise fall back to `-apple-system` / SF Pro with the same hierarchy, and do not bundle licensed font files for this feature.
+- Q: How should Settings behave in this feature? → A: Show a visible Settings toolbar button; it opens existing Settings if present, otherwise it remains a non-blocking placeholder.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -65,7 +67,7 @@ As a user encountering setup, empty history, or future clip categories, I want s
 **Acceptance Scenarios**:
 
 1. **Given** the user has no saved clips, **When** the home window appears, **Then** the empty state shows a friendly warm illustration, the headline "No clips yet", and the description "Copy something to get started."
-2. **Given** the toolbar is visible, **When** the user reviews available controls, **Then** a unified top toolbar includes the window title and settings access while reserving clear, non-dominant inline placement for future search and filter controls tied to the history list.
+2. **Given** the toolbar is visible, **When** the user reviews available controls, **Then** a unified top toolbar includes the window title and a visible Settings button while reserving clear, non-dominant inline placement for future search and filter controls tied to the history list.
 3. **Given** an illustration is displayed, **When** the user views clipboard history content, **Then** illustrations decorate only onboarding or empty states and never compete with populated clipboard rows.
 4. **Given** future image, OCR, AI, or CloudKit-related experiences are planned later, **When** designers evaluate the visual system, **Then** those features can adopt the same palette, spacing, shape, and motion rules without changing the clipboard-list-first foundation.
 
@@ -81,6 +83,7 @@ As a user encountering setup, empty history, or future clip categories, I want s
 - When a delete, pin toggle, or copy feedback animation is triggered repeatedly, the final visible state matches the final clip state and the interface returns to a calm baseline.
 - When no pointer hover is available or the user relies on keyboard navigation, row focus and actions remain perceivable.
 - When future search and filter controls are not yet active, their reserved toolbar space does not imply unavailable functionality is currently usable.
+- When no Settings screen exists yet, activating Settings does not block history use or imply advanced settings are in scope.
 
 ## Requirements *(mandatory)*
 
@@ -90,21 +93,21 @@ As a user encountering setup, empty history, or future clip categories, I want s
 - **FR-002**: The app MUST use dark ink typography as the primary text color in light appearance and maintain equivalent readable contrast in dark and high-contrast appearances.
 - **FR-003**: The app MUST define a visual palette with Ink (#0A0A0A), Cream canvas (#FFFAF0), Soft Cream surface (#FAF5E8), Card Cream surface (#F5F0E0), and restrained accent colors for pink, lavender, peach, ochre, mint, and deep teal.
 - **FR-004**: Accent colors MUST be reserved for highlights, clipboard categories, pinned states, onboarding, empty states, and illustrations; colorful backgrounds MUST NOT be used for the populated clipboard list.
-- **FR-005**: Typography MUST distinguish display text from body text, using Inter Medium (500) large titles with slight negative tracking for display moments and Inter Regular with native macOS body sizing for content.
+- **FR-005**: Typography MUST distinguish display text from body text, using system-installed Inter Medium (500) large titles with slight negative tracking for display moments and system-installed Inter Regular with native macOS body sizing for content when available; if Inter is not available, typography MUST fall back to `-apple-system` / SF Pro with equivalent weights, sizing, hierarchy, and readability, and MUST NOT bundle licensed font files for this feature.
 - **FR-006**: Layout MUST follow a consistent spacing scale of 4, 8, 12, 16, 24, 32, 48, and 96 units across covered screens and components.
 - **FR-007**: The home window MUST use a single-column, history-first layout by default; optional future sidebar or detail areas MAY be introduced only when feature density requires them.
 - **FR-008**: Buttons MUST use a 12-unit radius, cards MUST use a 16-unit radius, dialogs MUST use a 24-unit radius, and pills MUST use a fully rounded shape.
 - **FR-009**: Visual depth MUST avoid heavy shadows, minimize borders, keep surfaces flat, and come primarily from rounded forms, warm layered surfaces, spacing, and friendly illustrations.
-- **FR-010**: The home window MUST include a unified top toolbar, clipboard history, a future-ready inline search location, a future-ready inline filter location, settings access, and an empty state without adding a persistent sidebar or persistent detail pane in this feature.
+- **FR-010**: The home window MUST include a unified top toolbar with the window title and a visible Settings button, clipboard history, a future-ready inline search location, a future-ready inline filter location, and an empty state without adding a persistent sidebar or persistent detail pane in this feature. Activating Settings MUST open existing Settings if present; otherwise it MUST behave as a non-blocking placeholder and MUST NOT add advanced settings in this feature.
 - **FR-011**: Covered interactions MUST follow native macOS conventions for hover, focus, selection, keyboard use, and toolbar behavior, using subtle warm surface shifts, borders, or focus treatments rather than saturated row backgrounds.
 - **FR-012**: Clipboard rows MUST use a preview-first hierarchy where the clip preview is primary, timestamp and metadata are secondary, and pin indicators plus copy feedback appear as trailing state indicators.
 - **FR-013**: Image clip rows MUST lead with a thumbnail, show useful metadata as secondary information, and preserve the same trailing state area and scanning rhythm as text clip rows.
 - **FR-014**: Pinned clips MUST always appear before unpinned clips in the history list and MUST use a filled native pin indicator plus a small accent marker, rail, or restrained tint rather than a full-row saturated color background.
-- **FR-015**: Successful copy feedback MUST display "Copied", include a temporary checkmark, begin within 200ms of success, remain visible for about 1.5 seconds, and fade automatically without requiring user dismissal.
+- **FR-015**: Successful copy feedback MUST display "Copied", include a temporary checkmark, begin within 200ms of success, remain visible for about 1.5 seconds, and fade automatically without requiring user dismissal; this timing MUST be covered as a copy-feedback regression.
 - **FR-016**: The empty state MUST include a friendly warm illustration, the exact headline "No clips yet", and the exact description "Copy something to get started."
 - **FR-017**: Illustrations MUST use a soft, rounded, warm, handmade visual style and MUST appear only in onboarding or empty states.
 - **FR-018**: Motion MUST be limited to small-scale functional animations: hover, selection, pin toggle, and copy feedback micro-interactions target 120-200ms; row insertion and delete target 180-250ms; decorative animations are out of scope.
-- **FR-019**: The visual system MUST support Light Mode, Dark Mode, increased text sizes, keyboard navigation, VoiceOver, and high-contrast accessibility settings.
+- **FR-019**: The visual system MUST support Light Mode, Dark Mode, increased text sizes, keyboard navigation, VoiceOver, and high-contrast accessibility settings; row-level copy, delete, and pin actions MUST remain keyboard reachable and provide explicit VoiceOver labels.
 - **FR-020**: The visual refresh MUST preserve the clipboard-driven processing flow: `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
 - **FR-021**: The visual refresh MUST preserve local-first and offline clipboard history behavior; network availability MUST NOT affect capture, sorting, retrieval, row actions, or history display.
 - **FR-022**: The visual refresh MUST NOT cause clipboard content to leave the device and MUST NOT add analytics, telemetry, sync, export, or remote-processing behavior.
@@ -121,7 +124,7 @@ As a user encountering setup, empty history, or future clip categories, I want s
 - **Pinned Clip State**: A clip state that changes ordering and visual treatment so important clips appear first without overwhelming the list.
 - **Copy Feedback State**: A temporary row-level confirmation that a clip was copied successfully.
 - **Empty State**: The friendly no-content state that guides users to copy something and reinforces the warm identity with illustration.
-- **Toolbar Surface**: The unified top control area that includes the window title, settings, and reserved inline future search/filter affordances tied to the history list.
+- **Toolbar Surface**: The unified top control area that includes the window title, visible Settings button, and reserved inline future search/filter affordances tied to the history list.
 
 ## Success Criteria *(mandatory)*
 
@@ -130,9 +133,9 @@ As a user encountering setup, empty history, or future clip categories, I want s
 - **SC-001**: 100% of covered screens and states use the approved cream, ink, surface, accent, typography, spacing, radius, elevation, and motion rules during design review.
 - **SC-002**: In a first-impression usability check, at least 90% of participants identify clipboard history as the primary focus within 5 seconds of opening the home window.
 - **SC-003**: At least 90% of participants can identify normal, hovered or focused, pinned, image, and copied row states without instruction.
-- **SC-004**: Successful copy feedback begins within 200ms of copy success, remains visible for about 1.5 seconds, and dismisses automatically without further user action in 100% of tested copy-success scenarios.
+- **SC-004**: Copy-feedback regression coverage confirms successful copy feedback begins within 200ms of copy success, remains visible for about 1.5 seconds, and dismisses automatically without further user action in 100% of tested copy-success scenarios.
 - **SC-005**: 100% of populated clipboard-list states avoid colorful list backgrounds while still making pinned and feedback states distinguishable.
-- **SC-006**: 100% of covered controls and row actions are reachable by keyboard and announced with meaningful labels during accessibility review.
+- **SC-006**: Row-level accessibility regression coverage confirms copy, delete, and pin actions remain reachable by keyboard and announced with explicit VoiceOver labels; 100% of other covered controls and row actions are also keyboard reachable and meaningfully labeled during accessibility review.
 - **SC-007**: All covered text and state indicators meet readable contrast expectations in Light Mode, Dark Mode, and high-contrast settings.
 - **SC-008**: Core clipboard capture, deduplication, pinned-first ordering, copy, delete, and retrieval behavior continue to work without network access in 100% of regression scenarios.
 - **SC-009**: Future-state design review confirms image clip, OCR, AI, and CloudKit surfaces can use the same palette, shape, spacing, and motion rules without changing the clipboard-history-first layout.
@@ -145,5 +148,5 @@ As a user encountering setup, empty history, or future clip categories, I want s
 - Search and filter are reserved as inline controls connected to the history list, not as a floating panel or separate navigation surface.
 - The home window remains single-column for this feature; sidebars or persistent detail panes are reserved for future feature density rather than the initial visual refresh.
 - OCR, AI, CloudKit, sync indicators, advanced settings, marketing pages, and remote transmission flows remain out of scope for this feature.
-- The specified typeface and warm palette are brand requirements; any fallback needed for system compatibility must preserve the same hierarchy, warmth, and readability.
+- Inter and the warm palette are brand requirements; font fallback for system compatibility must preserve the same hierarchy, warmth, and readability without bundling licensed font files.
 - Illustrations are supporting assets for empty or onboarding states only and are not used inside populated clipboard history rows.
