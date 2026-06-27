@@ -13,6 +13,45 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
         case selected
         case inserting
         case deleting
+
+        var accessibilityLabel: String {
+            switch self {
+            case .normal:
+                "Normal"
+            case .hovered:
+                "Hovered"
+            case .focused:
+                "Focused"
+            case .selected:
+                "Selected"
+            case .inserting:
+                "Inserting"
+            case .deleting:
+                "Deleting"
+            }
+        }
+
+        var animationDuration: TimeInterval {
+            switch self {
+            case .normal:
+                0
+            case .hovered, .focused, .selected:
+                DesignTokens.Motion.microInteraction
+            case .inserting:
+                DesignTokens.Motion.rowInsertion
+            case .deleting:
+                DesignTokens.Motion.rowDeletion
+            }
+        }
+
+        var isKeyboardReachable: Bool {
+            switch self {
+            case .focused, .selected:
+                true
+            case .normal, .hovered, .inserting, .deleting:
+                false
+            }
+        }
     }
 
     struct CopyFeedback: Equatable {
@@ -29,6 +68,38 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
             visibleDuration: DesignTokens.Motion.copyFeedbackVisible,
             fadeDuration: DesignTokens.Motion.copyFeedback
         )
+
+        var accessibilityLabel: String {
+            label
+        }
+    }
+
+    enum RowAction: Equatable {
+        case copy
+        case delete
+        case pin(isPinned: Bool)
+
+        var accessibilityLabel: String {
+            switch self {
+            case .copy:
+                "Copy"
+            case .delete:
+                "Delete"
+            case let .pin(isPinned):
+                isPinned ? "Unpin" : "Pin"
+            }
+        }
+
+        var symbolName: String {
+            switch self {
+            case .copy:
+                DesignTokens.Icons.clipboard
+            case .delete:
+                DesignTokens.Icons.delete
+            case let .pin(isPinned):
+                isPinned ? DesignTokens.Icons.unpin : DesignTokens.Icons.pin
+            }
+        }
     }
 
     enum PinState: Equatable {
@@ -116,6 +187,9 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
     let thumbnailDescription: String
     let metadata: String
     let isPinned: Bool
+    let copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil
+    let interactionState: ClipboardRowPresentation.InteractionState = .normal
+    let thumbnailSymbolName: String = DesignTokens.Icons.image
 
     var pinState: ClipboardRowPresentation.PinState {
         isPinned ? .pinned : .unpinned

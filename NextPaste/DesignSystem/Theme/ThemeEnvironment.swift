@@ -11,6 +11,10 @@ struct AppMotion: Equatable {
     func duration(_ duration: TimeInterval) -> TimeInterval {
         reduceMotion ? 0 : duration
     }
+
+    func animation(_ duration: TimeInterval) -> Animation? {
+        reduceMotion || duration == 0 ? nil : .easeInOut(duration: duration)
+    }
 }
 
 private struct AppThemeKey: EnvironmentKey {

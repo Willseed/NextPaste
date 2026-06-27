@@ -33,9 +33,30 @@ struct ClipboardRowPresentationTests {
 
         #expect(feedback.label == "Copied")
         #expect(feedback.symbolName == DesignTokens.Icons.copied)
+        #expect(feedback.accessibilityLabel == "Copied")
         #expect(feedback.appearsWithin <= 0.2)
         #expect(feedback.visibleDuration == 1.5)
         #expect(feedback.fadeDuration <= 0.2)
+    }
+
+    @Test("describes row states with labels and tokenized timing")
+    func describesRowStatesWithLabelsAndTokenizedTiming() {
+        #expect(ClipboardRowPresentation.InteractionState.normal.accessibilityLabel == "Normal")
+        #expect(ClipboardRowPresentation.InteractionState.hovered.accessibilityLabel == "Hovered")
+        #expect(ClipboardRowPresentation.InteractionState.focused.accessibilityLabel == "Focused")
+        #expect(ClipboardRowPresentation.InteractionState.selected.accessibilityLabel == "Selected")
+        #expect(ClipboardRowPresentation.InteractionState.deleting.accessibilityLabel == "Deleting")
+        #expect(ClipboardRowPresentation.InteractionState.hovered.animationDuration == DesignTokens.Motion.microInteraction)
+        #expect(ClipboardRowPresentation.InteractionState.focused.isKeyboardReachable)
+        #expect(ClipboardRowPresentation.InteractionState.deleting.animationDuration == DesignTokens.Motion.rowDeletion)
+    }
+
+    @Test("describes row action accessibility labels")
+    func describesRowActionAccessibilityLabels() {
+        #expect(ClipboardRowPresentation.RowAction.copy.accessibilityLabel == "Copy")
+        #expect(ClipboardRowPresentation.RowAction.delete.accessibilityLabel == "Delete")
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: false).accessibilityLabel == "Pin")
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).accessibilityLabel == "Unpin")
     }
 
     @Test("describes pinned state accessibly")

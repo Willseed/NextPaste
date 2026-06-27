@@ -84,20 +84,20 @@
 
 ### Tests for User Story 2
 
-- [ ] T024 [P] [US2] Write failing UI regression for copy, delete, pin, unpin, pinned-first ordering, local-only action behavior, keyboard-reachable row actions, and explicit VoiceOver labels after row migration in NextPasteUITests/ClipRowActionsUITests.swift
-- [ ] T025 [P] [US2] Write failing UI test for auto-captured row copy/delete/pin compatibility in the redesigned row path in NextPasteUITests/ClipboardAutoCaptureUITests.swift
-- [ ] T026 [P] [US2] Write failing presentation tests for hover, focus, selected, pinned, copied, deleting state labels and tokenized timing, including copy feedback starting within 200ms, remaining visible about 1.5 seconds, and fading automatically, in NextPasteTests/ClipboardRowPresentationTests.swift
+- [X] T024 [P] [US2] Write failing UI regression for copy, delete, pin, unpin, pinned-first ordering, local-only action behavior, keyboard-reachable row actions, and explicit VoiceOver labels after row migration in NextPasteUITests/ClipRowActionsUITests.swift
+- [X] T025 [P] [US2] Write failing UI test for auto-captured row copy/delete/pin compatibility in the redesigned row path in NextPasteUITests/ClipboardAutoCaptureUITests.swift
+- [X] T026 [P] [US2] Write failing presentation tests for hover, focus, selected, pinned, copied, deleting state labels and tokenized timing, including copy feedback starting within 200ms, remaining visible about 1.5 seconds, and fading automatically, in NextPasteTests/ClipboardRowPresentationTests.swift
 
 ### Implementation for User Story 2
 
-- [ ] T027 [P] [US2] Implement reusable Badge pill for pinned, copied, metadata, and future status labels in NextPaste/DesignSystem/Components/Badge.swift
-- [ ] T028 [US2] Implement ClipboardRow hover, keyboard focus, selected, pinned marker, copied feedback, inserting, and deleting visual states in NextPaste/DesignSystem/Components/ClipboardRow.swift
-- [ ] T029 [P] [US2] Implement ImageClipboardRow placeholder foundation with thumbnail, metadata, pinned, and shared trailing-state inputs in NextPaste/DesignSystem/Components/ImageClipboardRow.swift
-- [ ] T030 [US2] Move copy feedback from global message to row-level "Copied" plus checkmark state that starts within 200ms, remains visible about 1.5 seconds, and fades automatically in NextPaste/HomeView.swift
-- [ ] T031 [US2] Preserve tap-to-copy, swipe/delete, swipe/pin, revealed action buttons, and modelContext save/rollback behavior in NextPaste/HomeView.swift
-- [ ] T032 [US2] Add explicit VoiceOver labels, keyboard focus affordances, keyboard-reachable copy/delete/pin actions, and non-color-only state exposure for row states and actions in NextPaste/DesignSystem/Components/ClipboardRow.swift
-- [ ] T033 [US2] Ensure reduced motion keeps final copy, pin, insert, and delete states visible while reducing nonessential transitions in NextPaste/DesignSystem/Theme/ThemeEnvironment.swift
-- [ ] T034 [US2] Run US2 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/ClipRowActionsUITests.swift and NextPasteUITests/ClipboardAutoCaptureUITests.swift
+- [X] T027 [P] [US2] Implement reusable Badge pill for pinned, copied, metadata, and future status labels in NextPaste/DesignSystem/Components/Badge.swift
+- [X] T028 [US2] Implement ClipboardRow hover, keyboard focus, selected, pinned marker, copied feedback, inserting, and deleting visual states in NextPaste/DesignSystem/Components/ClipboardRow.swift
+- [X] T029 [P] [US2] Implement ImageClipboardRow placeholder foundation with thumbnail, metadata, pinned, and shared trailing-state inputs in NextPaste/DesignSystem/Components/ImageClipboardRow.swift
+- [X] T030 [US2] Move copy feedback from global message to row-level "Copied" plus checkmark state that starts within 200ms, remains visible about 1.5 seconds, and fades automatically in NextPaste/HomeView.swift
+- [X] T031 [US2] Preserve tap-to-copy, swipe/delete, swipe/pin, revealed action buttons, and modelContext save/rollback behavior in NextPaste/HomeView.swift
+- [X] T032 [US2] Add explicit VoiceOver labels, keyboard focus affordances, keyboard-reachable copy/delete/pin actions, and non-color-only state exposure for row states and actions in NextPaste/DesignSystem/Components/ClipboardRow.swift
+- [X] T033 [US2] Ensure reduced motion keeps final copy, pin, insert, and delete states visible while reducing nonessential transitions in NextPaste/DesignSystem/Theme/ThemeEnvironment.swift
+- [X] T034 [US2] Run US2 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/ClipRowActionsUITests.swift and NextPasteUITests/ClipboardAutoCaptureUITests.swift
 
 **Checkpoint**: User Stories 1 and 2 work together, and row action regressions remain covered.
 

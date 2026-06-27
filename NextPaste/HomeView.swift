@@ -10,10 +10,12 @@ import SwiftUI
 
 struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @State private var isPresentingNewClip = false
-    @State private var copyFeedbackMessage: String?
+    @State private var copiedClipID: UUID?
+    @State private var copyFeedbackTask: Task<Void, Never>?
     @State private var revealedRowAction: RevealedRowAction?
 
     var body: some View {
@@ -39,15 +41,6 @@ struct HomeView: View {
                     .accessibilityIdentifier("new-clip-button")
                 }
 
-                if let copyFeedbackMessage {
-                    Text(copyFeedbackMessage)
-                        .font(DesignTokens.Typography.feedback.font)
-                        .foregroundStyle(appTheme.accentSuccess.color)
-                        .accessibilityIdentifier("clip-copy-feedback")
-                        .accessibilityLabel(copyFeedbackMessage)
-                        .accessibilityValue(copyFeedbackMessage)
-                }
-
                 Group {
                     if clips.isEmpty {
                         ContentUnavailableView("No clips yet", systemImage: DesignTokens.Icons.clipboard)
@@ -55,51 +48,55 @@ struct HomeView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: DesignTokens.Spacing.medium) {
-                            ForEach(clips) { clip in
-                                ClipRowView(
-                                    clip: clip,
-                                    showsDeleteAction: revealedRowAction == .delete(clip.id),
-                                    showsPinAction: revealedRowAction == .pin(clip.id),
-                                    onDelete: {
-                                        deleteClip(clip)
-                                    },
-                                    onTogglePin: {
-                                        togglePin(clip)
-                                    }
-                                )
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    copyClip(clip)
-                                }
-                                .simultaneousGesture(
-                                    DragGesture(minimumDistance: 20)
-                                        .onEnded { value in
-                                            revealRowAction(for: clip, translationWidth: value.translation.width)
+                                ForEach(clips) { clip in
+                                    ClipRowView(
+                                        clip: clip,
+                                        showsDeleteAction: revealedRowAction == .delete(clip.id),
+                                        showsPinAction: revealedRowAction == .pin(clip.id),
+                                        copyFeedback: copiedClipID == clip.id ? .copied : nil,
+                                        onCopy: {
+                                            copyClip(clip)
+                                        },
+                                        onDelete: {
+                                            deleteClip(clip)
+                                        },
+                                        onTogglePin: {
+                                            togglePin(clip)
                                         }
-                                )
-                                .swipeActions(edge: .trailing) {
-                                    Button(role: .destructive) {
-                                        deleteClip(clip)
-                                    } label: {
-                                        Label("Delete", systemImage: DesignTokens.Icons.delete)
+                                    )
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        copyClip(clip)
                                     }
-                                    .accessibilityIdentifier("delete-clip-button")
-                                    .accessibilityLabel("Delete")
-                                }
-                                .swipeActions(edge: .leading) {
-                                    Button {
-                                        togglePin(clip)
-                                    } label: {
-                                        Label(
-                                            clip.isPinned ? "Unpin" : "Pin",
-                                            systemImage: clip.isPinned ? DesignTokens.Icons.unpin : DesignTokens.Icons.pin
-                                        )
+                                    .simultaneousGesture(
+                                        DragGesture(minimumDistance: 20)
+                                            .onEnded { value in
+                                                revealRowAction(for: clip, translationWidth: value.translation.width)
+                                            }
+                                    )
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            deleteClip(clip)
+                                        } label: {
+                                            Label("Delete", systemImage: DesignTokens.Icons.delete)
+                                        }
+                                        .accessibilityIdentifier("delete-clip-button")
+                                        .accessibilityLabel("Delete")
                                     }
-                                    .tint(appTheme.accentPinned.color)
-                                    .accessibilityIdentifier("pin-clip-button")
-                                    .accessibilityLabel(clip.isPinned ? "Unpin" : "Pin")
+                                    .swipeActions(edge: .leading) {
+                                        Button {
+                                            togglePin(clip)
+                                        } label: {
+                                            Label(
+                                                clip.isPinned ? "Unpin" : "Pin",
+                                                systemImage: clip.isPinned ? DesignTokens.Icons.unpin : DesignTokens.Icons.pin
+                                            )
+                                        }
+                                        .tint(appTheme.accentPinned.color)
+                                        .accessibilityIdentifier("pin-clip-button")
+                                        .accessibilityLabel(clip.isPinned ? "Unpin" : "Pin")
+                                    }
                                 }
-                            }
                             }
                         }
                         .padding(DesignTokens.Spacing.small)
@@ -115,14 +112,51 @@ struct HomeView: View {
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
+        .onDisappear {
+            copyFeedbackTask?.cancel()
+        }
     }
 
     private func copyClip(_ clip: ClipItem) {
         if ClipboardWriter.copy(clip.textContent) {
-            copyFeedbackMessage = "Copied"
+            showCopyFeedback(for: clip.id)
         } else {
-            copyFeedbackMessage = nil
+            clearCopyFeedback()
         }
+    }
+
+    private func showCopyFeedback(for clipID: UUID) {
+        let feedback = ClipboardRowPresentation.CopyFeedback.copied
+        let fadeAnimation = appMotion.animation(feedback.fadeDuration)
+
+        copyFeedbackTask?.cancel()
+        withAnimation(appMotion.animation(feedback.appearsWithin)) {
+            copiedClipID = clipID
+        }
+
+        copyFeedbackTask = Task {
+            let visibleNanoseconds = UInt64(feedback.visibleDuration * 1_000_000_000)
+            try? await Task.sleep(nanoseconds: visibleNanoseconds)
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            await MainActor.run {
+                guard copiedClipID == clipID else {
+                    return
+                }
+
+                withAnimation(fadeAnimation) {
+                    copiedClipID = nil
+                }
+            }
+        }
+    }
+
+    private func clearCopyFeedback() {
+        copyFeedbackTask?.cancel()
+        copiedClipID = nil
     }
 
     private func deleteClip(_ clip: ClipItem) {

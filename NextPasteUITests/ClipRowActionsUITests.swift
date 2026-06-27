@@ -30,6 +30,31 @@ final class ClipRowActionsUITests: XCTestCase {
         XCTAssertEqual(feedback.accessibleText, "Copied")
         XCTAssertEqual(clipboardString(), text)
         XCTAssertTrue(app.staticTexts[text].exists)
+        XCTAssertTrue(waitForDisappearance(of: feedback, timeout: 3))
+    }
+
+    @MainActor
+    func testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels() throws {
+        let app = launchRowActionApp()
+        let text = "Accessible row action clip"
+
+        try saveClip(text, in: app)
+        assertClipRowIdentifierExists(in: app)
+
+        let copyButton = app.buttons["copy-clip-button"]
+        XCTAssertTrue(copyButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(copyButton.isHittable)
+        XCTAssertTrue(copyButton.accessibleText.localizedCaseInsensitiveContains("Copy"))
+        copyButton.tap()
+        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
+
+        let pinButton = revealPinAction(for: text, in: app)
+        XCTAssertTrue(pinButton.isHittable)
+        XCTAssertTrue(pinButton.accessibleText.localizedCaseInsensitiveContains("Pin"))
+
+        let deleteButton = revealDeleteAction(for: text, in: app)
+        XCTAssertTrue(deleteButton.isHittable)
+        XCTAssertTrue(deleteButton.accessibleText.localizedCaseInsensitiveContains("Delete"))
     }
 
     @MainActor
@@ -187,7 +212,7 @@ final class ClipRowActionsUITests: XCTestCase {
         let button = app.buttons["delete-clip-button"]
 
         for _ in 0..<3 {
-            row.swipeLeft()
+            drag(row, horizontallyBy: -0.4)
             if button.waitForExistence(timeout: 1) {
                 return button
             }
@@ -203,7 +228,7 @@ final class ClipRowActionsUITests: XCTestCase {
         let button = app.buttons["pin-clip-button"]
 
         for _ in 0..<3 {
-            row.swipeRight()
+            drag(row, horizontallyBy: 0.4)
             if button.waitForExistence(timeout: 1) {
                 return button
             }
@@ -211,6 +236,12 @@ final class ClipRowActionsUITests: XCTestCase {
 
         XCTFail("Pin action was not revealed for \(clipText)")
         return button
+    }
+
+    private func drag(_ element: XCUIElement, horizontallyBy offset: CGFloat) {
+        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5 + offset, dy: 0.5))
+        start.press(forDuration: 0.05, thenDragTo: end)
     }
 
     private func waitFor(_ upperElement: XCUIElement, toAppearAbove lowerElement: XCUIElement, timeout: TimeInterval = 5) -> Bool {
