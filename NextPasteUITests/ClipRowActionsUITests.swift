@@ -150,7 +150,7 @@ final class ClipRowActionsUITests: UITestCase {
 
     @MainActor
     func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
 

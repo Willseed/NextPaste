@@ -71,10 +71,10 @@
 
 **Purpose**: Prove duplicated lines or duplicated helper patterns in new/changed UI test code are reduced compared with the baseline.
 
-- [ ] T023 [FR-013, FR-018, SC-004] Run the manual duplicate-pattern fallback from `specs/005-ui-test-cleanup/quickstart.md` against `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
-- [ ] T024 [FR-009, FR-013, FR-015, SC-003, SC-004] Verify extracted helper responsibilities exist in `NextPasteUITests/UITestCase.swift`, `NextPasteUITests/HistoryRobot.swift`, `NextPasteUITests/ClipboardRobot.swift`, `NextPasteUITests/RowRobot.swift`, `NextPasteUITests/UITestAssertions.swift`, and `NextPasteUITests/UITestFixtures.swift` using `specs/005-ui-test-cleanup/quickstart.md`
-- [ ] T025 [FR-013, SC-004] Run local Sonar analysis or collect CI/Sonar duplicate-code metrics for changed/new UI test code using `specs/005-ui-test-cleanup/quickstart.md`
-- [ ] T026 [FR-013, FR-018, SC-004] Compare the post-refactor duplicated-lines or duplicate-pattern result with the baseline captured for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift` and prepare the result for `specs/005-ui-test-cleanup/sonar-evidence.md`
+- [X] T023 [FR-013, FR-018, SC-004] Run the manual duplicate-pattern fallback from `specs/005-ui-test-cleanup/quickstart.md` against `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
+- [X] T024 [FR-009, FR-013, FR-015, SC-003, SC-004] Verify extracted helper responsibilities exist in `NextPasteUITests/UITestCase.swift`, `NextPasteUITests/HistoryRobot.swift`, `NextPasteUITests/ClipboardRobot.swift`, `NextPasteUITests/RowRobot.swift`, `NextPasteUITests/UITestAssertions.swift`, and `NextPasteUITests/UITestFixtures.swift` using `specs/005-ui-test-cleanup/quickstart.md`
+- [X] T025 [FR-013, SC-004] Run local Sonar analysis or collect CI/Sonar duplicate-code metrics for changed/new UI test code using `specs/005-ui-test-cleanup/quickstart.md`
+- [X] T026 [FR-013, FR-018, SC-004] Compare the post-refactor duplicated-lines or duplicate-pattern result with the baseline captured for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift` and prepare the result for `specs/005-ui-test-cleanup/sonar-evidence.md`
 
 **Checkpoint**: Sonar or manual duplicate evidence shows reduced duplication before completion.
 

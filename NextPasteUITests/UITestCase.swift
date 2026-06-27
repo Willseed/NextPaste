@@ -27,7 +27,7 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
-    func launchAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
+    func launchCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = UITestAppLauncher.launchAutoCaptureApp(pollInterval: pollInterval)
         addTeardownBlock {
             app.terminate()

@@ -10,7 +10,7 @@ import XCTest
 final class ClipboardAutoCaptureUITests: UITestCase {
     @MainActor
     func testAutoCaptureRefreshesHistoryWithoutManualSave() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
 
         clipboard.capture(UITestFixtures.ClipboardCapture.foreground, timeout: 2)
@@ -19,7 +19,7 @@ final class ClipboardAutoCaptureUITests: UITestCase {
 
     @MainActor
     func testAutoCaptureContinuesWhileBackgrounded() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
 
         clipboard.background()
@@ -33,7 +33,7 @@ final class ClipboardAutoCaptureUITests: UITestCase {
 
     @MainActor
     func testAutoCaptureContinuesWhileMinimized() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
 
         clipboard.minimize()
@@ -47,7 +47,7 @@ final class ClipboardAutoCaptureUITests: UITestCase {
 
     @MainActor
     func testDuplicateEmptyAndUnchangedClipboardStatesLeaveHistoryUnchanged() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
         let history = historyRobot(for: app)
 
@@ -64,7 +64,7 @@ final class ClipboardAutoCaptureUITests: UITestCase {
 
     @MainActor
     func testAutoCapturedClipUsesRedesignedRowPathForCopyDeleteAndPin() throws {
-        let app = launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
 
