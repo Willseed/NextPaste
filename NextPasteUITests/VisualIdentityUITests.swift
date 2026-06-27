@@ -5,119 +5,73 @@
 
 import XCTest
 
-final class VisualIdentityUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class VisualIdentityUITests: UITestCase {
     @MainActor
     func testHomeUsesWarmHistoryFirstSingleColumnCanvas() throws {
-        let app = UITestAppLauncher.launchApp()
-        addTeardownBlock {
-            app.terminate()
-        }
+        let app = launchApp()
+        let history = historyRobot(for: app)
 
-        let newClipButton = app.buttons["new-clip-button"]
-        XCTAssertTrue(newClipButton.waitForExistence(timeout: 5))
-        newClipButton.tap()
-
-        let editor = app.textViews["clip-text-editor"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText("Visual identity history focus")
-        app.buttons["save-clip-button"].tap()
+        try history.createTextClip(UITestFixtures.VisualIdentity.historyFocus)
 
         let canvas = app.descendants(matching: .any)["home-canvas"]
-        XCTAssertTrue(canvas.waitForExistence(timeout: 5))
+        UITestAssertions.assertExists(canvas, "Expected home canvas")
         let canvasValue = canvas.value as? String
         XCTAssertNotEqual(canvasValue, "#FFFFFF")
-        XCTAssertTrue(["#FFFAF0", "#1D1A16"].contains(canvasValue))
+        XCTAssertTrue(UITestFixtures.VisualIdentity.acceptedCanvasValues.contains(canvasValue ?? ""))
 
-        let layout = app.descendants(matching: .any)["single-column-history-layout"]
-        XCTAssertTrue(layout.exists)
-        XCTAssertEqual(layout.value as? String, "adaptive-full-width")
+        let layout = history.singleColumnLayout()
+        XCTAssertEqual(layout.value as? String, UITestFixtures.VisualIdentity.adaptiveLayoutValue)
 
-        XCTAssertTrue(app.descendants(matching: .any)["history-surface"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["clip-history-list"].exists)
+        history.historySurface()
+        history.historyList()
         XCTAssertFalse(app.descendants(matching: .any)["history-sidebar"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["history-detail-pane"].exists)
     }
 
     @MainActor
     func testEmptyStateUsesRequiredCopyAndIllustrationOnlyWhenHistoryIsEmpty() throws {
-        let app = launchVisualIdentityApp()
+        let app = launchApp()
+        let history = historyRobot(for: app)
 
-        XCTAssertTrue(app.staticTexts["empty-state-title"].waitForExistence(timeout: 5))
-        XCTAssertEqual(app.staticTexts["empty-state-title"].accessibleText, "No clips yet")
+        UITestAssertions.assertExists(app.staticTexts["empty-state-title"], "Expected empty state title")
+        UITestAssertions.assertAccessibleTextEquals(app.staticTexts["empty-state-title"], UITestFixtures.VisualIdentity.emptyTitle)
         XCTAssertTrue(app.staticTexts["empty-state-description"].exists)
-        XCTAssertEqual(app.staticTexts["empty-state-description"].accessibleText, "Copy something to get started.")
+        UITestAssertions.assertAccessibleTextEquals(app.staticTexts["empty-state-description"], UITestFixtures.VisualIdentity.emptyDescription)
         XCTAssertTrue(app.descendants(matching: .any)["empty-state-illustration"].exists)
 
-        try saveClip("Populated rows should not show empty illustrations", in: app)
+        try history.createTextClip(UITestFixtures.VisualIdentity.populatedRowsNoIllustrations)
 
-        XCTAssertTrue(app.descendants(matching: .any)["clip-history-list"].waitForExistence(timeout: 5))
+        history.historyList()
         XCTAssertFalse(app.descendants(matching: .any)["empty-state-illustration"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["populated-row-illustration"].exists)
     }
 
     @MainActor
     func testToolbarExposesSearchFilterAndNonBlockingSettingsPlaceholder() throws {
-        let app = launchVisualIdentityApp()
+        let app = launchApp()
 
-        XCTAssertTrue(app.descendants(matching: .any)["app-toolbar"].waitForExistence(timeout: 5))
+        UITestAssertions.assertExists(app.descendants(matching: .any)["app-toolbar"], "Expected app toolbar")
         XCTAssertTrue(app.staticTexts["app-toolbar-title"].exists)
-        XCTAssertEqual(app.staticTexts["app-toolbar-title"].accessibleText, "Clips")
+        UITestAssertions.assertAccessibleTextEquals(app.staticTexts["app-toolbar-title"], UITestFixtures.VisualIdentity.toolbarTitle)
 
         let searchField = app.textFields["history-search-field"]
         XCTAssertTrue(searchField.exists)
-        XCTAssertTrue(searchField.accessibleText.localizedCaseInsensitiveContains("Search"))
+        UITestAssertions.assertAccessibleTextContains(searchField, "Search")
 
         let filterButton = app.buttons["history-filter-button"]
         XCTAssertTrue(filterButton.exists)
         XCTAssertTrue(filterButton.isHittable)
-        XCTAssertTrue(filterButton.accessibleText.localizedCaseInsensitiveContains("Filter"))
+        UITestAssertions.assertAccessibleTextContains(filterButton, "Filter")
 
         let settingsButton = app.buttons["settings-button"]
         XCTAssertTrue(settingsButton.exists)
         XCTAssertTrue(settingsButton.isHittable)
-        XCTAssertTrue(settingsButton.accessibleText.localizedCaseInsensitiveContains("Settings"))
+        UITestAssertions.assertAccessibleTextContains(settingsButton, "Settings")
         settingsButton.tap()
 
-        XCTAssertTrue(app.staticTexts["settings-placeholder-message"].waitForExistence(timeout: 5))
+        UITestAssertions.assertExists(app.staticTexts["settings-placeholder-message"], "Expected settings placeholder message")
         XCTAssertTrue(app.buttons["new-clip-button"].isHittable)
         XCTAssertFalse(app.windows["Settings"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["advanced-settings-panel"].exists)
-    }
-
-    @MainActor
-    private func launchVisualIdentityApp() -> XCUIApplication {
-        let app = UITestAppLauncher.launchApp()
-        addTeardownBlock {
-            app.terminate()
-        }
-        return app
-    }
-
-    @MainActor
-    private func saveClip(_ text: String, in app: XCUIApplication) throws {
-        let newClipButton = app.buttons["new-clip-button"]
-        XCTAssertTrue(newClipButton.waitForExistence(timeout: 5))
-        newClipButton.tap()
-
-        let editor = app.textViews["clip-text-editor"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText(text)
-        app.buttons["save-clip-button"].tap()
-    }
-}
-
-private extension XCUIElement {
-    var accessibleText: String {
-        if !label.isEmpty {
-            return label
-        }
-
-        return value as? String ?? ""
     }
 }

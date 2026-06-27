@@ -7,56 +7,29 @@
 
 import XCTest
 
-final class HistoryListUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class HistoryListUITests: UITestCase {
     @MainActor
     func testHistoryShowsNewestFirstAndReadableLongMultilinePreview() throws {
-        let app = UITestAppLauncher.launchApp()
-        let olderText = "Older local clip"
-        let newerText = "Newer local clip"
-        let longMultilineText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)
-        let expectedPreview = String(repeating: "A", count: 60) + " " + String(repeating: "B", count: 59) + "..."
+        let app = launchApp()
+        let history = historyRobot(for: app)
 
-        try saveClip(olderText, in: app)
-        try saveClip(newerText, in: app)
-        try saveClip(longMultilineText, in: app)
+        try history.createTextClips([
+            UITestFixtures.History.olderText,
+            UITestFixtures.History.newerText,
+            UITestFixtures.History.longMultilineText
+        ])
 
-        let historyList = app.descendants(matching: .any)["clip-history-list"]
-        XCTAssertTrue(historyList.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["history-surface"].exists)
-        XCTAssertTrue(app.descendants(matching: .any)["single-column-history-layout"].exists)
+        history.historyList()
+        history.historySurface()
+        history.singleColumnLayout()
+        history.assertClipRowIdentifierExists()
 
-        let olderRow = app.staticTexts[olderText]
-        let newerRow = app.staticTexts[newerText]
-        let previewRow = app.staticTexts[expectedPreview]
-        let rowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
-        let migratedRow = app.descendants(matching: .any).matching(rowPredicate).element
-        XCTAssertTrue(migratedRow.waitForExistence(timeout: 5))
+        let olderRow = history.row(withText: UITestFixtures.History.olderText)
+        let newerRow = history.row(withText: UITestFixtures.History.newerText)
+        let previewRow = history.row(withText: UITestFixtures.History.expectedLongMultilinePreview)
 
-        XCTAssertTrue(olderRow.waitForExistence(timeout: 5))
-        XCTAssertTrue(newerRow.waitForExistence(timeout: 5))
-        XCTAssertTrue(previewRow.waitForExistence(timeout: 5))
-        XCTAssertLessThan(previewRow.frame.minY, newerRow.frame.minY)
-        XCTAssertLessThan(newerRow.frame.minY, olderRow.frame.minY)
-        let fullTextPredicate = NSPredicate(format: "label == %@", longMultilineText)
-        XCTAssertFalse(app.staticTexts.matching(fullTextPredicate).element.exists)
-    }
-
-    @MainActor
-    private func saveClip(_ text: String, in app: XCUIApplication) throws {
-        let newClipButton = app.buttons["new-clip-button"]
-        XCTAssertTrue(newClipButton.waitForExistence(timeout: 5))
-        newClipButton.tap()
-
-        let editor = app.textViews["clip-text-editor"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText(text)
-        app.buttons["save-clip-button"].tap()
-
-        XCTAssertTrue(app.descendants(matching: .any)["clip-history-list"].waitForExistence(timeout: 5))
+        UITestAssertions.assert(previewRow, appearsAbove: newerRow)
+        UITestAssertions.assert(newerRow, appearsAbove: olderRow)
+        history.assertFullTextLabelAbsent(UITestFixtures.History.longMultilineText)
     }
 }

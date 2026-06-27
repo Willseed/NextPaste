@@ -6,294 +6,173 @@
 //
 
 import XCTest
-#if os(macOS)
-import AppKit
-#endif
 
-final class ClipRowActionsUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testTappingRowCopiesTextAndShowsCopiedFeedback() throws {
-        let app = launchRowActionApp()
-        let text = "Copy this clip exactly"
-        setClipboardString("Before copy")
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
 
-        try saveClip(text, in: app)
-        assertClipRowIdentifierExists(in: app)
-        app.staticTexts[text].tap()
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClip(UITestFixtures.RowActions.copyTarget)
+        history.assertClipRowIdentifierExists()
+        row.tapRow(withText: UITestFixtures.RowActions.copyTarget)
 
-        let feedback = app.staticTexts["clip-copy-feedback"]
-        XCTAssertTrue(feedback.waitForExistence(timeout: 5))
-        XCTAssertEqual(feedback.accessibleText, "Copied")
-        XCTAssertEqual(clipboardString(), text)
-        XCTAssertTrue(app.staticTexts[text].exists)
-        XCTAssertTrue(waitForDisappearance(of: feedback, timeout: 3))
+        UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.copyTarget)
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyTarget].exists)
+        UITestAssertions.assertCopiedFeedbackDisappears(in: app, timeout: 3)
     }
 
     @MainActor
     func testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels() throws {
-        let app = launchRowActionApp()
-        let text = "Accessible row action clip"
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
 
-        try saveClip(text, in: app)
-        assertClipRowIdentifierExists(in: app)
+        try history.createTextClip(UITestFixtures.RowActions.accessibleAction)
+        history.assertClipRowIdentifierExists()
 
-        let copyButton = app.buttons["copy-clip-button"]
-        XCTAssertTrue(copyButton.waitForExistence(timeout: 5))
+        let copyButton = row.copyButton()
         XCTAssertTrue(copyButton.isHittable)
-        XCTAssertTrue(copyButton.accessibleText.localizedCaseInsensitiveContains("Copy"))
+        UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
         copyButton.tap()
-        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
+        UITestAssertions.assertCopiedFeedback(in: app)
 
-        let pinButton = revealPinAction(for: text, in: app)
+        let pinButton = row.revealPinAction(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertTrue(pinButton.isHittable)
-        XCTAssertTrue(pinButton.accessibleText.localizedCaseInsensitiveContains("Pin"))
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
 
-        let deleteButton = revealDeleteAction(for: text, in: app)
+        let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertTrue(deleteButton.isHittable)
-        XCTAssertTrue(deleteButton.accessibleText.localizedCaseInsensitiveContains("Delete"))
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
     }
 
     @MainActor
     func testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText() throws {
-        let app = launchRowActionApp(extraArguments: ["-simulate-clipboard-failure"])
-        let text = "Copy failure should preserve this clip"
+        let app = launchClipboardFailureApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
 
-        try saveClip(text, in: app)
-        assertClipRowIdentifierExists(in: app)
-        app.staticTexts[text].tap()
+        try history.createTextClip(UITestFixtures.RowActions.copyFailure)
+        history.assertClipRowIdentifierExists()
+        row.tapRow(withText: UITestFixtures.RowActions.copyFailure)
 
-        XCTAssertFalse(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 1))
-        XCTAssertTrue(app.staticTexts[text].exists)
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyFailure].exists)
     }
 
     @MainActor
     func testLeftSwipeDeleteRemovesOnlySelectedClip() throws {
-        let app = launchRowActionApp()
-        let clipToDelete = "Delete this row action clip"
-        let clipToKeep = "Keep this row action clip"
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
 
-        try saveClip(clipToDelete, in: app)
-        try saveClip(clipToKeep, in: app)
-        assertClipRowIdentifierExists(in: app)
+        try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
+        try history.createTextClip(UITestFixtures.RowActions.deleteCompanion)
+        history.assertClipRowIdentifierExists()
 
-        let deleteButton = revealDeleteAction(for: clipToDelete, in: app)
-        XCTAssertTrue(deleteButton.accessibleText.localizedCaseInsensitiveContains("Delete"))
+        let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.deleteTarget)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
         deleteButton.tap()
 
-        XCTAssertFalse(app.staticTexts[clipToDelete].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts[clipToKeep].exists)
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[UITestFixtures.RowActions.deleteTarget],
+            "Expected selected clip to be deleted",
+            timeout: 2
+        )
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.deleteCompanion].exists)
     }
 
     @MainActor
     func testRightSwipePinTogglesIconAndPinnedOrdering() throws {
-        let app = launchRowActionApp()
-        let olderPinTarget = "Older pin target clip"
-        let newerUnpinned = "Newer unpinned clip"
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
 
-        try saveClip(olderPinTarget, in: app)
-        try saveClip(newerUnpinned, in: app)
-        assertClipRowIdentifierExists(in: app)
+        try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
+        try history.createTextClip(UITestFixtures.RowActions.newerUnpinned)
+        history.assertClipRowIdentifierExists()
 
-        XCTAssertTrue(waitFor(app.staticTexts[newerUnpinned], toAppearAbove: app.staticTexts[olderPinTarget]))
-        let pinButton = revealPinAction(for: olderPinTarget, in: app)
-        XCTAssertTrue(pinButton.accessibleText.localizedCaseInsensitiveContains("Pin"))
+        let olderPinTarget = app.staticTexts[UITestFixtures.RowActions.olderPinTarget]
+        let newerUnpinned = app.staticTexts[UITestFixtures.RowActions.newerUnpinned]
+        UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
+        let pinButton = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
 
-        let pinnedIcon = app.descendants(matching: .any)["pinned-clip-icon"]
-        XCTAssertTrue(pinnedIcon.waitForExistence(timeout: 5))
-        XCTAssertTrue(waitFor(app.staticTexts[olderPinTarget], toAppearAbove: app.staticTexts[newerUnpinned]))
+        UITestAssertions.assertPinnedIconExists(in: app)
+        UITestAssertions.assert(olderPinTarget, appearsAbove: newerUnpinned)
 
-        _ = revealPinAction(for: olderPinTarget, in: app)
+        _ = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
         app.buttons["pin-clip-button"].tap()
 
-        XCTAssertTrue(waitForDisappearance(of: app.descendants(matching: .any)["pinned-clip-icon"]))
-        XCTAssertTrue(waitFor(app.staticTexts[newerUnpinned], toAppearAbove: app.staticTexts[olderPinTarget]))
+        UITestAssertions.assertPinnedIconDisappears(in: app)
+        UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
     }
 
     @MainActor
     func testRowActionsWorkWithLocalUITestingStore() throws {
-        let app = launchRowActionApp()
-        let clipToPinAndCopy = "Local-only pinned copy clip"
-        let clipToDelete = "Local-only delete clip"
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
 
-        setClipboardString("Before local-only copy")
-        try saveClip(clipToPinAndCopy, in: app)
-        try saveClip(clipToDelete, in: app)
-        assertClipRowIdentifierExists(in: app)
+        clipboard.setString(UITestFixtures.RowActions.beforeLocalOnlyCopy)
+        try history.createTextClip(UITestFixtures.RowActions.localOnlyPinnedCopy)
+        try history.createTextClip(UITestFixtures.RowActions.localOnlyDelete)
+        history.assertClipRowIdentifierExists()
 
-        app.staticTexts[clipToPinAndCopy].tap()
-        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
-        XCTAssertEqual(clipboardString(), clipToPinAndCopy)
+        row.tapRow(withText: UITestFixtures.RowActions.localOnlyPinnedCopy)
+        UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.localOnlyPinnedCopy)
 
-        _ = revealPinAction(for: clipToPinAndCopy, in: app)
+        _ = row.revealPinAction(for: UITestFixtures.RowActions.localOnlyPinnedCopy)
         app.buttons["pin-clip-button"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["pinned-clip-icon"].waitForExistence(timeout: 5))
-        XCTAssertTrue(waitFor(app.staticTexts[clipToPinAndCopy], toAppearAbove: app.staticTexts[clipToDelete]))
+        UITestAssertions.assertPinnedIconExists(in: app)
+        UITestAssertions.assert(
+            app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy],
+            appearsAbove: app.staticTexts[UITestFixtures.RowActions.localOnlyDelete]
+        )
 
-        _ = revealDeleteAction(for: clipToDelete, in: app)
+        _ = row.revealDeleteAction(for: UITestFixtures.RowActions.localOnlyDelete)
         app.buttons["delete-clip-button"].tap()
 
-        XCTAssertFalse(app.staticTexts[clipToDelete].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.staticTexts[clipToPinAndCopy].exists)
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[UITestFixtures.RowActions.localOnlyDelete],
+            "Expected local-only delete clip to be removed",
+            timeout: 2
+        )
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy].exists)
     }
 
     @MainActor
     func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
-        let app = UITestAppLauncher.launchAutoCaptureApp()
-        let autoCaptured = "Auto-captured row action clip"
-        let keepClip = "Keep local auto-captured companion"
+        let app = launchAutoCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
 
-        addTeardownBlock {
-            app.terminate()
-        }
+        clipboard.capture(UITestFixtures.RowActions.autoCapturedAction)
+        clipboard.capture(UITestFixtures.RowActions.autoCapturedCompanion)
 
-        setClipboardString(autoCaptured)
-        XCTAssertTrue(app.staticTexts[autoCaptured].waitForExistence(timeout: 5))
+        row.tapRow(withText: UITestFixtures.RowActions.autoCapturedAction)
+        UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.autoCapturedAction)
 
-        setClipboardString(keepClip)
-        XCTAssertTrue(app.staticTexts[keepClip].waitForExistence(timeout: 5))
-
-        app.staticTexts[autoCaptured].tap()
-        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
-        XCTAssertEqual(clipboardString(), autoCaptured)
-
-        _ = revealPinAction(for: autoCaptured, in: app)
+        _ = row.revealPinAction(for: UITestFixtures.RowActions.autoCapturedAction)
         app.buttons["pin-clip-button"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["pinned-clip-icon"].waitForExistence(timeout: 5))
+        UITestAssertions.assertPinnedIconExists(in: app)
 
-        _ = revealDeleteAction(for: keepClip, in: app)
+        _ = row.revealDeleteAction(for: UITestFixtures.RowActions.autoCapturedCompanion)
         app.buttons["delete-clip-button"].tap()
 
-        XCTAssertTrue(app.staticTexts[autoCaptured].exists)
-        XCTAssertFalse(app.staticTexts[keepClip].waitForExistence(timeout: 2))
-    }
-
-    @MainActor
-    private func launchRowActionApp(extraArguments: [String] = []) -> XCUIApplication {
-        let app = UITestAppLauncher.makeApp()
-        app.launchArguments.append(contentsOf: extraArguments)
-        app.launch()
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
-        addTeardownBlock {
-            app.terminate()
-        }
-        return app
-    }
-
-    @MainActor
-    private func saveClip(_ text: String, in app: XCUIApplication) throws {
-        let newClipButton = app.buttons["new-clip-button"]
-        XCTAssertTrue(newClipButton.waitForExistence(timeout: 5))
-        newClipButton.tap()
-
-        let editor = app.textViews["clip-text-editor"]
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
-        editor.tap()
-        editor.typeText(text)
-        app.buttons["save-clip-button"].tap()
-
-        XCTAssertTrue(app.descendants(matching: .any)["clip-history-list"].waitForExistence(timeout: 5))
-    }
-
-    private func assertClipRowIdentifierExists(in app: XCUIApplication) {
-        let rowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
-        let row = app.descendants(matching: .any).matching(rowPredicate).element
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-    }
-
-    private func revealDeleteAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.staticTexts[clipText]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        let button = app.buttons["delete-clip-button"]
-
-        for _ in 0..<3 {
-            drag(row, horizontallyBy: -0.4)
-            if button.waitForExistence(timeout: 1) {
-                return button
-            }
-        }
-
-        XCTFail("Delete action was not revealed for \(clipText)")
-        return button
-    }
-
-    private func revealPinAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.staticTexts[clipText]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        let button = app.buttons["pin-clip-button"]
-
-        for _ in 0..<3 {
-            drag(row, horizontallyBy: 0.4)
-            if button.waitForExistence(timeout: 1) {
-                return button
-            }
-        }
-
-        XCTFail("Pin action was not revealed for \(clipText)")
-        return button
-    }
-
-    private func drag(_ element: XCUIElement, horizontallyBy offset: CGFloat) {
-        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5 + offset, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: end)
-    }
-
-    private func waitFor(_ upperElement: XCUIElement, toAppearAbove lowerElement: XCUIElement, timeout: TimeInterval = 5) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if upperElement.exists, lowerElement.exists, upperElement.frame.minY < lowerElement.frame.minY {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-
-        return false
-    }
-
-    private func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval = 5) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if element.exists == false {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-
-        return false
-    }
-
-    private func setClipboardString(_ text: String) {
-#if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-#endif
-    }
-
-    private func clipboardString() -> String? {
-#if os(macOS)
-        NSPasteboard.general.string(forType: .string)
-#else
-        nil
-#endif
-    }
-}
-
-private extension XCUIElement {
-    var accessibleText: String {
-        if !label.isEmpty {
-            return label
-        }
-
-        return value as? String ?? ""
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.autoCapturedAction].exists)
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[UITestFixtures.RowActions.autoCapturedCompanion],
+            "Expected auto-captured companion to be removed",
+            timeout: 2
+        )
     }
 }

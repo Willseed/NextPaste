@@ -54,6 +54,7 @@ struct HistoryRobot {
         return self
     }
 
+    @discardableResult
     func historyList(
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
@@ -62,6 +63,7 @@ struct HistoryRobot {
         UITestAssertions.assertHistoryListExists(in: app, timeout: timeout, file: file, line: line)
     }
 
+    @discardableResult
     func historySurface(
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
@@ -76,6 +78,7 @@ struct HistoryRobot {
         )
     }
 
+    @discardableResult
     func singleColumnLayout(
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,

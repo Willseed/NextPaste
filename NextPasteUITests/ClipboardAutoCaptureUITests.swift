@@ -6,168 +6,93 @@
 //
 
 import XCTest
-#if os(macOS)
-import AppKit
-#endif
 
-final class ClipboardAutoCaptureUITests: XCTestCase {
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-    }
-
+final class ClipboardAutoCaptureUITests: UITestCase {
     @MainActor
     func testAutoCaptureRefreshesHistoryWithoutManualSave() throws {
         let app = launchAutoCaptureApp()
-        let capturedText = "Auto capture while foregrounded"
+        let clipboard = clipboardRobot(for: app)
 
-        setClipboardString(capturedText)
-
-        XCTAssertTrue(app.staticTexts[capturedText].waitForExistence(timeout: 2))
-        XCTAssertTrue(app.descendants(matching: .any)["clip-history-list"].exists)
+        clipboard.capture(UITestFixtures.ClipboardCapture.foreground, timeout: 2)
+        UITestAssertions.assertHistoryListExists(in: app, timeout: 0)
     }
 
     @MainActor
     func testAutoCaptureContinuesWhileBackgrounded() throws {
         let app = launchAutoCaptureApp()
-        let capturedText = "Auto capture while backgrounded"
+        let clipboard = clipboardRobot(for: app)
 
-        UITestAppLauncher.background(app)
-        setClipboardString(capturedText)
+        clipboard.background()
+        clipboard.setString(UITestFixtures.ClipboardCapture.backgrounded)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
 
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
+        clipboard.reactivateAndOpenMainWindow()
 
-        XCTAssertTrue(app.staticTexts[capturedText].waitForExistence(timeout: 2))
+        clipboard.waitForCapturedText(UITestFixtures.ClipboardCapture.backgrounded, timeout: 2)
     }
 
     @MainActor
     func testAutoCaptureContinuesWhileMinimized() throws {
         let app = launchAutoCaptureApp()
-        let capturedText = "Auto capture while minimized"
+        let clipboard = clipboardRobot(for: app)
 
-        UITestAppLauncher.minimize(app)
-        setClipboardString(capturedText)
+        clipboard.minimize()
+        clipboard.setString(UITestFixtures.ClipboardCapture.minimized)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
 
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
+        clipboard.reactivateAndOpenMainWindow()
 
-        XCTAssertTrue(app.staticTexts[capturedText].waitForExistence(timeout: 2))
+        clipboard.waitForCapturedText(UITestFixtures.ClipboardCapture.minimized, timeout: 2)
     }
 
     @MainActor
     func testDuplicateEmptyAndUnchangedClipboardStatesLeaveHistoryUnchanged() throws {
         let app = launchAutoCaptureApp()
-        let firstText = "Distinct clipboard value"
+        let clipboard = clipboardRobot(for: app)
+        let history = historyRobot(for: app)
 
-        setClipboardString(firstText)
-        XCTAssertTrue(app.staticTexts[firstText].waitForExistence(timeout: 2))
+        clipboard.capture(UITestFixtures.ClipboardCapture.distinctValue, timeout: 2)
 
-        let initialRowCount = clipRowCount(in: app)
-        setClipboardString("   \n\t  ")
+        let initialRowCount = history.clipRowCount()
+        clipboard.setString(UITestFixtures.ClipboardCapture.blankWhitespace)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
-        setClipboardString(firstText)
+        clipboard.setString(UITestFixtures.ClipboardCapture.distinctValue)
         RunLoop.current.run(until: Date().addingTimeInterval(1))
 
-        XCTAssertEqual(clipRowCount(in: app), initialRowCount)
+        XCTAssertEqual(history.clipRowCount(), initialRowCount)
     }
 
     @MainActor
     func testAutoCapturedClipUsesRedesignedRowPathForCopyDeleteAndPin() throws {
         let app = launchAutoCaptureApp()
-        let autoCaptured = "Auto captured redesigned action clip"
-        let keepClip = "Keep redesigned companion clip"
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
 
-        setClipboardString(autoCaptured)
-        XCTAssertTrue(app.staticTexts[autoCaptured].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["clipboard-row-surface"].waitForExistence(timeout: 5))
+        clipboard.capture(UITestFixtures.ClipboardCapture.redesignedAction)
+        UITestAssertions.assertExists(
+            app.descendants(matching: .any)["clipboard-row-surface"],
+            "Expected redesigned clipboard row surface"
+        )
 
-        setClipboardString(keepClip)
-        XCTAssertTrue(app.staticTexts[keepClip].waitForExistence(timeout: 5))
+        clipboard.capture(UITestFixtures.ClipboardCapture.redesignedCompanion)
 
-        app.buttons.matching(identifier: "copy-clip-button").firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["clip-copy-feedback"].waitForExistence(timeout: 5))
+        row.tapCopyButton()
+        UITestAssertions.assertCopiedFeedback(in: app)
 
-        let pinButton = revealPinAction(for: autoCaptured, in: app)
-        XCTAssertTrue(pinButton.accessibleText.localizedCaseInsensitiveContains("Pin"))
+        let pinButton = row.revealPinAction(for: UITestFixtures.ClipboardCapture.redesignedAction)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["pinned-clip-icon"].waitForExistence(timeout: 5))
+        UITestAssertions.assertPinnedIconExists(in: app)
 
-        let deleteButton = revealDeleteAction(for: keepClip, in: app)
-        XCTAssertTrue(deleteButton.accessibleText.localizedCaseInsensitiveContains("Delete"))
+        let deleteButton = row.revealDeleteAction(for: UITestFixtures.ClipboardCapture.redesignedCompanion)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
         deleteButton.tap()
 
-        XCTAssertTrue(app.staticTexts[autoCaptured].exists)
-        XCTAssertFalse(app.staticTexts[keepClip].waitForExistence(timeout: 2))
-    }
-
-    @MainActor
-    private func launchAutoCaptureApp() -> XCUIApplication {
-        let app = UITestAppLauncher.launchAutoCaptureApp()
-        addTeardownBlock {
-            app.terminate()
-        }
-        return app
-    }
-
-    private func clipRowCount(in app: XCUIApplication) -> Int {
-        let predicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
-        return app.descendants(matching: .any).matching(predicate).count
-    }
-
-    private func revealDeleteAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.staticTexts[clipText]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        let button = app.buttons["delete-clip-button"]
-
-        for _ in 0..<3 {
-            drag(row, horizontallyBy: -0.4)
-            if button.waitForExistence(timeout: 1) {
-                return button
-            }
-        }
-
-        XCTFail("Delete action was not revealed for \(clipText)")
-        return button
-    }
-
-    private func revealPinAction(for clipText: String, in app: XCUIApplication) -> XCUIElement {
-        let row = app.staticTexts[clipText]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
-        let button = app.buttons["pin-clip-button"]
-
-        for _ in 0..<3 {
-            drag(row, horizontallyBy: 0.4)
-            if button.waitForExistence(timeout: 1) {
-                return button
-            }
-        }
-
-        XCTFail("Pin action was not revealed for \(clipText)")
-        return button
-    }
-
-    private func drag(_ element: XCUIElement, horizontallyBy offset: CGFloat) {
-        let start = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
-        let end = element.coordinate(withNormalizedOffset: CGVector(dx: 0.5 + offset, dy: 0.5))
-        start.press(forDuration: 0.05, thenDragTo: end)
-    }
-
-    private func setClipboardString(_ text: String) {
-#if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-#endif
-    }
-}
-
-private extension XCUIElement {
-    var accessibleText: String {
-        if !label.isEmpty {
-            return label
-        }
-
-        return value as? String ?? ""
+        XCTAssertTrue(app.staticTexts[UITestFixtures.ClipboardCapture.redesignedAction].exists)
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[UITestFixtures.ClipboardCapture.redesignedCompanion],
+            "Expected companion clip to be deleted",
+            timeout: 2
+        )
     }
 }
