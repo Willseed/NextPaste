@@ -8,7 +8,7 @@
 
 ## Summary
 
-Extend the existing clipboard monitor so one polling path handles text and image clipboard payloads. Image payloads are captured first when the system clipboard exposes Apple-decodable raster image data; screenshots and copied images share this path. Valid image data up to 25 MB encoded size is decoded for validation and duplicate identity, stored full-resolution in app-private local file storage without recompression, represented in SwiftData by metadata/hash/local file references only, and displayed in history with capture-time generated local thumbnails. Image clips use `contentType = "image"`, support copy/delete/pin, copy back the preserved full image payload, and never transmit clipboard content off-device.
+Extend the existing clipboard monitor so one polling path handles text and image clipboard payloads. Image payloads are captured first when the system clipboard exposes Apple-decodable raster image data; screenshots and copied images share this path. Valid image data up to 25 MiB (26,214,400 bytes) encoded size is decoded for validation and duplicate identity, stored full-resolution in app-private local file storage without recompression, represented in SwiftData by metadata/hash/local file references only, and displayed in history with capture-time generated local thumbnails. Image clips use `contentType = "image"`, support copy/delete/pin, copy back the preserved full image payload, and never transmit clipboard content off-device.
 
 ## Technical Context
 
@@ -24,7 +24,7 @@ Extend the existing clipboard monitor so one polling path handles text and image
 
 **Project Type**: Single Xcode SwiftUI app with one app target, one Swift Testing unit target, and one XCTest UI test target.
 
-**Performance Goals**: Clipboard polling remains lightweight and bounded by the existing configurable interval. Capture handles only one changed clipboard payload per observed change count, rejects encoded image payloads over 25 MB before persistence, generates one bounded thumbnail during capture, and avoids full-image recompression.
+**Performance Goals**: Clipboard polling remains lightweight and bounded by the existing configurable interval. Capture handles only one changed clipboard payload per observed change count, rejects encoded image payloads over 25 MiB (26,214,400 bytes) before persistence, generates one bounded thumbnail during capture, and avoids full-image recompression.
 
 **Constraints**: Preserve existing text capture behavior and text row actions. Do not add OCR, AI analysis, CloudKit sync, third-party image libraries, analytics, remote transmission, manual image import, share extensions, shortcuts, startup login items, or image editing. Use Apple-native APIs only. UI changes must reuse the design system. SonarQube Project Health evidence is mandatory after implementation.
 
@@ -39,7 +39,7 @@ The existing `ClipboardMonitor` continues to observe pasteboard `changeCount` wh
 1. `ClipboardMonitor` detects a changed pasteboard count.
 2. `ClipboardPasteboardReader` returns a single prioritized `ClipboardPayload`: image first when usable image candidates exist, otherwise text.
 3. `ClipboardCaptureService` routes the payload through `captureClipboardPayload(_:observedAt:)` while keeping a compatibility text entry point for existing tests/manual save code.
-4. For image payloads, validation rejects missing data, unsupported type identifiers, decode failures, zero-sized images, and encoded payloads over 25 MB.
+4. For image payloads, validation rejects missing data, unsupported type identifiers, decode failures, zero-sized images, and encoded payloads over 25 MiB (26,214,400 bytes).
 5. Validation decodes the image with Apple-native APIs to stable pixel data and dimensions, then computes a duplicate identity from normalized decoded pixels plus width and height.
 6. If a SwiftData image clip with the same duplicate identity already exists, capture returns duplicate and does not write files.
 7. A local full-image file is written using the selected encoded pasteboard representation exactly as received, without recompression.

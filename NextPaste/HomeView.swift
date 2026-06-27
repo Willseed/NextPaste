@@ -5,6 +5,7 @@
 //  Created by pony on 2026/6/24.
 //
 
+import Foundation
 import SwiftData
 import SwiftUI
 #if os(macOS)
@@ -129,11 +130,30 @@ struct HomeView: View {
     }
 
     private func copyClip(_ clip: ClipItem) {
-        if ClipboardWriter.copy(clip.textContent) {
+        let didCopy: Bool
+        if clip.contentType == "image" {
+            didCopy = copyImageClip(clip)
+        } else {
+            didCopy = ClipboardWriter.copy(clip.textContent)
+        }
+
+        if didCopy {
             showCopyFeedback(for: clip.id)
         } else {
             clearCopyFeedback()
         }
+    }
+
+    private func copyImageClip(_ clip: ClipItem) -> Bool {
+        guard let imageFilename = clip.imageFilename,
+              let imageUTType = clip.imageUTType else {
+            return false
+        }
+
+        return ClipboardWriter.copyImage(
+            imageFilename: imageFilename,
+            typeIdentifier: imageUTType
+        )
     }
 
     private func showCopyFeedback(for clipID: UUID) {
@@ -191,12 +211,8 @@ struct HomeView: View {
 #endif
 
     private func deleteClip(_ clip: ClipItem) {
-        do {
-            modelContext.delete(clip)
-            try modelContext.save()
+        if ClipDeletionAction(modelContext: modelContext).delete(clip) {
             revealedRowAction = nil
-        } catch {
-            modelContext.rollback()
         }
     }
 
@@ -246,4 +262,73 @@ private enum RevealedRowAction: Equatable {
 #Preview {
     HomeView()
         .modelContainer(for: ClipItem.self, inMemory: true)
+}
+
+@MainActor
+struct ClipDeletionAction {
+    private let modelContext: ModelContext
+    private let imageFileStore: ImageClipFileStore
+
+    init(modelContext: ModelContext) {
+        self.init(modelContext: modelContext, imageFileStore: ImageClipFileStore())
+    }
+
+    init(modelContext: ModelContext, imageFileStore: ImageClipFileStore) {
+        self.modelContext = modelContext
+        self.imageFileStore = imageFileStore
+    }
+
+    @discardableResult
+    func delete(_ clip: ClipItem) -> Bool {
+        let imageAssetReference = ImageAssetReference(clip: clip)
+
+        do {
+            modelContext.delete(clip)
+            try modelContext.save()
+        } catch {
+            modelContext.rollback()
+            return false
+        }
+
+        removeImageAssetIfNeeded(imageAssetReference)
+        return true
+    }
+
+    private func removeImageAssetIfNeeded(_ imageAssetReference: ImageAssetReference?) {
+        guard let imageAssetReference else {
+            return
+        }
+
+        do {
+            try imageFileStore.removeImageAsset(
+                imageFilename: imageAssetReference.imageFilename,
+                thumbnailFilename: imageAssetReference.thumbnailFilename
+            )
+        } catch {
+            Self.reportImageCleanupFailure(error, for: imageAssetReference)
+        }
+    }
+
+    private static func reportImageCleanupFailure(_ error: Error, for imageAssetReference: ImageAssetReference) {
+        NSLog(
+            "NextPaste failed to remove image files for deleted clip asset %@: %@",
+            imageAssetReference.imageFilename,
+            String(describing: error)
+        )
+    }
+
+    private struct ImageAssetReference: Equatable {
+        let imageFilename: String
+        let thumbnailFilename: String?
+
+        init?(clip: ClipItem) {
+            guard clip.contentType == "image",
+                  let imageFilename = clip.imageFilename else {
+                return nil
+            }
+
+            self.imageFilename = imageFilename
+            self.thumbnailFilename = clip.thumbnailFilename
+        }
+    }
 }

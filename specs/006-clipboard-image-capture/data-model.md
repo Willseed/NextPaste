@@ -23,7 +23,7 @@
 | `imageHash` | `String?` | Yes | No | Hash of normalized decoded pixels plus dimensions; used for image deduplication. |
 | `imageWidth` | `Int?` | Yes | No | Must be greater than 0 after decode. |
 | `imageHeight` | `Int?` | Yes | No | Must be greater than 0 after decode. |
-| `imageByteCount` | `Int?` | Yes | No | Must be 1...26,214,400 bytes (25 MB) for captured image clips. |
+| `imageByteCount` | `Int?` | Yes | No | Must be 1...26,214,400 bytes (25 MiB) for captured image clips. |
 | `imageUTType` | `String?` | Yes | No | Stores selected pasteboard image type identifier for copy-back. |
 | `imageFilename` | `String?` | Yes | No | Relative filename for app-private full image data. Must not be an absolute path. |
 | `thumbnailFilename` | `String?` | Yes when generated | No | Relative filename for capture-time thumbnail. May be nil only when fallback icon is required. |
@@ -34,7 +34,7 @@
 - Text clips keep existing validation: accepted text only, `contentType = "text"`, duplicate text ignored, text content preserved.
 - Image clips require `contentType = "image"` and valid full-image file metadata before SwiftData save.
 - Image clips must not store full-resolution binary image data in SwiftData.
-- Image clips over 25 MB encoded size are rejected before persistence.
+- Image clips over 25 MiB (26,214,400 bytes) encoded size are rejected before persistence.
 - Image clips with invalid, corrupt, zero-dimension, unsupported, inaccessible, or empty payloads are rejected before persistence.
 - Duplicate image identity is based on normalized decoded pixels plus dimensions, not raw bytes or pasteboard change count.
 
@@ -64,7 +64,7 @@ On persistence failure after file writes, the written full image and thumbnail f
 | `fileExtension` | `String` | Derived from type identifier for app-private file naming. |
 | `width` | `Int` | Decoded image width. |
 | `height` | `Int` | Decoded image height. |
-| `byteCount` | `Int` | Encoded payload size, capped at 25 MB. |
+| `byteCount` | `Int` | Encoded payload size, capped at 25 MiB (26,214,400 bytes). |
 | `duplicateIdentity` | `ImageDuplicateIdentity` | Hash plus dimensions. |
 
 ## Value Object: ImageDuplicateIdentity

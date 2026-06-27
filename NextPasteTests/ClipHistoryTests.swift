@@ -49,6 +49,102 @@ struct ClipHistoryTests {
         #expect(clips.map(\.textContent) == ["Keep this clip"])
     }
 
+    @MainActor
+    @Test("row deletion removes image SwiftData record and associated files after save")
+    func rowDeletionRemovesImageRecordAndAssociatedFilesAfterSave() throws {
+        let fileManager = FileManager.default
+        let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "row-deletion-removes-image-files",
+            fileManager: fileManager
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root, fileManager: fileManager) }
+
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let imageFileStore = ImageClipFileStore(rootURL: root.rootURL, fileManager: fileManager)
+        let imageClipID = try #require(UUID(uuidString: "670039E1-DF05-4BD8-941E-8F70F4944B24"))
+        let fixture = ImageTestFixtures.png
+        let asset = try imageFileStore.persistImageAsset(
+            clipID: imageClipID,
+            sourceExtension: fixture.fileExtension,
+            fullImageData: fixture.data,
+            thumbnailData: ImageTestFixtures.screenshotStyle.data
+        )
+        let thumbnailURL = try #require(asset.thumbnailURL)
+        let imageClip = ClipItem.imageClip(
+            id: imageClipID,
+            imageHash: "sha256-row-delete-image",
+            imageWidth: fixture.width,
+            imageHeight: fixture.height,
+            imageByteCount: fixture.byteCount,
+            imageUTType: fixture.typeIdentifier,
+            imageFilename: asset.imageFilename,
+            thumbnailFilename: asset.thumbnailFilename,
+            thumbnailDescription: fixture.thumbnailDescription,
+            createdAt: Date(timeIntervalSince1970: 500)
+        )
+        let textClip = ClipItem(textContent: "Keep this text clip", createdAt: Date(timeIntervalSince1970: 600))
+
+        context.insert(imageClip)
+        context.insert(textClip)
+        try context.save()
+        #expect(fileManager.fileExists(atPath: asset.imageURL.path))
+        #expect(fileManager.fileExists(atPath: thumbnailURL.path))
+
+        #expect(ClipDeletionAction(modelContext: context, imageFileStore: imageFileStore).delete(imageClip))
+
+        let clips = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(clips.map(\.id) == [textClip.id])
+        #expect(fileManager.fileExists(atPath: asset.imageURL.path) == false)
+        #expect(fileManager.fileExists(atPath: thumbnailURL.path) == false)
+    }
+
+    @MainActor
+    @Test("row deletion keeps image files when deleting a text clip")
+    func rowDeletionKeepsImageFilesWhenDeletingTextClip() throws {
+        let fileManager = FileManager.default
+        let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "row-deletion-keeps-image-files-for-text",
+            fileManager: fileManager
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root, fileManager: fileManager) }
+
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let imageFileStore = ImageClipFileStore(rootURL: root.rootURL, fileManager: fileManager)
+        let imageClipID = try #require(UUID(uuidString: "9E2DC9E4-A576-4DDC-B596-0F840D49C177"))
+        let fixture = ImageTestFixtures.jpeg
+        let asset = try imageFileStore.persistImageAsset(
+            clipID: imageClipID,
+            sourceExtension: fixture.fileExtension,
+            fullImageData: fixture.data,
+            thumbnailData: ImageTestFixtures.png.data
+        )
+        let thumbnailURL = try #require(asset.thumbnailURL)
+        let textClip = ClipItem(textContent: "Delete text only", createdAt: Date(timeIntervalSince1970: 500))
+        let imageClip = ClipItem.imageClip(
+            id: imageClipID,
+            imageHash: "sha256-row-delete-keeps-image-files",
+            imageWidth: fixture.width,
+            imageHeight: fixture.height,
+            imageByteCount: fixture.byteCount,
+            imageUTType: fixture.typeIdentifier,
+            imageFilename: asset.imageFilename,
+            thumbnailFilename: asset.thumbnailFilename,
+            thumbnailDescription: fixture.thumbnailDescription,
+            createdAt: Date(timeIntervalSince1970: 600)
+        )
+
+        context.insert(textClip)
+        context.insert(imageClip)
+        try context.save()
+
+        #expect(ClipDeletionAction(modelContext: context, imageFileStore: imageFileStore).delete(textClip))
+
+        let clips = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(clips.map(\.id) == [imageClip.id])
+        #expect(fileManager.fileExists(atPath: asset.imageURL.path))
+        #expect(fileManager.fileExists(atPath: thumbnailURL.path))
+    }
+
     @Test("toggles pin state on one clip")
     func togglesPinStateOnOneClip() throws {
         let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))

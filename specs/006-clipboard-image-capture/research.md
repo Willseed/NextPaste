@@ -24,7 +24,7 @@
 
 **Alternatives considered**: Lossy compression over a threshold was rejected because it changes the full payload and complicates copy-back. Re-encoding everything as PNG was rejected because it recompresses/rewrites original data and can increase size.
 
-## Decision: Reject image payloads over 25 MB encoded size
+## Decision: Reject image payloads over 25 MiB (26,214,400 bytes) encoded size
 
 **Rationale**: A fixed encoded-size cap is testable and prevents unexpectedly large clipboard images from blocking capture, bloating local storage, or making UI tests flaky. The cap is applied before persistence.
 

@@ -13,7 +13,7 @@
 ### Session 2026-06-28
 
 - Q: Which clipboard image formats are supported first, and do screenshots and copied images use the same capture path? → A: Apple-decodable raster images; explicitly test PNG, JPEG, and screenshots; screenshots and copied images use the same capture path.
-- Q: How should full image data be stored locally, and what size or compression behavior applies? → A: App-private file storage for full image data; SwiftData stores metadata/hash/local reference; no full-image recompression; ignore images over 25 MB encoded data.
+- Q: How should full image data be stored locally, and what size or compression behavior applies? → A: App-private file storage for full image data; SwiftData stores metadata/hash/local reference; no full-image recompression; ignore images over 25 MiB (26,214,400 bytes) encoded data.
 - Q: What rule determines whether repeated image clipboard content is a duplicate? → A: Same decoded pixels and dimensions are duplicates; source format and metadata differences do not create new clips.
 - Q: How should thumbnails be generated and displayed for image clips? → A: Generate thumbnail at capture time; display aspect-fit, uncropped, in a fixed design-system thumbnail area; fallback icon only if thumbnail generation fails after valid capture.
 - Q: Should image clips support copy-back in this feature, and how should copy failure behave? → A: Yes: image clips copy the preserved full image back to the clipboard; copy failure leaves clipboard unchanged and must not show success feedback.
@@ -92,7 +92,7 @@ As a user, I want existing text clipboard capture and row actions to keep workin
 - **FR-006**: Full image data MUST be stored in app-private local file storage before any optional future synchronization or export behavior, while SwiftData-backed clip records store metadata, duplicate identity, and local image references.
 - **FR-007**: Clipboard image data MUST NOT be transmitted outside the device as part of this feature.
 - **FR-008**: The app MUST deduplicate repeated image clipboard content by comparing normalized decoded pixel content and dimensions, so source format or metadata differences do not create additional clips for the same visual image.
-- **FR-009**: The app MUST ignore unsupported, empty, invalid, inaccessible, or oversized image clipboard data without creating a clip; images over 25 MB of encoded image data are oversized for this feature.
+- **FR-009**: The app MUST ignore unsupported, empty, invalid, inaccessible, or oversized image clipboard data without creating a clip; images over 25 MiB (26,214,400 bytes) of encoded image data are oversized for this feature.
 - **FR-010**: The history list MUST refresh automatically after a new image clip is captured.
 - **FR-011**: Image clips MUST appear in the existing history list using the same ordering and pinning rules as other clips.
 - **FR-012**: Image clips MUST display a locally generated thumbnail in the history list using the shared design system; thumbnails MUST be generated during capture and displayed aspect-fit, uncropped, in a fixed thumbnail area.
@@ -125,7 +125,7 @@ As a user, I want existing text clipboard capture and row actions to keep workin
 
 - **SC-001**: In 100% of tested active, backgrounded, and minimized app states, copying a supported image or screenshot while NextPaste is running creates exactly one new image clip in history without pressing Save.
 - **SC-002**: In 100% of repeated-image tests, detecting the same decoded pixels and dimensions more than once creates no additional duplicate image clips, even when source format or metadata differs.
-- **SC-003**: In 100% of unsupported, empty, invalid, inaccessible, or over-25 MB image-data tests, no image clip is created and the existing history remains unchanged.
+- **SC-003**: In 100% of unsupported, empty, invalid, inaccessible, or over-25 MiB (26,214,400 bytes) image-data tests, no image clip is created and the existing history remains unchanged.
 - **SC-004**: In 100% of image-history UI tests for successful thumbnail generation, each captured image clip displays a visible, non-blank, uncropped thumbnail that identifies the captured visual content; fallback-icon behavior is tested only for valid captures whose thumbnail generation fails.
 - **SC-005**: Existing text clipboard auto-capture and text row-action regression tests continue to pass with unchanged user-visible behavior.
 - **SC-006**: Image clip copy, delete, and pin actions pass in automated tests; image copy places the preserved full image on the clipboard, while image copy failure leaves the clipboard unchanged and shows no success feedback.
@@ -137,7 +137,7 @@ As a user, I want existing text clipboard capture and row actions to keep workin
 - Supported image clipboard content includes Apple-decodable raster images exposed by the operating system clipboard while NextPaste is running; screenshots and copied images use one shared capture path.
 - The app only captures clipboard changes while its process is alive; automatic startup and capture after quit are outside this feature.
 - Duplicate detection treats repeated visual image content with the same decoded pixels and dimensions as the same clip; genuinely different screenshots, edited images, or copied images with different decoded pixels or dimensions are separate clips.
-- Full captured image payloads are preserved without recompression in app-private local file storage, and image clipboard data over 25 MB encoded size is ignored for this feature.
+- Full captured image payloads are preserved without recompression in app-private local file storage, and image clipboard data over 25 MiB (26,214,400 bytes) encoded size is ignored for this feature.
 - When a clipboard change includes usable image data plus alternate textual metadata, the capture result is one image clip.
 - Existing history ordering, pinning, deletion, and copy feedback conventions apply to image clips unless a requirement states otherwise.
 - Future synchronization, export, OCR, AI analysis, image editing, and manual import flows require separate specifications.

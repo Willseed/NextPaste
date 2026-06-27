@@ -17,7 +17,7 @@ Usable image data wins over alternate textual metadata on the same clipboard cha
 An image payload is capturable only when all of the following are true:
 
 - Encoded data is present and non-empty.
-- Encoded data is at most 25 MB.
+- Encoded data is at most 25 MiB (26,214,400 bytes).
 - The type is accepted by Apple-native image decoding.
 - Decoding yields non-zero width and height.
 - A normalized decoded-pixel duplicate identity can be computed.

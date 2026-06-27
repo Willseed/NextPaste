@@ -32,6 +32,23 @@ struct RowRobot {
     }
 
     @discardableResult
+    func tapImageRow(
+        withThumbnailDescription thumbnailDescription: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        let row = imageRow(
+            withThumbnailDescription: thumbnailDescription,
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        row.tap()
+        return self
+    }
+
+    @discardableResult
     func tapCopyButton(
         file: StaticString = #filePath,
         line: UInt = #line
@@ -56,8 +73,10 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealAction(
-            for: clipText,
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealAction(
+            on: row,
+            rowDescription: clipText,
             buttonIdentifier: "delete-clip-button",
             horizontalOffset: -0.4,
             actionName: "Delete",
@@ -71,9 +90,45 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealAction(
-            for: clipText,
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealAction(
+            on: row,
+            rowDescription: clipText,
             buttonIdentifier: "pin-clip-button",
+            horizontalOffset: 0.4,
+            actionName: "Pin",
+            file: file,
+            line: line
+        )
+    }
+
+    func revealImageDeleteAction(
+        forThumbnailDescription thumbnailDescription: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealAction(
+            on: row,
+            rowDescription: thumbnailDescription,
+            buttonIdentifier: UITestFixtures.ImageClipboard.Accessibility.deleteButtonIdentifier,
+            horizontalOffset: -0.4,
+            actionName: "Delete",
+            file: file,
+            line: line
+        )
+    }
+
+    func revealImagePinAction(
+        forThumbnailDescription thumbnailDescription: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealAction(
+            on: row,
+            rowDescription: thumbnailDescription,
+            buttonIdentifier: UITestFixtures.ImageClipboard.Accessibility.pinButtonIdentifier,
             horizontalOffset: 0.4,
             actionName: "Pin",
             file: file,
@@ -110,20 +165,48 @@ struct RowRobot {
         pin(clipText, file: file, line: line)
     }
 
+    private func textRow(
+        containing clipText: String,
+        file: StaticString,
+        line: UInt
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.staticTexts[clipText],
+            "Expected row containing \(clipText)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func imageRow(
+        withThumbnailDescription thumbnailDescription: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString,
+        line: UInt
+    ) -> XCUIElement {
+        let predicate = NSPredicate(
+            format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+            UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix,
+            thumbnailDescription
+        )
+        return UITestAssertions.assertExists(
+            app.descendants(matching: .any).matching(predicate).firstMatch,
+            "Expected image row containing \(thumbnailDescription)",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
     private func revealAction(
-        for clipText: String,
+        on row: XCUIElement,
+        rowDescription: String,
         buttonIdentifier: String,
         horizontalOffset: CGFloat,
         actionName: String,
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        let row = UITestAssertions.assertExists(
-            app.staticTexts[clipText],
-            "Expected row containing \(clipText)",
-            file: file,
-            line: line
-        )
         let button = app.buttons[buttonIdentifier]
 
         for _ in 0..<3 {
@@ -133,7 +216,7 @@ struct RowRobot {
             }
         }
 
-        XCTFail("\(actionName) action was not revealed for \(clipText)", file: file, line: line)
+        XCTFail("\(actionName) action was not revealed for \(rowDescription)", file: file, line: line)
         return button
     }
 

@@ -8,6 +8,11 @@
 import SwiftUI
 
 struct ClipRowView: View {
+    enum PresentationKind: Equatable {
+        case text
+        case image
+    }
+
     let clip: ClipItem
     let showsDeleteAction: Bool
     let showsPinAction: Bool
@@ -38,22 +43,41 @@ struct ClipRowView: View {
     }
 
     var body: some View {
-        ClipboardRow(
-            presentation: ClipboardRowPresentation(
-                clip: clip,
-                copyFeedback: copyFeedback,
-                interactionState: interactionState
-            ),
-            showsDeleteAction: showsDeleteAction,
-            showsPinAction: showsPinAction,
-            onCopy: onCopy,
-            onDelete: onDelete,
-            onTogglePin: onTogglePin
-        )
+        if Self.presentationKind(for: clip) == .image {
+            ImageClipboardRow(
+                presentation: ImageClipboardRowPresentation(
+                    clip: clip,
+                    copyFeedback: copyFeedback,
+                    interactionState: interactionState
+                ),
+                showsDeleteAction: showsDeleteAction,
+                showsPinAction: showsPinAction,
+                onCopy: onCopy,
+                onDelete: onDelete,
+                onTogglePin: onTogglePin
+            )
+        } else {
+            ClipboardRow(
+                presentation: ClipboardRowPresentation(
+                    clip: clip,
+                    copyFeedback: copyFeedback,
+                    interactionState: interactionState
+                ),
+                showsDeleteAction: showsDeleteAction,
+                showsPinAction: showsPinAction,
+                onCopy: onCopy,
+                onDelete: onDelete,
+                onTogglePin: onTogglePin
+            )
+        }
     }
 
     static func previewText(for clip: ClipItem) -> String {
         ClipboardRowPresentation.previewText(for: clip.textContent)
+    }
+
+    static func presentationKind(for clip: ClipItem) -> PresentationKind {
+        clip.contentType == "image" ? .image : .text
     }
 }
 

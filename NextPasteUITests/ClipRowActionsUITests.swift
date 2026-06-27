@@ -18,11 +18,19 @@ final class ClipRowActionsUITests: UITestCase {
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyTarget)
         history.assertClipRowIdentifierExists()
+        let textRowIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.copyTarget,
+            in: app
+        ).identifier
         row.tapRow(withText: UITestFixtures.RowActions.copyTarget)
 
         UITestAssertions.assertCopiedFeedback(in: app)
         XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.copyTarget)
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyTarget].exists)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.copyTarget, in: app).identifier,
+            textRowIdentifier
+        )
         UITestAssertions.assertCopiedFeedbackDisappears(in: app, timeout: 3)
     }
 
@@ -34,18 +42,22 @@ final class ClipRowActionsUITests: UITestCase {
 
         try history.createTextClip(UITestFixtures.RowActions.accessibleAction)
         history.assertClipRowIdentifierExists()
+        assertTextRowIdentifier(for: UITestFixtures.RowActions.accessibleAction, in: app)
 
         let copyButton = row.copyButton()
+        XCTAssertEqual(copyButton.identifier, "copy-clip-button")
         XCTAssertTrue(copyButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
         copyButton.tap()
         UITestAssertions.assertCopiedFeedback(in: app)
 
         let pinButton = row.revealPinAction(for: UITestFixtures.RowActions.accessibleAction)
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
         XCTAssertTrue(pinButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
 
         let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.accessibleAction)
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
         XCTAssertTrue(deleteButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
     }
@@ -54,14 +66,25 @@ final class ClipRowActionsUITests: UITestCase {
     func testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText() throws {
         let app = launchClipboardFailureApp()
         let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
 
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyFailure)
         history.assertClipRowIdentifierExists()
+        let textRowIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.copyFailure,
+            in: app
+        ).identifier
         row.tapRow(withText: UITestFixtures.RowActions.copyFailure)
 
         UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyFailure].exists)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.copyFailure, in: app).identifier,
+            textRowIdentifier
+        )
     }
 
     @MainActor
@@ -73,6 +96,14 @@ final class ClipRowActionsUITests: UITestCase {
         try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
         try history.createTextClip(UITestFixtures.RowActions.deleteCompanion)
         history.assertClipRowIdentifierExists()
+        let deleteTargetIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.deleteTarget,
+            in: app
+        ).identifier
+        let deleteCompanionIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.deleteCompanion,
+            in: app
+        ).identifier
 
         let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.deleteTarget)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
@@ -83,7 +114,16 @@ final class ClipRowActionsUITests: UITestCase {
             "Expected selected clip to be deleted",
             timeout: 2
         )
+        UITestAssertions.assertDoesNotExist(
+            app.descendants(matching: .any)[deleteTargetIdentifier],
+            "Expected deleted text row identifier to be removed",
+            timeout: 2
+        )
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.deleteCompanion].exists)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.deleteCompanion, in: app).identifier,
+            deleteCompanionIdentifier
+        )
     }
 
     @MainActor
@@ -95,6 +135,14 @@ final class ClipRowActionsUITests: UITestCase {
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
         try history.createTextClip(UITestFixtures.RowActions.newerUnpinned)
         history.assertClipRowIdentifierExists()
+        let olderPinTargetIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.olderPinTarget,
+            in: app
+        ).identifier
+        let newerUnpinnedIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.newerUnpinned,
+            in: app
+        ).identifier
 
         let olderPinTarget = app.staticTexts[UITestFixtures.RowActions.olderPinTarget]
         let newerUnpinned = app.staticTexts[UITestFixtures.RowActions.newerUnpinned]
@@ -105,12 +153,29 @@ final class ClipRowActionsUITests: UITestCase {
 
         UITestAssertions.assertPinnedIconExists(in: app)
         UITestAssertions.assert(olderPinTarget, appearsAbove: newerUnpinned)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
+            olderPinTargetIdentifier
+        )
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.newerUnpinned, in: app).identifier,
+            newerUnpinnedIdentifier
+        )
 
-        _ = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
-        app.buttons["pin-clip-button"].tap()
+        let unpinButton = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+        unpinButton.tap()
 
         UITestAssertions.assertPinnedIconDisappears(in: app)
         UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
+            olderPinTargetIdentifier
+        )
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.newerUnpinned, in: app).identifier,
+            newerUnpinnedIdentifier
+        )
     }
 
     @MainActor
@@ -124,14 +189,30 @@ final class ClipRowActionsUITests: UITestCase {
         try history.createTextClip(UITestFixtures.RowActions.localOnlyPinnedCopy)
         try history.createTextClip(UITestFixtures.RowActions.localOnlyDelete)
         history.assertClipRowIdentifierExists()
+        let localOnlyPinnedCopyIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.localOnlyPinnedCopy,
+            in: app
+        ).identifier
+        let localOnlyDeleteIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.localOnlyDelete,
+            in: app
+        ).identifier
 
         row.tapRow(withText: UITestFixtures.RowActions.localOnlyPinnedCopy)
         UITestAssertions.assertCopiedFeedback(in: app)
         XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.localOnlyPinnedCopy)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.localOnlyPinnedCopy, in: app).identifier,
+            localOnlyPinnedCopyIdentifier
+        )
 
         _ = row.revealPinAction(for: UITestFixtures.RowActions.localOnlyPinnedCopy)
         app.buttons["pin-clip-button"].tap()
         UITestAssertions.assertPinnedIconExists(in: app)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.localOnlyPinnedCopy, in: app).identifier,
+            localOnlyPinnedCopyIdentifier
+        )
         UITestAssertions.assert(
             app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy],
             appearsAbove: app.staticTexts[UITestFixtures.RowActions.localOnlyDelete]
@@ -145,7 +226,42 @@ final class ClipRowActionsUITests: UITestCase {
             "Expected local-only delete clip to be removed",
             timeout: 2
         )
+        UITestAssertions.assertDoesNotExist(
+            app.descendants(matching: .any)[localOnlyDeleteIdentifier],
+            "Expected local-only delete row identifier to be removed",
+            timeout: 2
+        )
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy].exists)
+    }
+
+    @MainActor
+    @discardableResult
+    private func assertTextRowIdentifier(
+        for text: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let rowPredicate = NSPredicate(
+            format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
+            "clip-row-",
+            text
+        )
+        let row = UITestAssertions.assertExists(
+            app.descendants(matching: .any).matching(rowPredicate).firstMatch,
+            "Expected text row for \(text) to keep the clip-row identifier",
+            file: file,
+            line: line
+        )
+        XCTAssertFalse(
+            row.identifier.hasPrefix(UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix),
+            "Expected text row not to use image row identifier routing",
+            file: file,
+            line: line
+        )
+        UITestAssertions.assertAccessibleTextContains(row, "Clipboard clip", file: file, line: line)
+        UITestAssertions.assertAccessibleTextContains(row, text, file: file, line: line)
+        return row
     }
 
     @MainActor
@@ -156,14 +272,30 @@ final class ClipRowActionsUITests: UITestCase {
 
         clipboard.capture(UITestFixtures.RowActions.autoCapturedAction)
         clipboard.capture(UITestFixtures.RowActions.autoCapturedCompanion)
+        let autoCapturedActionIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.autoCapturedAction,
+            in: app
+        ).identifier
+        let autoCapturedCompanionIdentifier = assertTextRowIdentifier(
+            for: UITestFixtures.RowActions.autoCapturedCompanion,
+            in: app
+        ).identifier
 
         row.tapRow(withText: UITestFixtures.RowActions.autoCapturedAction)
         UITestAssertions.assertCopiedFeedback(in: app)
         XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.autoCapturedAction)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.autoCapturedAction, in: app).identifier,
+            autoCapturedActionIdentifier
+        )
 
         _ = row.revealPinAction(for: UITestFixtures.RowActions.autoCapturedAction)
         app.buttons["pin-clip-button"].tap()
         UITestAssertions.assertPinnedIconExists(in: app)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.autoCapturedAction, in: app).identifier,
+            autoCapturedActionIdentifier
+        )
 
         _ = row.revealDeleteAction(for: UITestFixtures.RowActions.autoCapturedCompanion)
         app.buttons["delete-clip-button"].tap()
@@ -172,6 +304,11 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertDoesNotExist(
             app.staticTexts[UITestFixtures.RowActions.autoCapturedCompanion],
             "Expected auto-captured companion to be removed",
+            timeout: 2
+        )
+        UITestAssertions.assertDoesNotExist(
+            app.descendants(matching: .any)[autoCapturedCompanionIdentifier],
+            "Expected auto-captured companion row identifier to be removed",
             timeout: 2
         )
     }

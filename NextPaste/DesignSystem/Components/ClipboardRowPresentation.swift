@@ -187,11 +187,145 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
     let thumbnailDescription: String
     let metadata: String
     let isPinned: Bool
-    let copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil
-    let interactionState: ClipboardRowPresentation.InteractionState = .normal
-    let thumbnailSymbolName: String = DesignTokens.Icons.image
+    let copyFeedback: ClipboardRowPresentation.CopyFeedback?
+    let interactionState: ClipboardRowPresentation.InteractionState
+    let thumbnailSymbolName: String
+    let thumbnailFilename: String?
+    let usesFallbackIcon: Bool
+    let rowAccessibilityIdentifier: String
+    let thumbnailAccessibilityIdentifier: String
+    let accessibilityLabel: String
+    let accessibilityValue: String
+
+    init(
+        id: UUID,
+        thumbnailDescription: String,
+        metadata: String,
+        isPinned: Bool,
+        thumbnailFilename: String? = nil,
+        copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil,
+        interactionState: ClipboardRowPresentation.InteractionState = .normal,
+        thumbnailSymbolName: String = DesignTokens.Icons.image
+    ) {
+        self.id = id
+        self.thumbnailDescription = thumbnailDescription
+        self.metadata = metadata
+        self.isPinned = isPinned
+        self.copyFeedback = copyFeedback
+        self.interactionState = interactionState
+        self.thumbnailSymbolName = thumbnailSymbolName
+        self.thumbnailFilename = thumbnailFilename
+        usesFallbackIcon = thumbnailFilename == nil
+        rowAccessibilityIdentifier = Self.rowAccessibilityIdentifier(for: id)
+        thumbnailAccessibilityIdentifier = Self.thumbnailAccessibilityIdentifier
+        accessibilityLabel = Self.accessibilityLabel(
+            id: id,
+            thumbnailDescription: thumbnailDescription,
+            metadata: metadata
+        )
+        accessibilityValue = Self.accessibilityValue(
+            metadata: metadata,
+            thumbnailFilename: thumbnailFilename,
+            usesFallbackIcon: usesFallbackIcon,
+            pinState: isPinned ? .pinned : .unpinned,
+            copyFeedback: copyFeedback,
+            interactionState: interactionState
+        )
+    }
+
+    init(
+        clip: ClipItem,
+        copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil,
+        interactionState: ClipboardRowPresentation.InteractionState = .normal
+    ) {
+        self.init(
+            id: clip.id,
+            thumbnailDescription: clip.thumbnailDescription ?? "Image clipboard clip",
+            metadata: Self.metadata(for: clip),
+            isPinned: clip.isPinned,
+            thumbnailFilename: clip.thumbnailFilename,
+            copyFeedback: copyFeedback,
+            interactionState: interactionState
+        )
+    }
 
     var pinState: ClipboardRowPresentation.PinState {
         isPinned ? .pinned : .unpinned
+    }
+
+    private static func metadata(for clip: ClipItem) -> String {
+        guard let width = clip.imageWidth, let height = clip.imageHeight else {
+            return "Image"
+        }
+
+        return "\(width) x \(height) \(formatLabel(for: clip))"
+    }
+
+    private static let thumbnailAccessibilityIdentifier = "image-clip-thumbnail"
+
+    private static func rowAccessibilityIdentifier(for id: UUID) -> String {
+        "image-clip-row-\(id.uuidString)"
+    }
+
+    private static func accessibilityLabel(
+        id: UUID,
+        thumbnailDescription: String,
+        metadata: String
+    ) -> String {
+        "Image clip \(id.uuidString), \(thumbnailDescription), \(metadata)"
+    }
+
+    private static func accessibilityValue(
+        metadata: String,
+        thumbnailFilename: String?,
+        usesFallbackIcon: Bool,
+        pinState: ClipboardRowPresentation.PinState,
+        copyFeedback: ClipboardRowPresentation.CopyFeedback?,
+        interactionState: ClipboardRowPresentation.InteractionState
+    ) -> String {
+        let thumbnailState: String
+        if let thumbnailFilename {
+            thumbnailState = "Thumbnail file \(thumbnailFilename)"
+        } else if usesFallbackIcon {
+            thumbnailState = "Fallback icon"
+        } else {
+            thumbnailState = "Thumbnail unavailable"
+        }
+
+        return [
+            metadata,
+            thumbnailState,
+            pinState.accessibilityLabel,
+            copyFeedback?.accessibilityLabel,
+            interactionState.accessibilityLabel
+        ]
+        .compactMap { $0 }
+        .joined(separator: ", ")
+    }
+
+    private static func formatLabel(for clip: ClipItem) -> String {
+        let rawType = (clip.imageUTType ?? clip.imageFilename ?? "").lowercased()
+
+        if rawType.contains("jpeg") || rawType.contains("jpg") {
+            return "JPEG"
+        }
+
+        if rawType.contains("png") {
+            return "PNG"
+        }
+
+        if rawType.contains("tiff") || rawType.contains("tif") {
+            return "TIFF"
+        }
+
+        if rawType.contains("heic") {
+            return "HEIC"
+        }
+
+        if rawType.contains("heif") {
+            return "HEIF"
+        }
+
+        return "IMAGE"
     }
 }

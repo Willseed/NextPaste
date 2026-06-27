@@ -61,7 +61,7 @@ final class ClipboardMonitor {
         }
 
         lastObservedChangeCount = changeCount
-        _ = captureService.captureClipboardText(reader.currentString(), observedAt: now())
+        _ = captureService.captureClipboardPayload(reader.currentPayload(), observedAt: now())
     }
 }
 
