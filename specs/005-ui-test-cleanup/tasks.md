@@ -95,7 +95,7 @@
 
 **Purpose**: Keep planning docs accurate for future validation runs.
 
-- [ ] T029 [FR-013, SC-004] Update `specs/005-ui-test-cleanup/quickstart.md` if UI test commands, Sonar commands, accepted evidence types, or `specs/005-ui-test-cleanup/sonar-evidence.md` recording steps change during implementation
+- [X] T029 [FR-013, SC-004] Update `specs/005-ui-test-cleanup/quickstart.md` if UI test commands, Sonar commands, accepted evidence types, or `specs/005-ui-test-cleanup/sonar-evidence.md` recording steps change during implementation
 
 ---
 
