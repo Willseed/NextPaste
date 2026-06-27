@@ -134,13 +134,13 @@
 
 **Purpose**: Apply final consistency, accessibility, privacy/offline, and validation work across the completed feature.
 
-- [ ] T046 [P] Replace remaining hard-coded brand colors, major spacing, radii, typography roles, and animation timings in NextPaste/HomeView.swift and NextPaste/ClipRowView.swift with design-system tokens
-- [ ] T047 [P] Audit NextPaste/DesignSystem/Components/ClipboardRow.swift, NextPaste/DesignSystem/Components/ImageClipboardRow.swift, and NextPaste/DesignSystem/Components/Badge.swift for no colorful populated-row backgrounds and no decorative row illustrations
-- [ ] T048 [P] Audit NextPaste/DesignSystem/Components/AppToolbar.swift and NextPaste/HomeView.swift for no OCR UI, AI UI, CloudKit UI, sync indicators, advanced settings beyond the existing Settings opener/non-blocking placeholder, third-party UI frameworks, or telemetry
-- [ ] T049 Update specs/004-visual-identity-system/quickstart.md if implementation-specific identifiers or manual validation commands change
-- [ ] T050 Run full macOS validation command from specs/004-visual-identity-system/quickstart.md for NextPaste.xcodeproj and resolve failures in touched files
-- [ ] T051 Run manual Light Mode, Dark Mode, high-contrast, increased text size, keyboard, VoiceOver, and Reduce Motion checks documented in specs/004-visual-identity-system/quickstart.md
-- [ ] T052 Ensure no third-party dependencies, asset packs, bundled/licensed font files, or generated network/telemetry UI were added by reviewing NextPaste.xcodeproj/project.pbxproj and NextPaste/Assets.xcassets
+- [X] T046 [P] Replace remaining hard-coded brand colors, major spacing, radii, typography roles, and animation timings in NextPaste/HomeView.swift and NextPaste/ClipRowView.swift with design-system tokens
+- [X] T047 [P] Audit NextPaste/DesignSystem/Components/ClipboardRow.swift, NextPaste/DesignSystem/Components/ImageClipboardRow.swift, and NextPaste/DesignSystem/Components/Badge.swift for no colorful populated-row backgrounds and no decorative row illustrations
+- [X] T048 [P] Audit NextPaste/DesignSystem/Components/AppToolbar.swift and NextPaste/HomeView.swift for no OCR UI, AI UI, CloudKit UI, sync indicators, advanced settings beyond the existing Settings opener/non-blocking placeholder, third-party UI frameworks, or telemetry
+- [X] T049 Update specs/004-visual-identity-system/quickstart.md if implementation-specific identifiers or manual validation commands change
+- [X] T050 Run full macOS validation command from specs/004-visual-identity-system/quickstart.md for NextPaste.xcodeproj and resolve failures in touched files
+- [X] T051 Run manual Light Mode, Dark Mode, high-contrast, increased text size, keyboard, VoiceOver, and Reduce Motion checks documented in specs/004-visual-identity-system/quickstart.md
+- [X] T052 Ensure no third-party dependencies, asset packs, bundled/licensed font files, or generated network/telemetry UI were added by reviewing NextPaste.xcodeproj/project.pbxproj and NextPaste/Assets.xcassets
 
 ---
 
