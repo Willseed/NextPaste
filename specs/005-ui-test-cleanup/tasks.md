@@ -22,15 +22,15 @@
 
 **Purpose**: Capture the baseline and create the shared Robot, fixture, assertion, and base setup layer.
 
-- [ ] T001 [FR-007, FR-014, FR-018, SC-001] Run the focused pre-refactor UI characterization command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
-- [ ] T002 [FR-013, FR-018, SC-004] Capture the duplicate-helper baseline using the manual duplicate-pattern query in `specs/005-ui-test-cleanup/quickstart.md` against `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
-- [ ] T003 [FR-015, FR-017, SC-005] Review helper boundaries and behavior parity expectations in `specs/005-ui-test-cleanup/contracts/ui-test-helper-contracts.md` and `specs/005-ui-test-cleanup/contracts/behavior-parity-contracts.md` before creating `NextPasteUITests/UITestCase.swift`
-- [ ] T004 [P] [FR-002, FR-015, FR-017, SC-005] Create fixture catalog values for all scoped scenarios in `NextPasteUITests/UITestFixtures.swift`
-- [ ] T005 [P] [FR-006, FR-009, FR-017, SC-005, SC-007] Create shared existence, absence, accessible-text, feedback, ordering, action-label, and visual-state assertion helpers in `NextPasteUITests/UITestAssertions.swift`
-- [ ] T006 [P] [FR-003, FR-009, FR-015, FR-017, SC-003, SC-005] Create history creation, history list, row lookup, row count, preview, and row-order Robot operations in `NextPasteUITests/HistoryRobot.swift`
-- [ ] T007 [P] [FR-004, FR-009, FR-015, FR-017, SC-003, SC-005] Create macOS pasteboard, auto-capture wait, background, minimize, reactivate, and main-window recovery Robot operations in `NextPasteUITests/ClipboardRobot.swift`
-- [ ] T008 [P] [FR-005, FR-009, FR-015, FR-017, SC-003, SC-005] Create copy, explicit copy-button, reveal pin, reveal delete, pin, unpin, delete, and bounded row-drag Robot operations in `NextPasteUITests/RowRobot.swift`
-- [ ] T009 [FR-001, FR-009, FR-015, FR-017, SC-002, SC-005] Create shared base UI test launch, teardown, Robot factory, and clipboard-failure launch helpers in `NextPasteUITests/UITestCase.swift`
+- [X] T001 [FR-007, FR-014, FR-018, SC-001] Run the focused pre-refactor UI characterization command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
+- [X] T002 [FR-013, FR-018, SC-004] Capture the duplicate-helper baseline using the manual duplicate-pattern query in `specs/005-ui-test-cleanup/quickstart.md` against `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
+- [X] T003 [FR-015, FR-017, SC-005] Review helper boundaries and behavior parity expectations in `specs/005-ui-test-cleanup/contracts/ui-test-helper-contracts.md` and `specs/005-ui-test-cleanup/contracts/behavior-parity-contracts.md` before creating `NextPasteUITests/UITestCase.swift`
+- [X] T004 [P] [FR-002, FR-015, FR-017, SC-005] Create fixture catalog values for all scoped scenarios in `NextPasteUITests/UITestFixtures.swift`
+- [X] T005 [P] [FR-006, FR-009, FR-017, SC-005, SC-007] Create shared existence, absence, accessible-text, feedback, ordering, action-label, and visual-state assertion helpers in `NextPasteUITests/UITestAssertions.swift`
+- [X] T006 [P] [FR-003, FR-009, FR-015, FR-017, SC-003, SC-005] Create history creation, history list, row lookup, row count, preview, and row-order Robot operations in `NextPasteUITests/HistoryRobot.swift`
+- [X] T007 [P] [FR-004, FR-009, FR-015, FR-017, SC-003, SC-005] Create macOS pasteboard, auto-capture wait, background, minimize, reactivate, and main-window recovery Robot operations in `NextPasteUITests/ClipboardRobot.swift`
+- [X] T008 [P] [FR-005, FR-009, FR-015, FR-017, SC-003, SC-005] Create copy, explicit copy-button, reveal pin, reveal delete, pin, unpin, delete, and bounded row-drag Robot operations in `NextPasteUITests/RowRobot.swift`
+- [X] T009 [FR-001, FR-009, FR-015, FR-017, SC-002, SC-005] Create shared base UI test launch, teardown, Robot factory, and clipboard-failure launch helpers in `NextPasteUITests/UITestCase.swift`
 
 **Checkpoint**: Shared helpers exist under `NextPasteUITests/` and no scoped scenario file has been refactored before the baseline is captured.
 
