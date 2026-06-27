@@ -80,12 +80,14 @@ Use the project or CI Sonar command when available. If the environment provides 
 sonar-scanner -Dsonar.projectBaseDir="$(pwd)"
 ```
 
-Accepted evidence:
+A feature is NOT complete until the SonarQube Project Health Gate has been verified. Source inspection is diagnostic only; it may help investigate findings, but it is not accepted completion evidence and cannot substitute for the gate.
 
-- SonarCloud or SonarQube report URL showing zero unresolved feature-introduced issues.
-- Sonar dashboard screenshot path.
-- CI artifact URL/path containing the Project Health result.
-- Local report output.
-- If Sonar cannot run locally, a recorded note naming the unavailable command/config plus source-level evidence that no new feature-introduced Sonar issues remain, pending CI/project Sonar confirmation.
+Accepted completion evidence:
+
+- SonarQube dashboard
+- SonarCloud dashboard
+- CI artifact
+- Local Sonar report
+- Dashboard screenshot
 
 Completion requires evidence that Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, and New Code duplication meet the project gate or have documented false-positive justification.
