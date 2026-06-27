@@ -84,8 +84,8 @@
 
 **Purpose**: Persist the hard-gate evidence in an explicit reviewable artifact.
 
-- [ ] T027 [FR-013, SC-004] Create or update `specs/005-ui-test-cleanup/sonar-evidence.md` with one accepted evidence type: SonarCloud/SonarQube report URL, Sonar screenshot path, CI artifact URL/path showing duplicated-lines reduction, or local/manual comparison note if Sonar cannot run locally
-- [ ] T028 [FR-013, SC-004] Verify `specs/005-ui-test-cleanup/sonar-evidence.md` names the baseline, post-refactor result, evidence type, and scoped paths under `NextPasteUITests/`
+- [X] T027 [FR-013, SC-004] Create or update `specs/005-ui-test-cleanup/sonar-evidence.md` with one accepted evidence type: SonarCloud/SonarQube report URL, Sonar screenshot path, CI artifact URL/path showing duplicated-lines reduction, or local/manual comparison note if Sonar cannot run locally
+- [X] T028 [FR-013, SC-004] Verify `specs/005-ui-test-cleanup/sonar-evidence.md` names the baseline, post-refactor result, evidence type, and scoped paths under `NextPasteUITests/`
 
 **Checkpoint**: Hard Sonar duplicate-code gate has a reviewable evidence record.
 
