@@ -34,17 +34,17 @@
 
 ### Tests for Foundational Contracts
 
-- [ ] T006 [P] Write failing token contract tests for required palette hex intents, spacing scale, radii, typography roles with system Inter-if-available fallback to -apple-system/SF Pro and no bundled licensed fonts, icon names, and motion durations in NextPasteTests/DesignTokenTests.swift
-- [ ] T007 [P] Write failing theme contract tests for light, dark, high-contrast light, and high-contrast dark semantic roles with no pure-white full-screen canvas in NextPasteTests/ThemeContractTests.swift
-- [ ] T008 [P] Write failing presentation tests for preview normalization, copy feedback state, pinned state, and image-row metadata inputs in NextPasteTests/ClipboardRowPresentationTests.swift
+- [X] T006 [P] Write failing token contract tests for required palette hex intents, spacing scale, radii, typography roles with system Inter-if-available fallback to -apple-system/SF Pro and no bundled licensed fonts, icon names, and motion durations in NextPasteTests/DesignTokenTests.swift
+- [X] T007 [P] Write failing theme contract tests for light, dark, high-contrast light, and high-contrast dark semantic roles with no pure-white full-screen canvas in NextPasteTests/ThemeContractTests.swift
+- [X] T008 [P] Write failing presentation tests for preview normalization, copy feedback state, pinned state, and image-row metadata inputs in NextPasteTests/ClipboardRowPresentationTests.swift
 
 ### Implementation for Foundational Contracts
 
-- [ ] T009 Implement centralized color, typography (use system Inter if available, otherwise fall back to -apple-system/SF Pro without bundling licensed fonts), spacing, radius, icon, and animation token types in NextPaste/DesignSystem/Theme/DesignTokens.swift
-- [ ] T010 Implement warm Light Mode, Dark Mode, high-contrast light, and high-contrast dark semantic theme mappings in NextPaste/DesignSystem/Theme/AppTheme.swift
-- [ ] T011 Implement SwiftUI environment keys and reduced-motion-aware animation access in NextPaste/DesignSystem/Theme/ThemeEnvironment.swift
-- [ ] T012 Implement reusable clipboard preview and row presentation helpers without SwiftData ownership in NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift
-- [ ] T013 Update focused unit tests to use the new presentation helpers while preserving existing preview and sorting expectations in NextPasteTests/ClipHistoryTests.swift
+- [X] T009 Implement centralized color, typography (use system Inter if available, otherwise fall back to -apple-system/SF Pro without bundling licensed fonts), spacing, radius, icon, and animation token types in NextPaste/DesignSystem/Theme/DesignTokens.swift
+- [X] T010 Implement warm Light Mode, Dark Mode, high-contrast light, and high-contrast dark semantic theme mappings in NextPaste/DesignSystem/Theme/AppTheme.swift
+- [X] T011 Implement SwiftUI environment keys and reduced-motion-aware animation access in NextPaste/DesignSystem/Theme/ThemeEnvironment.swift
+- [X] T012 Implement reusable clipboard preview and row presentation helpers without SwiftData ownership in NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift
+- [X] T013 Update focused unit tests to use the new presentation helpers while preserving existing preview and sorting expectations in NextPasteTests/ClipHistoryTests.swift
 
 **Checkpoint**: Token, theme, motion, icon, accessibility-facing presentation, and preview contracts are ready for story work.
 

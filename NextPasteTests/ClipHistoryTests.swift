@@ -136,7 +136,7 @@ struct ClipHistoryTests {
         let originalText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)
         let clip = ClipItem(textContent: originalText, createdAt: Date(timeIntervalSince1970: 300))
 
-        let preview = ClipRowView.previewText(for: clip)
+        let preview = ClipboardRowPresentation.previewText(for: clip.textContent)
 
         #expect(preview == String(repeating: "A", count: 60) + " " + String(repeating: "B", count: 59) + "...")
         #expect(preview.count == 123)
@@ -149,7 +149,7 @@ struct ClipHistoryTests {
         let originalText = String(repeating: "C", count: 120)
         let clip = ClipItem(textContent: originalText, createdAt: Date(timeIntervalSince1970: 400))
 
-        #expect(ClipRowView.previewText(for: clip) == originalText)
+        #expect(ClipboardRowPresentation.previewText(for: clip.textContent) == originalText)
     }
 
     @MainActor

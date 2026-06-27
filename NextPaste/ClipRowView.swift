@@ -73,15 +73,7 @@ struct ClipRowView: View {
     }
 
     static func previewText(for clip: ClipItem) -> String {
-        let normalizedText = clip.textContent
-            .components(separatedBy: .newlines)
-            .joined(separator: " ")
-
-        guard normalizedText.count > 120 else {
-            return normalizedText
-        }
-
-        return String(normalizedText.prefix(120)) + "..."
+        ClipboardRowPresentation.previewText(for: clip.textContent)
     }
 }
 
