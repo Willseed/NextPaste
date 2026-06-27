@@ -54,14 +54,14 @@
 
 **Purpose**: Prove every existing scenario intent and user-observable outcome remains covered.
 
-- [ ] T015 [US1] [FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused HistoryList UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`
-- [ ] T016 [US2] [FR-004, FR-006, FR-007, FR-012, FR-014, FR-018, SC-001, SC-006] Run focused ClipboardAutoCapture UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/ClipboardAutoCaptureUITests.swift`
-- [ ] T017 [US2] [FR-004, FR-005, FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused ClipRowActions UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/ClipRowActionsUITests.swift`
-- [ ] T018 [US3] [FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused VisualIdentity UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/VisualIdentityUITests.swift`
-- [ ] T019 [FR-007, FR-012, FR-014, FR-018, SC-001, SC-006] Run the combined four-class focused behavior-parity command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
-- [ ] T020 [FR-007, FR-014, FR-018, SC-001, SC-006] Run the full UI test target command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests`
-- [ ] T021 [FR-007, FR-011, FR-014, SC-001, SC-006] Run the full app regression command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPaste.xcodeproj`
-- [ ] T022 [FR-010, FR-011, FR-016, SC-006] Verify no production app diff exists, or that any production change is a minimal non-user-facing UI-testing-gated hook, by reviewing `NextPaste/` and `specs/005-ui-test-cleanup/quickstart.md`
+- [X] T015 [US1] [FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused HistoryList UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`
+- [X] T016 [US2] [FR-004, FR-006, FR-007, FR-012, FR-014, FR-018, SC-001, SC-006] Run focused ClipboardAutoCapture UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/ClipboardAutoCaptureUITests.swift`
+- [X] T017 [US2] [FR-004, FR-005, FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused ClipRowActions UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/ClipRowActionsUITests.swift`
+- [X] T018 [US3] [FR-006, FR-007, FR-014, FR-018, SC-001, SC-006] Run focused VisualIdentity UI validation from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/VisualIdentityUITests.swift`
+- [X] T019 [FR-007, FR-012, FR-014, FR-018, SC-001, SC-006] Run the combined four-class focused behavior-parity command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests/HistoryListUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteUITests/VisualIdentityUITests.swift`
+- [X] T020 [FR-007, FR-014, FR-018, SC-001, SC-006] Run the full UI test target command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPasteUITests`
+- [X] T021 [FR-007, FR-011, FR-014, SC-001, SC-006] Run the full app regression command from `specs/005-ui-test-cleanup/quickstart.md` for `NextPaste.xcodeproj`
+- [X] T022 [FR-010, FR-011, FR-016, SC-006] Verify no production app diff exists, or that any production change is a minimal non-user-facing UI-testing-gated hook, by reviewing `NextPaste/` and `specs/005-ui-test-cleanup/quickstart.md`
 
 **Checkpoint**: Focused, UI-target, and full regression validation preserve behavior-equivalent parity with no user-facing behavior change.
 
