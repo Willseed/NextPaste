@@ -64,7 +64,7 @@ enum UITestAppLauncher {
         }
     }
 
-    static func background(_ app: XCUIApplication) {
+    static func background(_: XCUIApplication) {
 #if os(macOS)
         let finder = XCUIApplication(bundleIdentifier: "com.apple.finder")
         finder.activate()

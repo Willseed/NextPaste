@@ -34,7 +34,6 @@ struct HomeView: View {
                 AppToolbar(
                     title: "Clips",
                     searchText: $searchText,
-                    onFilter: {},
                     onSettings: openSettingsOrShowPlaceholder
                 ) {
                     Button {

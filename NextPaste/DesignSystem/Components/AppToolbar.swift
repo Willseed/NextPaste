@@ -10,14 +10,14 @@ struct AppToolbar: View {
 
     let title: String
     @Binding var searchText: String
-    let onFilter: () -> Void
+    let onFilter: (() -> Void)?
     let onSettings: () -> Void
     let trailingContent: AnyView?
 
     init<TrailingContent: View>(
         title: String,
         searchText: Binding<String>,
-        onFilter: @escaping () -> Void,
+        onFilter: (() -> Void)? = nil,
         onSettings: @escaping () -> Void,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
@@ -31,7 +31,7 @@ struct AppToolbar: View {
     init(
         title: String,
         searchText: Binding<String>,
-        onFilter: @escaping () -> Void,
+        onFilter: (() -> Void)? = nil,
         onSettings: @escaping () -> Void
     ) {
         self.title = title
@@ -70,7 +70,7 @@ struct AppToolbar: View {
                     .frame(maxWidth: 360)
 
                 Button {
-                    onFilter()
+                    onFilter?()
                 } label: {
                     Label("Filter", systemImage: DesignTokens.Icons.filter)
                 }
