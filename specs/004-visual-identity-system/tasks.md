@@ -19,10 +19,10 @@
 **Purpose**: Create the reusable SwiftUI design-system surface area without adding third-party UI frameworks or changing clipboard persistence.
 
 - [X] T001 Create design-system theme file scaffold at NextPaste/DesignSystem/Theme/DesignTokens.swift, NextPaste/DesignSystem/Theme/AppTheme.swift, and NextPaste/DesignSystem/Theme/ThemeEnvironment.swift
-- [ ] T002 [P] Create reusable component file scaffold at NextPaste/DesignSystem/Components/AppToolbar.swift, NextPaste/DesignSystem/Components/SearchBar.swift, NextPaste/DesignSystem/Components/Badge.swift, NextPaste/DesignSystem/Components/ClipboardRow.swift, NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift, NextPaste/DesignSystem/Components/ImageClipboardRow.swift, and NextPaste/DesignSystem/Components/EmptyStateView.swift
-- [ ] T003 [P] Create illustration foundation scaffold at NextPaste/DesignSystem/Illustrations/EmptyStateIllustration.swift and reserve illustration assets under NextPaste/Assets.xcassets/Illustrations/
-- [ ] T004 [P] Create visual identity test file scaffolds at NextPasteTests/DesignTokenTests.swift, NextPasteTests/ThemeContractTests.swift, NextPasteTests/ClipboardRowPresentationTests.swift, and NextPasteUITests/VisualIdentityUITests.swift
-- [ ] T005 [P] Add or confirm UI test launch support for visual identity scenarios in NextPasteUITests/UITestAppLauncher.swift without changing in-memory clipboard store isolation
+- [X] T002 [P] Create reusable component file scaffold at NextPaste/DesignSystem/Components/AppToolbar.swift, NextPaste/DesignSystem/Components/SearchBar.swift, NextPaste/DesignSystem/Components/Badge.swift, NextPaste/DesignSystem/Components/ClipboardRow.swift, NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift, NextPaste/DesignSystem/Components/ImageClipboardRow.swift, and NextPaste/DesignSystem/Components/EmptyStateView.swift
+- [X] T003 [P] Create illustration foundation scaffold at NextPaste/DesignSystem/Illustrations/EmptyStateIllustration.swift and reserve illustration assets under NextPaste/Assets.xcassets/Illustrations/
+- [X] T004 [P] Create visual identity test file scaffolds at NextPasteTests/DesignTokenTests.swift, NextPasteTests/ThemeContractTests.swift, NextPasteTests/ClipboardRowPresentationTests.swift, and NextPasteUITests/VisualIdentityUITests.swift
+- [X] T005 [P] Add or confirm UI test launch support for visual identity scenarios in NextPasteUITests/UITestAppLauncher.swift without changing in-memory clipboard store isolation
 
 ---
 
