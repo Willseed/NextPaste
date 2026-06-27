@@ -45,5 +45,5 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/004-visual-identity-system/plan.md
+at specs/005-ui-test-cleanup/plan.md
 <!-- SPECKIT END -->
