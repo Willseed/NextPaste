@@ -131,6 +131,34 @@ struct ClipHistoryTests {
         #expect(clips.map(\.textContent) == expected)
     }
 
+    @Test("builds one thousand row presentations in history order")
+    func buildsOneThousandRowPresentationsInHistoryOrder() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let indices = Array(0..<1_000)
+
+        for index in indices {
+            context.insert(
+                ClipItem(
+                    textContent: "Clip \(index)\nDetails",
+                    createdAt: Date(timeIntervalSince1970: Double(index)),
+                    isPinned: index.isMultiple(of: 2)
+                )
+            )
+        }
+        try context.save()
+
+        let descriptor = FetchDescriptor<ClipItem>(sortBy: ClipItem.historySortDescriptors)
+        let clips = try context.fetch(descriptor)
+        let presentations = clips.map { ClipboardRowPresentation(clip: $0) }
+
+        #expect(presentations.count == 1_000)
+        #expect(presentations.first?.preview == "Clip 998 Details")
+        #expect(presentations.first?.isPinned == true)
+        #expect(presentations.last?.preview == "Clip 1 Details")
+        #expect(presentations.last?.isPinned == false)
+    }
+
     @Test("formats readable previews without mutating stored text")
     func formatsReadablePreviewWithoutMutatingStoredText() {
         let originalText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)

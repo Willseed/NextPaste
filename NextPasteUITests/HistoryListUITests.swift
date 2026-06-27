@@ -26,10 +26,15 @@ final class HistoryListUITests: XCTestCase {
 
         let historyList = app.descendants(matching: .any)["clip-history-list"]
         XCTAssertTrue(historyList.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["history-surface"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["single-column-history-layout"].exists)
 
         let olderRow = app.staticTexts[olderText]
         let newerRow = app.staticTexts[newerText]
         let previewRow = app.staticTexts[expectedPreview]
+        let rowPredicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
+        let migratedRow = app.descendants(matching: .any).matching(rowPredicate).element
+        XCTAssertTrue(migratedRow.waitForExistence(timeout: 5))
 
         XCTAssertTrue(olderRow.waitForExistence(timeout: 5))
         XCTAssertTrue(newerRow.waitForExistence(timeout: 5))

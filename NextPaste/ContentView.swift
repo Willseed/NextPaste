@@ -9,10 +9,24 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         NavigationViewWrapper {
             HomeView()
         }
+        .environment(\.appTheme, appTheme)
+        .environment(\.appMotion, AppMotion(reduceMotion: reduceMotion))
+        .background(appTheme.canvas.color)
+    }
+
+    private var appTheme: AppTheme {
+        AppTheme(appearance: appearance)
+    }
+
+    private var appearance: AppTheme.Appearance {
+        colorScheme == .dark ? .dark : .light
     }
 }
 

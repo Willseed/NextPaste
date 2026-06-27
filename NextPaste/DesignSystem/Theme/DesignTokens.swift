@@ -7,6 +7,10 @@ import SwiftUI
 
 struct DesignColor: Equatable {
     let hex: String
+
+    var color: Color {
+        Color(hex: hex)
+    }
 }
 
 struct TypographyToken: Equatable {
@@ -32,6 +36,10 @@ struct TypographyToken: Equatable {
         self.tracking = tracking
         self.bundlesLicensedFont = bundlesLicensedFont
     }
+
+    var font: Font {
+        .system(textStyle).weight(weight)
+    }
 }
 
 enum DesignTokens {
@@ -50,6 +58,14 @@ enum DesignTokens {
 
     enum Spacing {
         static let scale: [CGFloat] = [4, 8, 12, 16, 24, 32, 48, 96]
+        static let xSmall = scale[0]
+        static let small = scale[1]
+        static let medium = scale[2]
+        static let large = scale[3]
+        static let xLarge = scale[4]
+        static let xxLarge = scale[5]
+        static let xxxLarge = scale[6]
+        static let display = scale[7]
     }
 
     enum Radius {
@@ -88,5 +104,19 @@ enum DesignTokens {
         static let rowInsertion: TimeInterval = 0.22
         static let rowDeletion: TimeInterval = 0.22
         static let copyFeedbackVisible: TimeInterval = 1.5
+    }
+}
+
+extension Color {
+    init(hex: String) {
+        let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        var value: UInt64 = 0
+        Scanner(string: sanitized).scanHexInt64(&value)
+
+        let red = Double((value >> 16) & 0xFF) / 255.0
+        let green = Double((value >> 8) & 0xFF) / 255.0
+        let blue = Double(value & 0xFF) / 255.0
+
+        self.init(red: red, green: green, blue: blue)
     }
 }

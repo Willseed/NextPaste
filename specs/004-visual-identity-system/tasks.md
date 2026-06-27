@@ -58,19 +58,19 @@
 
 ### Tests for User Story 1
 
-- [ ] T014 [P] [US1] Write failing UI tests for warm non-white canvas, primary history list focus, and adaptive single-column layout in NextPasteUITests/VisualIdentityUITests.swift
-- [ ] T015 [P] [US1] Extend failing history UI regression for readable multiline previews and newest-first scanning after row migration in NextPasteUITests/HistoryListUITests.swift
-- [ ] T016 [P] [US1] Write failing unit coverage that ClipItem.historySortDescriptors and preview presentation still support 1,000 clips in NextPasteTests/ClipHistoryTests.swift
+- [X] T014 [P] [US1] Write failing UI tests for warm non-white canvas, primary history list focus, and adaptive single-column layout in NextPasteUITests/VisualIdentityUITests.swift
+- [X] T015 [P] [US1] Extend failing history UI regression for readable multiline previews and newest-first scanning after row migration in NextPasteUITests/HistoryListUITests.swift
+- [X] T016 [P] [US1] Write failing unit coverage that ClipItem.historySortDescriptors and preview presentation still support 1,000 clips in NextPasteTests/ClipHistoryTests.swift
 
 ### Implementation for User Story 1
 
-- [ ] T017 [P] [US1] Implement preview-first text row layout shell using tokenized spacing, typography, surface, and radius roles in NextPaste/DesignSystem/Components/ClipboardRow.swift
-- [ ] T018 [US1] Refactor ClipRowView into a compatibility wrapper around ClipboardRow while preserving clip-row-* and pinned-clip-icon identifiers in NextPaste/ClipRowView.swift
-- [ ] T019 [US1] Refactor HomeView into a warm single-column history-first shell using AppTheme canvas/surface tokens and existing @Query(sort: ClipItem.historySortDescriptors) in NextPaste/HomeView.swift
-- [ ] T020 [US1] Update ContentView to apply the design-system theme environment and platform-safe background containment without adding sidebar or detail UI in NextPaste/ContentView.swift
-- [ ] T021 [US1] Preserve manual New Clip entry and clip-history-list accessibility identity inside the refreshed history surface in NextPaste/HomeView.swift
-- [ ] T022 [US1] Ensure populated rows use calm neutral surfaces with no colorful row backgrounds in NextPaste/DesignSystem/Components/ClipboardRow.swift
-- [ ] T023 [US1] Run US1 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/VisualIdentityUITests.swift and NextPasteUITests/HistoryListUITests.swift
+- [X] T017 [P] [US1] Implement preview-first text row layout shell using tokenized spacing, typography, surface, and radius roles in NextPaste/DesignSystem/Components/ClipboardRow.swift
+- [X] T018 [US1] Refactor ClipRowView into a compatibility wrapper around ClipboardRow while preserving clip-row-* and pinned-clip-icon identifiers in NextPaste/ClipRowView.swift
+- [X] T019 [US1] Refactor HomeView into a warm single-column history-first shell using AppTheme canvas/surface tokens and existing @Query(sort: ClipItem.historySortDescriptors) in NextPaste/HomeView.swift
+- [X] T020 [US1] Update ContentView to apply the design-system theme environment and platform-safe background containment without adding sidebar or detail UI in NextPaste/ContentView.swift
+- [X] T021 [US1] Preserve manual New Clip entry and clip-history-list accessibility identity inside the refreshed history surface in NextPaste/HomeView.swift
+- [X] T022 [US1] Ensure populated rows use calm neutral surfaces with no colorful row backgrounds in NextPaste/DesignSystem/Components/ClipboardRow.swift
+- [X] T023 [US1] Run US1 focused checks from specs/004-visual-identity-system/quickstart.md against NextPasteUITests/VisualIdentityUITests.swift and NextPasteUITests/HistoryListUITests.swift
 
 **Checkpoint**: User Story 1 is fully functional and testable as the MVP.
 
