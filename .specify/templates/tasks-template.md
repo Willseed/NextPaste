@@ -13,7 +13,8 @@ description: "Task list template for feature implementation"
 tasks that map to the feature specification, clipboard monitoring, deduplication, local
 persistence, row actions, sorting, privacy/offline behavior, and AI output validation contracts
 where applicable. Include post-implementation SonarQube Project Health validation and evidence
-tasks for every code or test change.
+tasks for every code or test change. Include design-system validation tasks for user-facing UI
+changes and behavior-parity regression tasks for refactors.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -168,6 +169,10 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Additional regression tests in NextPasteTests/
 - [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
 - [ ] TXXX Offline support review for local-first clipboard behavior
+- [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
+  motion, and component styling in user-facing UI
+- [ ] TXXX Refactoring integrity review verifying behavior parity and absence of speculative
+  abstractions
 - [ ] TXXX Run quickstart.md validation
 - [ ] TXXX Run SonarQube Project Health validation for production and test code touched by the feature
 - [ ] TXXX Record SonarQube evidence before commit or PR completion
@@ -197,6 +202,8 @@ Examples of foundational tasks (adjust based on your project):
 - Models before services
 - Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
+- Design-system validation before user-facing UI completion
+- Refactor behavior-parity validation before refactor completion
 - SonarQube Project Health validation after `/speckit.implement` and before completion
 - Story complete before moving to next priority
 
@@ -263,6 +270,9 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
+- Verify user-facing UI follows the shared design system and any new visual patterns are justified
+- Verify refactors preserve observable behavior and reduce maintenance cost without speculative
+  abstractions
 - Verify SonarQube Project Health passes after implementation; fix introduced issues or document
   false positives with justification
 - Commit after each task or logical group

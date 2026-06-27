@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-Version change: 2.0.0 -> 2.1.0
+Version change: 2.1.0 -> 2.2.0
 Modified principles:
 - I. Clipboard-First Product -> I. Clipboard-First Product
 - II. Local-First Architecture -> II. Local-First Architecture
@@ -8,7 +8,9 @@ Modified principles:
 - IV. Automatic Capture -> IV. Automatic Capture
 - V. Test-First Development -> V. Test-First Development
 - VI. Simplicity and Apple-Native Stack -> VI. Simplicity and Apple-Native Stack
-- Added principle: VII. SonarQube Project Health Gate
+- VII. SonarQube Project Health Gate -> VII. SonarQube Project Health Gate
+- Added principle: VIII. Consistent Design System
+- Added principle: IX. Refactoring Integrity
 Added sections:
 - None
 Removed sections:
@@ -116,6 +118,31 @@ Rationale: Automated implementation checks are incomplete without project-health
 quality system that reviewers use to identify reliability, security, maintainability, coverage, and
 duplication regressions.
 
+### VIII. Consistent Design System
+
+All user-facing interfaces MUST follow the project's design system. New screens MUST reuse the
+established design language. Colors, typography, spacing, corner radius, iconography, motion, and
+component styling MUST follow shared design tokens. Components SHOULD be reused before new visual
+patterns are created. New visual patterns MUST be justified in the specification and documented in
+the design system. Temporary or feature-specific UI styles MUST NOT become permanent design
+patterns. Features MUST preserve visual consistency across all supported Apple platforms.
+
+Rationale: A consistent visual language reduces cognitive load, improves usability, and keeps the
+product feeling cohesive as features grow.
+
+### IX. Refactoring Integrity
+
+Refactoring exists to improve maintainability without changing user-visible behavior. Every
+refactor MUST preserve existing observable behavior unless the specification explicitly defines
+behavioral changes. Refactoring SHOULD reduce complexity, duplication, coupling, or maintenance
+cost. Refactors MUST include regression tests demonstrating behavior parity. Refactors MUST NOT
+introduce speculative abstractions or unnecessary architecture. Refactoring tasks MUST clearly
+identify the behavior being preserved. Any intentional behavior change requires a new specification
+rather than being hidden inside a refactor.
+
+Rationale: Refactoring should improve code quality while maintaining predictable product behavior
+and minimizing regression risk.
+
 ## Technical Constraints
 
 NextPaste is a clipboard-first Apple app built with SwiftUI. Persistence MUST use SwiftData for
@@ -150,6 +177,8 @@ tasks map back to a specification, acceptance criteria are measurable, automated
 behavior, clipboard capture stays local-first, and privacy plus offline support have been
 reviewed. Reviewers MUST also verify that SonarQube evidence is recorded and that no unresolved
 feature-introduced SonarQube issues remain, except documented false positives with justification.
+User-facing changes MUST be reviewed for design-system consistency. Refactors MUST be reviewed for
+behavior parity, reduced maintenance cost, and absence of speculative architecture.
 
 ## Governance
 
@@ -173,7 +202,9 @@ Every `/speckit.plan` output MUST include a Constitution Check. Every `/speckit.
 MUST flag contradictions between spec, plan, tasks, and this constitution. Release readiness
 review MUST confirm compliance with clipboard-first behavior, local-first storage, privacy
 protections, automated testing, Apple-native simplicity constraints, and the SonarQube Project
-Health Gate. No feature specification, plan, task list, or checklist may weaken the SonarQube gate
-without first amending this constitution.
+Health Gate. Release readiness review MUST also confirm design-system consistency for user-facing
+changes and refactoring integrity for refactor-only work. No feature specification, plan, task list,
+or checklist may weaken the SonarQube, design-system, or refactoring-integrity gates without first
+amending this constitution.
 
-**Version**: 2.1.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-28
+**Version**: 2.2.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-28

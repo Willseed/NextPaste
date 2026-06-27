@@ -16,7 +16,8 @@
   - Technical context from plan.md
   - Implementation details from tasks.md
   - Constitution gates: clipboard-first product, local-first behavior, privacy, automatic capture,
-    tests, native simplicity, and SonarQube Project Health
+    tests, native simplicity, SonarQube Project Health, design-system consistency, and refactoring
+    integrity
   
   DO NOT keep these sample items in the generated checklist file.
   ============================================================================
@@ -40,6 +41,10 @@
 - [ ] CHKXXX Dependencies follow Apple-native defaults or include approved justification
 - [ ] CHKXXX SonarQube Project Health evidence is required after implementation and before commit
   or PR completion; feature-introduced issues must be fixed or documented as false positives
+- [ ] CHKXXX User-facing UI follows shared design tokens and introduces no undocumented visual
+  patterns
+- [ ] CHKXXX Refactoring work preserves existing observable behavior with regression coverage and
+  avoids speculative abstractions
 
 ## [Category 2]
 

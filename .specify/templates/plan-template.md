@@ -60,6 +60,12 @@
 - **SonarQube project health gate**: After `/speckit.implement`, the feature is not complete until
   SonarQube Project Health shows zero unresolved feature-introduced issues, or documented false
   positives with justification, and evidence is recorded before commit or PR completion.
+- **Consistent design system**: User-facing UI follows shared design tokens for colors,
+  typography, spacing, radius, iconography, motion, and component styling. New visual patterns are
+  justified in the specification and documented in the design system.
+- **Refactoring integrity**: Refactors preserve existing observable behavior unless the
+  specification explicitly defines behavior changes, include regression coverage for behavior
+  parity, and avoid speculative abstractions.
 
 ## Project Structure
 

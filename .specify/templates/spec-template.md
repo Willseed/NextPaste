@@ -106,12 +106,17 @@
   contracts for those outputs
 - **FR-011**: Implementation completion MUST include SonarQube Project Health evidence showing zero
   unresolved feature-introduced issues, or documented false positives with justification
+- **FR-012**: User-facing interfaces MUST follow the shared design system, including colors,
+  typography, spacing, corner radius, iconography, motion, and component styling; new visual
+  patterns MUST be justified and documented
+- **FR-013**: Refactoring work MUST identify the existing observable behavior being preserved and
+  include regression coverage demonstrating behavior parity, without speculative abstractions
 
 *Example of marking unclear requirements:*
 
-- **FR-012**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
+- **FR-014**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
   images, files, or another scope?]
-- **FR-013**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
+- **FR-015**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
   or storage cap not specified]
 
 ### Key Entities *(include if feature involves data)*
@@ -139,6 +144,10 @@
   access in 100% of tested scenarios"]
 - **SC-007**: [Quality gate metric, e.g., "SonarQube Project Health reports zero unresolved issues
   for the implemented change, with evidence recorded before commit or PR completion"]
+- **SC-008**: [Design consistency metric, e.g., "All user-facing UI changes use shared design tokens
+  and introduce zero undocumented visual patterns"]
+- **SC-009**: [Refactor parity metric, e.g., "All refactoring scenarios preserve existing
+  observable behavior in automated regression tests"]
 
 ## Assumptions
 
