@@ -18,7 +18,7 @@ Refactor duplicated row presentation, clipboard writing/test support, and determ
 
 **Storage**: No persisted storage change. SwiftData schemas, file storage, pasteboard behavior, and app-private image storage remain unchanged. New entities are internal value objects, helpers, or SwiftUI views/modifiers only.
 
-**Testing**: Targeted Swift Testing unit runs for row presentation, clipboard writer, image privacy/capture, image fixture, thumbnail, duplicate, and clip-history behavior affected by the refactor; targeted XCTest UI runs for text row actions, image row actions, and automatic image capture; then the full `NextPaste` scheme test suite when feasible. SonarQube/CI evidence is a hard completion gate.
+**Testing**: Targeted Swift Testing unit runs for row presentation, clipboard writer, image privacy/capture, image fixture, thumbnail, duplicate, and clip-history behavior affected by the refactor; targeted XCTest UI runs for text row actions, image row actions, and automatic image capture; then the full `NextPaste` scheme test suite as mandatory regression coverage before the feature is considered complete. SonarQube/CI evidence is a hard completion gate.
 
 **Target Platform**: Existing multi-platform Apple app (`iphoneos`, `iphonesimulator`, `macosx`, `xros`, `xrsimulator`) with macOS as the current build/test and UI-test validation platform. Platform-specific pasteboard and image encoding behavior stays behind compile-time checks.
 
@@ -126,7 +126,8 @@ The refactor must not change user-facing copy, delete, pin, row ordering, copy f
 
 4. **Broader validation**
    - Run the unit target and UI target when targeted tests pass.
-   - Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` before completion when feasible.
+   - Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` before completion as a mandatory full-regression gate.
+   - If a developer cannot execute full regression locally, the feature remains incomplete until successful full regression has been executed through CI or another accepted execution environment. Local environment limitations are not accepted as completion evidence.
 
 5. **SonarQube evidence**
    - Run/collect accepted SonarQube analysis after tests pass.
@@ -141,7 +142,7 @@ Completion requires recorded evidence from one accepted source:
 - local Sonar report only if local Sonar analysis is already available/configured for this repository, or
 - screenshot of the accepted dashboard/report.
 
-Evidence must identify the source/run, date or timestamp, Duplications on New Code result, quality-gate status, and status of feature-introduced issues. Evidence must not rely on duplicate-code suppressions, file exclusions, or threshold weakening. If local Sonar is unavailable, the feature remains pending CI/hosted Sonar evidence rather than inventing a substitute metric.
+Evidence must identify the source/run, date or timestamp, Duplications on New Code result, quality-gate status, full-regression result, and status of feature-introduced issues. Evidence must not rely on duplicate-code suppressions, file exclusions, threshold weakening, or local environment limitations. If local Sonar or full regression is unavailable locally, the feature remains pending CI/hosted Sonar evidence and CI or other accepted full-regression execution evidence rather than inventing a substitute metric.
 
 ## Constitution Check
 
