@@ -183,6 +183,41 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
 }
 
 struct ImageClipboardRowPresentation: Equatable, Identifiable {
+    struct Content: Equatable, Identifiable {
+        let id: UUID
+        let thumbnailDescription: String
+        let metadata: String
+        let isPinned: Bool
+        let thumbnailFilename: String?
+        let thumbnailSymbolName: String
+
+        init(
+            id: UUID,
+            thumbnailDescription: String,
+            metadata: String,
+            isPinned: Bool,
+            thumbnailFilename: String? = nil,
+            thumbnailSymbolName: String = DesignTokens.Icons.image
+        ) {
+            self.id = id
+            self.thumbnailDescription = thumbnailDescription
+            self.metadata = metadata
+            self.isPinned = isPinned
+            self.thumbnailFilename = thumbnailFilename
+            self.thumbnailSymbolName = thumbnailSymbolName
+        }
+
+        init(clip: ClipItem) {
+            self.init(
+                id: clip.id,
+                thumbnailDescription: clip.thumbnailDescription ?? "Image clipboard clip",
+                metadata: ImageClipboardRowPresentation.metadata(for: clip),
+                isPinned: clip.isPinned,
+                thumbnailFilename: clip.thumbnailFilename
+            )
+        }
+    }
+
     let id: UUID
     let thumbnailDescription: String
     let metadata: String
@@ -198,36 +233,31 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
     let accessibilityValue: String
 
     init(
-        id: UUID,
-        thumbnailDescription: String,
-        metadata: String,
-        isPinned: Bool,
-        thumbnailFilename: String? = nil,
+        content: Content,
         copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil,
-        interactionState: ClipboardRowPresentation.InteractionState = .normal,
-        thumbnailSymbolName: String = DesignTokens.Icons.image
+        interactionState: ClipboardRowPresentation.InteractionState = .normal
     ) {
-        self.id = id
-        self.thumbnailDescription = thumbnailDescription
-        self.metadata = metadata
-        self.isPinned = isPinned
+        id = content.id
+        thumbnailDescription = content.thumbnailDescription
+        metadata = content.metadata
+        isPinned = content.isPinned
         self.copyFeedback = copyFeedback
         self.interactionState = interactionState
-        self.thumbnailSymbolName = thumbnailSymbolName
-        self.thumbnailFilename = thumbnailFilename
-        usesFallbackIcon = thumbnailFilename == nil
-        rowAccessibilityIdentifier = Self.rowAccessibilityIdentifier(for: id)
+        thumbnailSymbolName = content.thumbnailSymbolName
+        thumbnailFilename = content.thumbnailFilename
+        usesFallbackIcon = content.thumbnailFilename == nil
+        rowAccessibilityIdentifier = Self.rowAccessibilityIdentifier(for: content.id)
         thumbnailAccessibilityIdentifier = Self.thumbnailAccessibilityIdentifier
         accessibilityLabel = Self.accessibilityLabel(
-            id: id,
-            thumbnailDescription: thumbnailDescription,
-            metadata: metadata
+            id: content.id,
+            thumbnailDescription: content.thumbnailDescription,
+            metadata: content.metadata
         )
         accessibilityValue = Self.accessibilityValue(
-            metadata: metadata,
-            thumbnailFilename: thumbnailFilename,
+            metadata: content.metadata,
+            thumbnailFilename: content.thumbnailFilename,
             usesFallbackIcon: usesFallbackIcon,
-            pinState: isPinned ? .pinned : .unpinned,
+            pinState: content.isPinned ? .pinned : .unpinned,
             copyFeedback: copyFeedback,
             interactionState: interactionState
         )
@@ -239,11 +269,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         interactionState: ClipboardRowPresentation.InteractionState = .normal
     ) {
         self.init(
-            id: clip.id,
-            thumbnailDescription: clip.thumbnailDescription ?? "Image clipboard clip",
-            metadata: Self.metadata(for: clip),
-            isPinned: clip.isPinned,
-            thumbnailFilename: clip.thumbnailFilename,
+            content: Content(clip: clip),
             copyFeedback: copyFeedback,
             interactionState: interactionState
         )

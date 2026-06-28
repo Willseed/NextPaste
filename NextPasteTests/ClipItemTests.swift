@@ -107,16 +107,24 @@ struct ClipItemTests {
         let thumbnailFilename = try #require(expectedMetadata.thumbnailFilename)
 
         let clip = ClipItem.imageClip(
-            id: clipID,
-            imageHash: imageHash,
-            imageWidth: fixture.width,
-            imageHeight: fixture.height,
-            imageByteCount: fixture.byteCount,
-            imageUTType: fixture.typeIdentifier,
-            imageFilename: imageFilename,
-            thumbnailFilename: thumbnailFilename,
-            thumbnailDescription: fixture.thumbnailDescription,
-            createdAt: createdAt
+            ImageClipInitialization(
+                id: clipID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: imageHash,
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: fixture.width,
+                        height: fixture.height
+                    ),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: imageFilename,
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                createdAt: createdAt
+            )
         )
 
         #expect(clip.id == clipID)
@@ -161,16 +169,24 @@ struct ClipItemTests {
             isPinned: true
         )
         let imageClip = ClipItem.imageClip(
-            id: imageID,
-            imageHash: imageHash,
-            imageWidth: fixture.width,
-            imageHeight: fixture.height,
-            imageByteCount: fixture.byteCount,
-            imageUTType: fixture.typeIdentifier,
-            imageFilename: imageFilename,
-            thumbnailFilename: thumbnailFilename,
-            thumbnailDescription: fixture.thumbnailDescription,
-            createdAt: Date(timeIntervalSince1970: 1_780_000_060)
+            ImageClipInitialization(
+                id: imageID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: imageHash,
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: fixture.width,
+                        height: fixture.height
+                    ),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: imageFilename,
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 1_780_000_060)
+            )
         )
 
         context.insert(legacyTextClip)

@@ -55,7 +55,7 @@ enum ImageTestFixtures {
         }
     }
 
-    static let png = makeFixture(
+    static let png = makeFixture(FixtureOptions(
         name: "nextpaste-unit-png-64x48",
         typeIdentifier: UTType.png.identifier,
         fileExtension: "png",
@@ -65,9 +65,9 @@ enum ImageTestFixtures {
         thumbnailDescription: "PNG clipboard image, 64 by 48 pixels",
         style: .gradient(seed: 17),
         encodedType: .png
-    )
+    ))
 
-    static let jpeg = makeFixture(
+    static let jpeg = makeFixture(FixtureOptions(
         name: "nextpaste-unit-jpeg-72x54",
         typeIdentifier: UTType.jpeg.identifier,
         fileExtension: "jpg",
@@ -77,9 +77,9 @@ enum ImageTestFixtures {
         thumbnailDescription: "JPEG clipboard image, 72 by 54 pixels",
         style: .gradient(seed: 29),
         encodedType: .jpeg
-    )
+    ))
 
-    static let screenshotStyle = makeFixture(
+    static let screenshotStyle = makeFixture(FixtureOptions(
         name: "nextpaste-unit-screenshot-style-png-96x60",
         typeIdentifier: UTType.png.identifier,
         fileExtension: "png",
@@ -90,10 +90,10 @@ enum ImageTestFixtures {
         style: .screenshot,
         encodedType: .png,
         properties: pngMetadata(description: "NextPaste deterministic screenshot-style fixture")
-    )
+    ))
 
     static let samePixelsDifferentMetadata = SamePixelsDifferentMetadataFixture(
-        plainPNG: makeFixture(
+        plainPNG: makeFixture(FixtureOptions(
             name: "nextpaste-unit-same-pixels-plain-png-36x28",
             typeIdentifier: UTType.png.identifier,
             fileExtension: "png",
@@ -103,8 +103,8 @@ enum ImageTestFixtures {
             thumbnailDescription: "Plain metadata image, 36 by 28 pixels",
             style: .dedupe,
             encodedType: .png
-        ),
-        metadataPNG: makeFixture(
+        )),
+        metadataPNG: makeFixture(FixtureOptions(
             name: "nextpaste-unit-same-pixels-tagged-png-36x28",
             typeIdentifier: UTType.png.identifier,
             fileExtension: "png",
@@ -115,7 +115,7 @@ enum ImageTestFixtures {
             style: .dedupe,
             encodedType: .png,
             properties: pngMetadata(description: "NextPaste deterministic metadata-only variant")
-        )
+        ))
     )
 
     static let corruptPNG = RejectedImageFixture(
@@ -144,7 +144,7 @@ enum ImageTestFixtures {
         data: Data()
     )
 
-    static let oversizedPNG = makeFixture(
+    static let oversizedPNG = makeFixture(FixtureOptions(
         name: "nextpaste-unit-oversized-png-3400x3400",
         typeIdentifier: UTType.png.identifier,
         fileExtension: "png",
@@ -154,7 +154,7 @@ enum ImageTestFixtures {
         thumbnailDescription: "Oversized PNG clipboard image, 3400 by 3400 pixels",
         style: .noise(seed: 53),
         encodedType: .png
-    )
+    ))
 
     static let supportedCaptureFixtures = [png, jpeg, screenshotStyle]
     static let rejectedFixtures = [emptyPNG, corruptPNG, unsupportedSVG]
@@ -180,28 +180,30 @@ enum ImageTestFixtures {
         case noise(seed: UInt8)
     }
 
-    private static func makeFixture(
-        name: String,
-        typeIdentifier: String,
-        fileExtension: String,
-        width: Int,
-        height: Int,
-        formatLabel: String,
-        thumbnailDescription: String,
-        style: PixelStyle,
-        encodedType: EncodedType,
-        properties: CFDictionary? = nil
-    ) -> ImageFixture {
-        let image = makeImage(width: width, height: height, style: style)
+    private struct FixtureOptions {
+        let name: String
+        let typeIdentifier: String
+        let fileExtension: String
+        let width: Int
+        let height: Int
+        let formatLabel: String
+        let thumbnailDescription: String
+        let style: PixelStyle
+        let encodedType: EncodedType
+        var properties: CFDictionary? = nil
+    }
+
+    private static func makeFixture(_ options: FixtureOptions) -> ImageFixture {
+        let image = makeImage(width: options.width, height: options.height, style: options.style)
         return ImageFixture(
-            name: name,
-            typeIdentifier: typeIdentifier,
-            fileExtension: fileExtension,
-            width: width,
-            height: height,
-            formatLabel: formatLabel,
-            thumbnailDescription: thumbnailDescription,
-            data: encode(image, as: encodedType, properties: properties)
+            name: options.name,
+            typeIdentifier: options.typeIdentifier,
+            fileExtension: options.fileExtension,
+            width: options.width,
+            height: options.height,
+            formatLabel: options.formatLabel,
+            thumbnailDescription: options.thumbnailDescription,
+            data: encode(image, as: options.encodedType, properties: options.properties)
         )
     }
 

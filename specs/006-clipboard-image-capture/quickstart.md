@@ -166,6 +166,52 @@ Expected coverage:
 - `ImageClipFileStoreTests` refactor preserves unsafe path rejection and asserts the intended rejection error.
 - `SwiftDataTestSupport` refactor preserves repo-local test store isolation and cleanup while allowing configurable base/forbidden path inputs.
 
+### Cleanup baseline evidence before refactor-only changes
+
+Recorded for cleanup-t002 on 2026-06-28 before refactor-only code changes, scoped to FR-019, FR-020, SC-005, and SC-008.
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
+  -only-testing:NextPasteTests/ClipItemTests \
+  -only-testing:NextPasteTests/ClipHistoryTests \
+  -only-testing:NextPasteTests/ClipboardRowPresentationTests \
+  -only-testing:NextPasteTests/ClipRowViewTests \
+  -only-testing:NextPasteTests/ImageClipFileStoreTests \
+  -only-testing:NextPasteTests/ClipboardImagePayloadTests \
+  -only-testing:NextPasteTests/ClipboardImageCaptureTests \
+  -only-testing:NextPasteTests/ClipboardCaptureTests \
+  -only-testing:NextPasteTests/ImageDuplicateIdentityTests \
+  -only-testing:NextPasteTests/ImageThumbnailGeneratorTests \
+  -only-testing:NextPasteTests/ClipboardWriterTests \
+  -only-testing:NextPasteTests/ClipboardImagePrivacyTests \
+  test
+```
+
+Result: PASS, exit 0. The targeted refactor-only Swift Testing validation set passed before cleanup changes; no blocker was observed.
+
+### Cleanup targeted unit validation evidence
+
+Recorded for cleanup-t014 on 2026-06-28, scoped to FR-001, FR-003, FR-005, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-018, FR-019, FR-020, FR-021, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, and SC-008.
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
+  -only-testing:NextPasteTests/ClipItemTests \
+  -only-testing:NextPasteTests/ClipHistoryTests \
+  -only-testing:NextPasteTests/ClipboardRowPresentationTests \
+  -only-testing:NextPasteTests/ClipRowViewTests \
+  -only-testing:NextPasteTests/ImageClipFileStoreTests \
+  -only-testing:NextPasteTests/ClipboardImagePayloadTests \
+  -only-testing:NextPasteTests/ClipboardImageCaptureTests \
+  -only-testing:NextPasteTests/ClipboardCaptureTests \
+  -only-testing:NextPasteTests/ImageDuplicateIdentityTests \
+  -only-testing:NextPasteTests/ImageThumbnailGeneratorTests \
+  -only-testing:NextPasteTests/ClipboardWriterTests \
+  -only-testing:NextPasteTests/ClipboardImagePrivacyTests \
+  test
+```
+
+Result: PASS, exit 0. The targeted refactor-only Swift Testing validation set completed successfully; no test failure or blocker was observed.
+
 ### Full regression validation
 
 Run the full suite if feasible:
@@ -173,6 +219,21 @@ Run the full suite if feasible:
 ```bash
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
 ```
+
+Cleanup-t015 result recorded on 2026-06-28, scoped to FR-019, FR-020, SC-005, and SC-008:
+
+Initial full-suite result: FAIL, exit 65. The exact full-suite command ran once and produced 116 passed tests and 1 failed UI test in the Xcode result summary:
+
+- `NextPasteUITests/ClipboardImageAutoCaptureUITests/testImageAutoCaptureRefreshesHistoryWhileBackgrounded()`
+- Failure: `XCTAssertTrue failed - Expected clip history list to exist`
+
+Focused rerun of the exact failing UI test:
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/ClipboardImageAutoCaptureUITests/testImageAutoCaptureRefreshesHistoryWhileBackgrounded test
+```
+
+Focused rerun result: PASS, exit 0. The selected UI test executed once with 0 failures. Treat the initial full-suite failure as not reproduced by the exact focused rerun; cleanup-t015 is complete.
 
 ### SonarQube validation
 

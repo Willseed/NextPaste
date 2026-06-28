@@ -160,16 +160,24 @@ final class ClipboardCaptureService {
         createdAt: Date
     ) -> ClipItem {
         ClipItem.imageClip(
-            id: id,
-            imageHash: payload.duplicateIdentity.hash,
-            imageWidth: payload.width,
-            imageHeight: payload.height,
-            imageByteCount: payload.byteCount,
-            imageUTType: payload.typeIdentifier,
-            imageFilename: asset.imageFilename,
-            thumbnailFilename: asset.thumbnailFilename,
-            thumbnailDescription: thumbnailDescription(for: payload),
-            createdAt: createdAt
+            ImageClipInitialization(
+                id: id,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: payload.duplicateIdentity.hash,
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: payload.width,
+                        height: payload.height
+                    ),
+                    byteCount: payload.byteCount,
+                    utType: payload.typeIdentifier,
+                    filename: asset.imageFilename,
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: asset.thumbnailFilename,
+                        description: thumbnailDescription(for: payload)
+                    )
+                ),
+                createdAt: createdAt
+            )
         )
     }
 

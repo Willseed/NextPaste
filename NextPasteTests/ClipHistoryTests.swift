@@ -71,16 +71,24 @@ struct ClipHistoryTests {
         )
         let thumbnailURL = try #require(asset.thumbnailURL)
         let imageClip = ClipItem.imageClip(
-            id: imageClipID,
-            imageHash: "sha256-row-delete-image",
-            imageWidth: fixture.width,
-            imageHeight: fixture.height,
-            imageByteCount: fixture.byteCount,
-            imageUTType: fixture.typeIdentifier,
-            imageFilename: asset.imageFilename,
-            thumbnailFilename: asset.thumbnailFilename,
-            thumbnailDescription: fixture.thumbnailDescription,
-            createdAt: Date(timeIntervalSince1970: 500)
+            ImageClipInitialization(
+                id: imageClipID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-row-delete-image",
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: fixture.width,
+                        height: fixture.height
+                    ),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: asset.imageFilename,
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: asset.thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 500)
+            )
         )
         let textClip = ClipItem(textContent: "Keep this text clip", createdAt: Date(timeIntervalSince1970: 600))
 
@@ -121,16 +129,24 @@ struct ClipHistoryTests {
         let thumbnailURL = try #require(asset.thumbnailURL)
         let textClip = ClipItem(textContent: "Delete text only", createdAt: Date(timeIntervalSince1970: 500))
         let imageClip = ClipItem.imageClip(
-            id: imageClipID,
-            imageHash: "sha256-row-delete-keeps-image-files",
-            imageWidth: fixture.width,
-            imageHeight: fixture.height,
-            imageByteCount: fixture.byteCount,
-            imageUTType: fixture.typeIdentifier,
-            imageFilename: asset.imageFilename,
-            thumbnailFilename: asset.thumbnailFilename,
-            thumbnailDescription: fixture.thumbnailDescription,
-            createdAt: Date(timeIntervalSince1970: 600)
+            ImageClipInitialization(
+                id: imageClipID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-row-delete-keeps-image-files",
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: fixture.width,
+                        height: fixture.height
+                    ),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: asset.imageFilename,
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: asset.thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 600)
+            )
         )
 
         context.insert(textClip)

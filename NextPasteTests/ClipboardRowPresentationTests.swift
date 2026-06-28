@@ -73,10 +73,12 @@ struct ClipboardRowPresentationTests {
     func preservesImageRowMetadataInputs() {
         let id = UUID()
         let presentation = ImageClipboardRowPresentation(
-            id: id,
-            thumbnailDescription: "Screenshot thumbnail",
-            metadata: "1200 x 800 PNG",
-            isPinned: true
+            content: ImageClipboardRowPresentation.Content(
+                id: id,
+                thumbnailDescription: "Screenshot thumbnail",
+                metadata: "1200 x 800 PNG",
+                isPinned: true
+            )
         )
 
         #expect(presentation.id == id)
@@ -96,7 +98,9 @@ struct ClipboardRowPresentationTests {
             thumbnailFilename: thumbnailFilename
         )
 
-        let presentation = ImageClipboardRowPresentation(clip: clip)
+        let presentation = ImageClipboardRowPresentation(
+            content: ImageClipboardRowPresentation.Content(clip: clip)
+        )
 
         #expect(presentation.thumbnailDescription == fixture.thumbnailDescription)
         #expect(presentation.metadata == fixture.metadata)
@@ -109,17 +113,21 @@ struct ClipboardRowPresentationTests {
         let clipWithThumbnailID = try #require(UUID(uuidString: "33736AA2-BE36-43B8-A434-2943B077E56E"))
         let clipWithoutThumbnailID = try #require(UUID(uuidString: "46E377F7-06A1-40C7-B9F3-95574569D3B8"))
         let withThumbnail = ImageClipboardRowPresentation(
-            clip: makeImageClip(
-                id: clipWithThumbnailID,
-                fixture: fixture,
-                thumbnailFilename: "\(clipWithThumbnailID.uuidString).png"
+            content: ImageClipboardRowPresentation.Content(
+                clip: makeImageClip(
+                    id: clipWithThumbnailID,
+                    fixture: fixture,
+                    thumbnailFilename: "\(clipWithThumbnailID.uuidString).png"
+                )
             )
         )
         let withoutThumbnail = ImageClipboardRowPresentation(
-            clip: makeImageClip(
-                id: clipWithoutThumbnailID,
-                fixture: fixture,
-                thumbnailFilename: nil
+            content: ImageClipboardRowPresentation.Content(
+                clip: makeImageClip(
+                    id: clipWithoutThumbnailID,
+                    fixture: fixture,
+                    thumbnailFilename: nil
+                )
             )
         )
 
@@ -137,7 +145,7 @@ struct ClipboardRowPresentationTests {
         )
 
         let presentation = ImageClipboardRowPresentation(
-            clip: clip,
+            content: ImageClipboardRowPresentation.Content(clip: clip),
             copyFeedback: .copied,
             interactionState: .selected
         )
@@ -154,17 +162,21 @@ struct ClipboardRowPresentationTests {
         let pinnedID = try #require(UUID(uuidString: "46B5B2AF-FB14-4BDA-85E0-F76802E62881"))
         let unpinnedID = try #require(UUID(uuidString: "B6DF2498-CEBF-422C-85FD-4211816F58D7"))
         let pinned = ImageClipboardRowPresentation(
-            clip: makeImageClip(
-                id: pinnedID,
-                thumbnailFilename: "\(pinnedID.uuidString).png",
-                isPinned: true
+            content: ImageClipboardRowPresentation.Content(
+                clip: makeImageClip(
+                    id: pinnedID,
+                    thumbnailFilename: "\(pinnedID.uuidString).png",
+                    isPinned: true
+                )
             )
         )
         let unpinned = ImageClipboardRowPresentation(
-            clip: makeImageClip(
-                id: unpinnedID,
-                thumbnailFilename: "\(unpinnedID.uuidString).png",
-                isPinned: false
+            content: ImageClipboardRowPresentation.Content(
+                clip: makeImageClip(
+                    id: unpinnedID,
+                    thumbnailFilename: "\(unpinnedID.uuidString).png",
+                    isPinned: false
+                )
             )
         )
 
@@ -180,11 +192,13 @@ struct ClipboardRowPresentationTests {
         let clipID = try #require(UUID(uuidString: "153AE46F-5804-4F18-B565-B91568D18A0E"))
         let thumbnailFilename = "\(clipID.uuidString).png"
         let presentation = ImageClipboardRowPresentation(
-            clip: makeImageClip(
-                id: clipID,
-                fixture: fixture,
-                thumbnailFilename: thumbnailFilename,
-                isPinned: true
+            content: ImageClipboardRowPresentation.Content(
+                clip: makeImageClip(
+                    id: clipID,
+                    fixture: fixture,
+                    thumbnailFilename: thumbnailFilename,
+                    isPinned: true
+                )
             )
         )
 
@@ -208,16 +222,24 @@ struct ClipboardRowPresentationTests {
         isPinned: Bool = false
     ) -> ClipItem {
         ClipItem.imageClip(
-            id: id,
-            imageHash: "sha256-\(fixture.name)-normalized-pixels-\(fixture.width)x\(fixture.height)",
-            imageWidth: fixture.width,
-            imageHeight: fixture.height,
-            imageByteCount: fixture.byteCount,
-            imageUTType: fixture.typeIdentifier,
-            imageFilename: "\(id.uuidString).\(fixture.fileExtension)",
-            thumbnailFilename: thumbnailFilename,
-            thumbnailDescription: fixture.thumbnailDescription,
-            isPinned: isPinned
+            ImageClipInitialization(
+                id: id,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-\(fixture.name)-normalized-pixels-\(fixture.width)x\(fixture.height)",
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: fixture.width,
+                        height: fixture.height
+                    ),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: "\(id.uuidString).\(fixture.fileExtension)",
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                isPinned: isPinned
+            )
         )
     }
 

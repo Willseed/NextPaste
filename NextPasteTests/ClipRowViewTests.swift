@@ -12,14 +12,22 @@ struct ClipRowViewTests {
     @MainActor
     func routesImageClipsToImagePresentation() {
         let clip = ClipItem.imageClip(
-            imageHash: "sha256-image-row-routing",
-            imageWidth: 640,
-            imageHeight: 480,
-            imageByteCount: 2048,
-            imageUTType: "public.png",
-            imageFilename: "image-row-routing.png",
-            thumbnailFilename: "image-row-routing-thumbnail.png",
-            thumbnailDescription: "Image row routing thumbnail"
+            ImageClipInitialization(
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-image-row-routing",
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: 640,
+                        height: 480
+                    ),
+                    byteCount: 2048,
+                    utType: "public.png",
+                    filename: "image-row-routing.png",
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: "image-row-routing-thumbnail.png",
+                        description: "Image row routing thumbnail"
+                    )
+                )
+            )
         )
 
         #expect(ClipRowView.presentationKind(for: clip) == .image)

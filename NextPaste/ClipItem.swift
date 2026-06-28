@@ -8,6 +8,33 @@
 import Foundation
 import SwiftData
 
+struct ImageClipInitialization {
+    struct Metadata {
+        var hash: String
+        var dimensions: Dimensions
+        var byteCount: Int
+        var utType: String
+        var filename: String
+        var thumbnail: Thumbnail
+    }
+
+    struct Dimensions {
+        var width: Int
+        var height: Int
+    }
+
+    struct Thumbnail {
+        var filename: String?
+        var description: String
+    }
+
+    var id: UUID = UUID()
+    var metadata: Metadata
+    var createdAt: Date = Date()
+    var updatedAt: Date? = nil
+    var isPinned: Bool = false
+}
+
 @Model
 final class ClipItem {
     static var historySortDescriptors: [SortDescriptor<ClipItem>] {
@@ -50,36 +77,23 @@ final class ClipItem {
         self.pinnedSortOrder = Self.sortOrder(for: isPinned)
     }
 
-    static func imageClip(
-        id: UUID = UUID(),
-        imageHash: String,
-        imageWidth: Int,
-        imageHeight: Int,
-        imageByteCount: Int,
-        imageUTType: String,
-        imageFilename: String,
-        thumbnailFilename: String?,
-        thumbnailDescription: String,
-        createdAt: Date = Date(),
-        updatedAt: Date? = nil,
-        isPinned: Bool = false
-    ) -> ClipItem {
+    static func imageClip(_ initialization: ImageClipInitialization) -> ClipItem {
         let clip = ClipItem(
-            id: id,
+            id: initialization.id,
             contentType: "image",
             textContent: "",
-            createdAt: createdAt,
-            updatedAt: updatedAt,
-            isPinned: isPinned
+            createdAt: initialization.createdAt,
+            updatedAt: initialization.updatedAt,
+            isPinned: initialization.isPinned
         )
-        clip.imageHash = imageHash
-        clip.imageWidth = imageWidth
-        clip.imageHeight = imageHeight
-        clip.imageByteCount = imageByteCount
-        clip.imageUTType = imageUTType
-        clip.imageFilename = imageFilename
-        clip.thumbnailFilename = thumbnailFilename
-        clip.thumbnailDescription = thumbnailDescription
+        clip.imageHash = initialization.metadata.hash
+        clip.imageWidth = initialization.metadata.dimensions.width
+        clip.imageHeight = initialization.metadata.dimensions.height
+        clip.imageByteCount = initialization.metadata.byteCount
+        clip.imageUTType = initialization.metadata.utType
+        clip.imageFilename = initialization.metadata.filename
+        clip.thumbnailFilename = initialization.metadata.thumbnail.filename
+        clip.thumbnailDescription = initialization.metadata.thumbnail.description
         return clip
     }
 

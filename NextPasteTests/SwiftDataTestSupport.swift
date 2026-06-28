@@ -10,6 +10,42 @@ import SwiftData
 @testable import NextPaste
 
 enum SwiftDataTestSupport {
+    struct TemporaryImageFileStoreConfiguration {
+        static let defaultStoreDirectoryName = ".nextpaste-test-image-stores"
+        static let defaultForbiddenRootURLs: [URL] = [
+            absoluteRootDirectoryURL(components: ["tmp"]),
+            absoluteRootDirectoryURL(components: ["private", "tmp"]),
+            absoluteRootDirectoryURL(components: ["var", "tmp"]),
+            absoluteRootDirectoryURL(components: ["private", "var", "tmp"])
+        ]
+
+        let baseDirectoryURL: URL?
+        let forbiddenRootURLs: [URL]
+
+        init(
+            baseDirectoryURL: URL? = nil,
+            forbiddenRootURLs: [URL] = Self.defaultForbiddenRootURLs
+        ) {
+            self.baseDirectoryURL = baseDirectoryURL?.standardizedFileURL
+            self.forbiddenRootURLs = forbiddenRootURLs.map(\.standardizedFileURL)
+        }
+
+        func resolvedBaseDirectory(fileManager: FileManager) -> URL {
+            if let baseDirectoryURL {
+                return baseDirectoryURL
+            }
+
+            return URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+                .appendingPathComponent(Self.defaultStoreDirectoryName, isDirectory: true)
+                .standardizedFileURL
+        }
+
+        private static func absoluteRootDirectoryURL(components: [String]) -> URL {
+            let path = NSString.path(withComponents: [NSOpenStepRootDirectory()] + components)
+            return URL(fileURLWithPath: path, isDirectory: true).standardizedFileURL
+        }
+    }
+
     struct TemporaryImageFileStoreRoot {
         let rootURL: URL
 
@@ -169,11 +205,14 @@ enum SwiftDataTestSupport {
 
     static func makeTemporaryImageFileStoreRoot(
         named name: String = #function,
-        fileManager: FileManager = .default
+        fileManager: FileManager = .default,
+        configuration: TemporaryImageFileStoreConfiguration = TemporaryImageFileStoreConfiguration()
     ) throws -> TemporaryImageFileStoreRoot {
-        let baseDirectory = URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
-            .appendingPathComponent(".nextpaste-test-image-stores", isDirectory: true)
-        try ensureNotForbiddenTemporaryDirectory(baseDirectory)
+        let baseDirectory = configuration.resolvedBaseDirectory(fileManager: fileManager)
+        try ensureNotForbiddenTemporaryDirectory(
+            baseDirectory,
+            forbiddenRootURLs: configuration.forbiddenRootURLs
+        )
 
         let root = TemporaryImageFileStoreRoot(
             rootURL: baseDirectory
@@ -278,9 +317,12 @@ enum SwiftDataTestSupport {
         return sanitized.isEmpty ? "image-store" : String(sanitized.prefix(80))
     }
 
-    private static func ensureNotForbiddenTemporaryDirectory(_ url: URL) throws {
+    private static func ensureNotForbiddenTemporaryDirectory(
+        _ url: URL,
+        forbiddenRootURLs: [URL]
+    ) throws {
         let path = url.standardizedFileURL.path
-        let forbiddenPrefixes = ["/tmp", "/private/tmp", "/var/tmp", "/private/var/tmp"]
+        let forbiddenPrefixes = forbiddenRootURLs.map { $0.standardizedFileURL.path }
         if forbiddenPrefixes.contains(where: { path == $0 || path.hasPrefix($0 + "/") }) {
             throw ImageStoreTestError.forbiddenTemporaryDirectory(path)
         }

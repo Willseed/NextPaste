@@ -2,6 +2,58 @@
 
 Recorded on 2026-06-28 for feature `006-clipboard-image-capture`.
 
+## cleanup-t001 - Refactor-only SonarQube cleanup setup
+
+Recorded on 2026-06-28 for cleanup task T001 (FR-020, SC-008). This section freezes the setup scope only. It is not final SonarQube evidence and does not complete the SonarQube Project Health gate. Actual accepted Sonar evidence from a SonarQube dashboard, SonarCloud dashboard, CI artifact, local Sonar report, or dashboard screenshot is still required; if that evidence is unavailable, the cleanup and feature remain incomplete.
+
+### Current SonarQube findings in scope
+
+The cleanup scope is the current 9 SonarQube maintainability/code smell findings exactly as recorded in the plan/tasks context:
+
+| # | File/location | Rule summary |
+| --- | --- | --- |
+| 1 | `NextPaste/ClipItem.swift` L53 | `imageClip` has 12 parameters, over the 7-parameter threshold |
+| 2 | `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift` L200 | `ImageClipboardRowPresentation` initializer has 8 parameters, over the threshold |
+| 3 | `NextPasteTests/ImageClipFileStoreTests.swift` L118 | Hard-coded URI/path should come from a customizable parameter |
+| 4 | `NextPasteTests/ImageClipFileStoreTests.swift` L132 | Suspicious empty catch block |
+| 5 | `NextPasteTests/ImageTestFixtures.swift` L183 | `makeFixture` has 10 parameters, over the threshold |
+| 6 | `NextPasteTests/SwiftDataTestSupport.swift` L283 | Hard-coded temporary directory URI/path should come from a customizable parameter; reported multiple times |
+| 7 | `NextPasteTests/SwiftDataTestSupport.swift` L283 | Hard-coded temporary directory URI/path should come from a customizable parameter; reported multiple times |
+| 8 | `NextPasteTests/SwiftDataTestSupport.swift` L283 | Hard-coded temporary directory URI/path should come from a customizable parameter; reported multiple times |
+| 9 | `NextPasteTests/SwiftDataTestSupport.swift` L283 | Hard-coded temporary directory URI/path should come from a customizable parameter; reported multiple times |
+
+Rows 6-9 intentionally preserve the four reported instances represented by the plan's `reported multiple times` summary for `NextPasteTests/SwiftDataTestSupport.swift` L283.
+
+### Allowed file scope
+
+Primary implementation scope is limited to:
+
+- `NextPaste/ClipItem.swift`
+- `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift`
+- `NextPasteTests/ImageClipFileStoreTests.swift`
+- `NextPasteTests/ImageTestFixtures.swift`
+- `NextPasteTests/SwiftDataTestSupport.swift`
+
+Minimal mechanical call-site compatibility edits outside those primary files are allowed only when value-object signature changes require compilation fixes, and only in:
+
+- `NextPaste/ClipboardCaptureService.swift`
+- `NextPaste/ClipRowView.swift`
+- `NextPasteTests/ClipItemTests.swift`
+- `NextPasteTests/ClipHistoryTests.swift`
+- `NextPasteTests/ClipboardRowPresentationTests.swift`
+- `NextPasteTests/ClipRowViewTests.swift`
+
+Those outside-file edits must be mechanical argument construction/signature adaptation only.
+
+### Refactor-only acceptance criteria
+
+- Resolve only the 9 findings listed above.
+- Do not introduce product feature changes, user-facing behavior changes, clipboard behavior changes, image capture behavior changes, row action behavior changes, visual design changes, persisted schema changes, new source/test files, new dependencies, network/sync/telemetry/OCR/AI/import/share surfaces, or speculative abstractions.
+- Preserve behavior parity for text clips, image clips, file storage safety checks, deterministic image fixtures, row presentation values, accessibility output, copy/delete/pin behavior, and existing tests.
+- Targeted tests must pass, and the full `NextPaste` scheme test suite must pass if feasible.
+- Final completion requires actual accepted Sonar evidence showing all 9 listed parameter-count, configurable URI/base path, and empty-block findings are resolved, with no new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or New Code duplication gate failures.
+- Local source inspection, `git diff --check`, or other diagnostic fallback checks may support review but do not replace accepted SonarQube/SonarCloud evidence. Unavailable accepted evidence leaves the cleanup and feature incomplete.
+
 ## T048 - SonarQube/SonarCloud analysis availability
 
 - Local scanner: `sonar-scanner` was not found on `PATH`.

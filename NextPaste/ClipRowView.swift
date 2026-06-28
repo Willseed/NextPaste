@@ -46,7 +46,7 @@ struct ClipRowView: View {
         if Self.presentationKind(for: clip) == .image {
             ImageClipboardRow(
                 presentation: ImageClipboardRowPresentation(
-                    clip: clip,
+                    content: ImageClipboardRowPresentation.Content(clip: clip),
                     copyFeedback: copyFeedback,
                     interactionState: interactionState
                 ),

@@ -108,19 +108,21 @@ struct ImageClipFileStoreTests {
         defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root, fileManager: fileManager) }
 
         let store = ImageClipFileStore(rootURL: root.rootURL, fileManager: fileManager)
-        let escapedURL = root.rootURL
-            .deletingLastPathComponent()
-            .appendingPathComponent("nextpaste-escaped-image-store-test-png")
-            .standardizedFileURL
+        let pathSafety = PathSafetyConfiguration(
+            escapedPathComponent: "nextpaste-escaped-image-store-test-png",
+            unsafeExtensionCases: [
+                .relativeTraversalToEscapedPath(parentDirectoryCount: 4),
+                .absolutePath(component: "absolute-png"),
+                .nestedTraversal(prefix: "png", component: "escaped")
+            ]
+        )
+        let escapedURL = pathSafety.escapedURL(outside: root.rootURL)
         defer { try? fileManager.removeItem(at: escapedURL) }
-        let unsafeExtensions = [
-            "../../../../nextpaste-escaped-image-store-test-png",
-            "/absolute-png",
-            "png/../escaped"
-        ]
+        let unsafeExtensions = pathSafety.unsafeSourceExtensions
 
         for (index, sourceExtension) in unsafeExtensions.enumerated() {
             let clipID = UUID(uuidString: "00000000-0000-4000-8000-\(String(format: "%012d", index + 1))")!
+            let expectedError = ImageClipFileStoreError.unsafeSourceExtension(sourceExtension)
             do {
                 _ = try store.persistImageAsset(
                     clipID: clipID,
@@ -129,7 +131,11 @@ struct ImageClipFileStoreTests {
                     thumbnailData: ImageTestFixtures.screenshotStyle.data
                 )
                 Issue.record("Expected unsafe source extension to be rejected: \(sourceExtension)")
-            } catch {}
+            } catch let fileStoreError as ImageClipFileStoreError {
+                #expect(fileStoreError == expectedError)
+            } catch {
+                Issue.record("Expected \(expectedError), got unexpected error: \(error)")
+            }
 
             #expect(fileManager.fileExists(atPath: escapedURL.path) == false)
             #expect(try fileManager.contentsOfDirectory(
@@ -152,5 +158,38 @@ struct ImageClipFileStoreTests {
         #expect(filename.contains("/") == false)
         #expect(filename.contains("\\") == false)
         #expect(filename.contains(root.rootURL.standardizedFileURL.path) == false)
+    }
+
+    private struct PathSafetyConfiguration {
+        let escapedPathComponent: String
+        let unsafeExtensionCases: [UnsafeExtensionCase]
+
+        var unsafeSourceExtensions: [String] {
+            unsafeExtensionCases.map { $0.sourceExtension(escapedPathComponent: escapedPathComponent) }
+        }
+
+        func escapedURL(outside rootURL: URL) -> URL {
+            rootURL
+                .deletingLastPathComponent()
+                .appendingPathComponent(escapedPathComponent)
+                .standardizedFileURL
+        }
+    }
+
+    private enum UnsafeExtensionCase {
+        case relativeTraversalToEscapedPath(parentDirectoryCount: Int)
+        case absolutePath(component: String)
+        case nestedTraversal(prefix: String, component: String)
+
+        func sourceExtension(escapedPathComponent: String) -> String {
+            switch self {
+            case let .relativeTraversalToEscapedPath(parentDirectoryCount):
+                return Array(repeating: "..", count: parentDirectoryCount).joined(separator: "/") + "/\(escapedPathComponent)"
+            case let .absolutePath(component):
+                return "/\(component)"
+            case let .nestedTraversal(prefix, component):
+                return "\(prefix)/../\(component)"
+            }
+        }
     }
 }
