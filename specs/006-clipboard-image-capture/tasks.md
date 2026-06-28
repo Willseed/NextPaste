@@ -1,183 +1,138 @@
-# Tasks: Clipboard Image Auto Capture
+# Tasks: Refactor-Only SonarQube Cleanup
 
 **Input**: Design documents from `specs/006-clipboard-image-capture/`
 
-**Prerequisites**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [quickstart.md](quickstart.md), [contracts/](contracts/)
+**Prerequisites**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [quickstart.md](quickstart.md), [contracts/](contracts/), `.specify/memory/constitution.md`
 
-**Tests**: Required by FR-019 and the constitution. Write failing characterization/unit/UI tests before implementation tasks in each phase.
+**Scope**: Resolve only the current 9 SonarQube maintainability/code smell findings. No user-facing behavior changes, product feature changes, clipboard behavior changes, image capture behavior changes, visual design changes, or new product features are allowed.
 
-**Organization**: Tasks are grouped by setup, shared foundation, and user stories so the MVP image capture path can be implemented first, then image history management, then regressions/privacy/quality gates.
+**Primary file scope**:
 
-## Phase 1: Setup & Baseline Characterization
+- `NextPaste/ClipItem.swift`
+- `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift`
+- `NextPasteTests/ImageClipFileStoreTests.swift`
+- `NextPasteTests/ImageTestFixtures.swift`
+- `NextPasteTests/SwiftDataTestSupport.swift`
 
-**Purpose**: Capture current behavior, prepare deterministic image fixtures, and avoid touching user data during tests.
+**Compile-required mechanical call-site scope**: If value-object signatures require caller updates, limit those updates to the exact call sites listed in tasks T007 and T010. These are not product feature changes.
 
-- [X] T001 Run the current relevant baseline tests and record any pre-existing failures in `specs/006-clipboard-image-capture/quickstart.md` (FR-014, FR-015, FR-019, SC-005)
-- [X] T002 [P] Add deterministic PNG, JPEG, screenshot-style, corrupt, unsupported, oversized, and same-pixels-different-metadata image fixtures in `NextPasteTests/ImageTestFixtures.swift` (FR-001, FR-008, FR-009, FR-019, SC-001, SC-002, SC-003)
-- [X] T003 [P] Add temporary image file-store root helpers and image metadata fetch helpers in `NextPasteTests/SwiftDataTestSupport.swift` (FR-006, FR-016, FR-019, SC-007)
-- [X] T004 [P] Add deterministic image clipboard fixture names and expected accessibility metadata in `NextPasteUITests/UITestFixtures.swift` (FR-012, FR-013, FR-018, FR-019, SC-004, SC-006)
+**Tests**: Required by FR-019 and the constitution. Use existing targeted regression tests to prove behavior parity for this refactor-only cleanup.
 
-**Checkpoint**: Test fixtures and baseline evidence are ready.
+**Organization**: Tasks are grouped by setup, shared foundation, existing user-story behavior parity, and final validation/Sonar evidence.
 
----
+## Phase 1: Setup & Baseline Guard
 
-## Phase 2: Foundational Image Model, Validation, Storage, and Thumbnail Infrastructure
+**Purpose**: Freeze the exact Sonar cleanup scope and capture baseline behavior before refactoring.
 
-**Purpose**: Build the image metadata and local binary infrastructure that blocks all user stories.
+- [ ] T001 Record the 9 current SonarQube findings, allowed file scope, and refactor-only acceptance criteria in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
+- [ ] T002 Run the targeted baseline command from `specs/006-clipboard-image-capture/quickstart.md` and record results in `specs/006-clipboard-image-capture/quickstart.md` before code changes (FR-019, FR-020, SC-005, SC-008)
 
-**Critical**: No user-story implementation should start until this phase is complete.
-
-### Tests First
-
-- [X] T005 [P] Add failing SwiftData metadata and lightweight migration tests for optional image fields in `NextPasteTests/ClipItemTests.swift` (FR-005, FR-006, FR-014, FR-019, SC-005, SC-007)
-- [X] T006 [P] Add failing normalized decoded-pixel hash and dimension deduplication tests in `NextPasteTests/ImageDuplicateIdentityTests.swift` (FR-008, FR-019, SC-002)
-- [X] T007 [P] Add failing image payload validation tests for PNG, JPEG, screenshot-style, empty, corrupt, unsupported, and over-25 MiB (26,214,400 bytes) payloads in `NextPasteTests/ClipboardImagePayloadTests.swift` (FR-001, FR-002, FR-009, FR-019, SC-001, SC-003)
-- [X] T008 [P] Add failing app-private full-image and thumbnail file persistence and cleanup tests in `NextPasteTests/ImageClipFileStoreTests.swift` (FR-006, FR-007, FR-016, FR-019, FR-021, SC-007)
-- [X] T009 [P] Add failing capture-time thumbnail generation and fallback-input tests in `NextPasteTests/ImageThumbnailGeneratorTests.swift` (FR-012, FR-018, FR-019, FR-021, SC-004)
-
-### Implementation
-
-- [X] T010 Extend `ClipItem` with optional image metadata, safe text defaults, and image clip factory helpers in `NextPaste/ClipItem.swift` (FR-005, FR-006, FR-011, FR-014, FR-019, SC-005, SC-007)
-- [X] T011 [P] Implement normalized decoded pixel hash plus dimensions in `NextPaste/ImageClips/ImageDuplicateIdentity.swift` (FR-008, FR-017, FR-019, SC-002)
-- [X] T012 Implement Apple-native image payload validation, type identification, dimensions, byte-count limit, and duplicate identity creation in `NextPaste/ImageClips/ClipboardImagePayload.swift` (FR-001, FR-002, FR-008, FR-009, FR-017, FR-019, FR-021, SC-001, SC-002, SC-003)
-- [X] T013 [P] Implement app-private full image and thumbnail file storage with injectable test roots in `NextPaste/ImageClips/ImageClipFileStore.swift` (FR-006, FR-007, FR-016, FR-019, FR-021, SC-007)
-- [X] T014 [P] Implement capture-time aspect-fit thumbnail generation and fallback failure signaling in `NextPaste/ImageClips/ImageThumbnailGenerator.swift` (FR-012, FR-018, FR-019, FR-021, SC-004)
-- [X] T015 Run the foundational unit tests and fix failures in `NextPasteTests/ClipItemTests.swift`, `NextPasteTests/ImageDuplicateIdentityTests.swift`, `NextPasteTests/ClipboardImagePayloadTests.swift`, `NextPasteTests/ImageClipFileStoreTests.swift`, and `NextPasteTests/ImageThumbnailGeneratorTests.swift` (FR-001, FR-005, FR-006, FR-008, FR-009, FR-012, FR-016, FR-019, FR-021, SC-001, SC-002, SC-003, SC-004, SC-007)
-
-**Checkpoint**: Image metadata, validation, dedupe, local storage, and thumbnail infrastructure are test-covered.
+**Checkpoint**: Cleanup scope and pre-refactor behavior are documented.
 
 ---
 
-## Phase 3: User Story 1 - Automatically capture copied images (Priority: P1) MVP
+## Phase 2: Foundational Test Support Refactors
 
-**Goal**: Copying a supported image or screenshot while NextPaste is running creates exactly one local image clip without manual saving.
+**Purpose**: Remove shared test-support Sonar findings without changing product behavior.
 
-**Independent Test**: Run image capture unit tests plus UI capture tests for active, backgrounded, and minimized app states; confirm content type, persistence, deduplication, and automatic history refresh.
+- [ ] T003 [P] Replace the long deterministic fixture factory parameter list with a file-local fixture options struct in `NextPasteTests/ImageTestFixtures.swift`, preserving fixture bytes, dimensions, labels, metadata variants, and oversized data (FR-001, FR-008, FR-009, FR-019, FR-020, FR-021, SC-001, SC-002, SC-003, SC-008)
+- [ ] T004 [P] Add configurable temporary image store base and forbidden root parameters in `NextPasteTests/SwiftDataTestSupport.swift`, preserving the current repo-local default root and cleanup behavior (FR-006, FR-007, FR-016, FR-019, FR-020, FR-021, SC-007, SC-008)
 
-### Tests First
-
-- [X] T016 [P] [US1] Add failing capture service tests for PNG, JPEG, screenshot-style payloads, `contentType = "image"`, image-first priority over text metadata, and duplicate rejection in `NextPasteTests/ClipboardImageCaptureTests.swift` (FR-001, FR-002, FR-003, FR-004, FR-005, FR-008, FR-010, FR-019, SC-001, SC-002)
-- [X] T017 [P] [US1] Add failing monitor characterization tests for shared text/image payload polling and active/backgrounded/minimized process-alive capture in `NextPasteTests/ClipboardCaptureTests.swift` (FR-001, FR-002, FR-003, FR-014, FR-019, SC-001, SC-005)
-- [X] T018 [P] [US1] Add failing UI tests for automatic image capture and history refresh while active, backgrounded, and minimized in `NextPasteUITests/ClipboardImageAutoCaptureUITests.swift` (FR-001, FR-002, FR-003, FR-004, FR-010, FR-019, SC-001)
-
-### Implementation
-
-- [X] T019 [US1] Implement `ClipboardPayload` image-first/text-fallback pasteboard snapshot support in `NextPaste/ClipboardMonitorClient.swift` (FR-001, FR-002, FR-003, FR-014, FR-017, SC-001, SC-005)
-- [X] T020 [US1] Update the monitor polling path to capture shared payload snapshots instead of text-only strings in `NextPaste/ClipboardMonitor.swift` (FR-001, FR-002, FR-003, FR-010, FR-014, SC-001, SC-005)
-- [X] T021 [US1] Implement image capture, deduplication lookup, file/thumbnail persistence orchestration, SwiftData save, and rollback cleanup in `NextPaste/ClipboardCaptureService.swift` (FR-003, FR-004, FR-005, FR-006, FR-008, FR-009, FR-010, FR-016, FR-019, FR-021, SC-001, SC-002, SC-003, SC-007)
-- [X] T022 [US1] Update UI-test clipboard helpers to write PNG/JPEG/screenshot-style image payloads and wait for image rows in `NextPasteUITests/ClipboardRobot.swift` (FR-001, FR-002, FR-010, FR-019, SC-001)
-- [X] T023 [US1] Run the User Story 1 focused tests and fix failures in `NextPasteTests/ClipboardImageCaptureTests.swift`, `NextPasteTests/ClipboardCaptureTests.swift`, and `NextPasteUITests/ClipboardImageAutoCaptureUITests.swift` (FR-001, FR-002, FR-003, FR-004, FR-005, FR-008, FR-009, FR-010, FR-014, FR-019, SC-001, SC-002, SC-003, SC-005, SC-007)
-
-**Checkpoint**: MVP image auto-capture works independently.
+**Checkpoint**: Shared fixtures and test storage support no longer trigger the listed parameter-count or hard-coded URI/base path findings.
 
 ---
 
-## Phase 4: User Story 2 - Review and manage image clips in history (Priority: P2)
+## Phase 3: User Story 1 - Preserve Automatic Image Clip Construction (Priority: P1) MVP
 
-**Goal**: Image clips display recognizable thumbnails in the existing history list and support Copy, Delete, and Pin.
+**Goal**: Reduce the `ClipItem.imageClip` parameter count while preserving image clip metadata used by automatic capture.
 
-**Independent Test**: Seed or capture an image clip, then verify thumbnail rendering, accessibility, copy-back success/failure, delete, and pin behavior without needing remote services.
+**Independent Test**: Image capture and model tests still create `contentType = "image"` clips with identical metadata, ordering, deduplication inputs, and local file references.
 
-### Tests First
+### Implementation for User Story 1
 
-- [X] T024 [P] [US2] Add failing image row presentation tests for thumbnail metadata, fallback icon eligibility, pinned state, and accessibility text in `NextPasteTests/ClipboardRowPresentationTests.swift` (FR-011, FR-012, FR-018, FR-019, FR-021, SC-004)
-- [X] T025 [P] [US2] Add failing image copy-back success and copy failure tests in `NextPasteTests/ClipboardWriterTests.swift` (FR-013, FR-015, FR-019, SC-006)
-- [X] T026 [P] [US2] Add failing UI tests for image thumbnail display, copy-back, copy failure feedback absence, delete, and pin/unpin in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` (FR-011, FR-012, FR-013, FR-018, FR-019, SC-004, SC-006)
+- [ ] T005 [US1] Introduce an image clip initialization value object and update `imageClip` to accept the value object in `NextPaste/ClipItem.swift` while preserving `contentType = "image"`, empty text fallback, timestamps, pin state, and image metadata assignment (FR-003, FR-005, FR-006, FR-008, FR-011, FR-014, FR-019, FR-020, SC-001, SC-002, SC-005, SC-007, SC-008)
+- [ ] T006 [US1] Remove the previous long `imageClip` factory signature from `NextPaste/ClipItem.swift` so no function in that file exceeds the SonarQube parameter threshold (FR-020, SC-008)
+- [ ] T007 [US1] Mechanically update only compile-required `ClipItem.imageClip` call sites in `NextPaste/ClipboardCaptureService.swift`, `NextPasteTests/ClipItemTests.swift`, `NextPasteTests/ClipHistoryTests.swift`, `NextPasteTests/ClipboardRowPresentationTests.swift`, and `NextPasteTests/ClipRowViewTests.swift` to pass the new value object without changing assertions or behavior (FR-003, FR-005, FR-006, FR-008, FR-011, FR-014, FR-019, FR-020, SC-001, SC-002, SC-005, SC-007, SC-008)
 
-### Implementation
-
-- [X] T027 [US2] Update image row presentation metadata, thumbnail references, fallback state, and accessibility labels in `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift` (FR-011, FR-012, FR-018, FR-019, FR-021, SC-004)
-- [X] T028 [US2] Update the image row UI to load local thumbnails, display them aspect-fit without cropping, and use the design-system fallback icon only on thumbnail failure in `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` (FR-012, FR-018, FR-019, FR-021, SC-004)
-- [X] T029 [US2] Update `ClipRowView` to choose text or image row presentation by `contentType` while preserving text row behavior in `NextPaste/ClipRowView.swift` (FR-011, FR-012, FR-014, FR-018, SC-004, SC-005)
-- [X] T030 [US2] Implement preserved full-image copy-back with existing failure semantics in `NextPaste/ClipboardWriter.swift` (FR-013, FR-015, FR-016, FR-019, SC-006, SC-007)
-- [X] T031 [US2] Update history row action routing so image copy/delete/pin use the correct content-type path and delete removes associated files in `NextPaste/HomeView.swift` (FR-011, FR-013, FR-015, FR-016, FR-019, SC-006, SC-007)
-- [X] T032 [P] [US2] Add image row action targeting helpers in `NextPasteUITests/RowRobot.swift` (FR-013, FR-019, SC-006)
-- [X] T033 [P] [US2] Add image thumbnail, image row, accessibility, and no-copy-feedback assertions in `NextPasteUITests/UITestAssertions.swift` (FR-012, FR-013, FR-018, FR-019, SC-004, SC-006)
-- [X] T034 [US2] Run the User Story 2 focused tests and fix failures in `NextPasteTests/ClipboardRowPresentationTests.swift`, `NextPasteTests/ClipboardWriterTests.swift`, and `NextPasteUITests/ClipboardImageRowActionsUITests.swift` (FR-011, FR-012, FR-013, FR-015, FR-018, FR-019, FR-021, SC-004, SC-006)
-
-**Checkpoint**: Image clips are visible, recognizable, accessible, and manageable through existing row actions.
+**Checkpoint**: Automatic image clip construction is behavior-equivalent and the `ClipItem.swift` Sonar finding is resolved.
 
 ---
 
-## Phase 5: User Story 3 - Preserve text capture, local-first privacy, and quality gates (Priority: P3)
+## Phase 4: User Story 2 - Preserve Image Row Presentation (Priority: P2)
 
-**Goal**: Existing text auto-capture and row actions remain unchanged, image capture works offline, no remote transmission is introduced, and quality evidence is recorded.
+**Goal**: Reduce image row presentation initializer complexity while preserving thumbnail, metadata, accessibility, pin, and copy feedback behavior.
 
-**Independent Test**: Run text capture/row-action regressions, offline/local-first validation, source privacy review, and post-implementation SonarQube evidence checks.
+**Independent Test**: Row presentation tests and row view tests still observe the same identifiers, labels, values, fallback icon behavior, pin state, copy feedback, and design-token-derived presentation.
 
-### Tests First
+### Implementation for User Story 2
 
-- [X] T035 [P] [US3] Add or extend text auto-capture regression tests for text-only payloads, duplicate text, whitespace text, and image-invalid no-op behavior in `NextPasteTests/ClipboardCaptureTests.swift` (FR-009, FR-014, FR-019, SC-003, SC-005)
-- [X] T036 [P] [US3] Add or extend text copy/delete/pin regression UI tests in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-015, FR-019, SC-005)
-- [X] T037 [P] [US3] Add offline/local-first and privacy regression tests for image capture using temporary storage and no network services in `NextPasteTests/ClipboardImagePrivacyTests.swift` (FR-007, FR-016, FR-017, FR-019, SC-007)
+- [ ] T008 [US2] Introduce an image row presentation content value object and update `ImageClipboardRowPresentation` initialization in `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift` while preserving computed accessibility labels, values, metadata formatting, fallback icon state, and `init(clip:copyFeedback:interactionState:)` behavior (FR-011, FR-012, FR-018, FR-019, FR-020, FR-021, SC-004, SC-006, SC-008)
+- [ ] T009 [US2] Remove the previous 8-parameter `ImageClipboardRowPresentation` initializer from `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift` so no initializer in that file exceeds the SonarQube parameter threshold (FR-020, SC-008)
+- [ ] T010 [US2] Mechanically update only compile-required `ImageClipboardRowPresentation` call sites in `NextPaste/ClipRowView.swift` and `NextPasteTests/ClipboardRowPresentationTests.swift` to pass the new content value object without changing visual design, accessibility expectations, or behavior (FR-011, FR-012, FR-018, FR-019, FR-020, FR-021, SC-004, SC-006, SC-008)
 
-### Implementation
-
-- [X] T038 [US3] Preserve the existing text capture public entry points and text duplicate behavior after payload routing changes in `NextPaste/ClipboardCaptureService.swift` (FR-014, FR-019, SC-005)
-- [X] T039 [US3] Preserve existing text copy feedback, delete, and pin behavior after image row routing changes in `NextPaste/HomeView.swift` (FR-015, FR-019, SC-005)
-- [X] T040 [US3] Verify no CloudKit sync, OCR, AI analysis, analytics, remote transmission, manual image import, or third-party image library code was introduced and record findings in `specs/006-clipboard-image-capture/quickstart.md` (FR-007, FR-016, FR-017, FR-020, SC-007, SC-008)
-- [X] T041 [US3] Run the User Story 3 focused tests and fix failures in `NextPasteTests/ClipboardCaptureTests.swift`, `NextPasteUITests/ClipRowActionsUITests.swift`, and `NextPasteTests/ClipboardImagePrivacyTests.swift` (FR-007, FR-009, FR-014, FR-015, FR-016, FR-017, FR-019, SC-003, SC-005, SC-007)
-
-**Checkpoint**: Text behavior parity, offline/local-first behavior, and privacy boundaries are verified.
+**Checkpoint**: Image row presentation is behavior-equivalent and the `ClipboardRowPresentation.swift` Sonar finding is resolved.
 
 ---
 
-## Phase 6: Polish, Cross-Cutting Validation, and Release Evidence
+## Phase 5: User Story 3 - Preserve Test Safety, Text Regressions, and Quality Gates (Priority: P3)
 
-**Purpose**: Validate the complete feature, trace every requirement, run analysis, and record project-health evidence.
+**Goal**: Resolve test URI/base path and empty-block findings while preserving local-first storage safety, text regressions, and project health evidence.
 
-- [X] T042 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' build` and record results in `specs/006-clipboard-image-capture/quickstart.md` (FR-019, FR-020, SC-008)
-- [X] T043 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests test` and record results in `specs/006-clipboard-image-capture/quickstart.md` (FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-013, FR-014, FR-016, FR-017, FR-019, FR-021, SC-001, SC-002, SC-003, SC-005, SC-006, SC-007)
-- [X] T044 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests test` and record results in `specs/006-clipboard-image-capture/quickstart.md` (FR-010, FR-011, FR-012, FR-013, FR-015, FR-018, FR-019, SC-001, SC-004, SC-005, SC-006)
-- [X] T045 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and record full regression results in `specs/006-clipboard-image-capture/quickstart.md` (FR-019, FR-020, SC-005, SC-008)
-- [X] T046 Verify every FR and SC maps to implementation and tests by updating the Requirement Traceability table in `specs/006-clipboard-image-capture/tasks.md` if implementation changes task scope (FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-008, FR-009, FR-010, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-017, FR-018, FR-019, FR-020, FR-021, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008)
-- [X] T047 Run `/speckit.analyze` and address or document all findings in `specs/006-clipboard-image-capture/tasks.md` (FR-019, FR-020, SC-008)
-- [X] T048 Run the available SonarQube or SonarCloud analysis and record command/report details in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
-- [X] T049 Verify no new SonarQube Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or New Code duplication gate failures remain, and record the result in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
-- [X] T050 Confirm Constitution compliance for clipboard-first flow, local-first storage, privacy, Apple-native implementation, design-system consistency, refactoring integrity, and Sonar evidence in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-007, FR-016, FR-017, FR-018, FR-020, SC-007, SC-008)
+**Independent Test**: Unsafe image file paths are rejected for the intended error, test store roots remain configurable and isolated, text regressions still pass, and Sonar evidence proves the cleanup restored maintainability health.
+
+### Implementation for User Story 3
+
+- [ ] T011 [US3] Replace hard-coded escaped URI/path fixture values with a local path-safety configuration value in `NextPasteTests/ImageClipFileStoreTests.swift`, deriving escaped URLs and unsafe source extensions from configurable parameters (FR-006, FR-007, FR-016, FR-019, FR-020, FR-021, SC-007, SC-008)
+- [ ] T012 [US3] Replace the suspicious empty `catch` block in `NextPasteTests/ImageClipFileStoreTests.swift` with an explicit assertion that unsafe extensions throw `ImageClipFileStoreError.unsafeSourceExtension(sourceExtension)` and record unexpected errors (FR-006, FR-009, FR-019, FR-020, SC-003, SC-007, SC-008)
+- [ ] T013 [US3] Verify `NextPasteTests/ImageClipFileStoreTests.swift` uses the configurable test-support base path from `NextPasteTests/SwiftDataTestSupport.swift` without weakening root containment, sibling asset, or cleanup assertions (FR-006, FR-007, FR-016, FR-019, FR-020, FR-021, SC-007, SC-008)
+
+**Checkpoint**: Test path configurability and explicit error assertions resolve the listed test-code Sonar findings without weakening local-first safety coverage.
+
+---
+
+## Phase 6: Validation, Traceability, and Sonar Evidence
+
+**Purpose**: Prove behavior parity and record the project-health evidence required before continuing feature work.
+
+- [ ] T014 Run the targeted unit validation command from `specs/006-clipboard-image-capture/quickstart.md` and record results in `specs/006-clipboard-image-capture/quickstart.md` (FR-001, FR-003, FR-005, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-018, FR-019, FR-020, FR-021, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008)
+- [ ] T015 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` if feasible and record full-suite results in `specs/006-clipboard-image-capture/quickstart.md` (FR-019, FR-020, SC-005, SC-008)
+- [ ] T016 Run available SonarQube/SonarCloud analysis, or record accepted unavailable-gate evidence, in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
+- [ ] T017 Verify all listed parameter-count, configurable URI/base path, and empty-block SonarQube findings are resolved with no new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or New Code duplication gate failures, and record results in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
+- [ ] T018 Run `/speckit.analyze` after task implementation and address or document findings in `specs/006-clipboard-image-capture/tasks.md` without expanding cleanup scope (FR-019, FR-020, SC-008)
+- [ ] T019 Review the final diff against the refactor-only scope and record behavior-parity confirmation in `specs/006-clipboard-image-capture/sonar-evidence.md`, including no user-facing behavior, clipboard behavior, image capture behavior, visual design, or product feature changes (FR-007, FR-014, FR-015, FR-017, FR-018, FR-020, SC-005, SC-007, SC-008)
 
 ---
 
 ## Requirement Traceability
 
-| Requirement | Covered by tasks |
-|---|---|
-| FR-001 Detect Apple-decodable raster image clipboard content | T002, T007, T012, T016, T018, T019, T022, T023, T043 |
-| FR-002 Shared screenshot/copied-image pipeline and process-alive states | T007, T012, T016, T017, T018, T019, T020, T022, T023, T043 |
-| FR-003 Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI | T016, T017, T018, T019, T020, T021, T023, T043 |
-| FR-004 Automatically save new image clipboard content | T016, T018, T021, T023, T043 |
-| FR-005 Image clips use `contentType = "image"` | T005, T010, T016, T021, T023, T043 |
-| FR-006 App-private full image storage with SwiftData metadata only | T003, T005, T008, T010, T013, T021, T043 |
-| FR-007 No clipboard image data transmitted outside device | T008, T013, T037, T040, T041, T050 |
-| FR-008 Deduplicate by decoded pixels plus dimensions | T002, T006, T011, T012, T016, T021, T023, T043 |
-| FR-009 Ignore unsupported, empty, invalid, inaccessible, oversized image data | T002, T007, T012, T021, T035, T041, T043 |
-| FR-010 History refresh after image capture | T016, T018, T020, T021, T022, T023, T044 |
-| FR-011 Image clips appear in existing history ordering/pinning rules | T010, T024, T026, T027, T029, T031, T034, T044 |
-| FR-012 Display local aspect-fit thumbnails with fallback icon rules | T004, T009, T014, T024, T026, T027, T028, T029, T033, T034, T044 |
-| FR-013 Image Copy/Delete/Pin row actions and copy failure behavior | T025, T026, T030, T031, T032, T033, T034, T043, T044 |
-| FR-014 Existing text auto-capture continues | T005, T017, T019, T020, T029, T035, T038, T041, T043 |
-| FR-015 Existing text Copy/Delete/Pin continues | T025, T030, T031, T036, T039, T041, T044 |
-| FR-016 Offline image capture/storage/history/actions | T003, T008, T013, T021, T030, T031, T037, T040, T041, T043, T050 |
-| FR-017 No OCR, AI, CloudKit sync, remote transmission, third-party image libraries, or manual import | T012, T019, T037, T040, T041, T050 |
-| FR-018 Shared design-system thumbnail presentation | T004, T009, T014, T024, T026, T027, T028, T029, T033, T034, T044, T050 |
-| FR-019 Automated tests for image capture, dedupe, rejection, persistence, UI, regressions, offline behavior | T001-T009, T015-T018, T023-T026, T029, T031, T034-T037, T041-T047 |
-| FR-020 SonarQube Project Health evidence | T040, T042, T045, T046, T047, T048, T049, T050 |
-| FR-021 No full image recompression; thumbnail derived display data only | T008, T009, T012, T013, T014, T021, T024, T027, T028, T034, T043 |
-| SC-001 Image appears in history while active/backgrounded/minimized | T002, T007, T012, T016, T017, T018, T019, T020, T022, T023, T044 |
-| SC-002 Repeated same decoded pixels and dimensions do not duplicate | T002, T006, T011, T012, T016, T021, T023, T043 |
-| SC-003 Unsupported/empty/invalid/inaccessible/oversized image data does not create a clip | T002, T007, T012, T021, T035, T041, T043 |
-| SC-004 Image thumbnail visible, non-blank, uncropped, fallback only for valid thumbnail failures | T004, T009, T014, T024, T026, T027, T028, T029, T033, T034, T044 |
-| SC-005 Existing text capture and row-action regressions pass | T001, T005, T017, T019, T020, T023, T025, T029, T035, T036, T038, T039, T041, T043, T044, T045 |
-| SC-006 Image copy/delete/pin work and copy failure shows no success | T004, T025, T026, T030, T031, T032, T033, T034, T043, T044 |
-| SC-007 Offline/local-first image capture and row actions work | T003, T005, T008, T013, T021, T030, T031, T037, T040, T041, T043, T050 |
-| SC-008 SonarQube evidence recorded with no unresolved introduced issues | T042, T045, T046, T047, T048, T049, T050 |
-
-### `/speckit.analyze` Findings Resolution
-
-- **Workflow exception (C1)**: This fleet-mode implementation was requested from an already generated `tasks.md` with an explicit "complete every task in every phase" execution policy. Because the task list itself placed `/speckit.analyze` in Phase 6, T047 is documented as a workflow-order exception for this feature. Future features should run `/speckit.analyze` before implementation unless a similar exception is documented before coding starts.
-- **Sonar evidence (C2/T1)**: T040, T042, T045, T046, and T047 provide supporting privacy, validation, traceability, and analysis evidence only. The FR-020/SC-008 SonarQube Project Health gate is satisfied only by T048-T050.
-- **Status reconciliation (I1/I2)**: T023 and T040 are complete and checked in this task list; SQL state also records both as `done`.
-- **Size-limit clarification (A1)**: All feature artifacts now use the exact oversized-image threshold `25 MiB (26,214,400 bytes)`.
+| Requirement / criterion | Cleanup coverage |
+| --- | --- |
+| FR-001 Detect supported raster image clipboard content | T003, T014 |
+| FR-003 Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI | T005, T007, T014 |
+| FR-005 Image clips use `contentType = "image"` | T005, T007, T014 |
+| FR-006 App-private image storage with SwiftData metadata only | T004, T005, T007, T011, T012, T013, T014 |
+| FR-007 No clipboard image data transmitted outside device | T004, T011, T013, T019 |
+| FR-008 Deduplicate by decoded pixels plus dimensions | T003, T005, T007, T014 |
+| FR-009 Ignore unsupported/empty/invalid/oversized image data | T003, T012, T014 |
+| FR-011 Existing history ordering and pinning for image clips | T005, T007, T008, T010, T014 |
+| FR-012 Local thumbnail display and fallback icon rules | T008, T010, T014 |
+| FR-013 Image row actions and copy failure behavior | T014 |
+| FR-014 Existing text auto-capture continues | T005, T007, T019 |
+| FR-015 Existing text Copy/Delete/Pin continues | T014, T019 |
+| FR-016 Offline image capture/storage/history/actions | T004, T011, T013, T014 |
+| FR-017 No OCR, AI, sync, remote transmission, analytics, import, or new product surfaces | T019 |
+| FR-018 Shared design-system presentation remains unchanged | T008, T010, T019 |
+| FR-019 Automated tests and behavior-parity validation | T002, T003, T004, T007, T010, T011, T012, T013, T014, T015, T018 |
+| FR-020 SonarQube Project Health evidence | T001, T002, T003, T004, T005, T006, T008, T009, T011, T012, T014, T015, T016, T017, T018, T019 |
+| FR-021 No full-image recompression; thumbnails remain derived display data | T003, T004, T008, T010, T011, T013, T014 |
+| SC-001 Supported image/screenshot capture remains covered | T003, T005, T007, T014 |
+| SC-002 Duplicate visual image behavior remains covered | T003, T005, T007, T014 |
+| SC-003 Invalid/unsupported image no-op behavior remains covered | T003, T012, T014 |
+| SC-004 Thumbnail and fallback behavior remains covered | T008, T010, T014 |
+| SC-005 Existing text capture and row-action regressions pass | T002, T005, T007, T014, T015, T019 |
+| SC-006 Image copy/delete/pin and copy failure behavior remains covered | T008, T010, T014 |
+| SC-007 Offline/local-first behavior remains covered | T004, T011, T013, T014, T019 |
+| SC-008 Sonar evidence records zero unresolved introduced issues | T001, T002, T006, T009, T014, T015, T016, T017, T018, T019 |
 
 ---
 
@@ -186,45 +141,42 @@
 ### Phase Dependencies
 
 - **Phase 1 Setup**: No dependencies.
-- **Phase 2 Foundation**: Depends on Phase 1 fixtures and baseline.
-- **Phase 3 US1 MVP**: Depends on Phase 2 image validation/storage/thumbnail infrastructure.
-- **Phase 4 US2**: Depends on Phase 2 and can use seeded image clips, but full copy/delete/pin UI validation depends on US1 capture integration.
-- **Phase 5 US3**: Depends on US1/US2 code paths so regressions validate final routing.
+- **Phase 2 Foundation**: Depends on Phase 1 scope guard.
+- **Phase 3 US1**: Depends on Phase 2 where fixture/test support changes are available.
+- **Phase 4 US2**: Can run after Phase 1; may run in parallel with US1 after file ownership is coordinated.
+- **Phase 5 US3**: Depends on Phase 2 configurable test support.
 - **Phase 6 Validation**: Depends on all implementation phases.
 
-### Parallelization Notes
+### User Story Dependencies
 
-- `[P]` tasks in the same phase modify different files and may run in parallel after that phase's prerequisites are complete.
-- Do not run tasks from later phases in parallel with earlier phases unless the earlier phase checkpoint is complete.
-- Do not parallelize tasks that modify `NextPaste/ClipboardCaptureService.swift`, `NextPaste/HomeView.swift`, or `NextPasteUITests/ClipboardImageAutoCaptureUITests.swift`; those changes are intentionally serialized.
-- UI helper tasks T032 and T033 are parallel because they modify different helper files and depend only on the US2 test contract.
-- Phase 6 validation tasks are intentionally sequential because each result informs the next quality gate.
+- **US1 (P1)**: Independent refactor for image clip construction after foundational setup.
+- **US2 (P2)**: Independent refactor for image row presentation after foundational setup.
+- **US3 (P3)**: Depends on configurable test support from T004 for URI/base path cleanup.
+
+### Parallel Opportunities
+
+- T003 and T004 can run in parallel because they touch different test support files.
+- T005/T006/T007 and T008/T009/T010 can run in parallel if developers coordinate shared test call-site edits in `NextPasteTests/ClipboardRowPresentationTests.swift`.
+- T011 and T012 can be implemented together in `NextPasteTests/ImageClipFileStoreTests.swift` after T004.
+- T014 and T015 must wait until all code tasks are complete.
+- T016 and T017 must wait until targeted/full tests are complete enough to support Sonar evidence.
 
 ---
 
-## Parallel Examples
+## Parallel Execution Examples
 
-### Phase 2 foundation
+### Foundation
 
 ```bash
-Task: "T006 Add decoded-pixel hash tests in NextPasteTests/ImageDuplicateIdentityTests.swift"
-Task: "T008 Add file store tests in NextPasteTests/ImageClipFileStoreTests.swift"
-Task: "T009 Add thumbnail generator tests in NextPasteTests/ImageThumbnailGeneratorTests.swift"
+Task: "T003 Refactor fixture options in NextPasteTests/ImageTestFixtures.swift"
+Task: "T004 Refactor configurable test store paths in NextPasteTests/SwiftDataTestSupport.swift"
 ```
 
-### User Story 1 tests
+### US1 and US2 after foundation
 
 ```bash
-Task: "T016 Add image capture service tests in NextPasteTests/ClipboardImageCaptureTests.swift"
-Task: "T017 Add monitor payload tests in NextPasteTests/ClipboardCaptureTests.swift"
-Task: "T018 Add image auto-capture UI tests in NextPasteUITests/ClipboardImageAutoCaptureUITests.swift"
-```
-
-### User Story 2 helpers
-
-```bash
-Task: "T032 Add image row targeting in NextPasteUITests/RowRobot.swift"
-Task: "T033 Add image thumbnail assertions in NextPasteUITests/UITestAssertions.swift"
+Task: "T005-T007 Refactor ClipItem.imageClip value object in NextPaste/ClipItem.swift and mechanical call sites"
+Task: "T008-T010 Refactor ImageClipboardRowPresentation content value object in NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift and mechanical call sites"
 ```
 
 ---
@@ -233,33 +185,34 @@ Task: "T033 Add image thumbnail assertions in NextPasteUITests/UITestAssertions.
 
 ### MVP First
 
-1. Complete Phase 1 and Phase 2.
-2. Complete Phase 3 only.
-3. Validate image auto-capture for supported images, screenshots, deduplication, and active/backgrounded/minimized app states.
-4. Stop and demo an image clip appearing in history without manual saving.
+1. Complete T001-T004 to lock scope and remove shared test-support blockers.
+2. Complete T005-T013 to resolve all listed Sonar issues.
+3. Stop and run T014 targeted validation before any broader cleanup.
 
-### Incremental Delivery
+### Cleanup Completion
 
-1. Add foundation: model metadata, image validation, file storage, thumbnail generation.
-2. Add US1: shared clipboard payload pipeline and automatic image capture.
-3. Add US2: thumbnail row display and image copy/delete/pin.
-4. Add US3: text regressions, privacy/local-first verification, and out-of-scope safeguards.
-5. Run full validation, `/speckit.analyze`, SonarQube, and evidence recording.
+1. Run T014 targeted tests.
+2. Run T015 full tests if feasible.
+3. Run T016 SonarQube/SonarCloud analysis or record accepted evidence.
+4. Complete T017-T019 before continuing feature work.
+
+### Scope Guard
+
+- Do not add product features, UI changes, clipboard behavior changes, image capture behavior changes, or visual design changes.
+- Do not modify files outside the listed Sonar files except the compile-required mechanical call-site files named in T007 and T010.
+- Do not add new dependencies, lint tools, or test frameworks.
 
 ---
 
 ## Validation Checklist
 
 | Validation item | Required task(s) |
-|---|---|
-| Required automated tests executed | T015, T023, T034, T041, T043, T044, T045 |
-| Every FR and SC verified against tasks and implementation | T046 |
-| `/speckit.analyze` run and findings addressed | T047 |
-| SonarQube analysis run or unavailable-state evidence recorded | T048 |
-| No new SonarQube issues introduced | T049 |
-| New Code duplication within configured quality gate | T049 |
-| Clipboard-first and automatic capture flow preserved | T046, T050 |
-| Local-first and privacy-by-default preserved | T040, T050 |
-| Apple-native-only constraint preserved | T040, T050 |
-| Shared design system preserved | T034, T044, T050 |
-| Refactoring integrity and text regressions preserved | T035, T036, T038, T039, T041, T050 |
+| --- | --- |
+| Targeted tests for affected production/test helper files run | T014 |
+| Full test suite run if feasible | T015 |
+| SonarQube/SonarCloud analysis or accepted evidence recorded | T016 |
+| All 9 listed SonarQube findings resolved | T017 |
+| No new SonarQube issues introduced | T017 |
+| New Code duplication within configured quality gate | T017 |
+| Refactor-only behavior parity confirmed | T019 |
+| Scope did not expand into product feature changes | T019 |
