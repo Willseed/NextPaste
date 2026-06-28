@@ -48,5 +48,5 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
-at specs/006-clipboard-image-capture/plan.md
+at specs/007-reduce-new-code-duplication/plan.md
 <!-- SPECKIT END -->
