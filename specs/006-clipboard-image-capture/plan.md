@@ -192,3 +192,66 @@ The data model is recorded in [data-model.md](data-model.md). Capture, storage, 
 ## Complexity Tracking
 
 No constitution violations are present. No complexity exceptions are required.
+
+## Refactor-Only SonarQube Cleanup Addendum
+
+**Date**: 2026-06-28 | **Scope**: current 9 SonarQube maintainability/code smell findings only.
+
+### Cleanup Summary
+
+Restore SonarQube Project Health before additional feature work by resolving only the listed maintainability findings. The cleanup is refactor-only: no user-facing behavior changes, product feature changes, clipboard behavior changes, image capture behavior changes, or visual design changes are allowed.
+
+### Refactor Technical Context
+
+**Language/Version**: Swift in the existing Xcode project and test targets.
+
+**Primary Dependencies**: No new dependencies. Use existing Swift, Foundation, SwiftData, SwiftUI test support, and current XCTest/Swift Testing targets.
+
+**Storage/Data Model**: No persisted schema change. Value objects/configuration structs introduced for initializer/factory inputs are transient construction inputs only and must not add stored SwiftData properties or alter existing persisted fields.
+
+**Testing**: Use targeted Swift Testing unit suites for the affected production files and test helpers, then run the full `NextPaste` scheme test suite if feasible.
+
+**Constraints**: Preserve behavior parity for text clips, image clips, file storage safety checks, image fixture data, row presentation values, copy/delete/pin behavior, and existing tests. Keep implementation changes limited to:
+
+- `NextPaste/ClipItem.swift`
+- `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift`
+- `NextPasteTests/ImageClipFileStoreTests.swift`
+- `NextPasteTests/ImageTestFixtures.swift`
+- `NextPasteTests/SwiftDataTestSupport.swift`
+
+Add helper types inside those files unless implementation proves a small shared helper file is strictly necessary.
+
+### SonarQube Issue Resolution Plan
+
+| File | Finding | Planned refactor | Behavior parity check |
+| --- | --- | --- | --- |
+| `NextPaste/ClipItem.swift` L53 | `imageClip` has 12 parameters, over the 7-parameter threshold | Replace the long image factory parameter list with a small image clip initialization value object in the same file. Keep the factory responsible for `contentType = "image"`, empty text content, optional timestamps, and pinned sort order. Prefer a file-local value object outside the `@Model` type if nested helper types conflict with SwiftData macros. | `ClipItemTests`, `ClipHistoryTests`, image capture tests, and copy/delete/pin regressions continue to observe identical metadata and ordering. |
+| `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift` L200 | `ImageClipboardRowPresentation` initializer has 8 parameters, over the threshold | Group row presentation inputs into a value object such as `ImageClipboardRowPresentation.Content` or `ImageClipboardRowContent`, leaving the initializer with the content object plus optional feedback/state. Preserve the `init(clip:copyFeedback:interactionState:)` convenience path. | `ClipboardRowPresentationTests` and `ClipRowViewTests` continue to assert the same labels, values, identifiers, fallback icon behavior, and pin/copy feedback state. |
+| `NextPasteTests/ImageClipFileStoreTests.swift` L118 | Hard-coded URI/path should come from a customizable parameter | Introduce a local path-safety test configuration/fixture value that supplies the escaped path component and absolute-style unsafe source extension. Use the configuration to derive the escaped URL and unsafe extension strings instead of embedding the URI/path literal in assertions. | `ImageClipFileStoreTests` still proves unsafe extensions cannot write outside the injected root and still checks sibling directories remain empty. |
+| `NextPasteTests/ImageClipFileStoreTests.swift` L132 | Suspicious empty catch block | Replace the empty `catch {}` with an explicit assertion that the thrown error is `ImageClipFileStoreError.unsafeSourceExtension(sourceExtension)`, recording an issue for any unexpected error. | The test still fails when unsafe extensions are accepted, and now also fails when rejection happens for the wrong reason. |
+| `NextPasteTests/ImageTestFixtures.swift` L183 | `makeFixture` has 10 parameters, over the threshold | Introduce a fixture options/configuration struct for fixture identity, image dimensions, presentation labels, pixel style, encoded type, and optional metadata. Change `makeFixture` to accept the options object only. | All deterministic fixture bytes, dimensions, labels, type identifiers, oversized status, and same-pixels/different-metadata expectations remain unchanged. |
+| `NextPasteTests/SwiftDataTestSupport.swift` L283 | Hard-coded temporary directory URI/path should come from a customizable parameter; reported multiple times | Add a temporary image store configuration parameter to test support for base directory and forbidden root URLs/path prefixes. Preserve the current default base under the repository working directory while making forbidden roots configurable at the source. | Existing test call sites continue to use isolated repo-local roots by default; storage cleanup and path containment behavior stay unchanged. |
+
+### Phase 0 Research Summary for Cleanup
+
+Research updates are recorded in [research.md](research.md). No unresolved clarification remains: Sonar findings map directly to value-object parameter grouping, configurable test path inputs, and completion/removal of the suspicious empty block.
+
+### Phase 1 Design Summary for Cleanup
+
+No data model artifact or contract artifact is required for this refactor-only cleanup because no persisted entity, external interface, UI contract, or product behavior changes. Validation guidance is added to [quickstart.md](quickstart.md).
+
+### Cleanup Constitution Check
+
+- **Clipboard-first product**: PASS. Cleanup does not change clipboard monitoring, detection, validation, deduplication, persistence, or history refresh.
+- **Local-first architecture**: PASS. Cleanup keeps existing local SwiftData and app-private file storage behavior.
+- **Privacy by default**: PASS. Cleanup adds no network, telemetry, analytics, sync, OCR, AI, import, or sharing surface.
+- **Automatic capture**: PASS. Cleanup preserves existing automatic text/image capture behavior and tests.
+- **Test-first coverage**: PASS. Targeted and full-suite validation are required before completion.
+- **Native simplicity**: PASS. Cleanup uses only Swift value objects/configuration structs in existing files.
+- **SonarQube project health gate**: PASS. Cleanup exists solely to resolve current SonarQube findings and requires recorded Sonar evidence.
+- **Consistent design system**: PASS. Cleanup does not alter user-facing visuals, design tokens, layout, or accessibility wording.
+- **Refactoring integrity**: PASS. Cleanup is behavior-preserving, scoped to reported issues, and avoids speculative abstractions.
+
+### Completion Criteria for Cleanup
+
+The cleanup is complete only when targeted tests pass, the full suite passes if feasible, SonarQube analysis or accepted Sonar evidence is recorded, all listed issues are resolved, no new SonarQube issues are introduced, and duplication remains within the configured quality gate.

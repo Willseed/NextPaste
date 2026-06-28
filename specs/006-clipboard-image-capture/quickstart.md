@@ -129,6 +129,66 @@ Accepted completion evidence:
 
 Completion requires evidence that Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, and New Code duplication meet the project gate or have documented false-positive justification.
 
+## Refactor-only SonarQube cleanup validation
+
+Use this validation set after resolving the current 9 SonarQube maintainability/code smell findings in:
+
+- `NextPaste/ClipItem.swift`
+- `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift`
+- `NextPasteTests/ImageClipFileStoreTests.swift`
+- `NextPasteTests/ImageTestFixtures.swift`
+- `NextPasteTests/SwiftDataTestSupport.swift`
+
+### Targeted unit validation
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
+  -only-testing:NextPasteTests/ClipItemTests \
+  -only-testing:NextPasteTests/ClipHistoryTests \
+  -only-testing:NextPasteTests/ClipboardRowPresentationTests \
+  -only-testing:NextPasteTests/ClipRowViewTests \
+  -only-testing:NextPasteTests/ImageClipFileStoreTests \
+  -only-testing:NextPasteTests/ClipboardImagePayloadTests \
+  -only-testing:NextPasteTests/ClipboardImageCaptureTests \
+  -only-testing:NextPasteTests/ClipboardCaptureTests \
+  -only-testing:NextPasteTests/ImageDuplicateIdentityTests \
+  -only-testing:NextPasteTests/ImageThumbnailGeneratorTests \
+  -only-testing:NextPasteTests/ClipboardWriterTests \
+  -only-testing:NextPasteTests/ClipboardImagePrivacyTests \
+  test
+```
+
+Expected coverage:
+
+- `ClipItem.imageClip` refactor preserves image metadata, timestamps, pin state, and history ordering.
+- `ImageClipboardRowPresentation` refactor preserves labels, values, identifiers, fallback icon state, copy feedback, and interaction state.
+- `ImageTestFixtures` refactor preserves deterministic fixture bytes, dimensions, formats, metadata variants, and oversized fixture behavior.
+- `ImageClipFileStoreTests` refactor preserves unsafe path rejection and asserts the intended rejection error.
+- `SwiftDataTestSupport` refactor preserves repo-local test store isolation and cleanup while allowing configurable base/forbidden path inputs.
+
+### Full regression validation
+
+Run the full suite if feasible:
+
+```bash
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
+```
+
+### SonarQube validation
+
+Run the configured project or CI SonarQube/SonarCloud analysis. If a local scanner and project configuration are available:
+
+```bash
+sonar-scanner -Dsonar.projectBaseDir="$(pwd)"
+```
+
+Record accepted evidence in `specs/006-clipboard-image-capture/sonar-evidence.md` showing:
+
+- All listed parameter-count, configurable URI/path, and empty-block findings are resolved.
+- No new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, or Maintainability issues are introduced.
+- New-code duplication remains within the configured quality gate.
+- Any unavailable scanner/report or false-positive status is documented with the accepted project evidence source and justification.
+
 ## Implementation validation evidence
 
 Recorded for Phase 6 validation on 2026-06-28.

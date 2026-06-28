@@ -59,3 +59,21 @@
 **Rationale**: The constitution requires automated tests and post-implementation SonarQube Project Health evidence. Existing targets already use Swift Testing for unit coverage and XCTest for UI flows, so the plan extends those conventions.
 
 **Alternatives considered**: Manual-only validation was rejected by the specification and constitution. Adding a new test framework or lint tool was rejected because the repository already defines suitable Xcode test targets.
+
+## Decision: Resolve Sonar parameter-count findings with file-local value objects
+
+**Rationale**: `ClipItem.imageClip`, `ImageClipboardRowPresentation.init`, and `ImageTestFixtures.makeFixture` already group coherent concepts: image clip metadata, image row presentation content, and deterministic fixture options. File-local value objects/configuration structs reduce parameter counts while keeping call sites explicit and preserving behavior.
+
+**Alternatives considered**: Raising or suppressing the SonarQube threshold was rejected because the project health gate requires resolving feature-introduced maintainability issues. Splitting functions into multiple partial calls was rejected because it would spread construction invariants across call sites. A broad shared abstraction was rejected as speculative for a narrow cleanup.
+
+## Decision: Make test path and URI-like inputs configurable through test support parameters
+
+**Rationale**: The URI/path findings are test-support concerns, not product behavior. Supplying base directories, forbidden roots, and unsafe path fixture names through small configuration values keeps tests deterministic while satisfying the requirement that URI/base path values are customizable.
+
+**Alternatives considered**: Removing the path-safety assertions was rejected because it would weaken coverage. Keeping hard-coded absolute paths with Sonar suppressions was rejected because the requested cleanup should resolve the issues directly. Moving test stores to a real temporary directory was rejected because the current repo-local isolation intentionally avoids shared temporary roots.
+
+## Decision: Complete the suspicious empty catch with an explicit error assertion
+
+**Rationale**: The unsafe-extension test should prove rejection happens for the intended reason. Asserting `ImageClipFileStoreError.unsafeSourceExtension(sourceExtension)` removes the suspicious empty block and strengthens behavior parity evidence without changing production behavior.
+
+**Alternatives considered**: Deleting the `catch` block alone was rejected because the test needs to continue after each rejected fixture. Catching all errors and recording success was rejected because it would preserve the ambiguous behavior Sonar flagged.
