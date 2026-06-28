@@ -19,10 +19,7 @@ struct ClipboardImageCaptureTests {
         defer { harness.cleanup() }
 
         for (index, fixture) in ImageTestFixtures.supportedCaptureFixtures.enumerated() {
-            let payload = try ClipboardImagePayload(
-                encodedData: fixture.data,
-                typeIdentifier: fixture.typeIdentifier
-            )
+            let payload = try ImageTestFixtures.makePayload(for: fixture)
 
             _ = harness.service.captureClipboardPayload(
                 ClipboardPayload.image(payload, textMetadata: nil),
@@ -35,7 +32,7 @@ struct ClipboardImageCaptureTests {
         let history = try SwiftDataTestSupport.fetchHistory(in: harness.context)
         let expectedNewestFirstPayloads = try ImageTestFixtures.supportedCaptureFixtures
             .reversed()
-            .map { try Self.makePayload(for: $0) }
+            .map { try ImageTestFixtures.makePayload(for: $0) }
 
         #expect(history.count == ImageTestFixtures.supportedCaptureFixtures.count)
         #expect(history.allSatisfy { $0.contentType == "image" })
@@ -43,7 +40,7 @@ struct ClipboardImageCaptureTests {
         #expect(history.map(\.textContent) == Array(repeating: "", count: history.count))
 
         for fixture in ImageTestFixtures.supportedCaptureFixtures {
-            let payload = try Self.makePayload(for: fixture)
+            let payload = try ImageTestFixtures.makePayload(for: fixture)
             let clip = try #require(history.first { $0.imageHash == payload.duplicateIdentity.hash })
 
             try Self.assertCapturedImageClip(
@@ -62,7 +59,7 @@ struct ClipboardImageCaptureTests {
         defer { harness.cleanup() }
 
         let fixture = ImageTestFixtures.screenshotStyle
-        let payload = try Self.makePayload(for: fixture)
+        let payload = try ImageTestFixtures.makePayload(for: fixture)
         let metadataText = "Screenshot metadata that must not become a text clip"
 
         _ = harness.service.captureClipboardPayload(
@@ -93,8 +90,8 @@ struct ClipboardImageCaptureTests {
         defer { harness.cleanup() }
 
         let fixtures = ImageTestFixtures.samePixelsDifferentMetadata
-        let firstPayload = try Self.makePayload(for: fixtures.plainPNG)
-        let duplicatePayload = try Self.makePayload(for: fixtures.metadataPNG)
+        let firstPayload = try ImageTestFixtures.makePayload(for: fixtures.plainPNG)
+        let duplicatePayload = try ImageTestFixtures.makePayload(for: fixtures.metadataPNG)
 
         #expect(fixtures.plainPNG.data != fixtures.metadataPNG.data)
         #expect(firstPayload.duplicateIdentity == duplicatePayload.duplicateIdentity)
@@ -119,13 +116,6 @@ struct ClipboardImageCaptureTests {
         #expect(try Data(contentsOf: metadata.imageURL(in: harness.root)) == fixtures.plainPNG.data)
         #expect(try Self.fileCount(in: harness.root.imagesDirectory, fileManager: harness.fileManager) == 1)
         #expect(try Self.fileCount(in: harness.root.thumbnailsDirectory, fileManager: harness.fileManager) == 1)
-    }
-
-    private static func makePayload(for fixture: ImageTestFixtures.ImageFixture) throws -> ClipboardImagePayload {
-        try ClipboardImagePayload(
-            encodedData: fixture.data,
-            typeIdentifier: fixture.typeIdentifier
-        )
     }
 
     private static func assertCapturedImageClip(

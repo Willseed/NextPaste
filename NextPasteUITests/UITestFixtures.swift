@@ -55,16 +55,38 @@ enum UITestFixtures {
         }
 
         struct Fixture: Equatable {
-            let name: String
-            let typeIdentifier: String
-            let fileExtension: String
-            let width: Int
-            let height: Int
-            let formatLabel: String
-            let thumbnailDescription: String
+            let descriptor: ImageFixtureDescriptor
+
+            var name: String {
+                descriptor.name
+            }
+
+            var typeIdentifier: String {
+                descriptor.typeIdentifier
+            }
+
+            var fileExtension: String {
+                descriptor.fileExtension
+            }
+
+            var width: Int {
+                descriptor.width
+            }
+
+            var height: Int {
+                descriptor.height
+            }
+
+            var formatLabel: String {
+                descriptor.formatLabel
+            }
+
+            var thumbnailDescription: String {
+                descriptor.thumbnailDescription
+            }
 
             var metadata: String {
-                "\(width) x \(height) \(formatLabel)"
+                descriptor.metadataString
             }
 
             var thumbnailAccessibilityLabel: String {
@@ -81,94 +103,88 @@ enum UITestFixtures {
             }
         }
 
-        static let activePNG = Fixture(
+        static let activePNG = fixture(
             name: "nextpaste-ui-active-png-64x48",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 64,
             height: 48,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 64 by 48 pixels"
         )
-        static let backgroundedJPEG = Fixture(
+        static let backgroundedJPEG = fixture(
             name: "nextpaste-ui-backgrounded-jpeg-72x54",
-            typeIdentifier: "public.jpeg",
-            fileExtension: "jpg",
             width: 72,
             height: 54,
-            formatLabel: "JPEG",
+            encodedType: .jpeg,
+            style: .gradient(seed: 29),
             thumbnailDescription: "JPEG clipboard image, 72 by 54 pixels"
         )
-        static let minimizedScreenshot = Fixture(
+        static let minimizedScreenshot = fixture(
             name: "nextpaste-ui-minimized-screenshot-96x60",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 96,
             height: 60,
-            formatLabel: "PNG",
-            thumbnailDescription: "Screenshot clipboard image, 96 by 60 pixels"
+            encodedType: .png,
+            style: .screenshot,
+            thumbnailDescription: "Screenshot clipboard image, 96 by 60 pixels",
+            metadata: ImageFixtureMetadata(
+                pngDescription: "NextPaste deterministic screenshot-style fixture",
+                software: "NextPasteUITests"
+            )
         )
-        static let copyTarget = Fixture(
+        static let copyTarget = fixture(
             name: "nextpaste-ui-image-copy-target-png-80x56",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 80,
             height: 56,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 80 by 56 pixels"
         )
-        static let copyFailure = Fixture(
+        static let copyFailure = fixture(
             name: "nextpaste-ui-image-copy-failure-png-84x58",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 84,
             height: 58,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 84 by 58 pixels"
         )
-        static let deleteTarget = Fixture(
+        static let deleteTarget = fixture(
             name: "nextpaste-ui-image-delete-target-png-88x62",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 88,
             height: 62,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 88 by 62 pixels"
         )
-        static let deleteCompanion = Fixture(
+        static let deleteCompanion = fixture(
             name: "nextpaste-ui-image-delete-companion-jpeg-90x64",
-            typeIdentifier: "public.jpeg",
-            fileExtension: "jpg",
             width: 90,
             height: 64,
-            formatLabel: "JPEG",
+            encodedType: .jpeg,
+            style: .gradient(seed: 17),
             thumbnailDescription: "JPEG clipboard image, 90 by 64 pixels"
         )
-        static let olderPinTarget = Fixture(
+        static let olderPinTarget = fixture(
             name: "nextpaste-ui-image-older-pin-target-png-92x66",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 92,
             height: 66,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 92 by 66 pixels"
         )
-        static let newerUnpinned = Fixture(
+        static let newerUnpinned = fixture(
             name: "nextpaste-ui-image-newer-unpinned-jpeg-94x68",
-            typeIdentifier: "public.jpeg",
-            fileExtension: "jpg",
             width: 94,
             height: 68,
-            formatLabel: "JPEG",
+            encodedType: .jpeg,
+            style: .gradient(seed: 17),
             thumbnailDescription: "JPEG clipboard image, 94 by 68 pixels"
         )
-        static let fallbackThumbnail = Fixture(
+        static let fallbackThumbnail = fixture(
             name: "nextpaste-ui-image-fallback-thumbnail-png-76x52",
-            typeIdentifier: "public.png",
-            fileExtension: "png",
             width: 76,
             height: 52,
-            formatLabel: "PNG",
+            encodedType: .png,
+            style: .gradient(seed: 17),
             thumbnailDescription: "PNG clipboard image, 76 by 52 pixels"
         )
 
@@ -184,6 +200,28 @@ enum UITestFixtures {
             olderPinTarget,
             newerUnpinned
         ]
+
+        private static func fixture(
+            name: String,
+            width: Int,
+            height: Int,
+            encodedType: EncodedImageType,
+            style: PixelStyle,
+            thumbnailDescription: String,
+            metadata: ImageFixtureMetadata? = nil
+        ) -> Fixture {
+            Fixture(
+                descriptor: ImageFixtureDescriptor(
+                    name: name,
+                    width: width,
+                    height: height,
+                    encodedType: encodedType,
+                    style: style,
+                    thumbnailDescription: thumbnailDescription,
+                    metadata: metadata
+                )
+            )
+        }
     }
 
     enum VisualIdentity {

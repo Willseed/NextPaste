@@ -23,7 +23,12 @@
 		};
 /* End PBXContainerItemProxy section */
 
+/* Begin PBXBuildFile section */
+		F6DDF0012FEF0001008C9AAA /* DeterministicImageFixtureFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6DDF0022FEF0001008C9AAA /* DeterministicImageFixtureFactory.swift */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
+		F6DDF0022FEF0001008C9AAA /* DeterministicImageFixtureFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NextPasteTests/DeterministicImageFixtureFactory.swift; sourceTree = "<group>"; };
 		F6E915E22FEBA508008C9AAA /* NextPaste.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NextPaste.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6E915F32FEBA509008C9AAA /* NextPasteTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NextPasteTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		F6E915FD2FEBA509008C9AAA /* NextPasteUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NextPasteUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -263,6 +268,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F6DDF0012FEF0001008C9AAA /* DeterministicImageFixtureFactory.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

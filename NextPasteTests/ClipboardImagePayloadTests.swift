@@ -12,8 +12,8 @@ struct ClipboardImagePayloadTests {
     @Test("validates PNG, JPEG, and screenshot-style Apple-native raster payloads")
     func validatesSupportedRasterPayloads() throws {
         for fixture in ImageTestFixtures.supportedCaptureFixtures {
-            let payload = try makePayload(for: fixture)
-            let repeatedPayload = try makePayload(for: fixture)
+            let payload = try ImageTestFixtures.makePayload(for: fixture)
+            let repeatedPayload = try ImageTestFixtures.makePayload(for: fixture)
 
             #expect(payload.encodedData == fixture.data)
             #expect(payload.typeIdentifier == fixture.typeIdentifier)
@@ -31,8 +31,8 @@ struct ClipboardImagePayloadTests {
 
     @Test("uses one raster validation path for screenshots and copied images")
     func validatesScreenshotStyleWithSameRasterPayloadContract() throws {
-        let copiedPNG = try makePayload(for: ImageTestFixtures.png)
-        let screenshotStyle = try makePayload(for: ImageTestFixtures.screenshotStyle)
+        let copiedPNG = try ImageTestFixtures.makePayload(for: ImageTestFixtures.png)
+        let screenshotStyle = try ImageTestFixtures.makePayload(for: ImageTestFixtures.screenshotStyle)
 
         #expect(copiedPNG.typeIdentifier == screenshotStyle.typeIdentifier)
         #expect(copiedPNG.fileExtension == screenshotStyle.fileExtension)
@@ -79,13 +79,6 @@ struct ClipboardImagePayloadTests {
                 byteCount: fixture.byteCount,
                 maximumByteCount: ImageTestFixtures.maximumEncodedImageByteCount
             )
-        )
-    }
-
-    private func makePayload(for fixture: ImageTestFixtures.ImageFixture) throws -> ClipboardImagePayload {
-        try ClipboardImagePayload(
-            encodedData: fixture.data,
-            typeIdentifier: fixture.typeIdentifier
         )
     }
 

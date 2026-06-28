@@ -12,7 +12,6 @@ import UIKit
 
 struct ImageClipboardRow: View {
     @Environment(\.appTheme) private var appTheme
-    @Environment(\.appMotion) private var appMotion
 
     private static let thumbnailAreaSize: CGFloat = 56
 
@@ -40,7 +39,23 @@ struct ImageClipboardRow: View {
     }
 
     var body: some View {
-        HStack(spacing: DesignTokens.Spacing.medium) {
+        SharedRowPresentation(
+            isPinned: presentation.isPinned,
+            interactionState: presentation.interactionState,
+            visualStyle: .staticCard,
+            tracksHover: false,
+            showsPinnedAccentMarker: false,
+            showsDeleteAction: showsDeleteAction,
+            showsPinAction: showsPinAction,
+            accessibility: SharedRowPresentation.Accessibility(
+                identifier: presentation.rowAccessibilityIdentifier,
+                label: presentation.accessibilityLabel,
+                value: presentation.accessibilityValue
+            ),
+            onCopy: onCopy,
+            onDelete: onDelete,
+            onTogglePin: onTogglePin
+        ) {
             thumbnailSurface
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
@@ -53,66 +68,15 @@ struct ImageClipboardRow: View {
                     .font(DesignTokens.Typography.metadata.font)
                     .foregroundStyle(appTheme.textSecondary.color)
             }
-
-            Spacer(minLength: DesignTokens.Spacing.small)
-
-            trailingState
-
-            if let onCopy {
-                Button {
-                    onCopy()
-                } label: {
-                    Label(
-                        ClipboardRowPresentation.RowAction.copy.accessibilityLabel,
-                        systemImage: ClipboardRowPresentation.RowAction.copy.symbolName
-                    )
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("copy-clip-button")
-                .accessibilityLabel(ClipboardRowPresentation.RowAction.copy.accessibilityLabel)
-            }
-
-            if showsPinAction, let onTogglePin {
-                Button {
-                    onTogglePin()
-                } label: {
-                    Label(
-                        ClipboardRowPresentation.RowAction.pin(isPinned: presentation.isPinned).accessibilityLabel,
-                        systemImage: ClipboardRowPresentation.RowAction.pin(isPinned: presentation.isPinned).symbolName
-                    )
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("pin-clip-button")
-                .accessibilityLabel(ClipboardRowPresentation.RowAction.pin(isPinned: presentation.isPinned).accessibilityLabel)
-            }
-
-            if showsDeleteAction, let onDelete {
-                Button(role: .destructive) {
-                    onDelete()
-                } label: {
-                    Label(
-                        ClipboardRowPresentation.RowAction.delete.accessibilityLabel,
-                        systemImage: ClipboardRowPresentation.RowAction.delete.symbolName
-                    )
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("delete-clip-button")
-                .accessibilityLabel(ClipboardRowPresentation.RowAction.delete.accessibilityLabel)
-            }
+        } trailingState: {
+            SharedRowTrailingState(
+                copyFeedback: presentation.copyFeedback,
+                copyFeedbackStyle: .badge,
+                isPinned: presentation.isPinned,
+                pinState: presentation.pinState,
+                pinnedAccessibilityIdentifier: "pinned-image-clip-icon"
+            )
         }
-        .padding(.vertical, DesignTokens.Spacing.medium)
-        .padding(.horizontal, DesignTokens.Spacing.large)
-        .background(appTheme.card.color)
-        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous))
-        .overlay(
-            RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous)
-                .stroke(appTheme.borderSubtle.color, lineWidth: 1)
-        )
-        .animation(appMotion.animation(presentation.interactionState.animationDuration), value: presentation.interactionState)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel(presentation.accessibilityLabel)
-        .accessibilityValue(presentation.accessibilityValue)
-        .accessibilityIdentifier(presentation.rowAccessibilityIdentifier)
     }
 
     private var thumbnailSurface: some View {
@@ -171,19 +135,4 @@ struct ImageClipboardRow: View {
 #endif
     }
 
-    @ViewBuilder
-    private var trailingState: some View {
-        if let feedback = presentation.copyFeedback {
-            Badge(feedback.label, symbolName: feedback.symbolName, role: .copied)
-                .accessibilityIdentifier("clip-copy-feedback")
-                .accessibilityLabel(feedback.accessibilityLabel)
-        } else if presentation.isPinned {
-            Badge(
-                presentation.pinState.accessibilityLabel,
-                symbolName: presentation.pinState.symbolName,
-                role: .pinned
-            )
-            .accessibilityIdentifier("pinned-image-clip-icon")
-        }
-    }
 }

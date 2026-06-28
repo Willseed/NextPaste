@@ -59,6 +59,22 @@ struct ClipboardRowPresentationTests {
         #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).accessibilityLabel == "Unpin")
     }
 
+    @Test("shared row action controls preserve copy pin delete order and identifiers")
+    func sharedRowActionControlsPreserveOrderAndIdentifiers() {
+        #expect(RowActionControlGroup.copyButtonIdentifier == "copy-clip-button")
+        #expect(RowActionControlGroup.pinButtonIdentifier == "pin-clip-button")
+        #expect(RowActionControlGroup.deleteButtonIdentifier == "delete-clip-button")
+        #expect(RowActionControlGroup.visibleActionIdentifiers(
+            includesCopyAction: true,
+            showsPinAction: true,
+            showsDeleteAction: true
+        ) == [
+            "copy-clip-button",
+            "pin-clip-button",
+            "delete-clip-button"
+        ])
+    }
+
     @Test("describes pinned state accessibly")
     func describesPinnedStateAccessibly() {
         let state = ClipboardRowPresentation.PinState.pinned

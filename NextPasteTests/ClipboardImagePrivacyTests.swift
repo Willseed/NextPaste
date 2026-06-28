@@ -21,7 +21,7 @@ struct ClipboardImagePrivacyTests {
         defer { harness.cleanup() }
 
         let fixture = ImageTestFixtures.screenshotStyle
-        let payload = try Self.makePayload(for: fixture)
+        let payload = try ImageTestFixtures.makePayload(for: fixture)
 
         let outcome = harness.service.captureClipboardPayload(
             .image(payload, textMetadata: "local screenshot metadata"),
@@ -61,7 +61,7 @@ struct ClipboardImagePrivacyTests {
             typeIdentifier: imageType,
             from: harness.imageFileStore,
             to: pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         ))
         #expect(pasteboard.data(forType: NSPasteboard.PasteboardType(imageType)) == fixture.data)
         #expect(pasteboard.string(forType: .string) == nil)
@@ -80,7 +80,7 @@ struct ClipboardImagePrivacyTests {
             typeIdentifier: imageType,
             from: harness.imageFileStore,
             to: pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         ) == false)
         #expect(pasteboard.string(forType: .string) == "clipboard content after image delete")
         #endif
@@ -92,7 +92,7 @@ struct ClipboardImagePrivacyTests {
         defer { harness.cleanup() }
 
         let fixture = ImageTestFixtures.png
-        let payload = try Self.makePayload(for: fixture)
+        let payload = try ImageTestFixtures.makePayload(for: fixture)
 
         #expect(harness.service.captureClipboardPayload(
             .image(payload, textMetadata: "clipboard alternate text must not be persisted"),
@@ -144,13 +144,6 @@ struct ClipboardImagePrivacyTests {
         #expect(
             findings.isEmpty,
             "Image capture should remain local-first with no network, CloudKit, OCR, AI, analytics, or manual import surfaces: \(findings.joined(separator: "; "))"
-        )
-    }
-
-    private static func makePayload(for fixture: ImageTestFixtures.ImageFixture) throws -> ClipboardImagePayload {
-        try ClipboardImagePayload(
-            encodedData: fixture.data,
-            typeIdentifier: fixture.typeIdentifier
         )
     }
 
@@ -280,18 +273,3 @@ private enum PrivacyTestError: Error, CustomStringConvertible {
         }
     }
 }
-
-#if os(macOS)
-private final class TestProcessInfo: ProcessInfo, @unchecked Sendable {
-    private let stubbedArguments: [String]
-
-    init(arguments: [String]) {
-        self.stubbedArguments = arguments
-        super.init()
-    }
-
-    override var arguments: [String] {
-        stubbedArguments
-    }
-}
-#endif

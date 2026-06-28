@@ -42,19 +42,18 @@ enum ClipboardWriter {
             return false
         }
 
-        guard isValidImageTypeIdentifier(typeIdentifier) else {
-            return false
-        }
-
-        guard let imageData = try? imageFileStore.fullImageData(for: imageFilename),
-              imageData.isEmpty == false else {
+        guard let request = ClipboardWriteRequest(
+            imageFilename: imageFilename,
+            typeIdentifier: typeIdentifier,
+            imageFileStore: imageFileStore
+        ) else {
             return false
         }
 
 #if os(macOS)
-        return writeImageData(imageData, typeIdentifier: typeIdentifier, to: .general)
+        return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: .general)
 #elseif canImport(UIKit)
-        return writeImageData(imageData, typeIdentifier: typeIdentifier, to: .general)
+        return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: .general)
 #else
         return false
 #endif
@@ -72,16 +71,15 @@ enum ClipboardWriter {
             return false
         }
 
-        guard isValidImageTypeIdentifier(typeIdentifier) else {
+        guard let request = ClipboardWriteRequest(
+            imageFilename: imageFilename,
+            typeIdentifier: typeIdentifier,
+            imageFileStore: imageFileStore
+        ) else {
             return false
         }
 
-        guard let imageData = try? imageFileStore.fullImageData(for: imageFilename),
-              imageData.isEmpty == false else {
-            return false
-        }
-
-        return writeImageData(imageData, typeIdentifier: typeIdentifier, to: pasteboard)
+        return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: pasteboard)
     }
 #endif
 
@@ -96,6 +94,26 @@ enum ClipboardWriter {
         }
 
         return true
+    }
+
+    private struct ClipboardWriteRequest {
+        let imageData: Data
+        let typeIdentifier: String
+
+        init?(
+            imageFilename: String,
+            typeIdentifier: String,
+            imageFileStore: ImageClipFileStore
+        ) {
+            guard ClipboardWriter.isValidImageTypeIdentifier(typeIdentifier),
+                  let imageData = try? imageFileStore.fullImageData(for: imageFilename),
+                  imageData.isEmpty == false else {
+                return nil
+            }
+
+            self.imageData = imageData
+            self.typeIdentifier = typeIdentifier
+        }
     }
 
 #if os(macOS)
@@ -136,7 +154,7 @@ enum ClipboardWriter {
 }
 
 #if os(macOS)
-private struct PasteboardSnapshot {
+struct PasteboardSnapshot {
     private let items: [[NSPasteboard.PasteboardType: Data]]
 
     init(_ pasteboard: NSPasteboard) {

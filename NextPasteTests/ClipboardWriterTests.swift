@@ -21,7 +21,7 @@ struct ClipboardWriterTests {
         let text = "NextPaste text copy regression"
 
         pasteboard.clearContents()
-        #expect(ClipboardWriter.copy(text, processInfo: TestProcessInfo(arguments: [])))
+        #expect(ClipboardWriter.copy(text, processInfo: ClipboardWriterTestSupport.processInfo()))
         #expect(pasteboard.string(forType: .string) == text)
     }
 
@@ -38,7 +38,7 @@ struct ClipboardWriterTests {
 
         let didCopy = ClipboardWriter.copy(
             "Replacement text must not be written",
-            processInfo: TestProcessInfo(arguments: [ClipboardWriter.simulatedFailureArgument])
+            processInfo: ClipboardWriterTestSupport.simulatedFailureProcessInfo()
         )
 
         #expect(didCopy == false)
@@ -62,7 +62,7 @@ struct ClipboardWriterTests {
             typeIdentifier: fixture.typeIdentifier,
             from: harness.imageFileStore,
             to: harness.pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         )
 
         #expect(didCopy)
@@ -88,7 +88,7 @@ struct ClipboardWriterTests {
             typeIdentifier: fixture.typeIdentifier,
             from: harness.imageFileStore,
             to: harness.pasteboard,
-            processInfo: TestProcessInfo(arguments: [ClipboardWriter.simulatedFailureArgument])
+            processInfo: ClipboardWriterTestSupport.simulatedFailureProcessInfo()
         )
 
         #expect(didCopy == false)
@@ -113,7 +113,7 @@ struct ClipboardWriterTests {
             typeIdentifier: fixture.typeIdentifier,
             from: harness.imageFileStore,
             to: harness.pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         )
 
         #expect(didCopy == false)
@@ -138,7 +138,7 @@ struct ClipboardWriterTests {
             typeIdentifier: "public.utf8-plain-text",
             from: harness.imageFileStore,
             to: harness.pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         )
 
         #expect(didCopy == false)
@@ -165,7 +165,7 @@ struct ClipboardWriterTests {
             typeIdentifier: fixture.typeIdentifier,
             from: harness.imageFileStore,
             to: harness.pasteboard,
-            processInfo: TestProcessInfo(arguments: [])
+            processInfo: ClipboardWriterTestSupport.processInfo()
         )
 
         #expect(didCopy == false)
@@ -212,52 +212,4 @@ private struct ImageClipboardWriterHarness {
     }
 }
 
-private struct PasteboardSnapshot {
-    private let items: [[NSPasteboard.PasteboardType: Data]]
-
-    init(_ pasteboard: NSPasteboard) {
-        self.items = pasteboard.pasteboardItems?.map { item in
-            var itemData = [NSPasteboard.PasteboardType: Data]()
-            for type in item.types {
-                if let data = item.data(forType: type) {
-                    itemData[type] = data
-                }
-            }
-            return itemData
-        } ?? []
-    }
-
-    func restore(to pasteboard: NSPasteboard) {
-        pasteboard.clearContents()
-
-        guard items.isEmpty == false else {
-            return
-        }
-
-        let pasteboardItems = items.map { itemData in
-            let item = NSPasteboardItem()
-            for (type, data) in itemData {
-                _ = item.setData(data, forType: type)
-            }
-            return item
-        }
-
-        if pasteboardItems.isEmpty == false {
-            _ = pasteboard.writeObjects(pasteboardItems)
-        }
-    }
-}
-
-private final class TestProcessInfo: ProcessInfo, @unchecked Sendable {
-    private let stubbedArguments: [String]
-
-    init(arguments: [String]) {
-        self.stubbedArguments = arguments
-        super.init()
-    }
-
-    override var arguments: [String] {
-        stubbedArguments
-    }
-}
 #endif
