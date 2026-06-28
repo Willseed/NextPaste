@@ -32,11 +32,13 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 # Image row action and automatic capture UI parity
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/ClipboardImageRowActionsUITests -only-testing:NextPasteUITests/ClipboardAutoCaptureUITests test
 
-# Full suite when feasible
+# Full regression suite (mandatory)
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
 ```
 
 If a listed test class has a different checked-in name, use the nearest existing targeted class that covers the same behavior and record the actual command used.
+
+Full regression is mandatory for completion. If a developer cannot run the full regression locally, the feature remains incomplete until a successful CI run or another accepted full-regression execution is recorded. Local environment limitations are not accepted as completion evidence.
 
 ## SonarQube evidence
 
@@ -55,5 +57,5 @@ Evidence must include source/run identifier, date or timestamp, Duplications on 
 - [ ] Public APIs preserved or any mechanical internal exception documented.
 - [ ] SwiftData schema and persisted storage unchanged.
 - [ ] Targeted unit and UI tests passed.
-- [ ] Full suite passed when feasible or any environment limitation recorded.
+- [ ] Full regression suite passed locally, in CI, or through another accepted full-regression execution; local limitations are not completion evidence.
 - [ ] Sonar evidence proves the configured duplication gate passes without suppressions/exclusions/threshold changes.

@@ -4,7 +4,7 @@
 
 **Prerequisites**: [plan.md](plan.md), [spec.md](spec.md), [research.md](research.md), [data-model.md](data-model.md), [quickstart.md](quickstart.md), [contracts/](contracts/)
 
-**Tests**: Required. This is a refactor-only feature, so every implementation task must preserve behavior parity and be validated by targeted unit/UI tests plus SonarQube Project Health evidence.
+**Tests**: Required. This is a refactor-only feature, so every implementation task must preserve behavior parity and be validated by targeted unit/UI tests, mandatory full regression execution, and SonarQube Project Health evidence. If full regression cannot run locally, completion is blocked until successful CI or another accepted full-regression execution is recorded; local limitations are not accepted as completion evidence.
 
 **Task format**: `- [ ] T### [P?] [US?] Description with exact file path (FR-###, SC-###)`
 
@@ -63,9 +63,9 @@
 
 **Independent Test**: Compare the baseline hotspot evidence with post-refactor SonarQube evidence and verify Duplications on New Code is at or below the configured gate.
 
-### Tests for User Story 1
+### Evidence for User Story 1
 
-- [ ] T009 [US1] Collect the current SonarQube/SonarCloud/CI duplication report or screenshot for the six hotspot files and record the source/run in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-001, FR-002, FR-013, SC-001, SC-002, SC-006)
+- [ ] T009 [US1] Collect evidence only, not an automated test: capture the current SonarQube/SonarCloud/CI duplication report or screenshot for the six hotspot files and record the source/run in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-001, FR-002, FR-013, SC-001, SC-002, SC-006)
 
 ### Implementation for User Story 1
 
@@ -126,7 +126,7 @@
 - [ ] T032 [P] [US3] Refactor `NextPasteUITests/UITestFixtures.swift` to back image fixture metadata with shared `ImageFixtureDescriptor` values while preserving existing fixture names and UI test intent (FR-007, FR-008, FR-010, FR-012, SC-003, SC-004, SC-007)
 - [ ] T033 [P] [US3] Refactor `NextPasteUITests/ClipboardRobot.swift` to remove private duplicated image-generation logic and use `DeterministicImageFixtureFactory` while keeping `captureImage(...)` and pasteboard semantics stable (FR-007, FR-008, FR-010, FR-011, FR-012, SC-003, SC-004, SC-005, SC-007)
 - [ ] T034 [US3] Apply minimal repeated-payload helper call-site updates in `NextPasteTests/ClipboardImageCaptureTests.swift`, `NextPasteTests/ImageThumbnailGeneratorTests.swift`, and `NextPasteTests/ClipboardWriterTests.swift` only where shared `ImageTestFixtures` builders remove duplicated setup without hiding test intent (FR-007, FR-008, FR-009, FR-012, SC-003, SC-004, SC-005)
-- [ ] T035 [US3] Review `NextPasteUITests/ClipboardRobot.swift`, `NextPasteUITests/UITestFixtures.swift`, `NextPasteUITests/HistoryRobot.swift`, `NextPasteUITests/RowRobot.swift`, and `NextPasteUITests/UITestAssertions.swift` to ensure repeated image fixture, clipboard, row-action, and assertion logic is centralized without adding speculative helper APIs (FR-007, FR-008, FR-010, FR-011, FR-012, SC-004, SC-005, SC-007)
+- [ ] T035 [US3] Review `NextPasteUITests/ClipboardRobot.swift`, `NextPasteUITests/UITestFixtures.swift`, `NextPasteUITests/HistoryRobot.swift`, `NextPasteUITests/RowRobot.swift`, and `NextPasteUITests/UITestAssertions.swift`, then record evidence in `specs/007-reduce-new-code-duplication/sonar-evidence.md` that repeated image fixture, clipboard, row-action, and assertion logic is centralized and one representative future scenario can be added using the shared Robot, Fixture, Builder, and Assertion infrastructure without copying helper logic or adding speculative helper APIs (FR-007, FR-008, FR-010, FR-011, FR-012, SC-004, SC-005, SC-007)
 - [ ] T036 [US3] Run targeted image fixture, image payload, duplicate identity, image UI, and automatic capture tests and record command/results in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-007, FR-008, FR-009, SC-003, SC-005, SC-006, SC-007)
 
 **Checkpoint**: UI/unit image fixture and robot hotspots use shared deterministic builders, UI robot APIs remain stable, and behavior parity evidence is recorded.
@@ -139,7 +139,7 @@
 
 - [ ] T037 Run the full `NextPasteTests` unit target and record command/results in `specs/007-reduce-new-code-duplication/sonar-evidence.md` after US2 and US3 implementation tasks pass (FR-009, FR-010, SC-003, SC-005, SC-006)
 - [ ] T038 Run affected UI test classes `NextPasteUITests/ClipRowActionsUITests.swift`, `NextPasteUITests/ClipboardImageRowActionsUITests.swift`, `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, and `NextPasteUITests/ClipboardImageAutoCaptureUITests.swift`, then record command/results in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-007, FR-008, FR-009, SC-003, SC-005, SC-006, SC-007)
-- [ ] T039 Run the full regression command `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and record command/results or environment limitation in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-009, FR-010, SC-003, SC-005, SC-006)
+- [ ] T039 Run the full regression command `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` and record successful command/results in `specs/007-reduce-new-code-duplication/sonar-evidence.md`; if full regression cannot run locally, leave the feature incomplete until successful CI or another accepted full-regression execution is recorded because local limitations are not completion evidence (FR-009, FR-010, SC-003, SC-005, SC-006)
 - [ ] T040 Run or collect accepted SonarQube/SonarCloud/CI/local-report evidence for the changed production and test files, then update `specs/007-reduce-new-code-duplication/sonar-evidence.md` with source/run identifier, date, Duplications on New Code result, and quality-gate status (FR-001, FR-002, FR-013, FR-014, SC-001, SC-002, SC-006)
 - [ ] T041 Verify `specs/007-reduce-new-code-duplication/sonar-evidence.md` shows no new unresolved feature-introduced Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or duplication failures; document any accepted false positives with justification (FR-002, FR-013, FR-014, SC-001, SC-006)
 - [ ] T042 Review final diffs for `NextPaste/DesignSystem/Components/ClipboardRow.swift`, `NextPaste/DesignSystem/Components/ImageClipboardRow.swift`, `NextPaste/ClipboardWriter.swift`, `NextPasteTests/ImageTestFixtures.swift`, `NextPasteTests/ClipboardWriterTests.swift`, and `NextPasteUITests/ClipboardRobot.swift` to confirm refactor-only behavior, public API preservation, local-first/privacy preservation, design-system consistency, and absence of speculative abstractions; record result in `specs/007-reduce-new-code-duplication/sonar-evidence.md` (FR-004, FR-006, FR-010, FR-012, SC-003, SC-004, SC-005, SC-006)
@@ -202,12 +202,13 @@ Task: T033 Refactor NextPasteUITests/ClipboardRobot.swift
 | --- | --- | --- |
 | Behavior parity for row presentation | T012, T025, T038, T039 | Text/image row labels, previews, thumbnails, action order, copied feedback, pin/delete behavior, and accessibility remain unchanged. |
 | Clipboard writer parity | T013, T014, T025, T039 | Text/image copy success, failure rollback, unchanged pasteboard state, type preservation, and privacy remain unchanged. |
-| UI robot and fixture parity | T026, T027, T028, T036, T038 | Deterministic image bytes, metadata, duplicate identity, pasteboard writes, row targeting, and UI scenario outcomes remain unchanged. |
+| UI robot and fixture parity | T026, T027, T028, T035, T036, T038 | Deterministic image bytes, metadata, duplicate identity, pasteboard writes, row targeting, and UI scenario outcomes remain unchanged; one representative future scenario is proven addable through shared Robot, Fixture, Builder, and Assertion infrastructure without helper-logic copying. |
 | Clipboard-first behavior | T036, T038, T039 | Existing automatic capture, deduplication, persistence, and history refresh tests pass. |
 | Local-first behavior | T014, T025, T039 | No network/sync dependency and no persisted schema/storage behavior change. |
 | Privacy-by-default | T002, T014, T041, T042 | No telemetry, analytics, network transmission, remote processing, or policy weakening. |
 | Design-system consistency | T012, T017, T018, T025, T042 | Existing tokens, spacing, radius, iconography, motion, and component styling are preserved. |
 | Refactoring integrity | T003, T008, T035, T042 | Public APIs are preserved unless mechanically documented; abstractions map to hotspot duplication only. |
+| Full regression gate | T039 | Full `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` regression succeeds locally, in CI, or through another accepted full-regression execution; local limitations alone cannot complete the feature. |
 | SonarQube quality gate | T040, T041 | Duplications on New Code is at or below the configured gate with no new unresolved feature-introduced issues. |
 
 ---
