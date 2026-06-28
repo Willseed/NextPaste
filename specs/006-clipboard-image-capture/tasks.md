@@ -4,7 +4,7 @@
 
 **Prerequisites**: [spec.md](spec.md), [plan.md](plan.md), [research.md](research.md), [data-model.md](data-model.md), [quickstart.md](quickstart.md), [contracts/](contracts/), `.specify/memory/constitution.md`
 
-**Scope**: Resolve only the current 9 SonarQube maintainability/code smell findings. No user-facing behavior changes, product feature changes, clipboard behavior changes, image capture behavior changes, visual design changes, or new product features are allowed.
+**Scope**: Resolve only the current 9 SonarQube maintainability/code smell findings. Primary code/test scope remains limited to the Sonar-listed files below. No user-facing behavior changes, product feature changes, clipboard behavior changes, image capture behavior changes, visual design changes, or new product features are allowed.
 
 **Primary file scope**:
 
@@ -14,9 +14,13 @@
 - `NextPasteTests/ImageTestFixtures.swift`
 - `NextPasteTests/SwiftDataTestSupport.swift`
 
-**Compile-required mechanical call-site scope**: If value-object signatures require caller updates, limit those updates to the exact call sites listed in tasks T007 and T010. These are not product feature changes.
+**Minimal mechanical call-site compatibility scope**: Outside the primary Sonar-listed files, edits are allowed only when value-object signatures require compile-time caller compatibility, and must be limited to the exact call sites listed in tasks T007 and T010. These edits must be mechanical only and must not change product behavior.
 
 **Tests**: Required by FR-019 and the constitution. Use existing targeted regression tests to prove behavior parity for this refactor-only cleanup.
+
+**Required Spec Kit gate**: This task plan must follow `/speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze -> /speckit.implement`. The current `/speckit.analyze` run is the required pre-implementation gate; address analysis findings in `tasks.md` before `/speckit.implement` starts. Any post-implementation `/speckit.analyze` run is optional re-analysis only and does not replace the required pre-implementation gate.
+
+**SonarQube completion gate**: Cleanup is complete only with accepted Sonar evidence from a SonarQube dashboard, SonarCloud dashboard, CI artifact, local Sonar report, or dashboard screenshot. If that evidence is unavailable, the feature remains incomplete. Evidence must show all 9 listed Sonar findings are resolved and no new Sonar issues or New Code duplication gate failures are introduced.
 
 **Organization**: Tasks are grouped by setup, shared foundation, existing user-story behavior parity, and final validation/Sonar evidence.
 
@@ -96,9 +100,9 @@
 
 - [ ] T014 Run the targeted unit validation command from `specs/006-clipboard-image-capture/quickstart.md` and record results in `specs/006-clipboard-image-capture/quickstart.md` (FR-001, FR-003, FR-005, FR-006, FR-007, FR-008, FR-009, FR-011, FR-012, FR-013, FR-014, FR-015, FR-016, FR-018, FR-019, FR-020, FR-021, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008)
 - [ ] T015 Run `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` if feasible and record full-suite results in `specs/006-clipboard-image-capture/quickstart.md` (FR-019, FR-020, SC-005, SC-008)
-- [ ] T016 Run available SonarQube/SonarCloud analysis, or record accepted unavailable-gate evidence, in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
-- [ ] T017 Verify all listed parameter-count, configurable URI/base path, and empty-block SonarQube findings are resolved with no new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or New Code duplication gate failures, and record results in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
-- [ ] T018 Run `/speckit.analyze` after task implementation and address or document findings in `specs/006-clipboard-image-capture/tasks.md` without expanding cleanup scope (FR-019, FR-020, SC-008)
+- [ ] T016 Run available SonarQube, SonarCloud, or local Sonar analysis and record accepted Sonar evidence from a SonarQube dashboard, SonarCloud dashboard, CI artifact, local Sonar report, or dashboard screenshot in `specs/006-clipboard-image-capture/sonar-evidence.md`; if that evidence is unavailable, leave the feature incomplete (FR-020, SC-008)
+- [ ] T017 Verify accepted Sonar evidence shows all 9 listed parameter-count, configurable URI/base path, and empty-block SonarQube findings are resolved with no new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, or New Code duplication gate failures, and record results in `specs/006-clipboard-image-capture/sonar-evidence.md` (FR-020, SC-008)
+- [ ] T018 [Optional] Re-run `/speckit.analyze` after implementation as a post-implementation consistency check, and address or document any new findings in `specs/006-clipboard-image-capture/tasks.md` without expanding cleanup scope; this optional re-analysis does not replace the required pre-implementation `/speckit.analyze` gate (FR-019, FR-020, SC-008)
 - [ ] T019 Review the final diff against the refactor-only scope and record behavior-parity confirmation in `specs/006-clipboard-image-capture/sonar-evidence.md`, including no user-facing behavior, clipboard behavior, image capture behavior, visual design, or product feature changes (FR-007, FR-014, FR-015, FR-017, FR-018, FR-020, SC-005, SC-007, SC-008)
 
 ---
@@ -108,12 +112,15 @@
 | Requirement / criterion | Cleanup coverage |
 | --- | --- |
 | FR-001 Detect supported raster image clipboard content | T003, T014 |
+| FR-002 Clipboard image detection uses the same active/background/minimized capture path | T014, T015, T019 (behavior not modified; regression-covered) |
 | FR-003 Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI | T005, T007, T014 |
+| FR-004 Automatically save new supported image clipboard content as local image clips | T014, T015, T019 (behavior not modified; regression-covered) |
 | FR-005 Image clips use `contentType = "image"` | T005, T007, T014 |
 | FR-006 App-private image storage with SwiftData metadata only | T004, T005, T007, T011, T012, T013, T014 |
 | FR-007 No clipboard image data transmitted outside device | T004, T011, T013, T019 |
 | FR-008 Deduplicate by decoded pixels plus dimensions | T003, T005, T007, T014 |
 | FR-009 Ignore unsupported/empty/invalid/oversized image data | T003, T012, T014 |
+| FR-010 History list refreshes automatically after image capture | T014, T015, T019 (behavior not modified; regression-covered) |
 | FR-011 Existing history ordering and pinning for image clips | T005, T007, T008, T010, T014 |
 | FR-012 Local thumbnail display and fallback icon rules | T008, T010, T014 |
 | FR-013 Image row actions and copy failure behavior | T014 |
@@ -122,8 +129,8 @@
 | FR-016 Offline image capture/storage/history/actions | T004, T011, T013, T014 |
 | FR-017 No OCR, AI, sync, remote transmission, analytics, import, or new product surfaces | T019 |
 | FR-018 Shared design-system presentation remains unchanged | T008, T010, T019 |
-| FR-019 Automated tests and behavior-parity validation | T002, T003, T004, T007, T010, T011, T012, T013, T014, T015, T018 |
-| FR-020 SonarQube Project Health evidence | T001, T002, T003, T004, T005, T006, T008, T009, T011, T012, T014, T015, T016, T017, T018, T019 |
+| FR-019 Automated tests and behavior-parity validation | T002, T003, T004, T007, T010, T011, T012, T013, T014, T015, T019 |
+| FR-020 SonarQube Project Health evidence | T001, T002, T003, T004, T005, T006, T008, T009, T011, T012, T014, T015, T016, T017, T019 |
 | FR-021 No full-image recompression; thumbnails remain derived display data | T003, T004, T008, T010, T011, T013, T014 |
 | SC-001 Supported image/screenshot capture remains covered | T003, T005, T007, T014 |
 | SC-002 Duplicate visual image behavior remains covered | T003, T005, T007, T014 |
@@ -132,7 +139,7 @@
 | SC-005 Existing text capture and row-action regressions pass | T002, T005, T007, T014, T015, T019 |
 | SC-006 Image copy/delete/pin and copy failure behavior remains covered | T008, T010, T014 |
 | SC-007 Offline/local-first behavior remains covered | T004, T011, T013, T014, T019 |
-| SC-008 Sonar evidence records zero unresolved introduced issues | T001, T002, T006, T009, T014, T015, T016, T017, T018, T019 |
+| SC-008 Sonar evidence records zero unresolved introduced issues | T001, T002, T006, T009, T014, T015, T016, T017, T019 |
 
 ---
 
@@ -193,13 +200,13 @@ Task: "T008-T010 Refactor ImageClipboardRowPresentation content value object in 
 
 1. Run T014 targeted tests.
 2. Run T015 full tests if feasible.
-3. Run T016 SonarQube/SonarCloud analysis or record accepted evidence.
-4. Complete T017-T019 before continuing feature work.
+3. Run T016 Sonar analysis and record accepted Sonar evidence from an approved dashboard, artifact, report, or screenshot source; if evidence is unavailable, stop because cleanup is incomplete.
+4. Complete T017 and T019 before continuing feature work; T018 may be run only as optional post-implementation re-analysis.
 
 ### Scope Guard
 
 - Do not add product features, UI changes, clipboard behavior changes, image capture behavior changes, or visual design changes.
-- Do not modify files outside the listed Sonar files except the compile-required mechanical call-site files named in T007 and T010.
+- Do not modify files outside the listed Sonar files except for minimal mechanical call-site compatibility edits named in T007 and T010 when value-object signatures require them.
 - Do not add new dependencies, lint tools, or test frameworks.
 
 ---
@@ -210,9 +217,10 @@ Task: "T008-T010 Refactor ImageClipboardRowPresentation content value object in 
 | --- | --- |
 | Targeted tests for affected production/test helper files run | T014 |
 | Full test suite run if feasible | T015 |
-| SonarQube/SonarCloud analysis or accepted evidence recorded | T016 |
+| Accepted Sonar evidence from approved dashboard/artifact/report/screenshot source recorded | T016 |
 | All 9 listed SonarQube findings resolved | T017 |
-| No new SonarQube issues introduced | T017 |
+| Feature remains incomplete if accepted Sonar evidence is unavailable | T016 |
+| No new Sonar issues or New Code duplication gate failures introduced | T017 |
 | New Code duplication within configured quality gate | T017 |
 | Refactor-only behavior parity confirmed | T019 |
 | Scope did not expand into product feature changes | T019 |

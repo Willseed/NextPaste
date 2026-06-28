@@ -117,7 +117,7 @@ Use the project or CI Sonar command when available. If the environment provides 
 sonar-scanner -Dsonar.projectBaseDir="$(pwd)"
 ```
 
-A feature is NOT complete until the SonarQube Project Health Gate has been verified. Source inspection is diagnostic only; it may help investigate findings, but it is not accepted completion evidence and cannot substitute for the gate.
+A feature is NOT complete until the SonarQube Project Health Gate has been verified with actual accepted Sonar evidence. Source inspection is diagnostic only; it may help investigate findings, but it is not accepted completion evidence and cannot substitute for the gate. If Sonar evidence is unavailable, the feature MUST remain incomplete.
 
 Accepted completion evidence:
 
@@ -127,7 +127,7 @@ Accepted completion evidence:
 - Local Sonar report
 - Dashboard screenshot
 
-Completion requires evidence that Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, and New Code duplication meet the project gate or have documented false-positive justification.
+Completion requires evidence that Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, Maintainability issues, and New Code duplication meet the project gate or have documented false-positive justification. For the refactor-only cleanup, the evidence must show all 9 current SonarQube maintainability/code smell findings are resolved and no new Sonar issues or duplication failures are introduced.
 
 ## Refactor-only SonarQube cleanup validation
 
@@ -182,12 +182,12 @@ Run the configured project or CI SonarQube/SonarCloud analysis. If a local scann
 sonar-scanner -Dsonar.projectBaseDir="$(pwd)"
 ```
 
-Record accepted evidence in `specs/006-clipboard-image-capture/sonar-evidence.md` showing:
+Record actual accepted Sonar evidence from a SonarQube dashboard, SonarCloud dashboard, CI artifact, local Sonar report, or dashboard screenshot in `specs/006-clipboard-image-capture/sonar-evidence.md` showing:
 
-- All listed parameter-count, configurable URI/path, and empty-block findings are resolved.
+- All 9 listed parameter-count, configurable URI/path, and empty-block findings are resolved.
 - No new Bugs, Vulnerabilities, Security Hotspots requiring review, Code Smells, Coverage violations, Reliability issues, Security issues, or Maintainability issues are introduced.
-- New-code duplication remains within the configured quality gate.
-- Any unavailable scanner/report or false-positive status is documented with the accepted project evidence source and justification.
+- New-code duplication remains within the configured quality gate and no duplication failure is introduced.
+- If Sonar evidence is unavailable, the feature MUST remain incomplete; unavailable scanner, report, dashboard, screenshot, or CI artifact notes cannot complete this gate.
 
 ## Implementation validation evidence
 

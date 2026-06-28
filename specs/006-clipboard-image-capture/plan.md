@@ -26,7 +26,7 @@ Extend the existing clipboard monitor so one polling path handles text and image
 
 **Performance Goals**: Clipboard polling remains lightweight and bounded by the existing configurable interval. Capture handles only one changed clipboard payload per observed change count, rejects encoded image payloads over 25 MiB (26,214,400 bytes) before persistence, generates one bounded thumbnail during capture, and avoids full-image recompression.
 
-**Constraints**: Preserve existing text capture behavior and text row actions. Do not add OCR, AI analysis, CloudKit sync, third-party image libraries, analytics, remote transmission, manual image import, share extensions, shortcuts, startup login items, or image editing. Use Apple-native APIs only. UI changes must reuse the design system. SonarQube Project Health evidence is mandatory after implementation.
+**Constraints**: Preserve existing text capture behavior and text row actions. Do not add OCR, AI analysis, CloudKit sync, third-party image libraries, analytics, remote transmission, manual image import, share extensions, shortcuts, startup login items, or image editing. Use Apple-native APIs only. UI changes must reuse the design system. Actual accepted SonarQube Project Health evidence is mandatory after implementation; if that evidence is unavailable, the feature remains incomplete.
 
 **Scale/Scope**: Extend the existing automatic history list and row-action architecture for image clips. Add focused app files under `NextPaste/` for image payloads, storage, hashing, thumbnail generation, and image copy-back. Add focused unit/UI test files under `NextPasteTests/` and `NextPasteUITests/`. Avoid unrelated feature work.
 
@@ -110,7 +110,7 @@ Validation failures are explicit capture outcomes (`unsupportedImage`, `emptyIma
 - **Automatic capture**: PASS. The plan defines content-type identification, image validation, image/text duplicate handling, local persistence, and automatic SwiftData history refresh.
 - **Test-first coverage**: PASS. Unit and UI test coverage is planned for image detection, deduplication, unsupported/corrupt/oversized rejection, local persistence, thumbnails, row actions, text regressions, offline behavior, and Sonar evidence.
 - **Native simplicity**: PASS. The plan uses Apple-native platform APIs and existing app structure only; no third-party image dependency is introduced. Crypto/digest and image-decoding APIs are Apple-native system frameworks needed for robust duplicate identity and image handling.
-- **SonarQube project health gate**: PASS. Post-implementation SonarQube evidence is required before the feature is complete.
+- **SonarQube project health gate**: PASS. Actual accepted post-implementation SonarQube evidence is required before the feature is complete; unavailable evidence keeps the feature incomplete.
 - **Consistent design system**: PASS. Image rows reuse existing design tokens, row cards, badges, icons, spacing, radius, and accessibility conventions.
 - **Refactoring integrity**: PASS. Existing text capture and row actions are preserved with regression coverage; no speculative architecture beyond the image payload/storage seams required by this feature.
 
@@ -122,7 +122,7 @@ Validation failures are explicit capture outcomes (`unsupportedImage`, `emptyIma
 - **Automatic capture**: PASS. Contracts define active/backgrounded/minimized detection, validation, deduplication, persistence, and UI refresh outcomes.
 - **Test-first coverage**: PASS. Quickstart lists targeted Swift Testing and XCUITest commands before full-suite validation.
 - **Native simplicity**: PASS. Design uses existing Xcode targets and Apple frameworks with compile-time platform adapters.
-- **SonarQube project health gate**: PASS. Quickstart requires recorded SonarQube evidence or documented false-positive evidence before completion.
+- **SonarQube project health gate**: PASS. Completion requires actual accepted SonarQube evidence, such as a passing analysis/quality gate or Sonar-accepted false-positive disposition; unavailable evidence keeps the feature incomplete.
 - **Consistent design system**: PASS. UI contract requires aspect-fit thumbnails in tokenized row surfaces and fallback icon only on thumbnail failure.
 - **Refactoring integrity**: PASS. Existing text behavior and row actions are required regression checks.
 
@@ -211,7 +211,7 @@ Restore SonarQube Project Health before additional feature work by resolving onl
 
 **Testing**: Use targeted Swift Testing unit suites for the affected production files and test helpers, then run the full `NextPaste` scheme test suite if feasible.
 
-**Constraints**: Preserve behavior parity for text clips, image clips, file storage safety checks, image fixture data, row presentation values, copy/delete/pin behavior, and existing tests. Keep implementation changes limited to:
+**Constraints**: Preserve behavior parity for text clips, image clips, file storage safety checks, image fixture data, row presentation values, copy/delete/pin behavior, and existing tests. Keep primary Sonar refactor implementation changes limited to:
 
 - `NextPaste/ClipItem.swift`
 - `NextPaste/DesignSystem/Components/ClipboardRowPresentation.swift`
@@ -219,7 +219,13 @@ Restore SonarQube Project Health before additional feature work by resolving onl
 - `NextPasteTests/ImageTestFixtures.swift`
 - `NextPasteTests/SwiftDataTestSupport.swift`
 
-Add helper types inside those files unless implementation proves a small shared helper file is strictly necessary.
+Minimal mechanical call-site compatibility edits outside those five primary files are allowed only when required by value-object signature changes introduced to resolve the listed Sonar findings. Allowed outside-file call sites are limited to:
+
+- `NextPaste/ClipboardCaptureService.swift`
+- `NextPaste/ClipRowView.swift`
+- Affected test call sites only if compilation requires them, specifically `NextPasteTests/ClipItemTests.swift`, `NextPasteTests/ClipHistoryTests.swift`, `NextPasteTests/ClipboardRowPresentationTests.swift`, and `NextPasteTests/ClipRowViewTests.swift`
+
+Those outside-file edits must be mechanical argument construction/signature adaptation only. They must not change product behavior, user-facing behavior, clipboard behavior, image capture behavior, row action behavior, tests' intended assertions, or visual design. Add helper types inside the five primary files; do not add new source or test files for this cleanup.
 
 ### SonarQube Issue Resolution Plan
 
@@ -248,10 +254,10 @@ No data model artifact or contract artifact is required for this refactor-only c
 - **Automatic capture**: PASS. Cleanup preserves existing automatic text/image capture behavior and tests.
 - **Test-first coverage**: PASS. Targeted and full-suite validation are required before completion.
 - **Native simplicity**: PASS. Cleanup uses only Swift value objects/configuration structs in existing files.
-- **SonarQube project health gate**: PASS. Cleanup exists solely to resolve current SonarQube findings and requires recorded Sonar evidence.
+- **SonarQube project health gate**: PASS. Cleanup exists solely to resolve current SonarQube findings and requires actual accepted Sonar evidence; unavailable evidence keeps the cleanup and feature incomplete.
 - **Consistent design system**: PASS. Cleanup does not alter user-facing visuals, design tokens, layout, or accessibility wording.
 - **Refactoring integrity**: PASS. Cleanup is behavior-preserving, scoped to reported issues, and avoids speculative abstractions.
 
 ### Completion Criteria for Cleanup
 
-The cleanup is complete only when targeted tests pass, the full suite passes if feasible, SonarQube analysis or accepted Sonar evidence is recorded, all listed issues are resolved, no new SonarQube issues are introduced, and duplication remains within the configured quality gate.
+The cleanup is complete only when targeted tests pass, the full suite passes if feasible, actual accepted SonarQube evidence is recorded, all listed issues are resolved, no new SonarQube issues are introduced, and duplication remains within the configured quality gate. If actual accepted Sonar evidence is unavailable, the cleanup and feature remain incomplete even if local tests pass.
