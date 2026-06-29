@@ -16,8 +16,8 @@
   - Technical context from plan.md
   - Implementation details from tasks.md
   - Constitution gates: clipboard-first product, local-first behavior, privacy, automatic capture,
-    tests, native simplicity, SonarQube Project Health, design-system consistency, and refactoring
-    integrity
+    tests, native simplicity, SonarQube Project Health, design-system consistency, native Apple
+    user experience, and refactoring integrity
   
   DO NOT keep these sample items in the generated checklist file.
   ============================================================================
@@ -43,6 +43,10 @@
   or PR completion; feature-introduced issues must be fixed or documented as false positives
 - [ ] CHKXXX User-facing UI follows shared design tokens and introduces no undocumented visual
   patterns
+- [ ] CHKXXX Interaction-changing features define affected interaction methods, preserve native
+  Apple behaviors, and document any Apple HIG deviations with explicit justification
+- [ ] CHKXXX Native interaction regression, keyboard accessibility, VoiceOver, and applicable
+  trackpad, Magic Mouse, mouse, context-menu, and drag-and-drop validation are covered
 - [ ] CHKXXX Refactoring work preserves existing observable behavior with regression coverage and
   avoids speculative abstractions
 

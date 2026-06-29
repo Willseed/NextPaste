@@ -36,14 +36,19 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   system clipboard as the primary source of clips, preserve local-first automatic capture, protect
   user content by default, include automated tests, prefer Apple-native frameworks, and pass the
   post-implementation SonarQube Project Health gate with recorded evidence. User-facing UI must
-  follow the shared design system, and refactors must preserve observable behavior with regression
-  coverage while avoiding speculative abstractions.
+  follow the shared design system, user interactions must preserve native Apple platform behavior
+  and documented Apple HIG alignment, and refactors must preserve observable behavior with
+  regression coverage while avoiding speculative abstractions.
 - Preserve the SwiftData flow already in place: add new persisted types to the schema in `NextPasteApp`, fetch them with `@Query`, and write through `modelContext`.
 - Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms.
 - Unit tests and UI tests use different frameworks on purpose: `NextPasteTests` uses the newer `Testing` module, while `NextPasteUITests` still uses `XCTest`. Follow the existing framework for each target instead of mixing them.
 - The project uses Xcode’s file-system-synchronized groups (`PBXFileSystemSynchronizedRootGroup`). In practice, adding source files inside `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/` is the expected way to extend each target.
 - App configuration is split across generated build settings and checked-in overrides: `project.pbxproj` enables generated Info.plist entries, while `NextPaste/Info.plist` adds `UIBackgroundModes`, and `NextPaste.entitlements` carries push/iCloud capability settings. Capability changes may need updates in more than one of those places.
 - The project is configured for multiple Apple platforms (`iphoneos`, `iphonesimulator`, `macosx`, `xros`, `xrsimulator`), so avoid changes that assume a single-platform app unless the target matrix is intentionally being reduced.
+- For interaction changes, prefer Apple-native APIs and behaviors over custom gesture models, and
+  validate applicable keyboard shortcuts, focus, scrolling, multi-selection, trackpad, Magic
+  Mouse, mouse, context-menu, drag-and-drop, and VoiceOver behavior before considering the work
+  done.
 
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,

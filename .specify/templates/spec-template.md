@@ -18,6 +18,9 @@
   Assign priorities (P1, P2, P3, etc.) to each story, where P1 is the most critical.
   Each story must state the clipboard or history outcome delivered by the journey, plus any
   privacy, offline, deduplication, and optional AI-output expectations relevant to that journey.
+  If the story changes user interaction, it must also identify affected interaction methods
+  (keyboard, mouse, trackpad, context menu, drag and drop, focus, scrolling, multi-selection,
+  accessibility actions, VoiceOver, navigation patterns) and any Apple HIG deviation.
   Think of each story as a standalone slice of functionality that can be:
   - Developed independently
   - Tested independently
@@ -80,6 +83,17 @@
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
 
+## Interaction Methods & Platform Expectations *(mandatory when interaction changes)*
+
+- **Affected Interaction Methods**: [List mouse, keyboard shortcuts, trackpad gestures, Magic
+  Mouse gestures, context menus, drag and drop, focus behavior, scrolling behavior,
+  multi-selection behavior, accessibility actions, VoiceOver support, navigation patterns, or
+  state N/A]
+- **Native Platform Behavior**: [Describe the Apple-native APIs, behaviors, and conventions this
+  feature reuses or preserves]
+- **Documented Deviations**: [List any intentional Apple HIG or platform-convention deviations with
+  explicit product justification, or state None]
+
 ## Requirements *(mandatory)*
 
 <!--
@@ -109,14 +123,21 @@
 - **FR-012**: User-facing interfaces MUST follow the shared design system, including colors,
   typography, spacing, corner radius, iconography, motion, and component styling; new visual
   patterns MUST be justified and documented
-- **FR-013**: Refactoring work MUST identify the existing observable behavior being preserved and
+- **FR-013**: Any feature that changes user interaction MUST describe affected interaction methods,
+  preserve Apple-native interaction behavior unless explicitly changed, and identify automated
+  tests plus manual validation needed for native platform interactions that automation cannot
+  faithfully simulate
+- **FR-014**: Any intentional deviation from Apple Human Interface Guidelines or standard Apple
+  interaction conventions MUST be documented with explicit product justification in the
+  specification
+- **FR-015**: Refactoring work MUST identify the existing observable behavior being preserved and
   include regression coverage demonstrating behavior parity, without speculative abstractions
 
 *Example of marking unclear requirements:*
 
-- **FR-014**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
+- **FR-016**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
   images, files, or another scope?]
-- **FR-015**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
+- **FR-017**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
   or storage cap not specified]
 
 ### Key Entities *(include if feature involves data)*
@@ -146,7 +167,12 @@
   for the implemented change, with evidence recorded before commit or PR completion"]
 - **SC-008**: [Design consistency metric, e.g., "All user-facing UI changes use shared design tokens
   and introduce zero undocumented visual patterns"]
-- **SC-009**: [Refactor parity metric, e.g., "All refactoring scenarios preserve existing
+- **SC-009**: [Native interaction metric, e.g., "All affected interaction methods preserve native
+  Apple behavior, with automated coverage where reliable and manual validation where automation
+  cannot faithfully simulate the platform interaction"]
+- **SC-010**: [Release-readiness metric, e.g., "Applicable keyboard accessibility, VoiceOver,
+  trackpad, mouse, context-menu, drag-and-drop, and Apple HIG checks pass before release"]
+- **SC-011**: [Refactor parity metric, e.g., "All refactoring scenarios preserve existing
   observable behavior in automated regression tests"]
 
 ## Assumptions

@@ -1,16 +1,8 @@
 <!--
 Sync Impact Report
-Version change: 2.1.0 -> 2.2.0
+Version change: 2.2.0 -> 2.3.0
 Modified principles:
-- I. Clipboard-First Product -> I. Clipboard-First Product
-- II. Local-First Architecture -> II. Local-First Architecture
-- III. Privacy by Default -> III. Privacy by Default
-- IV. Automatic Capture -> IV. Automatic Capture
-- V. Test-First Development -> V. Test-First Development
-- VI. Simplicity and Apple-Native Stack -> VI. Simplicity and Apple-Native Stack
-- VII. SonarQube Project Health Gate -> VII. SonarQube Project Health Gate
-- Added principle: VIII. Consistent Design System
-- Added principle: IX. Refactoring Integrity
+- Added principle: X. Native Apple User Experience
 Added sections:
 - None
 Removed sections:
@@ -21,6 +13,10 @@ Templates requiring updates:
 - ✅ .specify/templates/tasks-template.md
 - ✅ .specify/templates/checklist-template.md
 - ✅ .github/copilot-instructions.md
+- ✅ .github/agents/speckit.plan.agent.md
+- ✅ .github/agents/speckit.tasks.agent.md
+- ✅ .github/agents/speckit.analyze.agent.md
+- ✅ .github/agents/speckit.implement.agent.md
 - ✅ .specify/templates/commands/*.md (no command templates present)
 Follow-up TODOs: None
 -->
@@ -143,6 +139,22 @@ rather than being hidden inside a refactor.
 Rationale: Refactoring should improve code quality while maintaining predictable product behavior
 and minimizing regression risk.
 
+### X. Native Apple User Experience
+
+All user-facing interactions MUST follow native interaction patterns of the target Apple platform
+and MUST feel native rather than application-specific. Implementations MUST prefer Apple-native
+interaction APIs and behaviors over custom interaction models whenever equivalent platform
+functionality exists. Features MUST NOT replace, redefine, or conflict with Apple platform
+interaction conventions without explicit product justification documented in the specification.
+Applicable interaction methods include macOS trackpad gestures, Magic Mouse gestures, mouse
+interactions, keyboard shortcuts, context menus, drag and drop, focus behavior, scrolling
+behavior, multi-selection behavior, accessibility actions, VoiceOver support, and standard Apple
+navigation patterns. Any intentional deviation from Apple Human Interface Guidelines (HIG) MUST be
+documented and justified in the specification before implementation begins.
+
+Rationale: NextPaste succeeds when it behaves like a natural part of Apple platforms, so the
+product must protect the interaction conventions and accessibility behaviors users already know.
+
 ## Technical Constraints
 
 NextPaste is a clipboard-first Apple app built with SwiftUI. Persistence MUST use SwiftData for
@@ -155,6 +167,13 @@ Specifications and plans MUST identify any deviation from these defaults, explai
 or on-device options are insufficient, document privacy impact, and add tests covering the
 deviation. No feature may introduce Firebase, analytics SDKs, advertising SDKs, React Native,
 Flutter, or broad third-party SDK adoption without a constitution amendment.
+
+Apple-native interaction APIs MUST be preferred over custom gesture or event-handling
+implementations whenever technically feasible. Gesture recognizers, event handling, focus,
+scrolling, selection, context-menu, drag-and-drop, keyboard, mouse, trackpad, and accessibility
+interaction models SHOULD follow Apple platform conventions unless the specification documents an
+explicit product justification. Third-party interaction frameworks SHOULD NOT be introduced; if one
+is proposed, this constitution MUST be amended first.
 
 ## Development Workflow & Quality Gates
 
@@ -172,6 +191,18 @@ persistence coverage where applicable. Each task list MUST include post-implemen
 validation and evidence tasks unless the feature is explicitly documentation-only and no code or
 test files change.
 
+Every specification that changes user interaction MUST describe affected interaction methods,
+including applicable keyboard shortcuts, context menus, drag and drop, focus, scrolling,
+multi-selection, trackpad, Magic Mouse, mouse, accessibility actions, VoiceOver behavior, and
+navigation patterns. Each plan MUST identify impacted interaction models, the Apple-native APIs or
+behaviors being reused, any manual validation required for native interactions that automated UI
+tests cannot faithfully simulate, and any intentional HIG deviation with explicit product
+justification. Each task list MUST include automated interaction tests where reliable, manual
+validation for native platform interactions that automation cannot faithfully simulate, and
+regression validation for every existing interaction method affected by the change. `/speckit.analyze`
+MUST verify consistency with the Native Apple User Experience principle, and `/speckit.implement`
+MUST preserve native interaction behavior unless the specification explicitly changes it.
+
 Before release, reviewers MUST verify that all requirements trace to implementation tasks, all
 tasks map back to a specification, acceptance criteria are measurable, automated tests cover new
 behavior, clipboard capture stays local-first, and privacy plus offline support have been
@@ -179,6 +210,9 @@ reviewed. Reviewers MUST also verify that SonarQube evidence is recorded and tha
 feature-introduced SonarQube issues remain, except documented false positives with justification.
 User-facing changes MUST be reviewed for design-system consistency. Refactors MUST be reviewed for
 behavior parity, reduced maintenance cost, and absence of speculative architecture.
+Release readiness review MUST additionally verify compliance with Apple Human Interface Guidelines,
+native interaction consistency, keyboard accessibility, VoiceOver accessibility, trackpad support,
+mouse support, context-menu behavior, and drag-and-drop behavior where applicable.
 
 ## Governance
 
@@ -187,6 +221,11 @@ When conflicts are found, the constitution governs unless it is amended first.
 
 The SonarQube Project Health Gate is a mandatory quality-gate policy addition. It may be changed,
 weakened, or waived only through a constitution amendment.
+
+No feature specification, plan, task list, or checklist may weaken native Apple interaction
+behavior without first amending this constitution. Any intentional deviation from Apple Human
+Interface Guidelines or standard Apple interaction conventions MUST be documented and justified in
+the specification before approval.
 
 Every constitution amendment MUST include the proposed text, rationale, impact on existing
 specifications or features, migration guidance for affected templates or code, and a Sync Impact
@@ -203,8 +242,9 @@ MUST flag contradictions between spec, plan, tasks, and this constitution. Relea
 review MUST confirm compliance with clipboard-first behavior, local-first storage, privacy
 protections, automated testing, Apple-native simplicity constraints, and the SonarQube Project
 Health Gate. Release readiness review MUST also confirm design-system consistency for user-facing
-changes and refactoring integrity for refactor-only work. No feature specification, plan, task list,
-or checklist may weaken the SonarQube, design-system, or refactoring-integrity gates without first
-amending this constitution.
+changes, native Apple user experience compliance for applicable interaction methods, and
+refactoring integrity for refactor-only work. No feature specification, plan, task list, or
+checklist may weaken the SonarQube, design-system, native-Apple-user-experience, or
+refactoring-integrity gates without first amending this constitution.
 
-**Version**: 2.2.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-28
+**Version**: 2.3.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-29

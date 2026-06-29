@@ -83,6 +83,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
+   - For user-facing interaction changes, include automated interaction tests where reliable,
+     manual validation tasks for native platform interactions automation cannot faithfully
+     simulate, and regression validation for affected existing interaction methods
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)

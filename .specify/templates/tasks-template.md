@@ -14,7 +14,9 @@ tasks that map to the feature specification, clipboard monitoring, deduplication
 persistence, row actions, sorting, privacy/offline behavior, and AI output validation contracts
 where applicable. Include post-implementation SonarQube Project Health validation and evidence
 tasks for every code or test change. Include design-system validation tasks for user-facing UI
-changes and behavior-parity regression tasks for refactors.
+changes, native interaction regression tasks for every affected interaction method, manual
+validation tasks for platform interactions automated UI tests cannot faithfully simulate, and
+behavior-parity regression tasks for refactors.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -95,16 +97,18 @@ Examples of foundational tasks (adjust based on your project):
   NextPasteUITests/[Name]UITests.swift
 - [ ] T012 [P] [US1] Persistence or sorting regression test for captured clips in
   NextPasteTests/[Name]PersistenceTests.swift
+- [ ] T013 [US1] Manual validation of native interaction behavior changes (e.g., trackpad, Magic
+  Mouse, keyboard shortcuts, context menus, drag and drop, VoiceOver) in specs/[###-feature]/quickstart.md
 
 ### Implementation for User Story 1
 
-- [ ] T013 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
-- [ ] T014 [P] [US1] Create clipboard observation or capture service in
+- [ ] T014 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
+- [ ] T015 [P] [US1] Create clipboard observation or capture service in
   NextPaste/[ClipboardService].swift
-- [ ] T015 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
-- [ ] T016 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
-- [ ] T017 [US1] Add explicit consent handling for any optional user-content transmission
-- [ ] T018 [US1] Add type-identification handling for supported clipboard content
+- [ ] T016 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
+- [ ] T017 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
+- [ ] T018 [US1] Add explicit consent handling for any optional user-content transmission
+- [ ] T019 [US1] Add type-identification handling for supported clipboard content
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -118,17 +122,19 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T019 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T020 [P] [US2] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
-- [ ] T021 [P] [US2] Offline/privacy behavior test for [scenario] in
+- [ ] T020 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
+- [ ] T021 [P] [US2] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
+- [ ] T022 [P] [US2] Offline/privacy behavior test for [scenario] in
   NextPasteTests/[Name]PrivacyTests.swift
+- [ ] T023 [US2] Manual validation for affected native interaction methods in
+  specs/[###-feature]/quickstart.md
 
 ### Implementation for User Story 2
 
-- [ ] T022 [P] [US2] Create [Entity] model in NextPaste/[Entity].swift
-- [ ] T023 [US2] Implement [Service] in NextPaste/[Service].swift
-- [ ] T024 [US2] Implement [feature] in NextPaste/[Location].swift
-- [ ] T025 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T024 [P] [US2] Create [Entity] model in NextPaste/[Entity].swift
+- [ ] T025 [US2] Implement [Service] in NextPaste/[Service].swift
+- [ ] T026 [US2] Implement [feature] in NextPaste/[Location].swift
+- [ ] T027 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -142,14 +148,16 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T026 [P] [US3] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T027 [P] [US3] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
+- [ ] T028 [P] [US3] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
+- [ ] T029 [P] [US3] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
+- [ ] T030 [US3] Manual validation for affected native interaction methods in
+  specs/[###-feature]/quickstart.md
 
 ### Implementation for User Story 3
 
-- [ ] T028 [P] [US3] Create [Entity] model in NextPaste/[Entity].swift
-- [ ] T029 [US3] Implement [Service] in NextPaste/[Service].swift
-- [ ] T030 [US3] Implement [feature] in NextPaste/[Location].swift
+- [ ] T031 [P] [US3] Create [Entity] model in NextPaste/[Entity].swift
+- [ ] T032 [US3] Implement [Service] in NextPaste/[Service].swift
+- [ ] T033 [US3] Implement [feature] in NextPaste/[Location].swift
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -171,6 +179,11 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Offline support review for local-first clipboard behavior
 - [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
   motion, and component styling in user-facing UI
+- [ ] TXXX Native interaction regression review for keyboard, mouse, trackpad, Magic Mouse, focus,
+  scrolling, multi-selection, context-menu, drag-and-drop, and navigation behavior where
+  applicable
+- [ ] TXXX Verify Apple Human Interface Guidelines alignment and document any approved deviations
+- [ ] TXXX Validate keyboard accessibility and VoiceOver behavior for affected user-facing flows
 - [ ] TXXX Refactoring integrity review verifying behavior parity and absence of speculative
   abstractions
 - [ ] TXXX Run quickstart.md validation
@@ -203,6 +216,7 @@ Examples of foundational tasks (adjust based on your project):
 - Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
 - Design-system validation before user-facing UI completion
+- Native interaction regression validation before user-facing interaction completion
 - Refactor behavior-parity validation before refactor completion
 - SonarQube Project Health validation after `/speckit.implement` and before completion
 - Story complete before moving to next priority
@@ -271,6 +285,8 @@ With multiple developers:
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
 - Verify user-facing UI follows the shared design system and any new visual patterns are justified
+- Verify native Apple interaction behavior is preserved unless the specification explicitly changes
+  it, and capture manual validation for interactions automation cannot faithfully simulate
 - Verify refactors preserve observable behavior and reduce maintenance cost without speculative
   abstractions
 - Verify SonarQube Project Health passes after implementation; fix introduced issues or document

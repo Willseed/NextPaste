@@ -131,6 +131,9 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 
 - Any requirement or plan element conflicting with a MUST principle
 - Missing mandated sections or quality gates from constitution
+- Any interaction-changing spec, plan, or task set that omits affected interaction methods,
+  Apple-native API/behavior expectations, justified HIG deviations, or automated/manual native
+  interaction regression validation
 
 #### E. Coverage Gaps
 

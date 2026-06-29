@@ -28,6 +28,9 @@
 
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
+**Interaction Models**: [e.g., keyboard shortcuts, context menus, drag and drop, focus,
+scrolling, multi-selection, trackpad gestures, VoiceOver or N/A]
+
 **Project Type**: [e.g., library/cli/web-service/mobile-app/compiler/desktop-app or NEEDS CLARIFICATION]
 
 **Performance Goals**: [domain-specific, e.g., 1000 req/s, 10k lines/sec, 60 fps or NEEDS CLARIFICATION]
@@ -63,6 +66,10 @@
 - **Consistent design system**: User-facing UI follows shared design tokens for colors,
   typography, spacing, radius, iconography, motion, and component styling. New visual patterns are
   justified in the specification and documented in the design system.
+- **Native Apple user experience**: For any interaction change, the plan identifies affected
+  interaction methods, prefers Apple-native APIs and behaviors over custom interaction models,
+  documents any Apple HIG deviation with explicit product justification, and plans automated plus
+  manual interaction regression validation where needed.
 - **Refactoring integrity**: Refactors preserve existing observable behavior unless the
   specification explicitly defines behavior changes, include regression coverage for behavior
   parity, and avoid speculative abstractions.

@@ -143,6 +143,9 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
+   - **Preserve native interaction behavior**: Keep existing Apple-native interaction behavior
+     unless the specification explicitly changes it, and prefer Apple-native APIs over custom
+     gesture or event models whenever technically feasible
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
 7. Implementation execution rules:
@@ -165,6 +168,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
+   - Confirm applicable keyboard, VoiceOver, trackpad, Magic Mouse, mouse, context-menu,
+     drag-and-drop, focus, scrolling, and multi-selection behaviors remain native and consistent
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/speckit.tasks` first to regenerate the task list.
 
