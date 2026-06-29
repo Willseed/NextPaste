@@ -6,7 +6,7 @@
 
 ## Summary
 
-Replace the current mixed swipe implementation in `HomeView` with Apple-native macOS list row swipe actions so the clipboard history uses SwiftUI `List` row `.swipeActions`, reveals Pin on right swipe and Delete on left swipe, disables full-swipe auto-execution, and preserves existing copy-on-activation, pinned-first ordering, local-first storage, privacy defaults, design tokens, and shared row rendering for both text and image clips.
+Replace the current mixed swipe implementation in `HomeView` with Apple-native macOS list row swipe actions so the clipboard history uses SwiftUI `List` row `.swipeActions`, reveals the leading pin-toggle action on right swipe (`Pin` for unpinned rows, `Unpin` for pinned rows) and `Delete` on left swipe, disables full-swipe auto-execution, and preserves existing copy-on-activation, pinned-first ordering, local-first storage, privacy defaults, design tokens, and shared row rendering for both text and image clips.
 
 ## Technical Context
 
@@ -20,7 +20,7 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 
 **Target Platform**: macOS in the existing multi-platform Xcode app, with the feature scoped to the macOS history list interaction surface
 
-**Interaction Models**: Trackpad swipe gestures, Magic Mouse gestures where macOS exposes them, click/tap row activation, keyboard focus, context-menu regression, scrolling, row hit testing, accessibility actions, and VoiceOver
+**Interaction Models**: Trackpad swipe gestures, Magic Mouse gestures where macOS exposes them, click/tap row activation, keyboard focus, context-menu coexistence without required changes, scrolling, row hit testing, accessibility actions, and VoiceOver
 
 **Project Type**: Single Xcode SwiftUI app with app, unit-test, and UI-test targets
 
@@ -30,7 +30,7 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 
 - Use SwiftUI `List` row `.swipeActions`; no custom drag gestures
 - `allowsFullSwipe` must be disabled so full swipe never auto-runs Pin/Delete
-- Right swipe reveals Pin; left swipe reveals Delete
+- Right swipe reveals the leading pin-toggle action (`Pin` for unpinned rows, `Unpin` for pinned rows); left swipe reveals Delete
 - Swipe behavior is additive only and must not replace existing click, mouse, keyboard, or accessibility flows
 - Preserve design tokens, styling, copy-on-click behavior, clipboard capture pipeline, local-first persistence, and privacy defaults
 - No third-party gesture libraries or custom swipe emulation for non-gesture mice
@@ -50,7 +50,7 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
   - `.swipeActions(edge: .trailing)` and `.swipeActions(edge: .leading)` without `allowsFullSwipe: false`
 - `ClipRowView` routes both text and image clips through shared row presentation with `showsDeleteAction` / `showsPinAction` booleans
 - `RowActionControlGroup` always exposes Copy and conditionally renders Pin/Delete, so the current reveal behavior is partly custom UI, not purely native system swipe chrome
-- No explicit row `contextMenu` modifier was found in the current app code; regression scope must preserve today's behavior without expanding feature scope
+- No explicit row `contextMenu` modifier was found in the current app code; this feature must not introduce or require context-menu changes while preserving the current repository baseline
 
 ## Constitution Check
 
@@ -107,8 +107,9 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
    - Preserve `clip-history-list`, `home-canvas`, `single-column-history-layout`, and `history-surface` accessibility markers used by current UI tests
    - Keep row activation mapped to `copyClip(_:)`
    - Ensure deliberate horizontal swipe takes precedence over normal row activation via native list behavior instead of custom `DragGesture`
+   - Ensure primarily vertical gestures continue vertical scrolling and do not reveal swipe actions
 2. **Native swipe integration**
-   - Configure leading `.swipeActions(edge: .leading, allowsFullSwipe: false)` for Pin/Unpin
+   - Configure leading `.swipeActions(edge: .leading, allowsFullSwipe: false)` as the stable pin-toggle action slot, with the visible label reflecting current state as Pin or Unpin
    - Configure trailing `.swipeActions(edge: .trailing, allowsFullSwipe: false)` for Delete
    - Remove `DragGesture` and the custom `revealedRowAction` state if no longer required
    - Do not emulate gestures for non-gesture mice
@@ -120,7 +121,7 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
    - Verify row labels, values, and identifiers stay stable
    - Verify native swipe actions remain discoverable to VoiceOver
    - Verify keyboard reachability of existing always-visible controls is not regressed by the List migration
-   - Treat context-menu regression as preservation-only scope; do not add new product interactions unless required to avoid a regression caused by the List conversion
+   - Treat context-menu coexistence as no-change scope; do not introduce or require context-menu behavior changes as part of the List conversion
 
 **Phase 1 outcome**: a concrete design for List-native swipe behavior that preserves copy, pin, delete, image/text parity, and visual identity.
 
@@ -128,10 +129,11 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 
 1. **UI interaction contracts**
    - Define row-at-rest appearance invariants
-   - Define swipe direction mapping and reveal-only behavior
-   - Define click/tap copy precedence when no swipe occurs
+   - Define swipe direction mapping, including state-aware Pin/Unpin labeling on the leading action
+   - Define reveal-only behavior
+   - Define deliberate horizontal swipe precedence, simple click/tap copy behavior, and vertical-scroll arbitration
 2. **Row action behavior**
-   - Pin continues through `togglePin(_:)` and preserves pinned-first ordering
+   - The leading swipe action continues through `togglePin(_:)` and preserves pinned-first ordering for both Pin and Unpin outcomes
    - Delete continues through `ClipDeletionAction`
    - Sub-threshold swipe snaps back with no revealed action
 3. **Accessibility contracts**
@@ -148,20 +150,22 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 ### Phase 3: Testing strategy
 
 1. **Automated UI tests**
-   - Text row: right swipe reveals Pin, left swipe reveals Delete, full swipe does not auto-execute, copy still works
-   - Image row: same direction mapping and non-destructive full-swipe behavior
+   - Text row: right swipe reveals Pin for unpinned rows and Unpin for pinned rows, left swipe reveals Delete, full swipe does not auto-execute, deliberate horizontal swipe does not copy, and simple click/tap still copies
+   - Image row: same state-aware direction mapping, non-destructive full-swipe behavior, and copy-on-activation behavior
    - Existing delete/pin ordering flows continue to pass after the List migration
 2. **Automated unit tests**
    - Preserve `ClipHistoryTests` ordering and delete semantics
    - Update `ClipRowViewTests` and `ClipboardRowPresentationTests` if shared-row API cleanup changes constructor signatures or visibility assumptions
 3. **Manual macOS validation**
-   - Trackpad two-finger right/left swipe validation
+   - Trackpad two-finger right/left swipe validation for both unpinned and pinned rows
    - Magic Mouse validation on supported system settings
    - Sub-threshold swipe snap-back validation
    - Full-swipe reveal-only validation
+   - Vertical-scroll-does-not-reveal validation
+   - Click-versus-swipe arbitration validation
 4. **Regression validation**
    - Keyboard regression
-   - Context-menu regression
+   - Context-menu no-change validation
    - VoiceOver regression
    - Existing mouse interaction regression
 

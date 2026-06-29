@@ -12,7 +12,7 @@
 
 **Purpose**: Align the feature-specific validation artifacts before code changes begin.
 
-- [ ] T001 [P] Update `specs/009-native-macos-swipe-actions/quickstart.md` with an execution matrix for trackpad, Magic Mouse, sub-threshold swipe, full-swipe reveal-only, and regression evidence capture `(FR-019, SC-001, SC-002, SC-003, SC-003a, SC-003b, SC-009a)`
+- [ ] T001 [P] Update `specs/009-native-macos-swipe-actions/quickstart.md` with a complete execution evidence matrix for trackpad, Magic Mouse, state-aware Pin/Unpin labels, sub-threshold swipe, vertical-scroll arbitration, click-versus-swipe behavior, keyboard and VoiceOver alternatives, and regression evidence capture `(FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003b, SC-003c, SC-004, SC-004a, SC-009a, SC-009b)`
 - [ ] T002 [P] Update `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` with the targeted UI/unit/full-suite and SonarQube evidence checklist for this feature `(FR-018, FR-019, SC-010)`
 
 ---
@@ -23,8 +23,8 @@
 
 **⚠️ CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T003 Update `NextPasteUITests/RowRobot.swift` with `List`-native leading/trailing swipe helpers plus explicit reveal-only, full-swipe, and sub-threshold assertions for text and image rows `(FR-001, FR-002, FR-003, FR-013a, FR-013b, FR-013d, SC-001, SC-002, SC-003, SC-003b, SC-009a)`
-- [ ] T004 Update `NextPaste/HomeView.swift` to replace `ScrollView`/`LazyVStack` and custom drag reveal state with a macOS `List` using `.swipeActions(..., allowsFullSwipe: false)` while preserving copy-on-row-activation, identifiers, local-first behavior, and accessibility markers `(FR-001, FR-002, FR-004, FR-011, FR-012, FR-013, FR-013a, FR-013b, FR-013c, FR-014, FR-015, FR-016, FR-017, SC-004, SC-007, SC-009a)`
+- [ ] T003 Update `NextPasteUITests/RowRobot.swift` with `List`-native leading/trailing swipe helpers plus explicit state-aware Pin/Unpin label assertions, reveal-only/full-swipe assertions, sub-threshold assertions, and horizontal-versus-vertical gesture helpers for text and image rows `(FR-001, FR-002, FR-003, FR-013a, FR-013b, FR-013d, FR-013e, FR-013f, SC-001, SC-001a, SC-002, SC-003, SC-003b, SC-003c, SC-004a, SC-009a)`
+- [ ] T004 Update `NextPaste/HomeView.swift` to replace `ScrollView`/`LazyVStack` and custom drag reveal state with a macOS `List` using `.swipeActions(..., allowsFullSwipe: false)` while preserving state-aware Pin/Unpin labeling, copy-on-row-activation, deliberate-horizontal-swipe precedence, vertical scrolling, identifiers, local-first behavior, and accessibility markers `(FR-001, FR-002, FR-004, FR-011, FR-012, FR-013, FR-013a, FR-013b, FR-013c, FR-013d, FR-013e, FR-013f, FR-014, FR-015, FR-016, FR-017, SC-004, SC-004a, SC-007, SC-009a)`
 
 **Checkpoint**: Native `List` hosting and reusable swipe-test helpers are ready for story-level implementation and validation.
 
@@ -32,19 +32,19 @@
 
 ## Phase 3: User Story 1 - Reveal row actions with native swipe gestures (Priority: P1) 🎯 MVP
 
-**Goal**: Deliver native right-swipe Pin and left-swipe Delete behavior for text rows without changing row visuals at rest.
+**Goal**: Deliver native right-swipe Pin/Unpin and left-swipe Delete behavior for text rows without changing row visuals at rest.
 
-**Independent Test**: Swipe a populated text row right and left, confirm Pin/Delete are revealed without auto-execution, then confirm tapping the row still copies the clip.
+**Independent Test**: Swipe a populated text row right and left, confirm the state-aware Pin/Unpin and Delete actions are revealed without auto-execution, then confirm tapping the row still copies the clip.
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add text-row UI coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for right-swipe Pin, left-swipe Delete, full-swipe reveal-only, sub-threshold snap-back, and copy-on-row-tap regression `(FR-001, FR-002, FR-004, FR-013b, FR-013d, FR-019, SC-001, SC-002, SC-003b, SC-004, SC-009a)`
-- [ ] T006 [P] [US1] Add pin-ordering and delete-selected-row-only regression coverage in `NextPasteTests/ClipHistoryTests.swift` for text-row swipe outcomes `(FR-005, FR-006, FR-017, FR-019, SC-005, SC-006)`
+- [ ] T005 [P] [US1] Add text-row UI coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, full-swipe reveal-only, sub-threshold snap-back, deliberate horizontal swipe without copy, vertical scroll without reveal, and click-or-tap copy regression `(FR-001, FR-002, FR-004, FR-013b, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
+- [ ] T006 [P] [US1] Add pin-toggle ordering and delete-selected-row-only regression coverage in `NextPasteTests/ClipHistoryTests.swift` for text-row swipe outcomes, including both Pin and Unpin transitions `(FR-005, FR-006, FR-017, FR-019, SC-005, SC-006)`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Update `NextPaste/DesignSystem/Components/ClipboardRow.swift` to preserve text-row labels, identifiers, copy feedback, and design-token styling under native swipe integration `(FR-004, FR-007, FR-008, FR-009a, FR-010, FR-011, SC-004, SC-007, SC-008, SC-009b)`
-- [ ] T008 [US1] Execute and record manual trackpad validation in `specs/009-native-macos-swipe-actions/quickstart.md` for text-row right swipe, left swipe, sub-threshold snap-back, and full-swipe reveal-only behavior `(FR-019, SC-001, SC-002, SC-003b, SC-009a)`
+- [ ] T007 [US1] Update `NextPaste/DesignSystem/Components/ClipboardRow.swift` to preserve text-row labels, identifiers, copy feedback, state-aware Pin/Unpin presentation, and design-token styling under native swipe integration `(FR-001, FR-004, FR-007, FR-008, FR-009a, FR-010, FR-011, SC-001, SC-001a, SC-004, SC-007, SC-008, SC-009b)`
+- [ ] T008 [US1] Execute and record manual trackpad validation in `specs/009-native-macos-swipe-actions/quickstart.md` for text-row right swipe on unpinned and pinned rows, left swipe, sub-threshold snap-back, full-swipe reveal-only behavior, deliberate horizontal swipe without copy, vertical scroll without reveal, and normal click-or-tap copy `(FR-004, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
 
 **Checkpoint**: Text rows support native reveal-only swipe actions and remain independently testable as the MVP.
 
@@ -58,13 +58,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [US2] Add image-row UI coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` for right-swipe Pin, left-swipe Delete, reveal-only full swipe, and delete-target isolation `(FR-003, FR-005, FR-006, FR-013b, FR-019, SC-003, SC-006, SC-009a)`
-- [ ] T010 [P] [US2] Add image presentation and accessibility regression coverage in `NextPasteTests/ClipboardRowPresentationTests.swift` for native swipe integration, thumbnail metadata, and stable accessibility values `(FR-003, FR-008, FR-011, FR-019, SC-003, SC-007, SC-009)`
+- [ ] T009 [P] [US2] Add image-row UI coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, reveal-only full swipe, click-or-tap copy regression, and delete-target isolation `(FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-013b, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-004, SC-006, SC-009a)`
+- [ ] T010 [P] [US2] Add image presentation and accessibility regression coverage in `NextPasteTests/ClipboardRowPresentationTests.swift` for native swipe integration, thumbnail metadata, stable accessibility values, and preserved image-row activation semantics `(FR-003, FR-004, FR-008, FR-011, FR-019, SC-003, SC-004, SC-007, SC-009)`
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Update `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` to preserve image-row swipe parity, copy feedback, thumbnail behavior, and visual tokens under the native `List` host `(FR-003, FR-004, FR-008, FR-011, FR-013a, SC-003, SC-004, SC-007, SC-009)`
-- [ ] T012 [US2] Execute and record manual image-row and Magic Mouse parity validation in `specs/009-native-macos-swipe-actions/quickstart.md`, including the supported-hardware note for native macOS gesture exposure `(FR-003, FR-013c, FR-019, SC-003, SC-003a)`
+- [ ] T011 [US2] Update `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` to preserve image-row swipe parity, state-aware Pin/Unpin labeling, copy feedback, thumbnail behavior, and visual tokens under the native `List` host `(FR-001, FR-003, FR-004, FR-008, FR-011, FR-013a, SC-001, SC-001a, SC-003, SC-004, SC-007, SC-009)`
+- [ ] T012 [US2] Execute and record manual image-row and Magic Mouse parity validation in `specs/009-native-macos-swipe-actions/quickstart.md`, including right-swipe Pin/Unpin state changes, left-swipe Delete, vertical-scroll arbitration, click-or-tap copy, and the supported-hardware note for native macOS gesture exposure `(FR-001, FR-002, FR-003, FR-004, FR-013c, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003c, SC-004, SC-004a)`
 
 **Checkpoint**: Image rows now match text-row swipe behavior and remain independently testable.
 
@@ -72,22 +72,22 @@
 
 ## Phase 5: User Story 3 - Keep existing interactions unchanged (Priority: P3)
 
-**Goal**: Preserve click, keyboard, context menu, mouse, VoiceOver, and visual-identity behavior while removing obsolete custom reveal plumbing.
+**Goal**: Preserve click, keyboard, mouse, VoiceOver, any no-change context-menu baseline, and visual-identity behavior while removing obsolete custom reveal plumbing.
 
-**Independent Test**: After using swipe actions on text and image rows, verify copy-on-activation, ordering, deletion scope, keyboard reachability, VoiceOver labels, context-menu baseline, mouse behavior, and row visuals still match the current product expectations.
+**Independent Test**: After using swipe actions on text and image rows, verify copy-on-activation, ordering, deletion scope, keyboard reachability, VoiceOver labels, no required context-menu changes, mouse behavior, and row visuals still match the current product expectations.
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Add additive-interaction regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for keyboard reachability, VoiceOver labels, context-menu baseline checks, copy regression, and non-swipe Pin/Delete access `(FR-007, FR-008, FR-009, FR-009a, FR-010, FR-019, SC-008, SC-009, SC-009b)`
+- [ ] T013 [P] [US3] Add additive-interaction regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for keyboard reachability, VoiceOver labels, no-required-context-menu-change checks, copy regression, and non-swipe Pin/Unpin/Delete access `(FR-007, FR-008, FR-009, FR-009a, FR-010, FR-019, SC-008, SC-009, SC-009b)`
 - [ ] T014 [P] [US3] Add List-backed history visual regression coverage in `NextPasteUITests/VisualIdentityUITests.swift` for canvas markers, history surface continuity, and row-at-rest design parity `(FR-011, FR-012, FR-019, SC-007)`
 - [ ] T015 [P] [US3] Add shared row routing cleanup regression coverage in `NextPasteTests/ClipRowViewTests.swift` for text/image routing after obsolete reveal-state removal `(FR-003, FR-004, FR-011, FR-013a, FR-019, SC-004, SC-007)`
 
 ### Implementation for User Story 3
 
 - [ ] T016 [US3] Update `NextPaste/ClipRowView.swift` to remove obsolete reveal-action inputs while preserving text/image routing, copy feedback plumbing, and behavior parity `(FR-003, FR-004, FR-011, FR-013a, SC-004, SC-007)`
-- [ ] T017 [US3] Update `NextPaste/DesignSystem/Components/RowActionControlGroup.swift` to preserve stable copy/pin/delete identifiers, labels, and additive action access under native swipe hosting `(FR-007, FR-008, FR-009a, FR-010, SC-008, SC-009, SC-009b)`
-- [ ] T018 [US3] Update `NextPaste/DesignSystem/Components/SharedRowPresentation.swift` to preserve shared row accessibility markers, keyboard-safe composition, and design-token styling for `List` rows `(FR-008, FR-009, FR-010, FR-011, FR-012, SC-007, SC-008, SC-009)`
-- [ ] T019 [US3] Execute and record keyboard, context-menu, VoiceOver, and non-gesture-mouse regression validation in `specs/009-native-macos-swipe-actions/quickstart.md` `(FR-007, FR-008, FR-009, FR-009a, FR-010, FR-013c, FR-019, SC-003a, SC-008, SC-009, SC-009b)`
+- [ ] T017 [US3] Update `NextPaste/DesignSystem/Components/RowActionControlGroup.swift` to preserve stable copy/pin-toggle/delete identifiers, state-aware labels, and additive action access under native swipe hosting `(FR-001, FR-007, FR-008, FR-009a, FR-010, SC-001, SC-001a, SC-008, SC-009, SC-009b)`
+- [ ] T018 [US3] Update `NextPaste/DesignSystem/Components/SharedRowPresentation.swift` to preserve shared row accessibility markers, keyboard-safe composition, no-required-context-menu-change behavior, and design-token styling for `List` rows `(FR-008, FR-009, FR-010, FR-011, FR-012, SC-007, SC-008, SC-009)`
+- [ ] T019 [US3] Execute and record keyboard, no-required-context-menu-change, VoiceOver, and non-gesture-mouse regression validation in `specs/009-native-macos-swipe-actions/quickstart.md` `(FR-007, FR-008, FR-009, FR-009a, FR-010, FR-013c, FR-019, SC-003a, SC-008, SC-009, SC-009b)`
 
 **Checkpoint**: Existing interaction methods remain additive and non-regressive after the native swipe migration.
 
@@ -132,10 +132,10 @@
 
 | Requirement | Task IDs |
 | --- | --- |
-| FR-001 | T003, T004, T005, T008 |
-| FR-002 | T003, T004, T005, T008 |
+| FR-001 | T003, T004, T005, T007, T008, T009, T011, T012, T017 |
+| FR-002 | T003, T004, T005, T008, T009, T012 |
 | FR-003 | T003, T009, T010, T011, T012, T015, T016 |
-| FR-004 | T004, T005, T007, T011, T015, T016, T020, T021 |
+| FR-004 | T004, T005, T007, T008, T009, T010, T011, T015, T016, T020, T021 |
 | FR-005 | T006, T009, T020, T021 |
 | FR-006 | T006, T009, T020, T021 |
 | FR-007 | T007, T013, T017, T019, T020, T021 |
@@ -149,7 +149,9 @@
 | FR-013a | T003, T004, T011, T015, T016 |
 | FR-013b | T003, T004, T005, T009, T008 |
 | FR-013c | T004, T012, T019 |
-| FR-013d | T003, T005, T008 |
+| FR-013d | T003, T004, T005, T008 |
+| FR-013e | T003, T004, T005, T008, T012 |
+| FR-013f | T003, T004, T005, T008, T012 |
 | FR-014 | T004, T021 |
 | FR-015 | T004, T021 |
 | FR-016 | T004, T021 |
@@ -161,12 +163,15 @@
 
 | Success Criterion | Task IDs |
 | --- | --- |
-| SC-001 | T003, T005, T008 |
-| SC-002 | T003, T005, T008 |
+| SC-001 | T003, T005, T007, T008, T009, T011, T012, T017 |
+| SC-001a | T003, T005, T007, T008, T009, T011, T012, T017 |
+| SC-002 | T003, T005, T008, T009, T012 |
 | SC-003 | T003, T009, T010, T011, T012 |
 | SC-003a | T012, T019 |
 | SC-003b | T003, T005, T008 |
-| SC-004 | T004, T005, T007, T011, T015, T016, T020, T021 |
+| SC-003c | T003, T005, T008, T012 |
+| SC-004 | T004, T005, T007, T008, T009, T010, T011, T015, T016, T020, T021 |
+| SC-004a | T003, T004, T005, T008, T012 |
 | SC-005 | T006, T020, T021 |
 | SC-006 | T006, T009, T020, T021 |
 | SC-007 | T004, T007, T010, T011, T014, T015, T016, T018, T023 |
@@ -232,9 +237,9 @@ Task: "T015 Add ClipRowView routing cleanup regression coverage in NextPasteTest
 ## Validation Checklist
 
 - [ ] T005, T009, T013, T014, and T015 are written or updated before the corresponding production changes land.
-- [ ] T008 records real trackpad validation for right swipe, left swipe, sub-threshold snap-back, and full-swipe reveal-only behavior.
-- [ ] T012 records image-row parity plus Magic Mouse validation when supported hardware/settings are available.
-- [ ] T019 records keyboard, context menu, VoiceOver, and non-gesture-mouse regression outcomes.
+- [ ] T008 records real trackpad validation for right-swipe Pin/Unpin state changes, left swipe, sub-threshold snap-back, vertical-scroll arbitration, click-versus-swipe behavior, and full-swipe reveal-only behavior.
+- [ ] T012 records image-row parity plus Magic Mouse validation when supported hardware/settings are available, including image-row click/tap copy.
+- [ ] T019 records keyboard, no-required-context-menu-change, VoiceOver, and non-gesture-mouse regression outcomes.
 - [ ] T020 records all targeted UI/unit regression command results.
 - [ ] T021 records the full macOS regression suite result.
 - [ ] T022 records SonarQube Project Health evidence or justified false positives.

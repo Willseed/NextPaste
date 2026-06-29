@@ -34,30 +34,53 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 
 ## Manual Validation Scenarios
 
-### Trackpad
+Launch the app with populated text and image rows before running the matrix below.
 
-1. Launch the app with populated text and image rows.
-2. On a text row:
-   - swipe right -> Pin reveals
-   - swipe left -> Delete reveals
-   - short swipe and release -> row snaps back with no action revealed
-   - full swipe -> action reveals but does not execute until clicked
-3. Repeat the same checks on an image row.
+### Manual Evidence Matrix
 
-### Magic Mouse
+| Scenario | Hardware / Input | Expected outcome | Evidence | Result / Notes |
+| --- | --- | --- | --- | --- |
+| Text row right swipe on unpinned row | Trackpad | Reveals **Pin** in the leading action slot |  |  |
+| Text row right swipe on pinned row | Trackpad | Reveals **Unpin** in the leading action slot |  |  |
+| Text row left swipe | Trackpad | Reveals **Delete** in the trailing action slot |  |  |
+| Image row right swipe on unpinned row | Trackpad | Reveals **Pin** in the leading action slot |  |  |
+| Image row right swipe on pinned row | Trackpad | Reveals **Unpin** in the leading action slot |  |  |
+| Image row left swipe | Trackpad | Reveals **Delete** in the trailing action slot |  |  |
+| Sub-threshold swipe | Trackpad | Releasing before the native reveal threshold snaps the row back with no action revealed |  |  |
+| Full swipe reveal-only | Trackpad | The action is revealed but does not execute until the user explicitly activates it |  |  |
+| Vertical scroll over row | Trackpad | History continues vertical scrolling and no swipe action is revealed |  |  |
+| Deliberate horizontal swipe vs copy | Trackpad | Revealing a swipe action does not also trigger copy |  |  |
+| Normal click/tap copy on text row | Trackpad or mouse | Row copies and copied feedback appears with no swipe required |  |  |
+| Normal click/tap copy on image row | Trackpad or mouse | Row copies and copied feedback appears with no swipe required |  |  |
+| Pin/Unpin ordering regression | Trackpad or mouse | Activating the revealed pin-toggle action updates pinned-first ordering correctly |  |  |
+| Delete target isolation | Trackpad or mouse | Activating Delete removes only the targeted row |  |  |
+| Keyboard alternative actions | Keyboard | Existing non-swipe keyboard access remains usable with no required gesture |  |  |
+| VoiceOver alternative actions | VoiceOver | Row content and non-swipe actions remain available without requiring swipe |  |  |
+| Non-gesture mouse behavior | External mouse without gesture support | Existing click/tap behavior works; no swipe emulation appears |  |  |
+| Context-menu change check | Any available pointing device | No context-menu change is introduced or required by this feature |  |  |
 
-1. Enable the relevant swipe gesture in macOS settings if supported.
-2. Repeat the text-row and image-row reveal checks.
-3. Confirm no custom fallback is required in-app.
+### Magic Mouse Matrix (if available)
+
+| Scenario | Hardware / Input | Expected outcome | Evidence | Result / Notes |
+| --- | --- | --- | --- | --- |
+| Text row right swipe on unpinned row | Magic Mouse | Reveals **Pin** in the leading action slot when macOS exposes native row swipes |  |  |
+| Text row right swipe on pinned row | Magic Mouse | Reveals **Unpin** in the leading action slot when macOS exposes native row swipes |  |  |
+| Text row left swipe | Magic Mouse | Reveals **Delete** in the trailing action slot when macOS exposes native row swipes |  |  |
+| Image row right swipe on unpinned row | Magic Mouse | Reveals **Pin** in the leading action slot when macOS exposes native row swipes |  |  |
+| Image row right swipe on pinned row | Magic Mouse | Reveals **Unpin** in the leading action slot when macOS exposes native row swipes |  |  |
+| Image row left swipe | Magic Mouse | Reveals **Delete** in the trailing action slot when macOS exposes native row swipes |  |  |
+| Vertical scroll over row | Magic Mouse | History continues vertical scrolling and no swipe action is revealed |  |  |
+| Sub-threshold swipe | Magic Mouse | Row snaps back with no action revealed |  |  |
+| Full swipe reveal-only | Magic Mouse | The action is revealed but does not execute until the user explicitly activates it |  |  |
+| Deliberate horizontal swipe vs copy | Magic Mouse | Revealing a swipe action does not also trigger copy |  |  |
 
 ### Regression Checks
 
-1. Click/tap a row without swiping -> clip copies and copied feedback appears.
-2. Pin through the revealed action -> row moves into pinned-first order.
-3. Delete through the revealed action -> only the targeted row is removed.
-4. Verify keyboard navigation still reaches the history surface and visible controls.
-5. Verify VoiceOver still reads row content and available actions.
-6. Verify context-menu behavior matches the pre-change baseline.
+1. Activate the revealed pin-toggle action on unpinned and pinned rows -> ordering and visible pin state update correctly.
+2. Activate the revealed Delete action -> only the targeted row is removed.
+3. Verify keyboard navigation still reaches the history surface and visible controls.
+4. Verify VoiceOver still reads row content and available actions.
+5. Confirm the feature does not introduce or require context-menu changes.
 
 ## Reference Contracts
 
