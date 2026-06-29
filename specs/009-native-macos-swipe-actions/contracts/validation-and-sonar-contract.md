@@ -31,6 +31,8 @@
    - keyboard interaction
    - no context-menu change introduced or required
    - VoiceOver access
+   - drag-and-drop remains unchanged or is explicitly not applicable for the affected rows
+   - multi-selection remains unchanged or is explicitly not applicable for the affected rows
    - image-row copy parity
 
 ## Manual Evidence Matrix
@@ -65,6 +67,8 @@
 | Keyboard shortcut verification | Keyboard | Existing non-swipe keyboard access remains available |  |  |
 | VoiceOver verification | VoiceOver | Existing row content and non-swipe actions remain available |  |  |
 | Context-menu no-change verification | Any available pointing device | No context-menu change is introduced or required |  |  |
+| Drag-and-drop non-regression verification | Any supported input for the current baseline | Drag-and-drop behavior remains unchanged from the pre-feature baseline, or is explicitly recorded as not applicable |  |  |
+| Multi-selection non-regression verification | Keyboard, trackpad, or mouse as supported by the current baseline | Multi-selection behavior remains unchanged from the pre-feature baseline, or is explicitly recorded as not applicable |  |  |
 
 ## SonarQube Evidence
 
