@@ -209,7 +209,19 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 - `specs/009-native-macos-swipe-actions/data-model.md`
 - `specs/009-native-macos-swipe-actions/contracts/*`
 - `specs/009-native-macos-swipe-actions/quickstart.md`
-- `.github/copilot-instructions.md`
+- `.github/copilot-instructions.md` (only because the configured planning hook refreshes agent context to point at this feature's `plan.md`)
+
+## Explicit Non-Goals
+
+- No OCR changes
+- No AI or Foundation Models changes
+- No CloudKit changes
+- No clipboard capture pipeline changes
+- No clipboard persistence changes
+- No clipboard history ordering changes beyond preserving the existing pin-toggle behavior
+- No image capture behavior changes
+- No design token changes
+- No visual redesign
 
 ## Mechanical Call-Site Updates
 

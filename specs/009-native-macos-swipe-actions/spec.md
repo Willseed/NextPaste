@@ -204,6 +204,18 @@ mouse interactions, any current context-menu baseline, and list ordering still m
 - **Clip**: A saved clipboard item that can be text or image content and retains its existing
   behavior for copy, pinning, deletion, ordering, and display
 
+## Out of Scope
+
+- OCR changes
+- AI or Foundation Models changes
+- CloudKit changes
+- Clipboard capture pipeline changes
+- Clipboard persistence changes
+- Clipboard history ordering changes outside the existing pin-toggle outcomes
+- Image capture behavior changes
+- Design token changes
+- Visual design changes
+
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes

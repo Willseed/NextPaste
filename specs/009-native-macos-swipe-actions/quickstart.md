@@ -73,6 +73,7 @@ Launch the app with populated text and image rows before running the matrix belo
 | Sub-threshold swipe | Magic Mouse | Row snaps back with no action revealed |  |  |
 | Full swipe reveal-only | Magic Mouse | The action is revealed but does not execute until the user explicitly activates it |  |  |
 | Deliberate horizontal swipe vs copy | Magic Mouse | Revealing a swipe action does not also trigger copy |  |  |
+| Non-gesture mouse fallback equivalence | Magic Mouse not available / external mouse | Existing click/tap behavior remains the fallback and no swipe emulation appears |  |  |
 
 ### Regression Checks
 

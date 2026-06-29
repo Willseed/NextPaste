@@ -35,21 +35,36 @@
 
 ## Manual Evidence Matrix
 
-- Record scenario, hardware/input method, expected outcome, evidence reference, and result/notes for:
-  - text row trackpad right swipe on unpinned row
-  - text row trackpad right swipe on pinned row
-  - text row trackpad left swipe
-  - image row trackpad right swipe on unpinned row
-  - image row trackpad right swipe on pinned row
-  - image row trackpad left swipe
-  - Magic Mouse equivalents when supported hardware/settings are available
-  - full-swipe reveal-only behavior
-  - click/tap copy for text and image rows
-  - pinned ordering after Pin/Unpin activation
-  - delete-target isolation after Delete activation
-  - keyboard and VoiceOver alternatives
-  - sub-threshold swipe snap-back
-  - vertical scroll not triggering actions
+| Scenario | Hardware / Input | Expected outcome | Evidence | Result / Notes |
+| --- | --- | --- | --- | --- |
+| Text row right swipe on unpinned row | Trackpad | Reveals **Pin** in the stable leading action slot |  |  |
+| Text row right swipe on pinned row | Trackpad | Reveals **Unpin** in the stable leading action slot |  |  |
+| Text row left swipe | Trackpad | Reveals **Delete** in the trailing action slot |  |  |
+| Image row right swipe on unpinned row | Trackpad | Reveals **Pin** in the stable leading action slot |  |  |
+| Image row right swipe on pinned row | Trackpad | Reveals **Unpin** in the stable leading action slot |  |  |
+| Image row left swipe | Trackpad | Reveals **Delete** in the trailing action slot |  |  |
+| Full swipe reveal-only | Trackpad | Reveals an action but does not auto-execute it |  |  |
+| Sub-threshold swipe | Trackpad | Snaps back and reveals nothing |  |  |
+| Deliberate horizontal swipe vs copy | Trackpad | Revealing a swipe action does not also trigger copy |  |  |
+| Vertical scroll over row | Trackpad | Continues vertical scrolling and reveals no swipe action |  |  |
+| Text row right swipe on unpinned row | Magic Mouse when supported | Reveals **Pin** in the stable leading action slot |  |  |
+| Text row right swipe on pinned row | Magic Mouse when supported | Reveals **Unpin** in the stable leading action slot |  |  |
+| Text row left swipe | Magic Mouse when supported | Reveals **Delete** in the trailing action slot |  |  |
+| Image row right swipe on unpinned row | Magic Mouse when supported | Reveals **Pin** in the stable leading action slot |  |  |
+| Image row right swipe on pinned row | Magic Mouse when supported | Reveals **Unpin** in the stable leading action slot |  |  |
+| Image row left swipe | Magic Mouse when supported | Reveals **Delete** in the trailing action slot |  |  |
+| Full swipe reveal-only | Magic Mouse when supported | Reveals an action but does not auto-execute it |  |  |
+| Sub-threshold swipe | Magic Mouse when supported | Snaps back and reveals nothing |  |  |
+| Deliberate horizontal swipe vs copy | Magic Mouse when supported | Revealing a swipe action does not also trigger copy |  |  |
+| Vertical scroll over row | Magic Mouse when supported | Continues vertical scrolling and reveals no swipe action |  |  |
+| Non-gesture mouse behavior | External mouse without gesture support | Preserves click behavior and does not emulate swipe |  |  |
+| Click/tap copy on text row | Trackpad or mouse | Copies the selected text clip with no swipe required |  |  |
+| Click/tap copy on image row | Trackpad or mouse | Copies the selected image clip with no swipe required |  |  |
+| Pin/Unpin ordering regression | Trackpad or mouse | Pin toggle updates pinned-first ordering correctly |  |  |
+| Delete target isolation | Trackpad or mouse | Delete removes only the targeted row |  |  |
+| Keyboard shortcut verification | Keyboard | Existing non-swipe keyboard access remains available |  |  |
+| VoiceOver verification | VoiceOver | Existing row content and non-swipe actions remain available |  |  |
+| Context-menu no-change verification | Any available pointing device | No context-menu change is introduced or required |  |  |
 
 ## SonarQube Evidence
 

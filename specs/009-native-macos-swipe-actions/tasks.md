@@ -118,7 +118,7 @@
 
 - **US1 (P1)**: Starts after T003-T004.
 - **US2 (P2)**: Starts after T003-T004 and should merge after US1 establishes the canonical swipe behavior.
-- **US3 (P3)**: Starts after T003-T004 and should finish after US1-US2 land because it validates preserved behavior across the final integrated UI.
+- **US3 (P3)**: Starts only after US1 and US2 are complete because it is the integration validation story for the final text-plus-image interaction surface.
 
 ### Within Each User Story
 
