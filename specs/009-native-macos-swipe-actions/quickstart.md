@@ -1,14 +1,5 @@
 # Quickstart Validation Guide: Native macOS Swipe Row Actions
 
-## Prerequisites
-
-- macOS development machine
-- Xcode command-line tools available
-- Repository root: `/Users/pony/repo/NextPaste`
-- Optional manual hardware:
-  - Mac trackpad
-  - Magic Mouse configured with swipe gestures enabled in macOS settings
-
 ## Build
 
 ```bash
@@ -26,26 +17,18 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipHistoryTests test
 ```
 
-Use `contracts/validation-and-sonar-contract.md` as the single source of truth for the validation matrix, required scenarios, and release gate expectations.
-
 ## Full Regression Command
 
 ```bash
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
 ```
 
-## Manual Validation Execution
+## Canonical Validation Record
 
-Launch the app with populated text and image rows before running manual validation.
+Use `contracts/validation-and-sonar-contract.md` as the single source of truth for:
 
-Record manual results and evidence directly in the matrix defined in `contracts/validation-and-sonar-contract.md`, which is the canonical source for required scenarios and validation details.
-
-## SonarQube Evidence
-
-Capture SonarQube evidence according to `contracts/validation-and-sonar-contract.md` after implementation and before commit/PR completion.
-
-## Reference Contracts
-
-- [UI interaction contract](contracts/row-swipe-interaction-contract.md)
-- [Accessibility contract](contracts/accessibility-contract.md)
-- [Validation and SonarQube contract](contracts/validation-and-sonar-contract.md)
+- targeted validation evidence
+- full-suite regression evidence
+- manual trackpad / Magic Mouse / keyboard / VoiceOver validation
+- SonarQube project-health evidence
+- final release-readiness checklist

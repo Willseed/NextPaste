@@ -9,23 +9,17 @@ struct ClipboardRow: View {
     @Environment(\.appTheme) private var appTheme
 
     let presentation: ClipboardRowPresentation
-    let showsDeleteAction: Bool
-    let showsPinAction: Bool
     let onCopy: (() -> Void)?
     let onDelete: (() -> Void)?
     let onTogglePin: (() -> Void)?
 
     init(
         presentation: ClipboardRowPresentation,
-        showsDeleteAction: Bool = false,
-        showsPinAction: Bool = false,
         onCopy: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
         onTogglePin: (() -> Void)? = nil
     ) {
         self.presentation = presentation
-        self.showsDeleteAction = showsDeleteAction
-        self.showsPinAction = showsPinAction
         self.onCopy = onCopy
         self.onDelete = onDelete
         self.onTogglePin = onTogglePin
@@ -38,8 +32,6 @@ struct ClipboardRow: View {
             visualStyle: .interactive,
             tracksHover: true,
             showsPinnedAccentMarker: true,
-            showsDeleteAction: showsDeleteAction,
-            showsPinAction: showsPinAction,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: "clip-row-\(presentation.id.uuidString)",
                 label: accessibilityLabel

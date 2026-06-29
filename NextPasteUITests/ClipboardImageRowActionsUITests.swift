@@ -78,6 +78,27 @@ final class ClipboardImageRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testRightSwipeRevealsUnpinActionForPinnedImageRow() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.olderPinTarget
+
+        clipboard.captureImage(fixture)
+        clipboard.assertImageRow(for: fixture)
+
+        row.revealImagePinActionWithRightSwipe(forThumbnailDescription: fixture.thumbnailDescription).tap()
+
+        let unpinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription,
+            expectedLabel: "Unpin"
+        )
+
+        XCTAssertEqual(unpinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+    }
+
+    @MainActor
     func testLeftSwipeRevealsDeleteActionForImageRow() throws {
         let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
@@ -151,14 +172,80 @@ final class ClipboardImageRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testFullSwipeOnlyRevealsImageRowActionWithoutAutoExecuting() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.copyTarget
+
+        clipboard.captureImage(fixture)
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.assertImageRow(for: fixture)
+
+        let pinButton = row.performFullRightSwipe(onImageRow: fixture.thumbnailDescription)
+
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        UITestAssertions.assertNoImageCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
+        XCTAssertFalse(app.descendants(matching: .any)["pinned-image-clip-icon"].exists)
+        clipboard.assertImageRow(for: fixture)
+    }
+
+    @MainActor
+    func testSubThresholdSwipeDoesNotRevealImageRowActionOrCopy() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.copyTarget
+
+        clipboard.captureImage(fixture)
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.assertImageRow(for: fixture)
+
+        row.performSubThresholdRightSwipe(onImageRow: fixture.thumbnailDescription)
+            .assertNoSwipeActionsRevealed()
+
+        UITestAssertions.assertNoImageCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.assertImageRow(for: fixture)
+    }
+
+    @MainActor
+    func testVerticalGestureDoesNotRevealImageRowActionOrCopy() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixtures = [
+            UITestFixtures.ImageClipboard.copyTarget,
+            UITestFixtures.ImageClipboard.deleteTarget,
+            UITestFixtures.ImageClipboard.deleteCompanion,
+            UITestFixtures.ImageClipboard.olderPinTarget,
+            UITestFixtures.ImageClipboard.newerUnpinned
+        ]
+
+        fixtures.forEach { clipboard.captureImage($0) }
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.assertImageRow(for: UITestFixtures.ImageClipboard.copyTarget)
+
+        row.performVerticalScrollGesture(
+            onImageRow: UITestFixtures.ImageClipboard.copyTarget.thumbnailDescription
+        )
+        .assertNoSwipeActionsRevealed()
+
+        UITestAssertions.assertNoImageCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.assertImageRow(for: UITestFixtures.ImageClipboard.copyTarget)
+    }
+
+    @MainActor
     private func launchImageCopyFailureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = UITestAppLauncher.makeAutoCaptureApp(pollInterval: pollInterval)
         app.launchArguments.append("-simulate-clipboard-failure")
         app.launch()
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
+        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
-            app.terminate()
+            self.closeApp(app)
         }
         return app
     }

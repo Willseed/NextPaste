@@ -43,9 +43,9 @@ struct ClipRowViewTests {
         #expect(ClipRowView.presentationKind(for: legacyClip) == .text)
     }
 
-    @Test("preserves shared action flags for text and image rows")
+    @Test("removes obsolete reveal-state flags while preserving shared routing")
     @MainActor
-    func preservesSharedActionFlagsForTextAndImageRows() {
+    func removesObsoleteRevealStateFlagsWhilePreservingSharedRouting() {
         let textClip = ClipItem(textContent: "Shared text row")
         let imageClip = ClipItem.imageClip(
             ImageClipInitialization(
@@ -65,13 +65,13 @@ struct ClipRowViewTests {
                 )
             )
         )
-        let textRow = ClipRowView(clip: textClip, showsDeleteAction: true, showsPinAction: false)
-        let imageRow = ClipRowView(clip: imageClip, showsDeleteAction: true, showsPinAction: false)
+        let textRow = ClipRowView(clip: textClip)
+        let imageRow = ClipRowView(clip: imageClip)
 
-        #expect(textRow.showsDeleteAction)
-        #expect(textRow.showsPinAction == false)
-        #expect(imageRow.showsDeleteAction)
-        #expect(imageRow.showsPinAction == false)
+        #expect(textRow.copyFeedback == nil)
+        #expect(textRow.interactionState == .normal)
+        #expect(imageRow.copyFeedback == nil)
+        #expect(imageRow.interactionState == .normal)
         #expect(ClipRowView.presentationKind(for: textRow.clip) == .text)
         #expect(ClipRowView.presentationKind(for: imageRow.clip) == .image)
     }

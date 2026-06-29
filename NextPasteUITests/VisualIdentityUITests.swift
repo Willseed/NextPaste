@@ -47,6 +47,25 @@ final class VisualIdentityUITests: UITestCase {
     }
 
     @MainActor
+    func testListBackedRowsPreserveAtRestVisualParity() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.VisualIdentity.historyFocus)
+
+        history.historyList()
+        history.historySurface()
+        UITestAssertions.assertExists(
+            app.descendants(matching: .any)["clipboard-row-surface"],
+            "Expected shared row surface marker"
+        )
+        XCTAssertTrue(row.copyButton().isHittable)
+        XCTAssertFalse(app.buttons["pin-clip-button"].exists)
+        XCTAssertFalse(app.buttons["delete-clip-button"].exists)
+    }
+
+    @MainActor
     func testToolbarExposesSearchFilterAndNonBlockingSettingsPlaceholder() throws {
         let app = launchApp()
 

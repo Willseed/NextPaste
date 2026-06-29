@@ -63,20 +63,22 @@ struct ClipboardRowPresentationTests {
         #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).symbolName == DesignTokens.Icons.unpin)
     }
 
-    @Test("shared row action controls preserve copy pin delete order and identifiers")
-    func sharedRowActionControlsPreserveOrderAndIdentifiers() {
+    @Test("shared row action controls preserve stable identifiers and state-aware swipe labels")
+    func sharedRowActionControlsPreserveIdentifiersAndSwipeLabels() {
         #expect(RowActionControlGroup.copyButtonIdentifier == "copy-clip-button")
         #expect(RowActionControlGroup.pinButtonIdentifier == "pin-clip-button")
         #expect(RowActionControlGroup.deleteButtonIdentifier == "delete-clip-button")
-        #expect(RowActionControlGroup.visibleActionIdentifiers(
-            includesCopyAction: true,
-            showsPinAction: true,
-            showsDeleteAction: true
-        ) == [
-            "copy-clip-button",
-            "pin-clip-button",
-            "delete-clip-button"
-        ])
+        #expect(RowActionControlGroup.visibleActionIdentifiers(includesCopyAction: true) == ["copy-clip-button"])
+        #expect(RowActionControlGroup.visibleActionIdentifiers(includesCopyAction: false).isEmpty)
+        #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: false) == ["Copy", "Pin", "Delete"])
+        #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: true) == ["Copy", "Unpin", "Delete"])
+        #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: false, includesCopyAction: false) == ["Pin", "Delete"])
+        #expect(RowActionControlGroup.pinActionLabel(isPinned: false) == "Pin")
+        #expect(RowActionControlGroup.pinActionLabel(isPinned: true) == "Unpin")
+        #expect(RowActionControlGroup.pinActionSymbolName(isPinned: false) == DesignTokens.Icons.pin)
+        #expect(RowActionControlGroup.pinActionSymbolName(isPinned: true) == DesignTokens.Icons.unpin)
+        #expect(RowActionControlGroup.deleteActionLabel == "Delete")
+        #expect(RowActionControlGroup.deleteActionSymbolName == DesignTokens.Icons.delete)
     }
 
     @Test("describes pinned state accessibly")

@@ -52,8 +52,6 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
     let visualStyle: VisualStyle
     let tracksHover: Bool
     let showsPinnedAccentMarker: Bool
-    let showsDeleteAction: Bool
-    let showsPinAction: Bool
     let accessibility: Accessibility
     let surfaceAccessibility: SurfaceAccessibility?
     let onCopy: (() -> Void)?
@@ -68,8 +66,6 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         visualStyle: VisualStyle,
         tracksHover: Bool,
         showsPinnedAccentMarker: Bool,
-        showsDeleteAction: Bool,
-        showsPinAction: Bool,
         accessibility: Accessibility,
         surfaceAccessibility: SurfaceAccessibility? = nil,
         onCopy: (() -> Void)?,
@@ -83,8 +79,6 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         self.visualStyle = visualStyle
         self.tracksHover = tracksHover
         self.showsPinnedAccentMarker = showsPinnedAccentMarker
-        self.showsDeleteAction = showsDeleteAction
-        self.showsPinAction = showsPinAction
         self.accessibility = accessibility
         self.surfaceAccessibility = surfaceAccessibility
         self.onCopy = onCopy
@@ -109,14 +103,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
 
             trailingState()
 
-            RowActionControlGroup(
-                isPinned: isPinned,
-                showsDeleteAction: showsDeleteAction,
-                showsPinAction: showsPinAction,
-                onCopy: onCopy,
-                onDelete: onDelete,
-                onTogglePin: onTogglePin
-            )
+            RowActionControlGroup(onCopy: onCopy)
         }
         .padding(.vertical, DesignTokens.Spacing.medium)
         .padding(.horizontal, DesignTokens.Spacing.large)
@@ -149,6 +136,18 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         .accessibilityLabel(accessibility.label)
         .accessibilityValue(accessibility.value(effectiveInteractionState))
         .accessibilityIdentifier(accessibility.identifier)
+        .optionalAccessibilityAction(
+            named: ClipboardRowPresentation.RowAction.copy.accessibilityLabel,
+            perform: onCopy
+        )
+        .optionalAccessibilityAction(
+            named: RowActionControlGroup.pinActionLabel(isPinned: isPinned),
+            perform: onTogglePin
+        )
+        .optionalAccessibilityAction(
+            named: RowActionControlGroup.deleteActionLabel,
+            perform: onDelete
+        )
     }
 
     private var effectiveInteractionState: ClipboardRowPresentation.InteractionState {
@@ -211,6 +210,22 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
 
     private var rowScale: CGFloat {
         visualStyle == .interactive && effectiveInteractionState == .inserting ? 0.99 : 1
+    }
+}
+
+private extension View {
+    @ViewBuilder
+    func optionalAccessibilityAction(
+        named name: String,
+        perform action: (() -> Void)?
+    ) -> some View {
+        if let action {
+            accessibilityAction(named: Text(name)) {
+                action()
+            }
+        } else {
+            self
+        }
     }
 }
 

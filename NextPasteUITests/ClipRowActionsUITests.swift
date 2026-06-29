@@ -48,8 +48,13 @@ final class ClipRowActionsUITests: UITestCase {
         XCTAssertEqual(copyButton.identifier, "copy-clip-button")
         XCTAssertTrue(copyButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
+        let textRow = assertTextRowIdentifier(for: UITestFixtures.RowActions.accessibleAction, in: app)
+        UITestAssertions.assertAccessibleTextContains(textRow, "Unpinned")
+        UITestAssertions.assertAccessibleTextContains(textRow, "Normal")
         copyButton.tap()
         UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertFalse(app.menuItems["Pin"].exists)
+        XCTAssertFalse(app.menuItems["Delete"].exists)
 
         let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertEqual(pinButton.identifier, "pin-clip-button")
@@ -60,6 +65,11 @@ final class ClipRowActionsUITests: UITestCase {
         XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
         XCTAssertTrue(deleteButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        XCTAssertTrue(copyButton.exists)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.accessibleAction, in: app).identifier,
+            textRow.identifier
+        )
     }
 
     @MainActor
@@ -101,6 +111,25 @@ final class ClipRowActionsUITests: UITestCase {
 
         XCTAssertEqual(pinButton.identifier, "pin-clip-button")
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+    }
+
+    @MainActor
+    func testRightSwipeRevealsUnpinActionForPinnedTextRow() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
+        history.assertClipRowIdentifierExists()
+        row.pin(UITestFixtures.RowActions.olderPinTarget)
+
+        let unpinButton = row.revealPinActionWithRightSwipe(
+            for: UITestFixtures.RowActions.olderPinTarget,
+            expectedLabel: "Unpin"
+        )
+
+        XCTAssertEqual(unpinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
     }
 
     @MainActor
@@ -208,6 +237,70 @@ final class ClipRowActionsUITests: UITestCase {
             assertTextRowIdentifier(for: UITestFixtures.RowActions.newerUnpinned, in: app).identifier,
             newerUnpinnedIdentifier
         )
+    }
+
+    @MainActor
+    func testFullSwipeOnlyRevealsTextRowActionWithoutAutoExecutingOrCopying() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClip(UITestFixtures.RowActions.copyTarget)
+        history.assertClipRowIdentifierExists()
+
+        let pinButton = row.performFullRightSwipe(onTextRow: UITestFixtures.RowActions.copyTarget)
+
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
+        XCTAssertFalse(app.descendants(matching: .any)["pinned-clip-icon"].exists)
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyTarget].exists)
+    }
+
+    @MainActor
+    func testSubThresholdSwipeDoesNotRevealTextRowActionOrCopy() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClip(UITestFixtures.RowActions.copyTarget)
+        history.assertClipRowIdentifierExists()
+
+        row.performSubThresholdRightSwipe(onTextRow: UITestFixtures.RowActions.copyTarget)
+            .assertNoSwipeActionsRevealed()
+
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
+        XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.copyTarget].exists)
+    }
+
+    @MainActor
+    func testVerticalGestureDoesNotRevealTextRowActionOrCopy() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClips([
+            UITestFixtures.RowActions.copyTarget,
+            UITestFixtures.RowActions.deleteTarget,
+            UITestFixtures.RowActions.deleteCompanion,
+            UITestFixtures.RowActions.olderPinTarget,
+            UITestFixtures.RowActions.newerUnpinned
+        ])
+        history.assertClipRowIdentifierExists()
+
+        row.performVerticalScrollGesture(onTextRow: UITestFixtures.RowActions.copyTarget)
+            .assertNoSwipeActionsRevealed()
+
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
     }
 
     @MainActor

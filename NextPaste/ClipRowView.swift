@@ -14,8 +14,6 @@ struct ClipRowView: View {
     }
 
     let clip: ClipItem
-    let showsDeleteAction: Bool
-    let showsPinAction: Bool
     let copyFeedback: ClipboardRowPresentation.CopyFeedback?
     let interactionState: ClipboardRowPresentation.InteractionState
     let onCopy: (() -> Void)?
@@ -24,8 +22,6 @@ struct ClipRowView: View {
 
     init(
         clip: ClipItem,
-        showsDeleteAction: Bool = false,
-        showsPinAction: Bool = false,
         copyFeedback: ClipboardRowPresentation.CopyFeedback? = nil,
         interactionState: ClipboardRowPresentation.InteractionState = .normal,
         onCopy: (() -> Void)? = nil,
@@ -33,8 +29,6 @@ struct ClipRowView: View {
         onTogglePin: (() -> Void)? = nil
     ) {
         self.clip = clip
-        self.showsDeleteAction = showsDeleteAction
-        self.showsPinAction = showsPinAction
         self.copyFeedback = copyFeedback
         self.interactionState = interactionState
         self.onCopy = onCopy
@@ -50,8 +44,6 @@ struct ClipRowView: View {
                     copyFeedback: copyFeedback,
                     interactionState: interactionState
                 ),
-                showsDeleteAction: showsDeleteAction,
-                showsPinAction: showsPinAction,
                 onCopy: onCopy,
                 onDelete: onDelete,
                 onTogglePin: onTogglePin
@@ -63,8 +55,6 @@ struct ClipRowView: View {
                     copyFeedback: copyFeedback,
                     interactionState: interactionState
                 ),
-                showsDeleteAction: showsDeleteAction,
-                showsPinAction: showsPinAction,
                 onCopy: onCopy,
                 onDelete: onDelete,
                 onTogglePin: onTogglePin

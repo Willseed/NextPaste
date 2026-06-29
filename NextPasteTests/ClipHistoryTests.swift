@@ -191,6 +191,35 @@ struct ClipHistoryTests {
         #expect(selectedClip.pinnedSortOrder == 0)
     }
 
+    @Test("pin and unpin transitions reorder only the selected clip")
+    func pinAndUnpinTransitionsReorderOnlyTheSelectedClip() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let target = ClipItem(textContent: "Swipe pin target", createdAt: Date(timeIntervalSince1970: 100))
+        let companion = ClipItem(textContent: "Swipe companion", createdAt: Date(timeIntervalSince1970: 200))
+
+        context.insert(target)
+        context.insert(companion)
+        try context.save()
+
+        let descriptor = FetchDescriptor<ClipItem>(sortBy: ClipItem.historySortDescriptors)
+        #expect(try context.fetch(descriptor).map(\.textContent) == ["Swipe companion", "Swipe pin target"])
+
+        target.togglePinned()
+        try context.save()
+
+        #expect(target.isPinned)
+        #expect(companion.isPinned == false)
+        #expect(try context.fetch(descriptor).map(\.textContent) == ["Swipe pin target", "Swipe companion"])
+
+        target.togglePinned()
+        try context.save()
+
+        #expect(target.isPinned == false)
+        #expect(companion.isPinned == false)
+        #expect(try context.fetch(descriptor).map(\.textContent) == ["Swipe companion", "Swipe pin target"])
+    }
+
     @Test("fetches pinned clips first and newest first inside each group")
     func fetchesPinnedClipsFirstAndNewestFirstInsideEachGroup() throws {
         let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))

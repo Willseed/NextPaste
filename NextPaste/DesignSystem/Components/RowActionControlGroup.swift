@@ -10,33 +10,39 @@ struct RowActionControlGroup: View {
     static let pinButtonIdentifier = "pin-clip-button"
     static let deleteButtonIdentifier = "delete-clip-button"
 
-    let isPinned: Bool
-    let showsDeleteAction: Bool
-    let showsPinAction: Bool
     let onCopy: (() -> Void)?
-    let onDelete: (() -> Void)?
-    let onTogglePin: (() -> Void)?
 
-    static func visibleActionIdentifiers(
-        includesCopyAction: Bool,
-        showsPinAction: Bool,
-        showsDeleteAction: Bool
+    static func visibleActionIdentifiers(includesCopyAction: Bool) -> [String] {
+        includesCopyAction ? [copyButtonIdentifier] : []
+    }
+
+    static func accessibilityActionLabels(
+        isPinned: Bool,
+        includesCopyAction: Bool = true
     ) -> [String] {
-        var identifiers = [String]()
-
+        var labels: [String] = []
         if includesCopyAction {
-            identifiers.append(copyButtonIdentifier)
+            labels.append(ClipboardRowPresentation.RowAction.copy.accessibilityLabel)
         }
+        labels.append(pinActionLabel(isPinned: isPinned))
+        labels.append(deleteActionLabel)
+        return labels
+    }
 
-        if showsPinAction {
-            identifiers.append(pinButtonIdentifier)
-        }
+    static func pinActionLabel(isPinned: Bool) -> String {
+        ClipboardRowPresentation.RowAction.pin(isPinned: isPinned).accessibilityLabel
+    }
 
-        if showsDeleteAction {
-            identifiers.append(deleteButtonIdentifier)
-        }
+    static func pinActionSymbolName(isPinned: Bool) -> String {
+        ClipboardRowPresentation.RowAction.pin(isPinned: isPinned).symbolName
+    }
 
-        return identifiers
+    static var deleteActionLabel: String {
+        ClipboardRowPresentation.RowAction.delete.accessibilityLabel
+    }
+
+    static var deleteActionSymbolName: String {
+        ClipboardRowPresentation.RowAction.delete.symbolName
     }
 
     var body: some View {
@@ -45,23 +51,6 @@ struct RowActionControlGroup: View {
                 .copy,
                 identifier: Self.copyButtonIdentifier,
                 action: onCopy
-            )
-        }
-
-        if showsPinAction, let onTogglePin {
-            actionButton(
-                .pin(isPinned: isPinned),
-                identifier: Self.pinButtonIdentifier,
-                action: onTogglePin
-            )
-        }
-
-        if showsDeleteAction, let onDelete {
-            actionButton(
-                .delete,
-                identifier: Self.deleteButtonIdentifier,
-                role: .destructive,
-                action: onDelete
             )
         }
     }

@@ -12,6 +12,7 @@ enum UITestAppLauncher {
     static let uiTestingArgument = "-ui-testing"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
+    private static let mainWindowReadyIdentifier = "new-clip-button"
 
     static func makeApp(enableClipboardMonitor: Bool = false) -> XCUIApplication {
         let app = XCUIApplication()
@@ -29,8 +30,7 @@ enum UITestAppLauncher {
     static func launchApp() -> XCUIApplication {
         let app = makeApp()
         app.launch()
-        app.activate()
-        openMainWindowIfNeeded(in: app)
+        prepareMainWindow(in: app)
         return app
     }
 
@@ -46,12 +46,31 @@ enum UITestAppLauncher {
     static func launchAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = makeAutoCaptureApp(pollInterval: pollInterval)
         app.launch()
-        app.activate()
-        openMainWindowIfNeeded(in: app)
+        prepareMainWindow(in: app)
         return app
     }
 
+    static func prepareMainWindow(
+        in app: XCUIApplication,
+        timeout: TimeInterval = 5
+    ) {
+        ensureForeground(app, timeout: timeout)
+
+        if app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: 1) {
+            return
+        }
+
+        openMainWindowIfNeeded(in: app)
+        _ = app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: timeout)
+    }
+
     static func openMainWindowIfNeeded(in app: XCUIApplication) {
+        ensureForeground(app)
+
+        if app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: 1) {
+            return
+        }
+
         guard !app.windows.element(boundBy: 0).exists else { return }
 
         let fileMenu = app.menuBars.menuBarItems["File"]
@@ -61,6 +80,18 @@ enum UITestAppLauncher {
         let newWindowItem = app.menuItems["New NextPaste Window"]
         if newWindowItem.waitForExistence(timeout: 2) {
             newWindowItem.click()
+        }
+
+        ensureForeground(app)
+    }
+
+    private static func ensureForeground(
+        _ app: XCUIApplication,
+        timeout: TimeInterval = 5
+    ) {
+        if app.state != .runningForeground {
+            app.activate()
+            _ = app.wait(for: .runningForeground, timeout: timeout)
         }
     }
 

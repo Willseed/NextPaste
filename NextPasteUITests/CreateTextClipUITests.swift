@@ -35,8 +35,7 @@ final class CreateTextClipUITests: XCTestCase {
         let app = UITestAppLauncher.makeApp()
         app.launchArguments.append("-simulate-save-failure")
         app.launch()
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
+        UITestAppLauncher.prepareMainWindow(in: app)
         let text = "Draft that should stay visible"
         let editor = try openNewClip(in: app)
 
@@ -59,7 +58,7 @@ final class CreateTextClipUITests: XCTestCase {
         let manualText = "Manual fallback clip"
 
         addTeardownBlock {
-            app.terminate()
+            self.closeApp(app)
         }
 
         setClipboardString(autoCapturedText)
@@ -93,6 +92,28 @@ final class CreateTextClipUITests: XCTestCase {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(text, forType: .string)
 #endif
+    }
+
+    @MainActor
+    private func closeApp(_ app: XCUIApplication) {
+        guard app.state != .notRunning else {
+            return
+        }
+
+        app.activate()
+        app.typeKey("q", modifierFlags: .command)
+        if app.wait(for: .notRunning, timeout: 5) {
+            return
+        }
+
+#if os(macOS)
+        for runningApp in NSRunningApplication.runningApplications(withBundleIdentifier: "pylot.NextPaste") {
+            if runningApp.terminate() == false {
+                _ = runningApp.forceTerminate()
+            }
+        }
+#endif
+        _ = app.wait(for: .notRunning, timeout: 5)
     }
 }
 

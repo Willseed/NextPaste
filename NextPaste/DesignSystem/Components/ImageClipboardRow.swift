@@ -16,23 +16,17 @@ struct ImageClipboardRow: View {
     private static let thumbnailAreaSize: CGFloat = 56
 
     let presentation: ImageClipboardRowPresentation
-    let showsDeleteAction: Bool
-    let showsPinAction: Bool
     let onCopy: (() -> Void)?
     let onDelete: (() -> Void)?
     let onTogglePin: (() -> Void)?
 
     init(
         presentation: ImageClipboardRowPresentation,
-        showsDeleteAction: Bool = false,
-        showsPinAction: Bool = false,
         onCopy: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
         onTogglePin: (() -> Void)? = nil
     ) {
         self.presentation = presentation
-        self.showsDeleteAction = showsDeleteAction
-        self.showsPinAction = showsPinAction
         self.onCopy = onCopy
         self.onDelete = onDelete
         self.onTogglePin = onTogglePin
@@ -45,8 +39,6 @@ struct ImageClipboardRow: View {
             visualStyle: .staticCard,
             tracksHover: false,
             showsPinnedAccentMarker: false,
-            showsDeleteAction: showsDeleteAction,
-            showsPinAction: showsPinAction,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: presentation.rowAccessibilityIdentifier,
                 label: presentation.accessibilityLabel,

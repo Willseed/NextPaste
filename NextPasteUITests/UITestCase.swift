@@ -4,6 +4,9 @@
 //
 
 import XCTest
+#if os(macOS)
+import AppKit
+#endif
 
 class UITestCase: XCTestCase {
     override func setUpWithError() throws {
@@ -17,10 +20,9 @@ class UITestCase: XCTestCase {
         let app = UITestAppLauncher.makeApp()
         app.launchArguments.append(contentsOf: extraArguments)
         app.launch()
-        app.activate()
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
+        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
-            app.terminate()
+            self.closeApp(app)
         }
         return app
     }
@@ -30,7 +32,7 @@ class UITestCase: XCTestCase {
     func launchCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = UITestAppLauncher.launchAutoCaptureApp(pollInterval: pollInterval)
         addTeardownBlock {
-            app.terminate()
+            self.closeApp(app)
         }
         return app
     }
@@ -54,5 +56,27 @@ class UITestCase: XCTestCase {
     @MainActor
     func rowRobot(for app: XCUIApplication) -> RowRobot {
         RowRobot(app: app)
+    }
+
+    @MainActor
+    func closeApp(_ app: XCUIApplication) {
+        guard app.state != .notRunning else {
+            return
+        }
+
+        app.activate()
+        app.typeKey("q", modifierFlags: .command)
+        if app.wait(for: .notRunning, timeout: 5) {
+            return
+        }
+
+#if os(macOS)
+        for runningApp in NSRunningApplication.runningApplications(withBundleIdentifier: "pylot.NextPaste") {
+            if runningApp.terminate() == false {
+                _ = runningApp.forceTerminate()
+            }
+        }
+#endif
+        _ = app.wait(for: .notRunning, timeout: 5)
     }
 }

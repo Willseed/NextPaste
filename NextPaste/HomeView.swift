@@ -22,7 +22,6 @@ struct HomeView: View {
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
-    @State private var revealedRowAction: RevealedRowAction?
 
     var body: some View {
         ZStack {
@@ -58,60 +57,14 @@ struct HomeView: View {
                         EmptyStateView()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
-                        ScrollView {
-                            LazyVStack(spacing: DesignTokens.Spacing.medium) {
-                                ForEach(clips) { clip in
-                                    ClipRowView(
-                                        clip: clip,
-                                        showsDeleteAction: revealedRowAction == .delete(clip.id),
-                                        showsPinAction: revealedRowAction == .pin(clip.id),
-                                        copyFeedback: copiedClipID == clip.id ? .copied : nil,
-                                        onCopy: {
-                                            copyClip(clip)
-                                        },
-                                        onDelete: {
-                                            deleteClip(clip)
-                                        },
-                                        onTogglePin: {
-                                            togglePin(clip)
-                                        }
-                                    )
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        copyClip(clip)
-                                    }
-                                    .simultaneousGesture(
-                                        DragGesture(minimumDistance: 20)
-                                            .onEnded { value in
-                                                revealRowAction(for: clip, translationWidth: value.translation.width)
-                                            }
-                                    )
-                                    .swipeActions(edge: .trailing) {
-                                        Button(role: .destructive) {
-                                            deleteClip(clip)
-                                        } label: {
-                                            Label("Delete", systemImage: DesignTokens.Icons.delete)
-                                        }
-                                        .accessibilityIdentifier("delete-clip-button")
-                                        .accessibilityLabel("Delete")
-                                    }
-                                    .swipeActions(edge: .leading) {
-                                        Button {
-                                            togglePin(clip)
-                                        } label: {
-                                            Label(
-                                                clip.isPinned ? "Unpin" : "Pin",
-                                                systemImage: clip.isPinned ? DesignTokens.Icons.unpin : DesignTokens.Icons.pin
-                                            )
-                                        }
-                                        .tint(appTheme.accentPinned.color)
-                                        .accessibilityIdentifier("pin-clip-button")
-                                        .accessibilityLabel(clip.isPinned ? "Unpin" : "Pin")
-                                    }
-                                }
+                        List {
+                            ForEach(clips) { clip in
+                                clipRow(for: clip)
                             }
                         }
                         .padding(DesignTokens.Spacing.small)
+                        .listStyle(.plain)
+                        .scrollContentBackground(.hidden)
                         .background(appTheme.surface.color)
                         .accessibilityIdentifier("clip-history-list")
                     }
@@ -211,26 +164,64 @@ struct HomeView: View {
 #endif
 
     private func deleteClip(_ clip: ClipItem) {
-        if ClipDeletionAction(modelContext: modelContext).delete(clip) {
-            revealedRowAction = nil
-        }
+        _ = ClipDeletionAction(modelContext: modelContext).delete(clip)
     }
 
     private func togglePin(_ clip: ClipItem) {
         do {
             clip.togglePinned()
             try modelContext.save()
-            revealedRowAction = nil
         } catch {
             modelContext.rollback()
         }
     }
 
-    private func revealRowAction(for clip: ClipItem, translationWidth: CGFloat) {
-        if translationWidth < -20 {
-            revealedRowAction = .delete(clip.id)
-        } else if translationWidth > 20 {
-            revealedRowAction = .pin(clip.id)
+    private func clipRow(for clip: ClipItem) -> some View {
+        ClipRowView(
+            clip: clip,
+            copyFeedback: copiedClipID == clip.id ? .copied : nil,
+            onCopy: {
+                copyClip(clip)
+            },
+            onDelete: {
+                deleteClip(clip)
+            },
+            onTogglePin: {
+                togglePin(clip)
+            }
+        )
+        .contentShape(Rectangle())
+        .onTapGesture {
+            copyClip(clip)
+        }
+        .listRowInsets(EdgeInsets())
+        .listRowSeparator(.hidden)
+        .listRowBackground(Color.clear)
+        .padding(.vertical, DesignTokens.Spacing.xSmall)
+        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+            Button(role: .destructive) {
+                deleteClip(clip)
+            } label: {
+                Label(
+                    RowActionControlGroup.deleteActionLabel,
+                    systemImage: RowActionControlGroup.deleteActionSymbolName
+                )
+            }
+            .accessibilityIdentifier(RowActionControlGroup.deleteButtonIdentifier)
+            .accessibilityLabel(RowActionControlGroup.deleteActionLabel)
+        }
+        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+            Button {
+                togglePin(clip)
+            } label: {
+                Label(
+                    RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned),
+                    systemImage: RowActionControlGroup.pinActionSymbolName(isPinned: clip.isPinned)
+                )
+            }
+            .tint(appTheme.accentPinned.color)
+            .accessibilityIdentifier(RowActionControlGroup.pinButtonIdentifier)
+            .accessibilityLabel(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))
         }
     }
 
@@ -252,11 +243,6 @@ struct HomeView: View {
             .accessibilityLabel(label)
             .accessibilityValue(value)
     }
-}
-
-private enum RevealedRowAction: Equatable {
-    case delete(UUID)
-    case pin(UUID)
 }
 
 #Preview {

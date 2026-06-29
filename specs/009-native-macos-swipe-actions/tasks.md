@@ -12,8 +12,8 @@
 
 **Purpose**: Align the feature-specific validation artifacts before code changes begin.
 
-- [ ] T001 [P] Update `specs/009-native-macos-swipe-actions/quickstart.md` so it provides only execution commands plus a reference to `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md`, which remains the single source of truth for the validation evidence matrix and checklist `(FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003b, SC-003c, SC-004, SC-004a, SC-009a, SC-009b)`
-- [ ] T002 [P] Update `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` with the targeted UI/unit/full-suite and SonarQube evidence checklist for this feature `(FR-018, FR-019, SC-010)`
+- [X] T001 [P] Update `specs/009-native-macos-swipe-actions/quickstart.md` so it provides only execution commands plus a reference to `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md`, which remains the single source of truth for the validation evidence matrix and checklist `(FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003b, SC-003c, SC-004, SC-004a, SC-009a, SC-009b)`
+- [X] T002 [P] Update `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` with the targeted UI/unit/full-suite and SonarQube evidence checklist for this feature `(FR-018, FR-019, SC-010)`
 
 ---
 
@@ -23,8 +23,8 @@
 
 **⚠️ CRITICAL**: No user story implementation should begin until this phase is complete.
 
-- [ ] T003 Update `NextPasteUITests/RowRobot.swift` with `List`-native leading/trailing swipe helpers plus explicit state-aware Pin/Unpin label assertions, reveal-only/full-swipe assertions, sub-threshold assertions, and horizontal-versus-vertical gesture helpers for text and image rows `(FR-001, FR-002, FR-003, FR-013a, FR-013b, FR-013d, FR-013e, FR-013f, SC-001, SC-001a, SC-002, SC-003, SC-003b, SC-003c, SC-004a, SC-009a)`
-- [ ] T004 Update `NextPaste/HomeView.swift` to replace `ScrollView`/`LazyVStack` and custom drag reveal state with a macOS `List` using `.swipeActions(..., allowsFullSwipe: false)` while preserving state-aware Pin/Unpin labeling, copy-on-row-activation, deliberate-horizontal-swipe precedence, vertical scrolling, identifiers, local-first behavior, and accessibility markers `(FR-001, FR-002, FR-004, FR-011, FR-012, FR-013, FR-013a, FR-013b, FR-013c, FR-013d, FR-013e, FR-013f, FR-014, FR-015, FR-016, FR-017, SC-004, SC-004a, SC-007, SC-009a)`
+- [X] T003 Update `NextPasteUITests/RowRobot.swift` with `List`-native leading/trailing swipe helpers plus explicit state-aware Pin/Unpin label assertions, reveal-only/full-swipe assertions, sub-threshold assertions, and horizontal-versus-vertical gesture helpers for text and image rows `(FR-001, FR-002, FR-003, FR-013a, FR-013b, FR-013d, FR-013e, FR-013f, SC-001, SC-001a, SC-002, SC-003, SC-003b, SC-003c, SC-004a, SC-009a)`
+- [X] T004 Update `NextPaste/HomeView.swift` to replace `ScrollView`/`LazyVStack` and custom drag reveal state with a macOS `List` using `.swipeActions(..., allowsFullSwipe: false)` while preserving state-aware Pin/Unpin labeling, copy-on-row-activation, deliberate-horizontal-swipe precedence, vertical scrolling, identifiers, local-first behavior, and accessibility markers `(FR-001, FR-002, FR-004, FR-011, FR-012, FR-013, FR-013a, FR-013b, FR-013c, FR-013d, FR-013e, FR-013f, FR-014, FR-015, FR-016, FR-017, SC-004, SC-004a, SC-007, SC-009a)`
 
 **Checkpoint**: Native `List` hosting and reusable swipe-test helpers are ready for story-level implementation and validation.
 
@@ -38,12 +38,12 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Add text-row UI coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, full-swipe reveal-only, sub-threshold snap-back, deliberate horizontal swipe without copy, vertical scroll without reveal, and click-or-tap copy regression `(FR-001, FR-002, FR-004, FR-013b, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
-- [ ] T006 [P] [US1] Add pin-toggle ordering and delete-selected-row-only regression coverage in `NextPasteTests/ClipHistoryTests.swift` for text-row swipe outcomes, including both Pin and Unpin transitions `(FR-005, FR-006, FR-017, FR-019, SC-005, SC-006)`
+- [X] T005 [P] [US1] Add text-row UI coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, full-swipe reveal-only, sub-threshold snap-back, deliberate horizontal swipe without copy, vertical scroll without reveal, and click-or-tap copy regression `(FR-001, FR-002, FR-004, FR-013b, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
+- [X] T006 [P] [US1] Add pin-toggle ordering and delete-selected-row-only regression coverage in `NextPasteTests/ClipHistoryTests.swift` for text-row swipe outcomes, including both Pin and Unpin transitions `(FR-005, FR-006, FR-017, FR-019, SC-005, SC-006)`
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Update `NextPaste/DesignSystem/Components/ClipboardRow.swift` to preserve text-row labels, identifiers, copy feedback, state-aware Pin/Unpin presentation, and design-token styling under native swipe integration `(FR-001, FR-004, FR-007, FR-008, FR-011, SC-001, SC-001a, SC-004, SC-007, SC-008, SC-009b)`
+- [X] T007 [US1] Update `NextPaste/DesignSystem/Components/ClipboardRow.swift` to preserve text-row labels, identifiers, copy feedback, state-aware Pin/Unpin presentation, and design-token styling under native swipe integration `(FR-001, FR-004, FR-007, FR-008, FR-011, SC-001, SC-001a, SC-004, SC-007, SC-008, SC-009b)`
 - [ ] T008 [US1] Execute the US1-relevant manual trackpad scenarios defined in `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` and record the resulting evidence according to that contract for text-row swipe reveal, sub-threshold snap-back, reveal-only full swipe, swipe-versus-copy behavior, vertical-scroll arbitration, and normal click-or-tap copy; keep `specs/009-native-macos-swipe-actions/quickstart.md` limited to execution commands and its contract reference `(FR-004, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
 
 **Checkpoint**: Text rows support native reveal-only swipe actions and remain independently testable as the MVP.
@@ -58,12 +58,12 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [US2] Add image-row UI coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, reveal-only full swipe, click-or-tap copy regression, and delete-target isolation `(FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-013b, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-004, SC-006, SC-009a)`
-- [ ] T010 [P] [US2] Add image presentation and accessibility regression coverage in `NextPasteTests/ClipboardRowPresentationTests.swift` for native swipe integration, thumbnail metadata, stable accessibility values, and preserved image-row activation semantics `(FR-003, FR-004, FR-008, FR-011, FR-019, SC-003, SC-004, SC-007, SC-009)`
+- [X] T009 [P] [US2] Add image-row UI coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` for right-swipe **Pin** on unpinned rows, right-swipe **Unpin** on pinned rows, left-swipe Delete, reveal-only full swipe, click-or-tap copy regression, and delete-target isolation `(FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-013b, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-004, SC-006, SC-009a)`
+- [X] T010 [P] [US2] Add image presentation and accessibility regression coverage in `NextPasteTests/ClipboardRowPresentationTests.swift` for native swipe integration, thumbnail metadata, stable accessibility values, and preserved image-row activation semantics `(FR-003, FR-004, FR-008, FR-011, FR-019, SC-003, SC-004, SC-007, SC-009)`
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Update `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` to preserve image-row swipe parity, state-aware Pin/Unpin labeling, copy feedback, thumbnail behavior, and visual tokens under the native `List` host `(FR-001, FR-003, FR-004, FR-008, FR-011, FR-013a, SC-001, SC-001a, SC-003, SC-004, SC-007, SC-009)`
+- [X] T011 [US2] Update `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` to preserve image-row swipe parity, state-aware Pin/Unpin labeling, copy feedback, thumbnail behavior, and visual tokens under the native `List` host `(FR-001, FR-003, FR-004, FR-008, FR-011, FR-013a, SC-001, SC-001a, SC-003, SC-004, SC-007, SC-009)`
 - [ ] T012 [US2] Execute the US2-relevant image-row and Magic Mouse scenarios defined in `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` and record the resulting parity evidence according to that contract, including the supported-hardware note when macOS exposes the same native gesture behavior; keep `specs/009-native-macos-swipe-actions/quickstart.md` limited to execution commands and its contract reference `(FR-001, FR-002, FR-003, FR-004, FR-013b, FR-013c, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
 
 **Checkpoint**: Image rows now match text-row swipe behavior and remain independently testable.
@@ -78,15 +78,15 @@
 
 ### Tests for User Story 3
 
-- [ ] T013 [P] [US3] Add additive-interaction regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for keyboard reachability, VoiceOver labels, no-required-context-menu-change checks, copy regression, and non-swipe Pin/Unpin/Delete access `(FR-007, FR-008, FR-009, FR-019, SC-008, SC-009, SC-009b)`
-- [ ] T014 [P] [US3] Add List-backed history visual regression coverage in `NextPasteUITests/VisualIdentityUITests.swift` for canvas markers, history surface continuity, and row-at-rest design parity `(FR-011, FR-012, FR-019, SC-007)`
-- [ ] T015 [P] [US3] Add shared row routing cleanup regression coverage in `NextPasteTests/ClipRowViewTests.swift` for text/image routing after obsolete reveal-state removal `(FR-003, FR-004, FR-011, FR-013a, FR-019, SC-004, SC-007)`
+- [X] T013 [P] [US3] Add additive-interaction regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` for keyboard reachability, VoiceOver labels, no-required-context-menu-change checks, copy regression, and non-swipe Pin/Unpin/Delete access `(FR-007, FR-008, FR-009, FR-019, SC-008, SC-009, SC-009b)`
+- [X] T014 [P] [US3] Add List-backed history visual regression coverage in `NextPasteUITests/VisualIdentityUITests.swift` for canvas markers, history surface continuity, and row-at-rest design parity `(FR-011, FR-012, FR-019, SC-007)`
+- [X] T015 [P] [US3] Add shared row routing cleanup regression coverage in `NextPasteTests/ClipRowViewTests.swift` for text/image routing after obsolete reveal-state removal `(FR-003, FR-004, FR-011, FR-013a, FR-019, SC-004, SC-007)`
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Update `NextPaste/ClipRowView.swift` to remove obsolete reveal-action inputs while preserving text/image routing, copy feedback plumbing, and behavior parity `(FR-003, FR-004, FR-011, FR-013a, SC-004, SC-007)`
-- [ ] T017 [US3] Update `NextPaste/DesignSystem/Components/RowActionControlGroup.swift` to preserve stable copy/pin-toggle/delete identifiers, state-aware labels, and additive action access under native swipe hosting `(FR-001, FR-007, FR-008, SC-001, SC-001a, SC-008, SC-009, SC-009b)`
-- [ ] T018 [US3] Update `NextPaste/DesignSystem/Components/SharedRowPresentation.swift` to preserve shared row accessibility markers, keyboard-safe composition, no-required-context-menu-change behavior, and design-token styling for `List` rows `(FR-008, FR-009, FR-011, FR-012, SC-007, SC-008, SC-009)`
+- [X] T016 [US3] Update `NextPaste/ClipRowView.swift` to remove obsolete reveal-action inputs while preserving text/image routing, copy feedback plumbing, and behavior parity `(FR-003, FR-004, FR-011, FR-013a, SC-004, SC-007)`
+- [X] T017 [US3] Update `NextPaste/DesignSystem/Components/RowActionControlGroup.swift` to preserve stable copy/pin-toggle/delete identifiers, state-aware labels, and additive action access under native swipe hosting `(FR-001, FR-007, FR-008, SC-001, SC-001a, SC-008, SC-009, SC-009b)`
+- [X] T018 [US3] Update `NextPaste/DesignSystem/Components/SharedRowPresentation.swift` to preserve shared row accessibility markers, keyboard-safe composition, no-required-context-menu-change behavior, and design-token styling for `List` rows `(FR-008, FR-009, FR-011, FR-012, SC-007, SC-008, SC-009)`
 - [ ] T019 [US3] Execute the regression validation defined in `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` and record the resulting evidence according to that contract for keyboard, no-required-context-menu-change, VoiceOver, non-gesture-mouse, drag-and-drop unchanged-or-not-applicable, and multi-selection unchanged-or-not-applicable behavior; keep `specs/009-native-macos-swipe-actions/quickstart.md` limited to execution commands and its contract reference `(FR-007, FR-008, FR-009, FR-010, FR-013c, FR-019, SC-003a, SC-008, SC-009, SC-009b)`
 
 **Checkpoint**: Existing interaction methods remain additive and non-regressive after the native swipe migration.
