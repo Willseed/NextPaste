@@ -8,6 +8,16 @@
 
 **Input**: User description: "Native macOS Swipe Actions"
 
+## Clarifications
+
+### Session 2026-06-29
+
+- Q: Which macOS API approach should implement swipe actions? → A: Implement swipe actions with SwiftUI `List` row `.swipeActions`, and do not add custom drag gestures.
+- Q: Should a full swipe automatically perform the action or only reveal it? → A: Full swipe never performs the action automatically; swipe only reveals the action button.
+- Q: What is the expected behavior for Magic Mouse and external mice without gesture support? → A: Support native swipe on trackpad and Magic Mouse where macOS exposes it; for external mice without gesture support, provide no swipe emulation and rely on existing click, context menu, and keyboard actions.
+- Q: What accessibility and keyboard parity is required for swipe actions? → A: Swipe actions are additive. All row actions must remain available through the existing platform-native interaction methods, including keyboard shortcuts, context menus, and VoiceOver accessibility actions.
+- Q: What should happen when a swipe does not reach the reveal threshold? → A: Sub-threshold or partial swipe is transient only; on release, the row snaps back and no action remains revealed.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Reveal row actions with native swipe gestures (Priority: P1)
@@ -80,13 +90,16 @@ menus, mouse interactions, and list ordering still match existing behavior.
 
 ### Edge Cases
 
-- What happens when a user begins a swipe gesture on one row but ends the gesture without reaching
-  the threshold needed to reveal an action?
+- When a user begins a swipe gesture but does not reach the native reveal threshold, releasing the
+  gesture MUST return the row to its resting position and MUST NOT leave any action revealed.
 - What happens when a row is already pinned and the user reveals the Pin action again?
+- A full swipe MUST reveal the available action but MUST NOT execute Pin or Delete until the user
+  explicitly activates the revealed action button.
 - How does the history list behave when the user reveals a swipe action on a row while the list is
   also being scrolled?
-- How does the app preserve the same swipe-action behavior for Magic Mouse gestures on hardware and
-  system settings that support horizontal list swipes?
+- On hardware and macOS settings that expose native row-swipe gestures, trackpad and Magic Mouse
+  MUST reveal the same swipe actions; mice without native horizontal gesture support MUST keep using
+  the existing click, context menu, and keyboard actions without custom swipe emulation.
 - What happens when VoiceOver, keyboard focus, or mouse hover is active on a row that also supports
   swipe gestures?
 
@@ -98,6 +111,9 @@ menus, mouse interactions, and list ordering still match existing behavior.
 - **Native Platform Behavior**: The feature reuses standard macOS row-swipe behavior so that swipe
   actions are revealed by native horizontal gestures while existing copy, pin, delete, ordering,
   keyboard, accessibility, mouse, and context-menu behaviors remain intact
+- **Accessibility & Keyboard Parity**: Swipe actions are additive only; Pin and Delete remain
+  available through existing platform-native keyboard shortcuts, context menus, and VoiceOver
+  accessibility actions without requiring a swipe gesture
 - **Documented Deviations**: None
 
 ## Requirements *(mandatory)*
@@ -121,12 +137,27 @@ menus, mouse interactions, and list ordering still match existing behavior.
 - **FR-008**: The system MUST preserve existing accessibility behavior, including VoiceOver access
   to row content and available row actions.
 - **FR-009**: The system MUST preserve existing context menu behavior for clipboard-history rows.
+- **FR-009a**: Swipe actions SHALL be additive only; Pin and Delete MUST remain available through
+  existing platform-native interaction methods, including keyboard shortcuts, context menus, and
+  VoiceOver accessibility actions, without requiring a swipe gesture.
 - **FR-010**: The system MUST preserve existing mouse-based row interactions.
 - **FR-011**: The system MUST preserve the current visual design language for history rows,
   including design tokens, typography, spacing, colors, corner radius, motion, and icons.
 - **FR-012**: The system MUST follow Apple Human Interface Guidelines for macOS list interactions.
 - **FR-013**: The system MUST use native macOS interaction behavior for swipe actions and MUST NOT
   replace standard platform interaction patterns with a custom gesture model.
+- **FR-013a**: The system MUST implement row swipe interactions using SwiftUI `List` row
+  `.swipeActions` and MUST NOT add custom horizontal drag gesture handling for swipe-action
+  reveal behavior.
+- **FR-013b**: The system MUST configure swipe interactions so that a full swipe never
+  automatically performs Pin or Delete and instead only reveals the action button for explicit
+  user activation.
+- **FR-013c**: The system MUST support native row-swipe behavior on supported trackpad and Magic
+  Mouse configurations exposed by macOS and MUST NOT introduce custom swipe emulation for external
+  mice or other pointing devices without native horizontal gesture support.
+- **FR-013d**: The system MUST treat sub-threshold or partial swipes as transient gestures only; on
+  release before the native reveal threshold, the row MUST snap back to rest and MUST NOT leave any
+  action revealed.
 - **FR-014**: The clipboard-driven processing flow MUST remain unchanged for this feature:
   `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
 - **FR-015**: The feature MUST remain local-first and fully available without network access because
@@ -158,6 +189,11 @@ menus, mouse interactions, and list ordering still match existing behavior.
   Delete for a text row in 100% of tested attempts.
 - **SC-003**: In manual macOS validation, image rows reveal the same left and right swipe actions
   with the same directional mapping as text rows in 100% of tested attempts.
+- **SC-003a**: In manual macOS validation on supported hardware, Magic Mouse reveals the same left
+  and right swipe actions as trackpad; on non-gesture mice, existing click, context-menu, and
+  keyboard actions continue to work in 100% of tested regression scenarios.
+- **SC-003b**: In manual macOS validation, releasing a sub-threshold swipe returns the row to rest
+  with no action revealed in 100% of tested attempts.
 - **SC-004**: Existing row activation continues to copy the selected clip successfully in 100% of
   regression test scenarios that previously covered copy-on-activation behavior.
 - **SC-005**: Pinned-first ordering remains unchanged in 100% of regression test scenarios after a
@@ -170,6 +206,11 @@ menus, mouse interactions, and list ordering still match existing behavior.
   actions on affected history rows.
 - **SC-009**: VoiceOver regression checks pass for row content, row actions, and list navigation on
   affected history rows.
+- **SC-009b**: Regression validation confirms that Pin and Delete remain usable without swipe
+  gestures through existing keyboard shortcuts, context menus, and VoiceOver accessibility actions
+  in 100% of tested scenarios.
+- **SC-009a**: Manual validation confirms that a full swipe reveals the action button but does not
+  execute Pin or Delete until the user explicitly activates the revealed action.
 - **SC-010**: SonarQube Project Health reports zero unresolved feature-introduced issues, with
   evidence recorded before commit or pull request completion.
 
@@ -180,6 +221,7 @@ menus, mouse interactions, and list ordering still match existing behavior.
 - The current copy, pin, delete, context-menu, keyboard, mouse, and accessibility behaviors are the
   baseline behaviors that must be preserved.
 - Magic Mouse gesture behavior should match trackpad row-swipe behavior wherever macOS exposes the
-  same native list interaction on supported hardware and system settings.
+  same native list interaction on supported hardware and system settings, while external mice
+  without gesture support continue to use existing non-swipe interactions.
 - No visual redesign is required; the new behavior is additive and must fit entirely within the
   existing design language.
