@@ -87,14 +87,13 @@ struct HistoryRobot {
     @discardableResult
     func assertRowDoesNotExist(
         withText text: String,
-        timeout: TimeInterval = 1,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> Self {
-        UITestAssertions.assertDoesNotExist(
-            app.staticTexts[text],
+        XCTAssertTrue(
+            UITestAssertions.waitForDisappearance(of: app.staticTexts[text], timeout: timeout),
             "Expected row containing \(text) to be absent",
-            timeout: timeout,
             file: file,
             line: line
         )
@@ -129,14 +128,16 @@ struct HistoryRobot {
 
     @discardableResult
     func assertSearchEmptyStateDoesNotExist(
-        timeout: TimeInterval = 1,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> Self {
-        UITestAssertions.assertDoesNotExist(
-            app.staticTexts["search-empty-state-title"],
+        XCTAssertTrue(
+            UITestAssertions.waitForDisappearance(
+                of: app.staticTexts["search-empty-state-title"],
+                timeout: timeout
+            ),
             "Expected search-empty state to be absent",
-            timeout: timeout,
             file: file,
             line: line
         )

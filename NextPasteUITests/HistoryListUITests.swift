@@ -37,7 +37,6 @@ final class HistoryListUITests: UITestCase {
     func testNativeSearchFieldFiltersTextClipsImmediatelyWhileTyping() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
 
         try history.createTextClips([
             UITestFixtures.Search.matchingText,

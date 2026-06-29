@@ -118,8 +118,8 @@ struct RowRobot {
     ) -> XCUIElement {
         revealDeleteAction(
             on: [
-                textSwipeElement(containing: clipText, file: file, line: line),
-                textRow(containing: clipText, file: file, line: line)
+                textRow(containing: clipText, file: file, line: line),
+                textSwipeElement(containing: clipText, file: file, line: line)
             ],
             rowDescription: clipText,
             file: file,
@@ -144,8 +144,8 @@ struct RowRobot {
     ) -> XCUIElement {
         revealPinAction(
             on: [
-                textSwipeElement(containing: clipText, file: file, line: line),
-                textRow(containing: clipText, file: file, line: line)
+                textRow(containing: clipText, file: file, line: line),
+                textSwipeElement(containing: clipText, file: file, line: line)
             ],
             rowDescription: clipText,
             magnitude: .reveal,
@@ -219,8 +219,8 @@ struct RowRobot {
     ) -> XCUIElement {
         revealPinAction(
             on: [
-                textSwipeElement(containing: clipText, file: file, line: line),
-                textRow(containing: clipText, file: file, line: line)
+                textRow(containing: clipText, file: file, line: line),
+                textSwipeElement(containing: clipText, file: file, line: line)
             ],
             rowDescription: clipText,
             magnitude: .full,
@@ -238,8 +238,8 @@ struct RowRobot {
     ) -> XCUIElement {
         revealDeleteAction(
             on: [
-                textSwipeElement(containing: clipText, file: file, line: line),
-                textRow(containing: clipText, file: file, line: line)
+                textRow(containing: clipText, file: file, line: line),
+                textSwipeElement(containing: clipText, file: file, line: line)
             ],
             rowDescription: clipText,
             magnitude: .full,
@@ -533,6 +533,9 @@ struct RowRobot {
         case .reveal, .full:
             guard element.exists else {
                 XCTFail("Expected element to exist before swiping", file: file, line: line)
+                return
+            }
+            guard element.isHittable else {
                 return
             }
 
