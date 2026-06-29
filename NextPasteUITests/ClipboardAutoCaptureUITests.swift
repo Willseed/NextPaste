@@ -95,4 +95,26 @@ final class ClipboardAutoCaptureUITests: UITestCase {
             timeout: 2
         )
     }
+
+    @MainActor
+    func testActiveSearchAutoCaptureShowsMatchingClipAndHidesNonMatchingClipUntilCleared() throws {
+        let app = launchOfflineCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let history = historyRobot(for: app)
+
+        history.searchField()
+        history.enterSearchQuery(UITestFixtures.Search.autoCaptureQuery)
+            .assertSearchEmptyState()
+
+        clipboard.capture(UITestFixtures.Search.matchingCapture, timeout: 2)
+        history.assertRowExists(withText: UITestFixtures.Search.matchingCapture)
+
+        clipboard.setString(UITestFixtures.Search.nonMatchingCapture)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        history.assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingCapture)
+
+        history.clearSearch()
+            .assertRowExists(withText: UITestFixtures.Search.matchingCapture)
+            .assertRowExists(withText: UITestFixtures.Search.nonMatchingCapture)
+    }
 }

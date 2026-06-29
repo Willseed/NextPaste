@@ -237,6 +237,43 @@ struct ClipboardRowPresentationTests {
         #expect(value?.contains(thumbnailFilename) == true)
     }
 
+    @Test("filtered text rows preserve presentation accessibility parity")
+    func filteredTextRowsPreservePresentationAccessibilityParity() throws {
+        let matching = ClipItem(textContent: "Filtered alpha accessibility", isPinned: true)
+        let nonMatching = ClipItem(textContent: "Budget accessibility")
+        let filtered = ClipItem.filteredHistory([matching, nonMatching], matching: "alpha")
+        let clip = try #require(filtered.first)
+
+        let presentation = ClipboardRowPresentation(clip: clip)
+
+        #expect(filtered.count == 1)
+        #expect(presentation.id == matching.id)
+        #expect(presentation.preview == matching.textContent)
+        #expect(presentation.pinState.accessibilityLabel == "Pinned")
+        #expect(RowActionControlGroup.visibleActionIdentifiers(includesCopyAction: true) == ["copy-clip-button"])
+        #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: matching.isPinned) == ["Copy", "Unpin", "Delete"])
+    }
+
+    @Test("filtered image rows preserve accessibility identifiers and values")
+    func filteredImageRowsPreserveAccessibilityIdentifiersAndValues() throws {
+        let clipID = try #require(UUID(uuidString: "B25FCB43-AD3F-471B-93FE-60E78D638DEE"))
+        let clip = makeImageClip(
+            id: clipID,
+            fixture: ImageTestFixtures.png,
+            thumbnailFilename: "\(clipID.uuidString).png",
+            isPinned: true
+        )
+        let filtered = ClipItem.filteredHistory([clip], matching: "PNG")
+        let imageClip = try #require(filtered.first)
+
+        let presentation = ImageClipboardRowPresentation(content: ImageClipboardRowPresentation.Content(clip: imageClip))
+
+        #expect(presentationString(named: "rowAccessibilityIdentifier", in: presentation) == "image-clip-row-\(clipID.uuidString)")
+        #expect(presentationString(named: "thumbnailAccessibilityIdentifier", in: presentation) == "image-clip-thumbnail")
+        #expect(presentationString(named: "accessibilityValue", in: presentation)?.contains("Pinned") == true)
+        #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: imageClip.isPinned) == ["Copy", "Unpin", "Delete"])
+    }
+
     private func makeImageClip(
         id: UUID,
         fixture: ImageTestFixtures.ImageFixture = ImageTestFixtures.png,

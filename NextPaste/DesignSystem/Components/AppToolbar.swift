@@ -9,34 +9,24 @@ struct AppToolbar: View {
     @Environment(\.appTheme) private var appTheme
 
     let title: String
-    @Binding var searchText: String
-    let onFilter: (() -> Void)?
     let onSettings: () -> Void
     let trailingContent: AnyView?
 
     init<TrailingContent: View>(
         title: String,
-        searchText: Binding<String>,
-        onFilter: (() -> Void)? = nil,
         onSettings: @escaping () -> Void,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
         self.title = title
-        _searchText = searchText
-        self.onFilter = onFilter
         self.onSettings = onSettings
         self.trailingContent = AnyView(trailingContent())
     }
 
     init(
         title: String,
-        searchText: Binding<String>,
-        onFilter: (() -> Void)? = nil,
         onSettings: @escaping () -> Void
     ) {
         self.title = title
-        _searchText = searchText
-        self.onFilter = onFilter
         self.onSettings = onSettings
         trailingContent = nil
     }
@@ -63,21 +53,6 @@ struct AppToolbar: View {
                 .buttonStyle(.borderless)
                 .accessibilityIdentifier("settings-button")
                 .accessibilityLabel("Settings")
-            }
-
-            HStack(spacing: DesignTokens.Spacing.small) {
-                SearchBar(text: $searchText)
-                    .frame(maxWidth: 360)
-
-                Button {
-                    onFilter?()
-                } label: {
-                    Label("Filter", systemImage: DesignTokens.Icons.filter)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("history-filter-button")
-                .accessibilityLabel("Filter")
-                .accessibilityValue("Visual placeholder")
             }
         }
         .padding(DesignTokens.Spacing.medium)

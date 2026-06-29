@@ -239,6 +239,32 @@ final class ClipboardImageRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testFilteredImageRowsPreserveMetadataSearchAndRowActions() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let matching = UITestFixtures.ImageClipboard.copyTarget
+        let nonMatching = UITestFixtures.ImageClipboard.backgroundedJPEG
+
+        clipboard.captureImage(matching)
+        clipboard.captureImage(nonMatching)
+
+        history.enterSearchQuery(matching.formatLabel)
+        let imageRow = row.imageRowElement(withThumbnailDescription: matching.thumbnailDescription)
+        UITestAssertions.assertAccessibleTextContains(imageRow, matching.thumbnailDescription)
+        UITestAssertions.assertImageRowDoesNotExist(for: nonMatching, in: app)
+
+        let pinButton = row.revealImagePinActionWithRightSwipe(forThumbnailDescription: matching.thumbnailDescription)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        UITestAssertions.assertImagePinnedIconExists(in: app)
+
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(forThumbnailDescription: matching.thumbnailDescription)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+    }
+
+    @MainActor
     private func launchImageCopyFailureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = UITestAppLauncher.makeAutoCaptureApp(pollInterval: pollInterval)
         app.launchArguments.append("-simulate-clipboard-failure")

@@ -43,6 +43,12 @@ enum UITestAppLauncher {
         return app
     }
 
+    static func makeOfflineAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
+        let app = makeAutoCaptureApp(pollInterval: pollInterval)
+        app.launchArguments.append(UITestFixtures.Search.offlineLaunchArgument)
+        return app
+    }
+
     static func launchAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
         let app = makeAutoCaptureApp(pollInterval: pollInterval)
         app.launch()

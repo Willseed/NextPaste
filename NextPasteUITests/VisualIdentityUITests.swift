@@ -47,6 +47,20 @@ final class VisualIdentityUITests: UITestCase {
     }
 
     @MainActor
+    func testSearchEmptyStateUsesDesignSystemCopyAndIllustration() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.Search.matchingText)
+        history.enterSearchQuery(UITestFixtures.Search.noMatchQuery)
+            .assertSearchEmptyState()
+
+        XCTAssertTrue(app.descendants(matching: .any)["empty-state-illustration"].exists)
+        XCTAssertFalse(app.staticTexts["empty-state-title"].exists)
+        XCTAssertFalse(app.staticTexts["empty-state-description"].exists)
+    }
+
+    @MainActor
     func testListBackedRowsPreserveAtRestVisualParity() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
@@ -66,21 +80,19 @@ final class VisualIdentityUITests: UITestCase {
     }
 
     @MainActor
-    func testToolbarExposesSearchFilterAndNonBlockingSettingsPlaceholder() throws {
+    func testToolbarExposesOneNativeSearchFieldAndNonBlockingSettingsPlaceholder() throws {
         let app = launchApp()
+        let history = historyRobot(for: app)
 
         UITestAssertions.assertExists(app.descendants(matching: .any)["app-toolbar"], "Expected app toolbar")
         XCTAssertTrue(app.staticTexts["app-toolbar-title"].exists)
         UITestAssertions.assertAccessibleTextEquals(app.staticTexts["app-toolbar-title"], UITestFixtures.VisualIdentity.toolbarTitle)
 
-        let searchField = app.textFields["history-search-field"]
+        let searchField = history.searchField()
         XCTAssertTrue(searchField.exists)
-        UITestAssertions.assertAccessibleTextContains(searchField, "Search")
 
-        let filterButton = app.buttons["history-filter-button"]
-        XCTAssertTrue(filterButton.exists)
-        XCTAssertTrue(filterButton.isHittable)
-        UITestAssertions.assertAccessibleTextContains(filterButton, "Filter")
+        XCTAssertFalse(app.buttons["history-filter-button"].exists)
+        XCTAssertFalse(app.textFields["history-search-field"].exists)
 
         let settingsButton = app.buttons["settings-button"]
         XCTAssertTrue(settingsButton.exists)

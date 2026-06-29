@@ -53,8 +53,7 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(textRow, "Normal")
         copyButton.tap()
         UITestAssertions.assertCopiedFeedback(in: app)
-        XCTAssertFalse(app.menuItems["Pin"].exists)
-        XCTAssertFalse(app.menuItems["Delete"].exists)
+        XCTAssertTrue(copyButton.exists)
 
         let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertEqual(pinButton.identifier, "pin-clip-button")
@@ -357,6 +356,52 @@ final class ClipRowActionsUITests: UITestCase {
             timeout: 2
         )
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy].exists)
+    }
+
+    @MainActor
+    func testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClips([
+            UITestFixtures.RowActions.filteredCopyTarget,
+            UITestFixtures.RowActions.filteredPinTarget,
+            UITestFixtures.RowActions.filteredDeleteTarget,
+            UITestFixtures.RowActions.filteredCompanion,
+            UITestFixtures.Search.nonMatchingText
+        ])
+
+        history.enterSearchQuery(UITestFixtures.Search.textQuery)
+            .assertRowExists(withText: UITestFixtures.RowActions.filteredCopyTarget)
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
+
+        let filteredCopyRow = row.textRowElement(containing: UITestFixtures.RowActions.filteredCopyTarget)
+        UITestAssertions.assertAccessibleTextContains(filteredCopyRow, "Unpinned")
+        UITestAssertions.assertAccessibleTextContains(filteredCopyRow, "Normal")
+
+        row.tapRow(withText: UITestFixtures.RowActions.filteredCopyTarget)
+        UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.filteredCopyTarget)
+
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.filteredDeleteTarget)
+        XCTAssertTrue(deleteButton.isHittable)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        history.assertRowDoesNotExist(withText: UITestFixtures.RowActions.filteredDeleteTarget)
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.filteredPinTarget)
+        XCTAssertTrue(pinButton.isHittable)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        history.assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
+
+        _ = row.copyButton()
+        XCTAssertFalse(app.buttons["select-all-clips-button"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["clip-drop-target"].exists)
+        history.assertRowExists(withText: UITestFixtures.RowActions.filteredCompanion)
     }
 
     @MainActor

@@ -214,6 +214,68 @@ struct ClipItemTests {
         #expect(savedImageMetadata.hasRequiredImageMetadata())
     }
 
+    @Test("matches text clips with case-insensitive substring search")
+    func matchesTextClipsWithCaseInsensitiveSubstringSearch() {
+        let clip = ClipItem(textContent: "Project Alpha launch notes")
+
+        #expect(clip.matchesSearchQuery("alpha"))
+        #expect(clip.matchesSearchQuery("PROJECT"))
+        #expect(clip.matchesSearchQuery("launch notes"))
+        #expect(clip.matchesSearchQuery("missing") == false)
+    }
+
+    @Test("matches image clips only by allowed local searchable metadata")
+    func matchesImageClipsOnlyByAllowedLocalSearchableMetadata() throws {
+        let clipID = try #require(UUID(uuidString: "39420CC3-BC72-4D7C-B50F-0663E087E8AB"))
+        let clip = ClipItem.imageClip(
+            ImageClipInitialization(
+                id: clipID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "secret-hash-value",
+                    dimensions: ImageClipInitialization.Dimensions(width: 640, height: 480),
+                    byteCount: 12_345,
+                    utType: "public.png",
+                    filename: "secret-filename-match.png",
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: "thumbnail-secret-path.png",
+                        description: "Diagram clipboard image"
+                    )
+                )
+            )
+        )
+
+        #expect(clip.matchesSearchQuery("diagram"))
+        #expect(clip.matchesSearchQuery("PNG"))
+        #expect(clip.matchesSearchQuery("640 x 480"))
+        #expect(clip.matchesSearchQuery("secret-hash") == false)
+        #expect(clip.matchesSearchQuery("secret-filename") == false)
+        #expect(clip.matchesSearchQuery("thumbnail-secret") == false)
+        #expect(clip.matchesSearchQuery("12345") == false)
+        #expect(clip.matchesSearchQuery("OCR") == false)
+        #expect(clip.matchesSearchQuery("semantic") == false)
+        #expect(clip.matchesSearchQuery("CloudKit") == false)
+    }
+
+    @Test("search treats regex wildcards and fuzzy-looking queries as literal substrings")
+    func searchTreatsRegexWildcardsAndFuzzyLookingQueriesAsLiteralSubstrings() {
+        let clip = ClipItem(textContent: "alpha beta gamma")
+
+        #expect(clip.matchesSearchQuery("alpha"))
+        #expect(clip.matchesSearchQuery("alpha.*") == false)
+        #expect(clip.matchesSearchQuery("alp*") == false)
+        #expect(clip.matchesSearchQuery("alhpa") == false)
+    }
+
+    @Test("empty query returns the existing history list without reordering")
+    func emptyQueryReturnsExistingHistoryListWithoutReordering() {
+        let clips = [
+            ClipItem(textContent: "First", createdAt: Date(timeIntervalSince1970: 100)),
+            ClipItem(textContent: "Second", createdAt: Date(timeIntervalSince1970: 200))
+        ]
+
+        #expect(ClipItem.filteredHistory(clips, matching: "").map(\.textContent) == ["First", "Second"])
+    }
+
     private func assertNilImageMetadata(on clip: ClipItem) {
         #expect(clip.imageHash == nil)
         #expect(clip.imageWidth == nil)

@@ -300,6 +300,45 @@ struct ClipHistoryTests {
         #expect(presentations.last?.isPinned == false)
     }
 
+    @Test("search filters already ordered history without changing pinned and newest ordering")
+    func searchFiltersAlreadyOrderedHistoryWithoutChangingPinnedAndNewestOrdering() {
+        let olderPinned = ClipItem(textContent: "alpha older pinned", createdAt: Date(timeIntervalSince1970: 100), isPinned: true)
+        let newerPinned = ClipItem(textContent: "alpha newer pinned", createdAt: Date(timeIntervalSince1970: 200), isPinned: true)
+        let olderUnpinned = ClipItem(textContent: "alpha older unpinned", createdAt: Date(timeIntervalSince1970: 300))
+        let newerUnpinned = ClipItem(textContent: "alpha newer unpinned", createdAt: Date(timeIntervalSince1970: 400))
+        let nonMatchingNewest = ClipItem(textContent: "budget newest", createdAt: Date(timeIntervalSince1970: 500))
+        let orderedHistory = [
+            newerPinned,
+            olderPinned,
+            nonMatchingNewest,
+            newerUnpinned,
+            olderUnpinned
+        ]
+
+        let filtered = ClipItem.filteredHistory(orderedHistory, matching: "alpha")
+
+        #expect(filtered.map(\.textContent) == [
+            "alpha newer pinned",
+            "alpha older pinned",
+            "alpha newer unpinned",
+            "alpha older unpinned"
+        ])
+    }
+
+    @Test("search empty query restores full history and no-match query yields empty results")
+    func searchEmptyQueryRestoresFullHistoryAndNoMatchQueryYieldsEmptyResults() {
+        let orderedHistory = [
+            ClipItem(textContent: "Newest alpha", createdAt: Date(timeIntervalSince1970: 200)),
+            ClipItem(textContent: "Older budget", createdAt: Date(timeIntervalSince1970: 100))
+        ]
+
+        #expect(ClipItem.filteredHistory(orderedHistory, matching: "").map(\.textContent) == [
+            "Newest alpha",
+            "Older budget"
+        ])
+        #expect(ClipItem.filteredHistory(orderedHistory, matching: "zebra").isEmpty)
+    }
+
     @Test("formats readable previews without mutating stored text")
     func formatsReadablePreviewWithoutMutatingStoredText() {
         let originalText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)
@@ -370,5 +409,56 @@ struct ClipHistoryTests {
         try context.save()
 
         #expect(try SwiftDataTestSupport.fetchHistoryTexts(in: context) == ["Older auto clip", "Newer auto clip"])
+    }
+
+    @MainActor
+    @Test("active search reflects matching capture while hiding non-matching capture")
+    func activeSearchReflectsMatchingCaptureWhileHidingNonMatchingCapture() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let service = ClipboardCaptureService(modelContext: context)
+
+        #expect(service.captureClipboardText("Needle live capture", observedAt: Date(timeIntervalSince1970: 100)) == .captured("Needle live capture"))
+        #expect(service.captureClipboardText("Haystack live capture", observedAt: Date(timeIntervalSince1970: 200)) == .captured("Haystack live capture"))
+
+        let filtered = ClipItem.filteredHistory(try SwiftDataTestSupport.fetchHistory(in: context), matching: "needle")
+
+        #expect(filtered.map(\.textContent) == ["Needle live capture"])
+    }
+
+    @MainActor
+    @Test("active search updates after pin unpin and delete")
+    func activeSearchUpdatesAfterPinUnpinAndDelete() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let older = ClipItem(textContent: "alpha older", createdAt: Date(timeIntervalSince1970: 100))
+        let newer = ClipItem(textContent: "alpha newer", createdAt: Date(timeIntervalSince1970: 200))
+
+        context.insert(older)
+        context.insert(newer)
+        try context.save()
+
+        #expect(ClipItem.filteredHistory(try SwiftDataTestSupport.fetchHistory(in: context), matching: "alpha").map(\.textContent) == [
+            "alpha newer",
+            "alpha older"
+        ])
+
+        older.togglePinned()
+        try context.save()
+        #expect(ClipItem.filteredHistory(try SwiftDataTestSupport.fetchHistory(in: context), matching: "alpha").map(\.textContent) == [
+            "alpha older",
+            "alpha newer"
+        ])
+
+        older.togglePinned()
+        try context.save()
+        #expect(ClipItem.filteredHistory(try SwiftDataTestSupport.fetchHistory(in: context), matching: "alpha").map(\.textContent) == [
+            "alpha newer",
+            "alpha older"
+        ])
+
+        context.delete(newer)
+        try context.save()
+        #expect(ClipItem.filteredHistory(try SwiftDataTestSupport.fetchHistory(in: context), matching: "alpha").map(\.textContent) == [
+            "alpha older"
+        ])
     }
 }

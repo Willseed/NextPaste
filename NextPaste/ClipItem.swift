@@ -106,3 +106,76 @@ final class ClipItem {
         isPinned ? 1 : 0
     }
 }
+
+extension ClipItem {
+    static func filteredHistory(_ clips: [ClipItem], matching rawQuery: String) -> [ClipItem] {
+        guard rawQuery.isEmpty == false else {
+            return clips
+        }
+
+        return clips.filter { $0.matchesSearchQuery(rawQuery) }
+    }
+
+    func matchesSearchQuery(_ rawQuery: String) -> Bool {
+        guard rawQuery.isEmpty == false else {
+            return true
+        }
+
+        return searchableFragments.contains { fragment in
+            fragment.range(of: rawQuery, options: [.caseInsensitive]) != nil
+        }
+    }
+
+    var searchableFragments: [String] {
+        guard contentType == "image" else {
+            return [textContent]
+        }
+
+        return [
+            thumbnailDescription,
+            imageFormatLabelForSearch,
+            pixelDimensionsForSearch
+        ]
+        .compactMap { fragment in
+            guard let fragment, fragment.isEmpty == false else {
+                return nil
+            }
+            return fragment
+        }
+    }
+
+    var imageFormatLabelForSearch: String? {
+        guard contentType == "image" else {
+            return nil
+        }
+
+        let rawType = (imageUTType ?? "").lowercased()
+        if rawType.contains("jpeg") || rawType.contains("jpg") {
+            return "JPEG"
+        }
+        if rawType.contains("png") {
+            return "PNG"
+        }
+        if rawType.contains("tiff") || rawType.contains("tif") {
+            return "TIFF"
+        }
+        if rawType.contains("heic") {
+            return "HEIC"
+        }
+        if rawType.contains("heif") {
+            return "HEIF"
+        }
+
+        return rawType.isEmpty ? nil : "IMAGE"
+    }
+
+    var pixelDimensionsForSearch: String? {
+        guard contentType == "image",
+              let imageWidth,
+              let imageHeight else {
+            return nil
+        }
+
+        return "\(imageWidth) x \(imageHeight)"
+    }
+}

@@ -60,8 +60,8 @@
 
 **Purpose**: Prepare shared fixtures and robots so search changes can be tested without duplicating helper logic.
 
-- [ ] T001 [P] Add search-specific fixtures for text, allowed searchable image metadata (thumbnail description, image format label, and pixel dimensions), disconnected-network/offline parity, empty-result, and filtered-row regression scenarios in `NextPasteUITests/UITestFixtures.swift` (FR-004, FR-015, FR-022, FR-023, SC-001, SC-009, SC-011)
-- [ ] T002 [P] Add native search entry, clear-search, filtered-row lookup, offline launch, and native interaction helpers for swipe/context-menu/keyboard coverage in `NextPasteUITests/HistoryRobot.swift` and `NextPasteUITests/RowRobot.swift` (FR-001, FR-011, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-009, SC-011)
+- [X] T001 [P] Add search-specific fixtures for text, allowed searchable image metadata (thumbnail description, image format label, and pixel dimensions), disconnected-network/offline parity, empty-result, and filtered-row regression scenarios in `NextPasteUITests/UITestFixtures.swift` (FR-004, FR-015, FR-022, FR-023, SC-001, SC-009, SC-011)
+- [X] T002 [P] Add native search entry, clear-search, filtered-row lookup, offline launch, and native interaction helpers for swipe/context-menu/keyboard coverage in `NextPasteUITests/HistoryRobot.swift` and `NextPasteUITests/RowRobot.swift` (FR-001, FR-011, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-009, SC-011)
 
 ---
 
@@ -71,9 +71,9 @@
 
 **TDD Exception Justification**: These tasks are the only planned pre-test implementation work. Swift/Xcode UI and unit tests cannot compile meaningful red-phase assertions until the app exposes a stable native toolbar search host, a configurable empty-search presentation seam, and a minimal local-only searchable metadata API surface. No user-story behavior is considered complete in this phase; actual feature behavior still waits on the failing test tasks in later phases.
 
-- [ ] T003 [P] Expose a single native-toolbar search host seam in `NextPaste/DesignSystem/Components/AppToolbar.swift` and retire duplicate custom search usage in `NextPaste/DesignSystem/Components/SearchBar.swift` so automated tests target one Apple-native search surface only (FR-001, FR-017, FR-018, FR-021, SC-010)
-- [ ] T004 [P] Add the minimal local-only searchable metadata API surface in `NextPaste/ClipItem.swift` needed for red-phase matching tests, limiting searchable image metadata to thumbnail description, image format label, and pixel dimensions while explicitly excluding file name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit/remote dependencies, and background indexing from the seam (FR-004, FR-015, FR-016, FR-021, SC-001, SC-009)
-- [ ] T005 [P] Add configurable history-empty versus search-empty presentation seams and accessibility-copy hooks in `NextPaste/DesignSystem/Components/EmptyStateView.swift` so failing empty-state and accessibility assertions can compile (FR-009, FR-017, FR-018, FR-020, FR-023, SC-005, SC-010, SC-011)
+- [X] T003 [P] Expose a single native-toolbar search host seam in `NextPaste/DesignSystem/Components/AppToolbar.swift` and retire duplicate custom search usage in `NextPaste/DesignSystem/Components/SearchBar.swift` so automated tests target one Apple-native search surface only (FR-001, FR-017, FR-018, FR-021, SC-010)
+- [X] T004 [P] Add the minimal local-only searchable metadata API surface in `NextPaste/ClipItem.swift` needed for red-phase matching tests, limiting searchable image metadata to thumbnail description, image format label, and pixel dimensions while explicitly excluding file name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit/remote dependencies, and background indexing from the seam (FR-004, FR-015, FR-016, FR-021, SC-001, SC-009)
+- [X] T005 [P] Add configurable history-empty versus search-empty presentation seams and accessibility-copy hooks in `NextPaste/DesignSystem/Components/EmptyStateView.swift` so failing empty-state and accessibility assertions can compile (FR-009, FR-017, FR-018, FR-020, FR-023, SC-005, SC-010, SC-011)
 
 **Checkpoint**: Compile-enabling seams exist, but no search behavior is complete until the failing tests in Phases 3-5 are added.
 
@@ -87,13 +87,13 @@
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T006 [P] [US1] Add unit tests for case-insensitive substring matching, text clip search, allowed image metadata search, local-only/no-remote matching boundaries, and exclusions for file name, file path, hash, binary contents, OCR text, and AI-generated metadata in `NextPasteTests/ClipItemTests.swift` (FR-003, FR-004, FR-005, FR-015, FR-016, FR-022, SC-001, SC-002, SC-009)
-- [ ] T007 [P] [US1] Add UI tests for the native toolbar search field, live typing updates, and same-refresh-cycle result changes in `NextPasteUITests/HistoryListUITests.swift` (FR-001, FR-002, FR-017, FR-018, FR-021, FR-022, SC-001, SC-002, SC-010)
-- [ ] T008 [P] [US1] Add visual-identity assertions for one Apple-native search field with no extra filtering controls in `NextPasteUITests/VisualIdentityUITests.swift` (FR-001, FR-017, FR-018, FR-022, SC-010)
+- [X] T006 [P] [US1] Add unit tests for case-insensitive substring matching, text clip search, allowed image metadata search, local-only/no-remote matching boundaries, and exclusions for file name, file path, hash, binary contents, OCR text, and AI-generated metadata in `NextPasteTests/ClipItemTests.swift` (FR-003, FR-004, FR-005, FR-015, FR-016, FR-022, SC-001, SC-002, SC-009)
+- [X] T007 [P] [US1] Add UI tests for the native toolbar search field, live typing updates, and same-refresh-cycle result changes in `NextPasteUITests/HistoryListUITests.swift` (FR-001, FR-002, FR-017, FR-018, FR-021, FR-022, SC-001, SC-002, SC-010)
+- [X] T008 [P] [US1] Add visual-identity assertions for one Apple-native search field with no extra filtering controls in `NextPasteUITests/VisualIdentityUITests.swift` (FR-001, FR-017, FR-018, FR-022, SC-010)
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement `.searchable` query binding and ordered local filtering over `visibleClips` in `NextPaste/HomeView.swift` using only local text content and allowed searchable image metadata (thumbnail description, image format label, and pixel dimensions) with no file name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit/remote dependency, or background indexing (FR-001, FR-002, FR-003, FR-004, FR-005, FR-010, FR-015, FR-016, FR-017, FR-018, FR-021, SC-001, SC-002, SC-009, SC-010)
+- [X] T009 [US1] Implement `.searchable` query binding and ordered local filtering over `visibleClips` in `NextPaste/HomeView.swift` using only local text content and allowed searchable image metadata (thumbnail description, image format label, and pixel dimensions) with no file name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit/remote dependency, or background indexing (FR-001, FR-002, FR-003, FR-004, FR-005, FR-010, FR-015, FR-016, FR-017, FR-018, FR-021, SC-001, SC-002, SC-009, SC-010)
 
 **Checkpoint**: User Story 1 is functional and independently testable.
 
@@ -107,12 +107,12 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T010 [P] [US2] Add unit tests for empty-query restore, empty-result state, and pinned/newest ordering preservation in `NextPasteTests/ClipHistoryTests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-022, SC-003, SC-004, SC-005, SC-006)
-- [ ] T011 [P] [US2] Add UI tests for clearing search, dedicated empty-search state, pinned-first filtered ordering, and unchanged native presentation in `NextPasteUITests/HistoryListUITests.swift` and `NextPasteUITests/VisualIdentityUITests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-022, SC-003, SC-004, SC-005, SC-006, SC-010)
+- [X] T010 [P] [US2] Add unit tests for empty-query restore, empty-result state, and pinned/newest ordering preservation in `NextPasteTests/ClipHistoryTests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-022, SC-003, SC-004, SC-005, SC-006)
+- [X] T011 [P] [US2] Add UI tests for clearing search, dedicated empty-search state, pinned-first filtered ordering, and unchanged native presentation in `NextPasteUITests/HistoryListUITests.swift` and `NextPasteUITests/VisualIdentityUITests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-022, SC-003, SC-004, SC-005, SC-006, SC-010)
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Route empty-query full-history, filtered-results, and no-match search-empty states in `NextPaste/HomeView.swift` and `NextPaste/DesignSystem/Components/EmptyStateView.swift` without re-sorting clips or introducing a new search UI pattern (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-021, SC-003, SC-004, SC-005, SC-006, SC-010)
+- [X] T012 [US2] Route empty-query full-history, filtered-results, and no-match search-empty states in `NextPaste/HomeView.swift` and `NextPaste/DesignSystem/Components/EmptyStateView.swift` without re-sorting clips or introducing a new search UI pattern (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-021, SC-003, SC-004, SC-005, SC-006, SC-010)
 
 **Checkpoint**: User Stories 1 and 2 both work and can be tested independently.
 
@@ -126,14 +126,14 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T013 [P] [US3] Add unit tests for live filtered updates after matching capture, non-matching capture, pin/unpin reorder, and delete in `NextPasteTests/ClipHistoryTests.swift` (FR-012, FR-013, FR-014, FR-022, SC-007, SC-008)
-- [ ] T014 [P] [US3] Add filtered text-row action regression coverage for copy, pin/unpin, delete, native swipe affordances, context menu behavior, keyboard reachability, VoiceOver labels, and unchanged drag-and-drop/multi-selection expectations in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-011, FR-019, FR-020, FR-022, FR-023, SC-007, SC-011)
-- [ ] T015 [P] [US3] Add active-search auto-capture and disconnected-network/local-only regression coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` and `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, proving matching captures appear immediately, non-matching captures stay hidden, search continues with network disconnected, clipboard monitoring continues offline, results remain identical, and no CloudKit/remote dependency is required (FR-012, FR-013, FR-014, FR-015, FR-022, SC-008, SC-009)
-- [ ] T016 [P] [US3] Update filtered-state accessibility/value parity assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` so filtered rows preserve accessibility behavior while drag-and-drop and multi-selection remain unchanged/not applicable (FR-011, FR-018, FR-019, FR-020, FR-022, FR-023, SC-007, SC-010, SC-011)
+- [X] T013 [P] [US3] Add unit tests for live filtered updates after matching capture, non-matching capture, pin/unpin reorder, and delete in `NextPasteTests/ClipHistoryTests.swift` (FR-012, FR-013, FR-014, FR-022, SC-007, SC-008)
+- [X] T014 [P] [US3] Add filtered text-row action regression coverage for copy, pin/unpin, delete, native swipe affordances, context menu behavior, keyboard reachability, VoiceOver labels, and unchanged drag-and-drop/multi-selection expectations in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-011, FR-019, FR-020, FR-022, FR-023, SC-007, SC-011)
+- [X] T015 [P] [US3] Add active-search auto-capture and disconnected-network/local-only regression coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` and `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, proving matching captures appear immediately, non-matching captures stay hidden, search continues with network disconnected, clipboard monitoring continues offline, results remain identical, and no CloudKit/remote dependency is required (FR-012, FR-013, FR-014, FR-015, FR-022, SC-008, SC-009)
+- [X] T016 [P] [US3] Update filtered-state accessibility/value parity assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` so filtered rows preserve accessibility behavior while drag-and-drop and multi-selection remain unchanged/not applicable (FR-011, FR-018, FR-019, FR-020, FR-022, FR-023, SC-007, SC-010, SC-011)
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Keep filtered results live across clipboard capture, pin/unpin, delete, and copy-feedback updates in `NextPaste/HomeView.swift` while preserving existing native row interactions, leaving drag-and-drop unchanged/not applicable, leaving multi-selection unchanged/not applicable, and maintaining local-only behavior when offline (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-021, SC-007, SC-008, SC-009)
+- [X] T017 [US3] Keep filtered results live across clipboard capture, pin/unpin, delete, and copy-feedback updates in `NextPaste/HomeView.swift` while preserving existing native row interactions, leaving drag-and-drop unchanged/not applicable, leaving multi-selection unchanged/not applicable, and maintaining local-only behavior when offline (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-021, SC-007, SC-008, SC-009)
 
 **Checkpoint**: All user stories are functional and independently testable.
 

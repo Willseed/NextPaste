@@ -54,7 +54,7 @@ enum UITestAssertions {
         line: UInt = #line
     ) {
         XCTAssertTrue(
-            accessibleText(of: element).localizedCaseInsensitiveContains(expectedText),
+            combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText),
             "Expected accessible text to contain \(expectedText)",
             file: file,
             line: line

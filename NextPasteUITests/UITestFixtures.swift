@@ -13,6 +13,26 @@ enum UITestFixtures {
         static let expectedLongMultilinePreview = String(repeating: "A", count: 60) + " " + String(repeating: "B", count: 59) + "..."
     }
 
+    enum Search {
+        static let prompt = "Search clips"
+        static let matchingText = "Project Alpha launch notes"
+        static let caseVariantText = "alpha uppercase marker"
+        static let nonMatchingText = "Budget planning summary"
+        static let pinnedOlderMatch = "Pinned alpha archive"
+        static let pinnedNewerMatch = "Pinned alpha latest"
+        static let unpinnedOlderMatch = "Unpinned alpha archive"
+        static let unpinnedNewerMatch = "Unpinned alpha latest"
+        static let noMatchQuery = "zebra-no-results"
+        static let textQuery = "alpha"
+        static let emptyStateTitle = "No matching clips"
+        static let emptyStateDescription = "Try a different search."
+        static let autoCaptureQuery = "needle"
+        static let matchingCapture = "Needle live capture"
+        static let nonMatchingCapture = "Haystack live capture"
+        static let offlineLaunchArgument = "-simulate-offline"
+        static let responsivenessRecordCount = 1_000
+    }
+
     enum ClipboardCapture {
         static let foreground = "Auto capture while foregrounded"
         static let backgrounded = "Auto capture while backgrounded"
@@ -37,6 +57,10 @@ enum UITestFixtures {
         static let localOnlyDelete = "Local-only delete clip"
         static let autoCapturedAction = "Auto-captured row action clip"
         static let autoCapturedCompanion = "Keep local auto-captured companion"
+        static let filteredCopyTarget = "Filtered alpha copy target"
+        static let filteredPinTarget = "Filtered alpha pin target"
+        static let filteredDeleteTarget = "Filtered alpha delete target"
+        static let filteredCompanion = "Filtered alpha companion"
     }
 
     enum ImageClipboard {

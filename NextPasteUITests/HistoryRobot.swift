@@ -14,6 +14,136 @@ struct HistoryRobot {
     }
 
     @discardableResult
+    func enterSearchQuery(
+        _ query: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        let field = searchField(file: file, line: line)
+        field.tap()
+        field.typeText(query)
+        return self
+    }
+
+    @discardableResult
+    func clearSearch(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        let field = searchField(file: file, line: line)
+        field.tap()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeKey(.delete, modifierFlags: [])
+        return self
+    }
+
+    @discardableResult
+    func searchField(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let searchField = app.searchFields[UITestFixtures.Search.prompt]
+        if searchField.waitForExistence(timeout: timeout) {
+            return searchField
+        }
+
+        return UITestAssertions.assertExists(
+            app.textFields[UITestFixtures.Search.prompt],
+            "Expected native search field",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func assertSearchFieldCount(
+        _ expectedCount: Int,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        XCTAssertEqual(
+            app.searchFields.count,
+            expectedCount,
+            "Expected exactly \(expectedCount) native search field(s)",
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+    @discardableResult
+    func assertRowExists(
+        withText text: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        _ = row(withText: text, timeout: timeout, file: file, line: line)
+        return self
+    }
+
+    @discardableResult
+    func assertRowDoesNotExist(
+        withText text: String,
+        timeout: TimeInterval = 1,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[text],
+            "Expected row containing \(text) to be absent",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+    @discardableResult
+    func assertSearchEmptyState(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        UITestAssertions.assertExists(
+            app.staticTexts["search-empty-state-title"],
+            "Expected search-empty state title",
+            file: file,
+            line: line
+        )
+        UITestAssertions.assertAccessibleTextEquals(
+            app.staticTexts["search-empty-state-title"],
+            UITestFixtures.Search.emptyStateTitle,
+            file: file,
+            line: line
+        )
+        UITestAssertions.assertAccessibleTextEquals(
+            app.staticTexts["search-empty-state-description"],
+            UITestFixtures.Search.emptyStateDescription,
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+    @discardableResult
+    func assertSearchEmptyStateDoesNotExist(
+        timeout: TimeInterval = 1,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts["search-empty-state-title"],
+            "Expected search-empty state to be absent",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+    @discardableResult
     func createTextClip(
         _ text: String,
         file: StaticString = #filePath,

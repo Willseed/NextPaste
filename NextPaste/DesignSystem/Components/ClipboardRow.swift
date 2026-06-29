@@ -71,7 +71,12 @@ struct ClipboardRow: View {
     }
 
     private var accessibilityLabel: String {
-        "Clipboard clip, \(presentation.preview)"
+        [
+            "Clipboard clip, \(presentation.preview)",
+            accessibilityValue(for: presentation.interactionState)
+        ]
+        .filter { $0.isEmpty == false }
+        .joined(separator: ", ")
     }
 
     private func accessibilityValue(for interactionState: ClipboardRowPresentation.InteractionState) -> String {

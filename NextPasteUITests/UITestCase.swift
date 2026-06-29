@@ -39,6 +39,18 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
+    func launchOfflineCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
+        let app = UITestAppLauncher.makeOfflineAutoCaptureApp(pollInterval: pollInterval)
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+        addTeardownBlock {
+            self.closeApp(app)
+        }
+        return app
+    }
+
+    @MainActor
+    @discardableResult
     func launchClipboardFailureApp() -> XCUIApplication {
         launchApp(extraArguments: ["-simulate-clipboard-failure"])
     }

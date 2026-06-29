@@ -33,7 +33,6 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(
                     title: "Clips",
-                    searchText: $searchText,
                     onSettings: openSettingsOrShowPlaceholder
                 ) {
                     Button {
@@ -53,12 +52,12 @@ struct HomeView: View {
                 }
 
                 Group {
-                    if clips.isEmpty {
-                        EmptyStateView()
+                    if visibleClips.isEmpty {
+                        EmptyStateView(kind: searchText.isEmpty ? .history : .search)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else {
                         List {
-                            ForEach(clips) { clip in
+                            ForEach(visibleClips) { clip in
                                 clipRow(for: clip)
                             }
                         }
@@ -77,6 +76,7 @@ struct HomeView: View {
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
+        .searchable(text: $searchText, prompt: "Search clips")
         .onDisappear {
             copyFeedbackTask?.cancel()
         }
@@ -95,6 +95,10 @@ struct HomeView: View {
         } else {
             clearCopyFeedback()
         }
+    }
+
+    private var visibleClips: [ClipItem] {
+        ClipItem.filteredHistory(clips, matching: searchText)
     }
 
     private func copyImageClip(_ clip: ClipItem) -> Bool {

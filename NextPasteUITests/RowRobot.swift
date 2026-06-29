@@ -85,6 +85,24 @@ struct RowRobot {
         return button
     }
 
+    func textRowElement(
+        containing clipText: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        textRow(containing: clipText, timeout: timeout, file: file, line: line)
+    }
+
+    func imageRowElement(
+        withThumbnailDescription thumbnailDescription: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        imageRow(withThumbnailDescription: thumbnailDescription, timeout: timeout, file: file, line: line)
+    }
+
     func revealDeleteAction(
         for clipText: String,
         file: StaticString = #filePath,
