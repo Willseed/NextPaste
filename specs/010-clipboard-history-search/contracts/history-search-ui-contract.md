@@ -19,6 +19,10 @@ The term `allowed searchable image metadata` means only that field set and those
 - No explicit search button or submit action is required.
 - No extra filtering controls, saved searches, suggestions, secondary search views, or redesigned layouts are introduced.
 
+## Explicitly Excluded Search Modes
+
+Feature 010 explicitly excludes OCR search, AI semantic search, tag search, saved searches, search suggestions, regex, wildcards, fuzzy search, background indexing, CloudKit search, and third-party search libraries.
+
 ## 2. Matching Contract
 
 - Matching is case-insensitive substring matching only.

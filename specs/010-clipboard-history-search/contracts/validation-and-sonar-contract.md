@@ -15,6 +15,10 @@ This document is the single source of truth for Feature 010 validation ownership
 - Drag-and-drop behavior is unchanged and not applicable to this feature beyond regression confirmation that nothing was altered.
 - Multi-selection behavior is unchanged and not applicable to this feature beyond regression confirmation that nothing was altered.
 
+## Explicitly Excluded Search Modes
+
+Feature 010 explicitly excludes OCR search, AI semantic search, tag search, saved searches, search suggestions, regex, wildcards, fuzzy search, background indexing, CloudKit search, and third-party search libraries.
+
 ## 2. Command Source
 
 Run the build and test commands listed in [`../quickstart.md`](../quickstart.md):
@@ -32,10 +36,12 @@ Run the build and test commands listed in [`../quickstart.md`](../quickstart.md)
 | Search matching rules | `quickstart.md` unit-test command | Automated coverage proves case-insensitive substring matching, text clip search, allowed searchable image metadata from local fields only, and empty-query restoration. |
 | Ordering and live updates | `quickstart.md` unit-test command | Automated coverage proves pinned-first ordering remains intact, newest-first ordering remains intact inside pinned and unpinned groups, and active-search live capture updates correctly without interrupting clipboard monitoring. |
 | Search UI and empty state | `quickstart.md` UI-test command | Automated coverage proves one native search field is present, filtering updates while typing, no-match state is distinct, and clearing the query restores the full history. |
-| Filtered-row interaction regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves copy, pin/unpin, delete, context menu behavior, keyboard shortcuts, and native swipe actions remain available for visible filtered rows. |
-| Native input/accessibility regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves keyboard focus, scrolling, mouse, trackpad, VoiceOver, and Magic Mouse native swipe behavior are preserved where macOS exposes native swipe support. |
+| Filtered-row interaction regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves copy, pin/unpin, delete, context menu behavior, keyboard shortcuts, row availability, and swipe action availability remain programmatically observable for visible filtered rows where automation is reliable. |
+| Native input/accessibility regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves programmatically observable accessibility behavior, including accessibility identifiers, accessibility labels/values/actions, keyboard navigation, focus traversal, and filtered-row availability. |
 | Out-of-scope interaction preservation | `quickstart.md` full-regression command | Regression evidence explicitly records drag-and-drop as unchanged/not applicable and multi-selection as unchanged/not applicable for this feature. |
 | Offline local-first behavior | `quickstart.md` unit-test, UI-test, and full-regression commands | Automated coverage is mandatory and proves offline/local-only behavior: search continues with the network disconnected, clipboard monitoring and active-search capture continue, results remain identical for the same local clips and allowed searchable image metadata, and no CloudKit or other remote dependency exists. |
+
+Automated tests verify programmatically observable accessibility behavior. Manual validation verifies platform-native interaction behavior that cannot be faithfully simulated.
 
 Automated validation is mandatory for every row in this matrix, including offline/local-first behavior. Manual validation in Sections 5 and 6 supplements this automated evidence and must not replace it.
 
@@ -49,8 +55,8 @@ Automated validation is mandatory for every row in this matrix, including offlin
 | Empty states | Empty query returns the existing full-history state; no-match query shows a dedicated search-empty state. |
 | Clipboard capture while searching | Matching new clips appear immediately, non-matching new clips stay hidden until the query changes or clears, and clipboard monitoring continues uninterrupted. |
 | Row actions | Copy, pin/unpin, delete, and context menu behavior remain unchanged for visible filtered rows. |
-| Native gestures and input | Keyboard shortcuts, keyboard focus, scrolling, mouse, trackpad, and Magic Mouse native swipe behavior remain unchanged where macOS exposes native swipe support. |
-| Accessibility | VoiceOver announcements, accessibility labels/values/actions, and filtered-row accessibility behavior remain unchanged unless explicitly approved elsewhere. |
+| Native gestures and input | Keyboard shortcuts, keyboard navigation, focus traversal, scrolling, mouse behavior, and programmatically observable swipe action availability remain unchanged; real trackpad gesture behavior and Magic Mouse native gesture behavior remain unchanged where macOS supports them and require manual validation. |
+| Accessibility | Accessibility identifiers, labels/values/actions, and filtered-row availability remain programmatically observable; real VoiceOver announcements and real VoiceOver interaction flow remain unchanged and require manual validation unless explicitly approved elsewhere. |
 | Drag-and-drop | Unchanged and not applicable to Feature 010; validation records that no drag-and-drop behavior was added, removed, or redefined. |
 | Multi-selection | Unchanged and not applicable to Feature 010; validation records that no multi-selection behavior was added, removed, or redefined. |
 | Local-only architecture | Search behavior remains identical without network access and does not depend on CloudKit or any remote service. |
@@ -58,6 +64,7 @@ Automated validation is mandatory for every row in this matrix, including offlin
 ## 5. Manual Validation
 
 Complete all scenarios after automated validation passes. Manual validation supplements the required automated evidence and must not replace automated validation.
+Manual validation covers real VoiceOver announcements, real VoiceOver interaction flow, native Magic Mouse gesture behavior, and native trackpad gesture behavior.
 
 ### Scenario 1: Immediate text filtering
 
@@ -96,9 +103,11 @@ Complete all scenarios after automated validation passes. Manual validation supp
 ### Scenario 6: Native input and accessibility regression
 
 1. Navigate to the native search field using keyboard focus.
-2. Validate scrolling, mouse, and trackpad behavior while filtering.
-3. If test hardware/software exposes Magic Mouse native swipe support, validate the same native swipe actions still work on filtered rows.
-4. Validate VoiceOver announcements for the search field and filtered results.
+2. Validate scrolling and mouse behavior while filtering.
+3. Validate native trackpad gesture behavior, including native swipe actions on filtered rows where macOS exposes them.
+4. If test hardware/software exposes Magic Mouse native swipe support, validate Magic Mouse native gesture behavior and confirm the same native swipe actions still work on filtered rows.
+5. Enable VoiceOver and validate real announcements for the search field, filtered results, and filtered-row actions.
+6. Navigate the search field, filtered list, and row actions with VoiceOver and confirm the real VoiceOver interaction flow remains native and unchanged.
 
 ### Scenario 7: Out-of-scope interaction confirmation
 
@@ -110,8 +119,8 @@ Complete all scenarios after automated validation passes. Manual validation supp
 
 Offline/local-first validation has two required parts:
 
-- Automated validation is mandatory and must be satisfied by the unit, UI, and full-regression evidence in Section 3. It verifies offline/local-only behavior, search continues working with the network disconnected, clipboard monitoring continues, results remain identical, and no CloudKit or remote dependency exists.
-- Manual validation must execute the disconnected-network scenario below as final confirmation. This scenario supplements the automated validation and must not replace it.
+- Automated validation is mandatory and must be satisfied by the unit, UI, and full-regression evidence in Section 3. It verifies programmatically observable offline/local-only behavior, search continues working with the network disconnected, clipboard monitoring continues, results remain identical, and no CloudKit or remote dependency exists.
+- Manual validation must execute the disconnected-network scenario below as final confirmation. This scenario supplements the automated validation and must not replace it, and it covers real VoiceOver and hardware-native interaction behavior that automated tests cannot faithfully simulate.
 
 Manual final confirmation must explicitly cover disconnected operation:
 
@@ -120,13 +129,13 @@ Manual final confirmation must explicitly cover disconnected operation:
 3. Confirm search results are identical to connected behavior for the same locally stored clips and allowed searchable image metadata.
 4. Confirm clipboard monitoring and automatic capture continue while offline, including active-search live updates.
 5. Confirm the app does not require CloudKit, remote search, remote metadata, or any other remote service to load history, filter results, or update visible matches.
-6. Confirm no offline-only degradation appears in native search interactions, including keyboard, mouse, trackpad, and Magic Mouse native swipe behavior where supported.
+6. Confirm no offline-only degradation appears in native search interactions, including keyboard, mouse, real VoiceOver interaction flow, real trackpad gesture behavior, and Magic Mouse native gesture behavior where supported.
 
 ## 7. SonarQube Evidence Requirements
 
 Feature 010 is not release-ready until SonarQube or SonarCloud evidence is recorded.
 
-Execution note: accepted evidence sources are CI SonarQube analysis, the SonarCloud dashboard, a self-hosted SonarQube dashboard, or a local scanner report when project configuration exists. Accepted evidence artifacts are a dashboard URL, dashboard screenshot, CI artifact, or local report. These identify execution sources and artifact forms only; they do not weaken the mandatory SonarQube Project Health Gate or any zero-new-issue, coverage, duplication, or false-positive documentation requirement below.
+Execution note: accepted evidence sources and formats are the SonarQube dashboard, SonarCloud dashboard, dashboard URL, screenshot, CI artifact, or local scanner report when project configuration exists. Feature evidence may additionally be stored in `specs/010-clipboard-history-search/sonarqube-evidence.md`; this storage location is recommended documentation only and does not redefine accepted evidence. These identify execution sources and artifact forms only; they do not weaken the mandatory SonarQube Project Health Gate or any zero-new-issue, coverage, duplication, or false-positive documentation requirement below.
 
 Required evidence:
 

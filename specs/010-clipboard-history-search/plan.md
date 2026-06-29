@@ -12,6 +12,10 @@ Allowed searchable image metadata: thumbnail description, image format label, an
 
 The term `allowed searchable image metadata` means only that field set and those exclusions throughout this feature.
 
+## Explicitly Excluded Search Modes
+
+Feature 010 explicitly excludes OCR search, AI semantic search, tag search, saved searches, search suggestions, regex, wildcards, fuzzy search, background indexing, CloudKit search, and third-party search libraries.
+
 ## Summary
 
 Add a single Apple-native toolbar search field to the existing clipboard history so users can filter clips immediately while typing. The implementation will keep search state local to `HomeView`, derive visible results from the already-sorted SwiftData `@Query` result set, match text clips by `textContent` and image clips by allowed searchable image metadata only, preserve pinned-first and newest-first ordering, keep clipboard monitoring active during search, surface matching new clips immediately, keep non-matching new clips hidden until the query changes, behave identically with network access disconnected, preserve native swipe behavior for trackpad and Magic Mouse where macOS exposes it, leave drag-and-drop and multi-selection unchanged, and preserve all existing row actions, keyboard shortcuts, context menus, VoiceOver behavior, and design-system styling.
