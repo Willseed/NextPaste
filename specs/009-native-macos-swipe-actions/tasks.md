@@ -64,7 +64,7 @@
 ### Implementation for User Story 2
 
 - [ ] T011 [US2] Update `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` to preserve image-row swipe parity, state-aware Pin/Unpin labeling, copy feedback, thumbnail behavior, and visual tokens under the native `List` host `(FR-001, FR-003, FR-004, FR-008, FR-011, FR-013a, SC-001, SC-001a, SC-003, SC-004, SC-007, SC-009)`
-- [ ] T012 [US2] Execute and record manual image-row and Magic Mouse parity validation in `specs/009-native-macos-swipe-actions/quickstart.md`, including right-swipe Pin/Unpin state changes, left-swipe Delete, vertical-scroll arbitration, click-or-tap copy, and the supported-hardware note for native macOS gesture exposure `(FR-001, FR-002, FR-003, FR-004, FR-013c, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003c, SC-004, SC-004a)`
+- [ ] T012 [US2] Execute and record manual image-row and Magic Mouse parity validation in `specs/009-native-macos-swipe-actions/quickstart.md`, explicitly covering Magic Mouse right-swipe reveal for **Pin**/**Unpin**, left-swipe reveal for Delete, reveal-only behavior, full swipe not auto-executing, sub-threshold snap-back, deliberate horizontal swipe without copy, vertical-scroll arbitration, click-or-tap copy, and the supported-hardware note for native macOS gesture exposure so Magic Mouse coverage matches trackpad validation where macOS exposes the same native interaction `(FR-001, FR-002, FR-003, FR-004, FR-013b, FR-013c, FR-013d, FR-013e, FR-013f, FR-019, SC-001, SC-001a, SC-002, SC-003, SC-003a, SC-003b, SC-003c, SC-004, SC-004a, SC-009a)`
 
 **Checkpoint**: Image rows now match text-row swipe behavior and remain independently testable.
 
@@ -147,9 +147,9 @@
 | FR-012 | T004, T014, T018, T023 |
 | FR-013 | T004, T023 |
 | FR-013a | T003, T004, T011, T015, T016 |
-| FR-013b | T003, T004, T005, T009, T008 |
+| FR-013b | T003, T004, T005, T008, T009, T012 |
 | FR-013c | T004, T012, T019 |
-| FR-013d | T003, T004, T005, T008 |
+| FR-013d | T003, T004, T005, T008, T012 |
 | FR-013e | T003, T004, T005, T008, T012 |
 | FR-013f | T003, T004, T005, T008, T012 |
 | FR-014 | T004, T021 |
@@ -168,7 +168,7 @@
 | SC-002 | T003, T005, T008, T009, T012 |
 | SC-003 | T003, T009, T010, T011, T012 |
 | SC-003a | T012, T019 |
-| SC-003b | T003, T005, T008 |
+| SC-003b | T003, T005, T008, T012 |
 | SC-003c | T003, T005, T008, T012 |
 | SC-004 | T004, T005, T007, T008, T009, T010, T011, T015, T016, T020, T021 |
 | SC-004a | T003, T004, T005, T008, T012 |
@@ -177,7 +177,7 @@
 | SC-007 | T004, T007, T010, T011, T014, T015, T016, T018, T023 |
 | SC-008 | T007, T013, T017, T018, T019, T020, T021, T023 |
 | SC-009 | T010, T011, T013, T017, T018, T019, T020, T021, T023 |
-| SC-009a | T003, T004, T005, T008, T009 |
+| SC-009a | T003, T004, T005, T008, T009, T012 |
 | SC-009b | T007, T013, T017, T019 |
 | SC-010 | T002, T022 |
 
@@ -238,7 +238,7 @@ Task: "T015 Add ClipRowView routing cleanup regression coverage in NextPasteTest
 
 - [ ] T005, T009, T013, T014, and T015 are written or updated before the corresponding production changes land.
 - [ ] T008 records real trackpad validation for right-swipe Pin/Unpin state changes, left swipe, sub-threshold snap-back, vertical-scroll arbitration, click-versus-swipe behavior, and full-swipe reveal-only behavior.
-- [ ] T012 records image-row parity plus Magic Mouse validation when supported hardware/settings are available, including image-row click/tap copy.
+- [ ] T012 records image-row parity plus Magic Mouse validation when supported hardware/settings are available, including right/left reveal coverage, reveal-only full-swipe behavior, sub-threshold snap-back, swipe-without-copy behavior, and image-row click/tap copy.
 - [ ] T019 records keyboard, no-required-context-menu-change, VoiceOver, and non-gesture-mouse regression outcomes.
 - [ ] T020 records all targeted UI/unit regression command results.
 - [ ] T021 records the full macOS regression suite result.

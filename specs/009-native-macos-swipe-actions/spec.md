@@ -123,6 +123,10 @@ mouse interactions, any current context-menu baseline, and list ordering still m
   interactions, keyboard shortcuts, any current context-menu baseline, focus behavior, scrolling
   behavior, accessibility actions, VoiceOver support, and navigation within the clipboard history
   list
+- **Explicitly Unchanged / Not Applicable Interaction Scope**: Drag and drop remains unchanged and is
+  not modified by this feature; multi-selection remains unchanged and is not modified by this
+  feature; existing keyboard shortcuts remain unchanged; existing context menus remain unchanged;
+  existing VoiceOver actions remain unchanged
 - **Native Platform Behavior**: The feature reuses standard macOS row-swipe behavior so that
   deliberate horizontal gestures reveal native swipe actions, primarily vertical gestures continue
   scrolling, and normal click or tap continues to copy while the row appearance at rest stays
@@ -154,12 +158,20 @@ mouse interactions, any current context-menu baseline, and list ordering still m
   clipboard-history list.
 - **FR-008**: The system MUST preserve existing accessibility behavior, including VoiceOver access
   to row content and available row actions.
+- **FR-008a**: The system MUST preserve existing VoiceOver actions unchanged; swipe actions are
+  additive and MUST NOT replace, remove, or redefine any current VoiceOver-exposed row actions.
 - **FR-009**: The system MUST NOT introduce or require context-menu changes for clipboard-history
   rows as part of this feature.
+- **FR-009b**: The system MUST preserve any existing row context menus unchanged and MUST NOT add,
+  remove, or redefine context-menu entries as part of this feature.
 - **FR-009a**: Swipe actions SHALL be additive only; Pin/Unpin and Delete MUST remain available
   through existing platform-native interaction methods, including keyboard shortcuts, VoiceOver
   accessibility actions, and any current context-menu baseline, without requiring a swipe gesture.
 - **FR-010**: The system MUST preserve existing mouse-based row interactions.
+- **FR-010a**: The system MUST preserve drag-and-drop behavior unchanged and MUST NOT introduce,
+  remove, or redefine drag-and-drop interactions as part of this feature.
+- **FR-010b**: The system MUST preserve multi-selection behavior unchanged and MUST NOT introduce,
+  remove, or redefine multi-selection interactions as part of this feature.
 - **FR-011**: The system MUST preserve the current visual design language for history rows,
   including design tokens, typography, spacing, colors, corner radius, motion, and icons.
 - **FR-012**: The system MUST follow Apple Human Interface Guidelines for macOS list interactions.
@@ -182,6 +194,9 @@ mouse interactions, any current context-menu baseline, and list ordering still m
   copy.
 - **FR-013f**: The system MUST preserve primarily vertical gestures as vertical scrolling of the
   history list and MUST NOT reveal swipe actions during that scrolling gesture.
+- **FR-013g**: The system MUST use only Apple-native interaction APIs for swipe-action behavior and
+  related row interactions; third-party gesture libraries and third-party interaction frameworks are
+  not permitted for this feature.
 - **FR-014**: The clipboard-driven processing flow MUST remain unchanged for this feature:
   `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
 - **FR-015**: The feature MUST remain local-first and fully available without network access because
@@ -215,6 +230,8 @@ mouse interactions, any current context-menu baseline, and list ordering still m
 - Image capture behavior changes
 - Design token changes
 - Visual design changes
+- Third-party gesture libraries
+- Third-party interaction frameworks
 
 ## Success Criteria *(mandatory)*
 
@@ -265,6 +282,8 @@ mouse interactions, any current context-menu baseline, and list ordering still m
 - The current copy, pin, delete, keyboard, mouse, and accessibility behaviors are the baseline
   behaviors that must be preserved, and this feature does not introduce or require context-menu
   changes.
+- Existing drag-and-drop behavior, multi-selection behavior, keyboard shortcuts, context menus, and
+  VoiceOver actions are unchanged or not otherwise expanded by this feature's scope.
 - Magic Mouse gesture behavior should match trackpad row-swipe behavior wherever macOS exposes the
   same native list interaction on supported hardware and system settings, while external mice
   without gesture support continue to use existing non-swipe interactions.

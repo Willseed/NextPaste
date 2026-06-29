@@ -22,6 +22,14 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 
 **Interaction Models**: Trackpad swipe gestures, Magic Mouse gestures where macOS exposes them, click/tap row activation, keyboard focus, context-menu coexistence without required changes, scrolling, row hit testing, accessibility actions, and VoiceOver
 
+**Interaction Scope Clarifications**:
+
+- Drag and drop is unchanged and not applicable to this feature's swipe-row scope.
+- Multi-selection behavior is unchanged and not part of this feature.
+- Existing keyboard shortcuts are unchanged and must continue to work as they do today.
+- Existing context menus are unchanged and must not be introduced, removed, or repurposed by this work.
+- Existing VoiceOver actions are unchanged; the feature only preserves native swipe-action discoverability without redefining current accessibility actions.
+
 **Project Type**: Single Xcode SwiftUI app with app, unit-test, and UI-test targets
 
 **Performance Goals**: Preserve current list responsiveness and copy/pin/delete latency; no extra network, polling, or persistence work; keep gesture handling native and lightweight
@@ -165,8 +173,10 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
    - Click-versus-swipe arbitration validation
 4. **Regression validation**
    - Keyboard regression
+   - Multi-selection no-change regression
    - Context-menu no-change validation
-   - VoiceOver regression
+   - VoiceOver existing-actions regression
+   - Drag-and-drop no-change validation
    - Existing mouse interaction regression
 
 **Phase 3 outcome**: executable validation steps that prove native swipe behavior is additive and non-regressive.
@@ -222,6 +232,11 @@ Replace the current mixed swipe implementation in `HomeView` with Apple-native m
 - No image capture behavior changes
 - No design token changes
 - No visual redesign
+- No drag-and-drop behavior changes
+- No multi-selection behavior changes
+- No keyboard shortcut changes
+- No context-menu behavior changes
+- No VoiceOver action changes
 
 ## Mechanical Call-Site Updates
 

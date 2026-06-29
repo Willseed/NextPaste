@@ -69,12 +69,11 @@
 ## SonarQube Evidence
 
 - Evidence must be captured after implementation and before commit/PR completion
-- Evidence must show zero unresolved feature-introduced issues, or documented false positives with justification
-- Accepted forms:
-  - SonarQube/SonarCloud URL
-  - screenshot
-  - CI artifact
-  - local report
+- The required post-implementation state is: Bugs 0, Vulnerabilities 0, Security Hotspots requiring review 0, Code Smells 0, Coverage violations 0, Reliability issues 0, Security issues 0, and Maintainability issues 0. Duplications on New Code MUST be 0, or within the configured quality gate threshold when SonarQube reports duplication as a percentage-based gate.
+- Any SonarQube issue introduced by the feature MUST be fixed or explicitly documented as a false positive with justification.
+- SonarQube evidence MUST be recorded before commit or PR completion and MAY be a SonarQube dashboard screenshot, SonarCloud URL, CI artifact, or local report.
+- Actual accepted SonarQube evidence is mandatory. No substitute evidence is accepted.
+- This gate applies to production code and test code unless a file is explicitly excluded by project policy.
 
 ## Release Gate
 
