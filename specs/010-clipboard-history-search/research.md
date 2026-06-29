@@ -3,6 +3,12 @@
 **Date**: 2026-06-29  
 **Spec**: [spec.md](spec.md)
 
+## Searchable Image Metadata Terminology
+
+Allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions. Explicitly excluded from search: file name, file path, hash, binary contents, OCR text, and AI-generated metadata.
+
+The term `allowed searchable image metadata` means only that field set and those exclusions throughout this feature.
+
 ## Decision 1: Keep search query state local to `HomeView`
 
 **Decision**: Keep the active search query as ephemeral `@State` in `HomeView` and derive filtered results from the live SwiftData history query.
@@ -48,20 +54,20 @@
 - Run a separate filtered fetch with its own predicate and sort — rejected because it increases complexity and risks ordering drift.
 - Build a background index or cached search list — rejected because the specification forbids background indexing and the current scale does not justify it.
 
-## Decision 4: Limit searchable fields to existing local clip content and meaningful local image metadata
+## Decision 4: Limit searchable fields to stored text content and allowed searchable image metadata
 
-**Decision**: Match text clips by `textContent` and image clips by meaningful locally stored metadata already available for display or accessibility, specifically thumbnail description, image format label, and stored dimensions rendered in user-facing form.
+**Decision**: Match text clips by `textContent` and image clips by allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions.
 
 **Rationale**:
 
-- The specification allows local text content and locally available image metadata only.
-- These fields already exist in `ClipItem` and current row presentation code.
-- Restricting search to descriptive metadata avoids surprising results from opaque internal fields like filenames or hashes.
+- The specification allows local text content and allowed searchable image metadata only.
+- These values already exist in `ClipItem` or current row presentation code.
+- Restricting search to allowed searchable image metadata avoids surprising results from file name, file path, hash, binary contents, OCR text, or AI-generated metadata.
 
 **Alternatives considered**:
 
-- OCR or AI semantic search — rejected because explicitly out of scope.
-- Search local filenames or hashes — rejected because they are internal implementation details, not user-meaningful metadata.
+- OCR text extraction, AI-generated metadata, or AI semantic search — rejected because explicitly out of scope.
+- Search by file name, file path, hash, or binary contents — rejected because those are internal implementation details, not user-meaningful metadata.
 - CloudKit-backed or remote metadata search — rejected because the feature must remain local-only and offline.
 
 ## Decision 5: Drive live search updates from the same source list that receives clipboard captures

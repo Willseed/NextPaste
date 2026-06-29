@@ -5,6 +5,12 @@
 
 Validation ownership for automated coverage, regression matrix, manual validation, offline validation, and SonarQube evidence lives in [validation-and-sonar-contract.md](validation-and-sonar-contract.md). This document defines the user-visible behavior contract only.
 
+## Searchable Image Metadata Terminology
+
+Allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions. Explicitly excluded from search: file name, file path, hash, binary contents, OCR text, and AI-generated metadata.
+
+The term `allowed searchable image metadata` means only that field set and those exclusions throughout this feature.
+
 ## 1. Search Input Contract
 
 - The app exposes exactly one search field for clipboard history.
@@ -17,8 +23,8 @@ Validation ownership for automated coverage, regression matrix, manual validatio
 
 - Matching is case-insensitive substring matching only.
 - Text clips match against stored `textContent`.
-- Image clips match only against locally available metadata already stored for the clip and surfaced in user-meaningful form.
-- Search does not use OCR, AI/semantic search, CloudKit queries, fuzzy matching, regex, wildcard syntax, background indexing, or third-party search libraries.
+- Image clips match only against allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions.
+- Search does not use file name, file path, hash, binary contents, OCR text, AI-generated metadata, AI/semantic search, CloudKit queries, fuzzy matching, regex, wildcard syntax, background indexing, or third-party search libraries.
 - Empty query restores the full history list.
 
 ## 3. Ordering Contract

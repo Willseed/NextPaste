@@ -1,6 +1,6 @@
 # Feature Specification: Clipboard History Search
 
-**Feature Branch**: `[010-clipboard-history-search]`
+**Feature Branch**: `010-clipboard-history-search`
 
 **Created**: 2026-06-29
 
@@ -14,10 +14,16 @@
 
 - Q: How should search interaction behave? → A: Search begins immediately while typing, has no explicit search button, updates visible results in the same UI refresh cycle as each query change, and adds no debounce.
 - Q: What matching rules apply to clipboard history search? → A: Matching is case-insensitive substring matching only; fuzzy search, regex, and wildcard syntax are out of scope.
-- Q: What content is searchable? → A: Search covers local text clip content and locally available image metadata only; it excludes OCR, AI semantic search, CloudKit content, and all remote data.
+- Q: What content is searchable? → A: Search covers stored text clip content and allowed searchable image metadata only; it excludes CloudKit content and all remote data.
 - Q: How should results be ordered? → A: Search filters the existing clipboard-history ordering only; it preserves pinned-first ordering and newest-first ordering within each section without relevance re-ranking.
 - Q: How should search affect updates and interactions? → A: Empty query restores the full history, no-match queries show a dedicated empty-search state, clipboard monitoring continues during search, new matching clips appear immediately, new non-matching clips stay hidden, and copy, pin, delete, native swipe, context menu, keyboard, and VoiceOver behaviors remain available in filtered results.
 - Q: What UI, performance, and validation constraints apply? → A: The feature uses one Apple-native search field in the existing toolbar with no redesign or extra filtering controls, runs locally without background indexing or third-party search libraries, updates visible results in the same UI refresh cycle as each query change, includes automated tests for filtering, ordering, live updates, offline behavior, and filtered row actions, requires manual native-interaction and accessibility validation, and records SonarQube evidence.
+
+## Searchable Image Metadata Terminology
+
+Allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions. Explicitly excluded from search: file name, file path, hash, binary contents, OCR text, and AI-generated metadata.
+
+The term `allowed searchable image metadata` means only that field set and those exclusions throughout this feature.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -27,12 +33,12 @@ As a user reviewing clipboard history, I want to type into a search field and im
 
 **Why this priority**: Fast retrieval is the core value of this feature, and live filtering is the minimum useful behavior.
 
-**Independent Test**: Can be fully tested by entering a query into the toolbar search field and confirming that only matching text clips and image clips with matching local metadata remain visible.
+**Independent Test**: Can be fully tested by entering a query into the toolbar search field and confirming that only matching text clips and image clips with matching allowed searchable image metadata remain visible.
 
 **Acceptance Scenarios**:
 
 1. **Given** the history contains text clips with different content, **When** the user types a query that matches some text clips, **Then** only those matching text clips remain visible as the query changes.
-2. **Given** the history contains image clips with searchable local metadata, **When** the user types a query that matches that metadata, **Then** only the matching image clips remain visible.
+2. **Given** the history contains image clips with allowed searchable image metadata, **When** the user types a query that matches allowed searchable image metadata, **Then** only the matching image clips remain visible.
 3. **Given** the history contains clips whose content differs only by letter case from the query, **When** the user searches, **Then** those clips are treated as matches.
 4. **Given** the user is entering a query, **When** each character is typed or removed, **Then** the visible results update immediately without requiring a separate search action.
 
@@ -76,15 +82,15 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 
 - An empty search query must behave the same as no search and show the full history list.
 - Search must begin immediately while the user types and must not require a separate submit action.
-- Search must remain case-insensitive for text clips and searchable image metadata.
+- Search must remain case-insensitive for text clips and allowed searchable image metadata.
 - Search must use substring matching only and must not interpret regex or wildcard syntax.
-- Image clips without searchable local metadata must not match unless other searchable fields match.
+- Image clips without matching allowed searchable image metadata must not match.
 - Search results must update correctly when a visible row is pinned or unpinned, including reordering within pinned and unpinned result groups.
 - Search results must update correctly when a visible row is deleted so the removed row disappears without disturbing unrelated matches.
 - Clipboard auto-capture must continue to save new clips while search is active, even when the new clip does not match the current query.
 - Matching newly captured clips must appear in the filtered list without requiring the user to re-run the search.
 - Search with network access disconnected must behave the same as search with network access available, and clipboard monitoring must continue locally in both cases.
-- Search must not introduce OCR, semantic matching, CloudKit searching, remote indexing, or any requirement for network access.
+- Search must not introduce search by file name, file path, hash, binary contents, OCR text, AI-generated metadata, semantic matching, CloudKit searching, remote indexing, or any requirement for network access.
 - Drag-and-drop behavior remains unchanged; this feature does not add new drag sources, drop targets, or drag-specific search actions.
 - Multi-selection behavior remains unchanged; this feature does not add batch selection workflows or selection-specific search controls.
 - Search must not add extra filtering controls, saved searches, or a separate search results view.
@@ -103,7 +109,7 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 - **FR-001**: The app MUST provide a search field in the existing toolbar for clipboard history.
 - **FR-002**: The app MUST begin filtering immediately as the user types in the search field and MUST NOT require an explicit search button or submit action.
 - **FR-003**: Text clips MUST be searchable by their stored text content.
-- **FR-004**: Image clips MUST be searchable only by locally available metadata already captured or stored for the clip.
+- **FR-004**: Image clips MUST be searchable only by allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions. File name, file path, hash, binary contents, OCR text, and AI-generated metadata MUST NOT be searchable.
 - **FR-005**: Search matching MUST be case-insensitive substring matching.
 - **FR-006**: An empty search query MUST show the full clipboard history list.
 - **FR-007**: Search results MUST preserve pinned-first ordering.
@@ -115,26 +121,27 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 - **FR-013**: A newly captured clip that matches the active query MUST appear automatically in search results without requiring the query to be re-entered.
 - **FR-014**: A newly captured clip that does not match the active query MUST remain hidden until the query changes or is cleared.
 - **FR-015**: Search MUST remain local-only, keep clipboard content on-device, behave identically when network access is disconnected, continue clipboard monitoring and capture while offline, and require no CloudKit query or other remote dependency to search or refresh results.
-- **FR-016**: Search MUST NOT perform OCR, AI semantic search, CloudKit search, regex matching, wildcard matching, fuzzy matching, background indexing, or third-party library-based search.
+- **FR-016**: Search MUST NOT perform OCR text extraction, AI semantic search, AI-generated metadata search, CloudKit search, regex matching, wildcard matching, fuzzy matching, background indexing, or third-party library-based search.
 - **FR-017**: The feature MUST use a single search field in the existing toolbar and MUST NOT add additional filtering controls, redesigned search layouts, or a separate search results UI.
 - **FR-018**: The search field, filtered list, and empty search state MUST follow the existing design system and introduce no undocumented visual pattern.
 - **FR-019**: Drag-and-drop behavior for clipboard history MUST remain unchanged; the feature MUST NOT add new drag sources, drop targets, or drag-specific search behavior.
 - **FR-020**: Multi-selection behavior for clipboard history MUST remain unchanged; the feature MUST NOT add new selection modes, batch actions, or selection-specific search controls.
 - **FR-021**: Local filtering MUST refresh the visible result set within the same UI update cycle as each query change and MUST introduce no background indexing.
-- **FR-022**: The feature MUST include automated tests covering immediate live filtering, case-insensitive substring matching, text search, image-metadata search where metadata exists, empty-query restoration, empty search state, pinned-first ordering, newest-first ordering within pinned and unpinned groups, visible-row actions in filtered results, active-search auto-capture behavior for matching and non-matching clips, disconnected-network/offline behavior with identical local search results, continued clipboard monitoring while offline, absence of CloudKit or remote-search dependency, and regression coverage for existing clipboard-history interactions affected by filtering.
+- **FR-022**: The feature MUST include automated tests covering immediate live filtering, case-insensitive substring matching, text search, allowed searchable image metadata search where that metadata exists, empty-query restoration, empty search state, pinned-first ordering, newest-first ordering within pinned and unpinned groups, visible-row actions in filtered results, active-search auto-capture behavior for matching and non-matching clips, disconnected-network/offline behavior with identical local search results, continued clipboard monitoring while offline, absence of CloudKit or remote-search dependency, and regression coverage for existing clipboard-history interactions affected by filtering.
 - **FR-023**: The feature MUST include manual accessibility validation for the search field and filtered results, including VoiceOver behavior and keyboard accessibility for affected interactions.
 - **FR-024**: Implementation completion MUST include SonarQube Project Health evidence showing zero unresolved feature-introduced issues, or documented false positives with justification.
 
 ### Key Entities *(include if feature involves data)*
 
 - **Search Query**: The user-entered text currently used to filter clipboard history
-- **Clip**: A saved clipboard history item that may contain searchable text content or searchable local image metadata, plus existing attributes such as pin state and capture time
+- **Clip**: A saved clipboard history item that may contain searchable text content or allowed searchable image metadata, plus existing attributes such as pin state and capture time
 - **Filtered Result Set**: The visible subset of clipboard history that matches the active query while preserving pinned-first ordering and newest-first ordering within each pin-state group
 
 ## Out of Scope
 
 - OCR-based text extraction from images
 - AI or semantic search
+- Search by file name, file path, hash, binary contents, OCR text, or AI-generated metadata
 - Cloud synchronization
 - Tag-based search
 - Fuzzy matching
@@ -147,7 +154,7 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 
 ### Measurable Outcomes
 
-- **SC-001**: In 100% of automated search-filter tests, entering a query shows only clips whose searchable text content or searchable local image metadata matches the query.
+- **SC-001**: In 100% of automated search-filter tests, entering a query shows only clips whose searchable text content or allowed searchable image metadata matches the query.
 - **SC-002**: In 100% of automated live-filter tests, results update in the same UI refresh cycle as each query change without requiring a separate search action.
 - **SC-003**: In 100% of automated ordering tests, pinned matching clips appear before unpinned matching clips.
 - **SC-004**: In 100% of automated ordering tests, matching clips within the same pin-state group remain ordered newest-first.
@@ -163,7 +170,7 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 ## Assumptions
 
 - Search applies to the existing clipboard history experience and does not introduce a separate search screen or advanced filtering workflow.
-- Searchable image data is limited to metadata that is already stored locally for each image clip; image clips without matching local metadata simply do not match a metadata-only query.
+- Image clip search is limited to allowed searchable image metadata; image clips without matching thumbnail description, image format label, or pixel dimensions simply do not match an image-field-only query.
 - Existing row actions, ordering rules, and clipboard auto-capture remain the behavioral baseline and must be preserved while filtering is active.
 - Search is immediate, incremental, and substring-based rather than fuzzy, semantic, regex-driven, wildcard-driven, or suggestion-driven.
 - The feature remains local-first and does not require network access, cloud services, background indexing, or third-party search dependencies.

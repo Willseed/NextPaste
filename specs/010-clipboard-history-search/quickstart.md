@@ -32,5 +32,5 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 
 ## Validation References
 
-- Validation ownership, automated coverage expectations, regression matrix, manual validation, offline validation, and SonarQube evidence requirements: [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md)
+- Validation ownership, automated coverage expectations including offline/local-first automated validation, regression matrix, manual validation including final disconnected-network confirmation, and SonarQube evidence requirements: [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md)
 - Search interaction behavior contract: [contracts/history-search-ui-contract.md](contracts/history-search-ui-contract.md)

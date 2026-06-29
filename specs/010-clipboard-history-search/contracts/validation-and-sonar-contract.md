@@ -3,12 +3,13 @@
 **Feature**: Clipboard History Search  
 **Date**: 2026-06-29
 
-This document is the single source of truth for Feature 010 validation ownership. It owns the automated validation matrix, regression matrix, manual validation, offline validation, and SonarQube evidence requirements. `quickstart.md` contains command invocations plus validation-reference links only.
+This document is the single source of truth for Feature 010 validation ownership. It owns the automated validation matrix, regression matrix, manual validation, offline/local-first validation, final disconnected-network confirmation, and SonarQube evidence requirements. `quickstart.md` contains command invocations plus validation-reference links only.
 
 ## 1. Scope and Validation Ownership
 
 - Validation must preserve the approved local-only, Apple-native scope.
-- Search must continue to use only local SwiftData records and locally stored image metadata.
+- Search must continue to use only local SwiftData records and allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions.
+- File name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit data, and remote metadata are not searchable.
 - Validation must prove clipboard monitoring continues during active search.
 - Validation must prove there is no CloudKit, remote search, remote metadata, analytics, or third-party search dependency.
 - Drag-and-drop behavior is unchanged and not applicable to this feature beyond regression confirmation that nothing was altered.
@@ -28,20 +29,22 @@ Run the build and test commands listed in [`../quickstart.md`](../quickstart.md)
 | Validation area | Execution source | Required evidence |
 | --- | --- | --- |
 | Build health | `quickstart.md` build command | The macOS app target builds successfully with the search feature integrated into the existing history screen. |
-| Search matching rules | `quickstart.md` unit-test command | Automated coverage proves case-insensitive substring matching, text clip search, image metadata search from local fields only, and empty-query restoration. |
+| Search matching rules | `quickstart.md` unit-test command | Automated coverage proves case-insensitive substring matching, text clip search, allowed searchable image metadata from local fields only, and empty-query restoration. |
 | Ordering and live updates | `quickstart.md` unit-test command | Automated coverage proves pinned-first ordering remains intact, newest-first ordering remains intact inside pinned and unpinned groups, and active-search live capture updates correctly without interrupting clipboard monitoring. |
 | Search UI and empty state | `quickstart.md` UI-test command | Automated coverage proves one native search field is present, filtering updates while typing, no-match state is distinct, and clearing the query restores the full history. |
 | Filtered-row interaction regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves copy, pin/unpin, delete, context menu behavior, keyboard shortcuts, and native swipe actions remain available for visible filtered rows. |
 | Native input/accessibility regression | `quickstart.md` UI-test and full-regression commands | Automated coverage proves keyboard focus, scrolling, mouse, trackpad, VoiceOver, and Magic Mouse native swipe behavior are preserved where macOS exposes native swipe support. |
 | Out-of-scope interaction preservation | `quickstart.md` full-regression command | Regression evidence explicitly records drag-and-drop as unchanged/not applicable and multi-selection as unchanged/not applicable for this feature. |
-| Offline local-first behavior | Manual execution per Section 6 | Evidence proves disconnected-network operation produces identical local search behavior, clipboard monitoring continues, and no CloudKit or other remote-service dependency exists. |
+| Offline local-first behavior | `quickstart.md` unit-test, UI-test, and full-regression commands | Automated coverage is mandatory and proves offline/local-only behavior: search continues with the network disconnected, clipboard monitoring and active-search capture continue, results remain identical for the same local clips and allowed searchable image metadata, and no CloudKit or other remote dependency exists. |
+
+Automated validation is mandatory for every row in this matrix, including offline/local-first behavior. Manual validation in Sections 5 and 6 supplements this automated evidence and must not replace it.
 
 ## 4. Regression Matrix
 
 | Behavior | Expected regression result |
 | --- | --- |
 | Text search | Filtering remains immediate and uses case-insensitive substring matching only. |
-| Image search | Only locally stored image metadata participates; OCR, AI, CloudKit, and remote metadata remain out of scope. |
+| Image search | Only allowed searchable image metadata participates: thumbnail description, image format label, and pixel dimensions. File name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit, and remote metadata remain excluded. |
 | Ordering | Filtering preserves pinned-first ordering and newest-first ordering within pinned and unpinned groups. |
 | Empty states | Empty query returns the existing full-history state; no-match query shows a dedicated search-empty state. |
 | Clipboard capture while searching | Matching new clips appear immediately, non-matching new clips stay hidden until the query changes or clears, and clipboard monitoring continues uninterrupted. |
@@ -54,7 +57,7 @@ Run the build and test commands listed in [`../quickstart.md`](../quickstart.md)
 
 ## 5. Manual Validation
 
-Complete all scenarios after automated validation passes.
+Complete all scenarios after automated validation passes. Manual validation supplements the required automated evidence and must not replace automated validation.
 
 ### Scenario 1: Immediate text filtering
 
@@ -65,10 +68,10 @@ Complete all scenarios after automated validation passes.
 
 ### Scenario 2: Image metadata filtering
 
-1. Populate history with image clips that already contain local metadata.
-2. Search using terms present in thumbnail descriptions or user-visible image metadata labels.
+1. Populate history with image clips that already contain allowed searchable image metadata.
+2. Search using terms present in thumbnail descriptions, image format labels, or pixel dimensions.
 3. Confirm matching images remain visible and non-matching images disappear.
-4. Confirm no OCR-only content, CloudKit data, or remote metadata is searchable.
+4. Confirm file name, file path, hash, binary contents, OCR text, AI-generated metadata, CloudKit data, and remote metadata are not searchable.
 
 ### Scenario 3: Ordering preservation
 
@@ -105,11 +108,16 @@ Complete all scenarios after automated validation passes.
 
 ## 6. Offline Validation
 
-Validation must explicitly cover disconnected operation:
+Offline/local-first validation has two required parts:
+
+- Automated validation is mandatory and must be satisfied by the unit, UI, and full-regression evidence in Section 3. It verifies offline/local-only behavior, search continues working with the network disconnected, clipboard monitoring continues, results remain identical, and no CloudKit or remote dependency exists.
+- Manual validation must execute the disconnected-network scenario below as final confirmation. This scenario supplements the automated validation and must not replace it.
+
+Manual final confirmation must explicitly cover disconnected operation:
 
 1. Disconnect the macOS test environment from the network.
 2. Launch the app and run the same local text and image search scenarios used in connected validation.
-3. Confirm search results are identical to connected behavior for the same locally stored clips and local metadata.
+3. Confirm search results are identical to connected behavior for the same locally stored clips and allowed searchable image metadata.
 4. Confirm clipboard monitoring and automatic capture continue while offline, including active-search live updates.
 5. Confirm the app does not require CloudKit, remote search, remote metadata, or any other remote service to load history, filter results, or update visible matches.
 6. Confirm no offline-only degradation appears in native search interactions, including keyboard, mouse, trackpad, and Magic Mouse native swipe behavior where supported.
@@ -117,6 +125,8 @@ Validation must explicitly cover disconnected operation:
 ## 7. SonarQube Evidence Requirements
 
 Feature 010 is not release-ready until SonarQube or SonarCloud evidence is recorded.
+
+Execution note: accepted evidence sources are CI SonarQube analysis, the SonarCloud dashboard, a self-hosted SonarQube dashboard, or a local scanner report when project configuration exists. Accepted evidence artifacts are a dashboard URL, dashboard screenshot, CI artifact, or local report. These identify execution sources and artifact forms only; they do not weaken the mandatory SonarQube Project Health Gate or any zero-new-issue, coverage, duplication, or false-positive documentation requirement below.
 
 Required evidence:
 

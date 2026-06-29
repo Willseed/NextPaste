@@ -7,6 +7,12 @@
 
 Clipboard history search introduces no new persisted SwiftData entity. The feature is a derived filtering layer over the existing `ClipItem` model and the existing ordered history query.
 
+## Searchable Image Metadata Terminology
+
+Allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions. Explicitly excluded from search: file name, file path, hash, binary contents, OCR text, and AI-generated metadata.
+
+The term `allowed searchable image metadata` means only that field set and those exclusions throughout this feature.
+
 ## Entities
 
 ### 1. Search Query
@@ -37,7 +43,7 @@ Clipboard history search introduces no new persisted SwiftData entity. The featu
 
 **Type**: Existing persisted SwiftData model (`ClipItem`)
 
-**Relevant existing fields**:
+**Filtering and ordering-relevant existing fields**:
 
 - `id: UUID`
 - `contentType: String`
@@ -46,18 +52,22 @@ Clipboard history search introduces no new persisted SwiftData entity. The featu
 - `updatedAt: Date`
 - `isPinned: Bool`
 - `pinnedSortOrder: Int`
-- `imageUTType: String?`
-- `imageWidth: Int?`
-- `imageHeight: Int?`
-- `thumbnailDescription: String?`
+- `imageUTType: String?` — used only to derive the image format label
+- `imageWidth: Int?` — used only to derive pixel dimensions
+- `imageHeight: Int?` — used only to derive pixel dimensions
+- `thumbnailDescription: String?` — used as the thumbnail description
+
+**Explicitly excluded existing/internal fields**:
+
 - `imageFilename: String?`
 - `imageHash: String?`
+- any file path or binary contents associated with the stored image asset
 
 **Search validation rules**:
 
 - Text clips are searchable by `textContent`
-- Image clips are searchable only by existing local metadata already stored for the clip
-- Internal-only fields such as hashes and filenames are not part of the approved user-facing search surface
+- Image clips are searchable only by allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions
+- File name, file path, hash, binary contents, OCR text, and AI-generated metadata are not part of the approved user-facing search surface
 - Search does not mutate or persist the clip model
 
 ### 3. Searchable Clip Projection
@@ -73,7 +83,7 @@ Clipboard history search introduces no new persisted SwiftData entity. The featu
 **Derived rules**:
 
 - For text clips, `searchableText` contains `textContent`
-- For image clips, `searchableText` contains user-meaningful local metadata such as thumbnail description, image format label, and dimension label
+- For image clips, `searchableText` contains only allowed searchable image metadata: thumbnail description, image format label, and pixel dimensions
 - Projection generation must be synchronous, local, and cheap enough for live typing on the current history scale
 
 ### 4. Filtered Result Set
@@ -128,4 +138,4 @@ Search applies as a filter on top of that order only.
 
 ## Persistence Impact
 
-No SwiftData schema migration is required for the approved design. The feature relies on existing `ClipItem` fields and derived view logic only.
+No SwiftData schema migration is required for the approved design. The feature relies on existing `ClipItem` fields and derived view logic only for text content and allowed searchable image metadata.
