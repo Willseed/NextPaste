@@ -2,11 +2,11 @@
 
 **Input**: Design documents from `/specs/010-clipboard-history-search/`
 
-**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/history-search-ui-contract.md`, `.specify/memory/constitution.md`
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/history-search-ui-contract.md`, `contracts/validation-and-sonar-contract.md`, `.specify/memory/constitution.md`
 
-**Validation Sources**: `specs/010-clipboard-history-search/quickstart.md` and `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md`
+**Validation Sources**: `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` is the authoritative source for the automated validation matrix, regression matrix, manual validation, offline validation, and SonarQube evidence requirements. `specs/010-clipboard-history-search/quickstart.md` is referenced for command invocations plus validation-reference links only. `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` remains the behavioral/UI contract.
 
-**Tests**: Automated unit/UI/regression coverage is required by the constitution. Manual accessibility/native-interaction validation and SonarQube evidence capture are required before completion.
+**Tests**: Automated unit/UI/regression coverage is required by the constitution. Except for the narrow compile-enabling seams in Phase 2, automated tests must be written and observed failing before production behavior implementation. Manual native-interaction, offline/local-first, and SonarQube validation must be completed per `contracts/validation-and-sonar-contract.md` before completion.
 
 ## Requirement Traceability
 
@@ -16,66 +16,66 @@
 | --- | --- |
 | FR-001 | T002, T003, T007, T008, T009 |
 | FR-002 | T007, T009 |
-| FR-003 | T004, T006, T009 |
-| FR-004 | T004, T006, T009, T015 |
-| FR-005 | T004, T006, T009 |
+| FR-003 | T006, T009 |
+| FR-004 | T001, T004, T006, T009 |
+| FR-005 | T006, T009 |
 | FR-006 | T010, T011, T012 |
 | FR-007 | T010, T011, T012 |
 | FR-008 | T010, T011, T012 |
 | FR-009 | T005, T010, T011, T012 |
 | FR-010 | T009, T010, T011, T012 |
-| FR-011 | T013, T014, T015, T016, T017, T019 |
+| FR-011 | T002, T014, T016, T017, T019 |
 | FR-012 | T013, T015, T016, T019 |
 | FR-013 | T013, T015, T016, T019 |
 | FR-014 | T013, T015, T016, T019 |
-| FR-015 | T004, T006, T009, T013, T015, T018 |
+| FR-015 | T001, T002, T004, T006, T009, T015, T016, T019, T020 |
 | FR-016 | T004, T006, T009 |
-| FR-017 | T003, T005, T007, T008, T009, T012 |
-| FR-018 | T003, T005, T008, T009, T011, T012, T017, T020 |
-| FR-019 | T012, T013, T014, T015, T016, T017, T019 |
-| FR-020 | T002, T003, T005, T007, T008, T009, T011, T012, T014, T015, T016, T017, T019, T020 |
-| FR-021 | T004, T009, T016 |
+| FR-017 | T003, T005, T007, T008, T009 |
+| FR-018 | T003, T005, T007, T008, T009, T011, T012, T017, T020 |
+| FR-019 | T002, T014, T016, T017, T019, T020 |
+| FR-020 | T002, T005, T014, T016, T017, T019, T020 |
+| FR-021 | T003, T004, T007, T009, T012, T016 |
 | FR-022 | T001, T002, T006, T007, T008, T010, T011, T013, T014, T015, T017, T018, T019 |
-| FR-023 | T001, T002, T005, T014, T017, T020 |
-| FR-024 | T018, T021, T022 |
+| FR-023 | T001, T002, T005, T014, T017, T019, T020 |
+| FR-024 | T021, T022 |
 
 ### Success Criteria
 
 | Success Criterion | Covered By |
 | --- | --- |
-| SC-001 | T004, T006, T007, T009, T018 |
-| SC-002 | T002, T004, T006, T007, T009, T018 |
+| SC-001 | T001, T006, T007, T009, T018 |
+| SC-002 | T006, T007, T009, T018 |
 | SC-003 | T010, T011, T012, T018 |
 | SC-004 | T010, T011, T012, T018 |
 | SC-005 | T005, T010, T011, T012, T018 |
 | SC-006 | T010, T011, T012, T018 |
-| SC-007 | T014, T015, T016, T017, T018, T019 |
-| SC-008 | T013, T015, T016, T018, T019 |
-| SC-009 | T004, T006, T009, T013, T015, T016, T018, T019 |
-| SC-010 | T003, T005, T008, T011, T012, T017, T020 |
-| SC-011 | T001, T002, T005, T014, T017, T020 |
-| SC-012 | T018, T021, T022 |
+| SC-007 | T014, T016, T017, T019, T020 |
+| SC-008 | T013, T015, T016, T019, T020 |
+| SC-009 | T004, T006, T009, T015, T016, T019, T020 |
+| SC-010 | T003, T005, T007, T008, T011, T012, T017, T020 |
+| SC-011 | T001, T002, T014, T017, T019, T020 |
+| SC-012 | T021, T022 |
 
 ## Phase 1: Setup (Shared Test Infrastructure)
 
 **Purpose**: Prepare shared fixtures and robots so search changes can be tested without duplicating helper logic.
 
-- [ ] T001 [P] Add search-specific fixtures for text, image metadata, empty-result, and filtered-row regression scenarios in `NextPasteUITests/UITestFixtures.swift` (FR-022, FR-023, SC-001, SC-005, SC-011)
-- [ ] T002 [P] Add native search entry, clear-search, and filtered-row lookup helpers in `NextPasteUITests/HistoryRobot.swift` and `NextPasteUITests/RowRobot.swift` (FR-001, FR-020, FR-022, FR-023, SC-002, SC-007, SC-011)
+- [ ] T001 [P] Add search-specific fixtures for text, image metadata, disconnected-network/offline parity, empty-result, and filtered-row regression scenarios in `NextPasteUITests/UITestFixtures.swift` (FR-004, FR-015, FR-022, FR-023, SC-001, SC-009, SC-011)
+- [ ] T002 [P] Add native search entry, clear-search, filtered-row lookup, offline launch, and native interaction helpers for swipe/context-menu/keyboard coverage in `NextPasteUITests/HistoryRobot.swift` and `NextPasteUITests/RowRobot.swift` (FR-001, FR-011, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-009, SC-011)
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+## Phase 2: Foundational (Compile-Enabling Seams)
 
-**Purpose**: Establish the shared search infrastructure that all story work depends on.
+**Purpose**: Establish the smallest production seams needed so failing automated tests can compile against stable search hooks.
 
-**⚠️ CRITICAL**: Complete this phase before starting user story implementation.
+**TDD Exception Justification**: These tasks are the only planned pre-test implementation work. Swift/Xcode UI and unit tests cannot compile meaningful red-phase assertions until the app exposes a stable native toolbar search host, a configurable empty-search presentation seam, and a minimal local-only searchable metadata API surface. No user-story behavior is considered complete in this phase; actual feature behavior still waits on the failing test tasks in later phases.
 
-- [ ] T003 [P] Refactor toolbar chrome to keep only title, settings, and trailing actions in `NextPaste/DesignSystem/Components/AppToolbar.swift` and retire duplicate custom search usage in `NextPaste/DesignSystem/Components/SearchBar.swift` for a single native search surface (FR-001, FR-017, FR-018, FR-020, SC-010)
-- [ ] T004 [P] Add local-only searchable metadata helpers for text clips, image metadata labels, and case-insensitive substring matching in `NextPaste/ClipItem.swift` (FR-003, FR-004, FR-005, FR-015, FR-016, FR-021, SC-001, SC-002, SC-009)
-- [ ] T005 [P] Add configurable history-empty versus search-empty presentation and accessibility copy in `NextPaste/DesignSystem/Components/EmptyStateView.swift` (FR-009, FR-017, FR-018, FR-020, FR-023, SC-005, SC-010, SC-011)
+- [ ] T003 [P] Expose a single native-toolbar search host seam in `NextPaste/DesignSystem/Components/AppToolbar.swift` and retire duplicate custom search usage in `NextPaste/DesignSystem/Components/SearchBar.swift` so automated tests target one Apple-native search surface only (FR-001, FR-017, FR-018, FR-021, SC-010)
+- [ ] T004 [P] Add the minimal local-only searchable metadata API surface in `NextPaste/ClipItem.swift` needed for red-phase matching tests, explicitly excluding CloudKit/remote dependencies and background indexing from the seam (FR-004, FR-015, FR-016, FR-021, SC-001, SC-009)
+- [ ] T005 [P] Add configurable history-empty versus search-empty presentation seams and accessibility-copy hooks in `NextPaste/DesignSystem/Components/EmptyStateView.swift` so failing empty-state and accessibility assertions can compile (FR-009, FR-017, FR-018, FR-020, FR-023, SC-005, SC-010, SC-011)
 
-**Checkpoint**: Shared search helpers, toolbar structure, and empty-state primitives are ready.
+**Checkpoint**: Compile-enabling seams exist, but no search behavior is complete until the failing tests in Phases 3-5 are added.
 
 ---
 
@@ -87,13 +87,13 @@
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T006 [P] [US1] Add unit tests for case-insensitive substring matching, text clip search, and image metadata search in `NextPasteTests/ClipItemTests.swift` (FR-003, FR-004, FR-005, FR-015, FR-016, FR-022, SC-001, SC-002, SC-009)
-- [ ] T007 [P] [US1] Add UI tests for the native toolbar search field and live typing updates in `NextPasteUITests/HistoryListUITests.swift` (FR-001, FR-002, FR-017, FR-020, FR-022, SC-001, SC-002)
-- [ ] T008 [P] [US1] Add visual-identity assertions for one Apple-native search field with no extra filtering controls in `NextPasteUITests/VisualIdentityUITests.swift` (FR-001, FR-017, FR-018, FR-020, FR-022, SC-010)
+- [ ] T006 [P] [US1] Add unit tests for case-insensitive substring matching, text clip search, image metadata search, and local-only/no-remote matching boundaries in `NextPasteTests/ClipItemTests.swift` (FR-003, FR-004, FR-005, FR-015, FR-016, FR-022, SC-001, SC-002, SC-009)
+- [ ] T007 [P] [US1] Add UI tests for the native toolbar search field, live typing updates, and same-refresh-cycle result changes in `NextPasteUITests/HistoryListUITests.swift` (FR-001, FR-002, FR-017, FR-018, FR-021, FR-022, SC-001, SC-002, SC-010)
+- [ ] T008 [P] [US1] Add visual-identity assertions for one Apple-native search field with no extra filtering controls in `NextPasteUITests/VisualIdentityUITests.swift` (FR-001, FR-017, FR-018, FR-022, SC-010)
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement `.searchable` query binding and ordered local filtering over `visibleClips` in `NextPaste/HomeView.swift` (FR-001, FR-002, FR-003, FR-004, FR-005, FR-010, FR-015, FR-016, FR-017, FR-018, FR-020, FR-021, SC-001, SC-002, SC-009, SC-010)
+- [ ] T009 [US1] Implement `.searchable` query binding and ordered local filtering over `visibleClips` in `NextPaste/HomeView.swift` using only local text content and local image metadata with no CloudKit/remote dependency or background indexing (FR-001, FR-002, FR-003, FR-004, FR-005, FR-010, FR-015, FR-016, FR-017, FR-018, FR-021, SC-001, SC-002, SC-009, SC-010)
 
 **Checkpoint**: User Story 1 is functional and independently testable.
 
@@ -108,11 +108,11 @@
 ### Tests for User Story 2 ⚠️
 
 - [ ] T010 [P] [US2] Add unit tests for empty-query restore, empty-result state, and pinned/newest ordering preservation in `NextPasteTests/ClipHistoryTests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-022, SC-003, SC-004, SC-005, SC-006)
-- [ ] T011 [P] [US2] Add UI tests for clearing search, dedicated empty-search state, and pinned-first filtered ordering in `NextPasteUITests/HistoryListUITests.swift` and `NextPasteUITests/VisualIdentityUITests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-020, FR-022, SC-003, SC-004, SC-005, SC-006, SC-010)
+- [ ] T011 [P] [US2] Add UI tests for clearing search, dedicated empty-search state, pinned-first filtered ordering, and unchanged native presentation in `NextPasteUITests/HistoryListUITests.swift` and `NextPasteUITests/VisualIdentityUITests.swift` (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-022, SC-003, SC-004, SC-005, SC-006, SC-010)
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Route empty-query full-history, filtered-results, and no-match search-empty states in `NextPaste/HomeView.swift` and `NextPaste/DesignSystem/Components/EmptyStateView.swift` without re-sorting clips (FR-006, FR-007, FR-008, FR-009, FR-010, FR-017, FR-018, FR-019, FR-020, SC-003, SC-004, SC-005, SC-006, SC-010)
+- [ ] T012 [US2] Route empty-query full-history, filtered-results, and no-match search-empty states in `NextPaste/HomeView.swift` and `NextPaste/DesignSystem/Components/EmptyStateView.swift` without re-sorting clips or introducing a new search UI pattern (FR-006, FR-007, FR-008, FR-009, FR-010, FR-018, FR-021, SC-003, SC-004, SC-005, SC-006, SC-010)
 
 **Checkpoint**: User Stories 1 and 2 both work and can be tested independently.
 
@@ -120,19 +120,20 @@
 
 ## Phase 5: User Story 3 - Keep capture and row actions working during search (Priority: P3)
 
-**Goal**: Preserve copy, pin/unpin, delete, swipe, context menu, keyboard, VoiceOver, and clipboard monitoring behavior while search is active.
+**Goal**: Preserve copy, pin/unpin, delete, swipe, context menu, keyboard, VoiceOver, drag-and-drop unchanged, multi-selection unchanged, and clipboard monitoring behavior while search is active.
 
-**Independent Test**: Activate search, exercise row actions on visible results, then capture matching and non-matching clips and confirm filtered results update correctly without breaking existing interactions.
+**Independent Test**: Activate search, exercise filtered-row copy, pin/unpin, delete, context menu, keyboard, VoiceOver, and native swipe actions (including Magic Mouse swipe behavior where macOS exposes the same native support), confirm drag-and-drop plus multi-selection stay unchanged/not applicable, then capture matching and non-matching clips and repeat the flow with network access disconnected to confirm identical local behavior.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T013 [P] [US3] Add unit tests for live filtered updates after matching capture, non-matching capture, pin/unpin reorder, and delete in `NextPasteTests/ClipHistoryTests.swift` (FR-011, FR-012, FR-013, FR-014, FR-019, FR-022, SC-007, SC-008, SC-009)
-- [ ] T014 [P] [US3] Add filtered text-row action regression coverage for copy, pin/unpin, delete, swipe affordances, context menu behavior, keyboard reachability, and VoiceOver labels in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-011, FR-019, FR-020, FR-022, FR-023, SC-007, SC-011)
-- [ ] T015 [P] [US3] Add filtered image-row action and active-search auto-capture regression coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` and `NextPasteUITests/ClipboardAutoCaptureUITests.swift` (FR-004, FR-011, FR-012, FR-013, FR-014, FR-019, FR-020, FR-022, SC-007, SC-008, SC-009)
+- [ ] T013 [P] [US3] Add unit tests for live filtered updates after matching capture, non-matching capture, pin/unpin reorder, and delete in `NextPasteTests/ClipHistoryTests.swift` (FR-012, FR-013, FR-014, FR-022, SC-007, SC-008)
+- [ ] T014 [P] [US3] Add filtered text-row action regression coverage for copy, pin/unpin, delete, native swipe affordances, context menu behavior, keyboard reachability, VoiceOver labels, and unchanged drag-and-drop/multi-selection expectations in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-011, FR-019, FR-020, FR-022, FR-023, SC-007, SC-011)
+- [ ] T015 [P] [US3] Add active-search auto-capture and disconnected-network/local-only regression coverage in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` and `NextPasteUITests/ClipboardAutoCaptureUITests.swift`, proving matching captures appear immediately, non-matching captures stay hidden, clipboard monitoring continues offline, and no CloudKit/remote dependency is required (FR-012, FR-013, FR-014, FR-015, FR-022, SC-008, SC-009)
+- [ ] T017 [P] [US3] Update filtered-state accessibility/value parity assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` so filtered rows preserve accessibility behavior while drag-and-drop and multi-selection remain unchanged/not applicable (FR-011, FR-018, FR-019, FR-020, FR-022, FR-023, SC-007, SC-010, SC-011)
 
 ### Implementation for User Story 3
 
-- [ ] T016 [US3] Keep filtered results live across clipboard capture, pin/unpin, delete, and copy-feedback updates in `NextPaste/HomeView.swift` while reusing existing row interactions unchanged (FR-011, FR-012, FR-013, FR-014, FR-019, FR-020, FR-021, SC-007, SC-008, SC-009)
+- [ ] T016 [US3] Keep filtered results live across clipboard capture, pin/unpin, delete, and copy-feedback updates in `NextPaste/HomeView.swift` while preserving existing native row interactions, leaving drag-and-drop unchanged/not applicable, leaving multi-selection unchanged/not applicable, and maintaining local-only behavior when offline (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-021, SC-007, SC-008, SC-009)
 
 **Checkpoint**: All user stories are functional and independently testable.
 
@@ -140,14 +141,13 @@
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 
-**Purpose**: Finish regression, manual validation, and SonarQube evidence capture required by the constitution and quickstart.
+**Purpose**: Finish automated command execution, contract-owned regression/manual/offline validation, and SonarQube evidence capture required by the constitution.
 
-- [ ] T017 Update filtered-state accessibility/value parity assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` (FR-011, FR-018, FR-019, FR-020, FR-022, FR-023, SC-007, SC-010, SC-011)
-- [ ] T018 Execute build, unit-test, UI-test, and full regression commands from `specs/010-clipboard-history-search/quickstart.md` against `NextPaste.xcodeproj` (FR-022, FR-024, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-008, SC-009, SC-012)
-- [ ] T019 Execute regression validation for clipboard auto-capture, clipboard monitoring, native swipe actions, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, and multi-selection unchanged/not applicable from `specs/010-clipboard-history-search/quickstart.md` (FR-011, FR-012, FR-019, FR-020, FR-022, SC-007, SC-008, SC-009)
-- [ ] T020 Execute manual large-history, trackpad, keyboard-navigation, and VoiceOver search validation from `specs/010-clipboard-history-search/quickstart.md` and `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` (FR-018, FR-020, FR-023, SC-010, SC-011)
-- [ ] T021 Run SonarQube or SonarCloud analysis and verify no new issues plus duplication-gate compliance using `specs/010-clipboard-history-search/quickstart.md` (FR-024, SC-012)
-- [ ] T022 Record SonarQube evidence and any false-positive justification in `specs/010-clipboard-history-search/sonarqube-evidence.md` (FR-024, SC-012)
+- [ ] T018 Execute the build, unit-test, UI-test, and full-regression commands from `specs/010-clipboard-history-search/quickstart.md`, then evaluate the results against the automated validation matrix in `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` (FR-022, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006)
+- [ ] T019 Execute the regression matrix from `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` for clipboard auto-capture, clipboard monitoring, native swipe actions including Magic Mouse behavior where macOS exposes native swipe support, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, multi-selection unchanged/not applicable, and disconnected-network local-only behavior with no CloudKit/remote dependency (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-008, SC-009, SC-011)
+- [ ] T020 Execute the manual validation scenarios from `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` and `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` for large history, keyboard navigation, mouse, trackpad, VoiceOver, Magic Mouse native swipe behavior where available, and offline identical local search behavior while recording drag-and-drop and multi-selection as unchanged/not applicable (FR-015, FR-018, FR-019, FR-020, FR-023, SC-009, SC-010, SC-011)
+- [ ] T021 Run the SonarQube or SonarCloud analysis required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` and verify the Project Health gate plus coverage/duplication requirements remain compliant with no new unresolved issues (FR-024, SC-012)
+- [ ] T022 Record SonarQube evidence and any false-positive justification in `specs/010-clipboard-history-search/sonarqube-evidence.md` exactly as required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` (FR-024, SC-012)
 
 ---
 
@@ -155,11 +155,11 @@
 
 ### Phase Dependencies
 
-- **Phase 1 → Phase 2**: Setup helpers should land first so test work has shared fixtures and robots.
-- **Phase 2 → Phase 3**: Foundational toolbar, empty-state, and matching helpers block story work.
+- **Phase 1 → Phase 2**: Setup helpers land first so compile-enabling seams can be exercised by shared test infrastructure.
+- **Phase 2 → Phase 3**: Compile-enabling seams must exist before US1 tests can compile; behavior still starts with failing tests, not with Phase 2.
 - **Phase 3 → Phase 4**: User Story 2 depends on the core search surface from User Story 1.
 - **Phase 3 → Phase 5**: User Story 3 depends on the active filtered-list behavior from User Story 1.
-- **Phase 4 + Phase 5 → Phase 6**: Polish begins only after all desired stories are complete.
+- **Phase 4 + Phase 5 → Phase 6**: Cross-cutting validation begins only after all desired stories are complete.
 
 ### User Story Dependencies
 
@@ -167,9 +167,13 @@
 - **US2 (P2)**: Depends on US1 search behavior being present.
 - **US3 (P3)**: Depends on US1 search behavior being present; it can proceed in parallel with US2 after US1 is stable.
 
-### Within Each User Story
+### Test-First Rule and Allowed Exception
 
-- Write tests first and confirm they fail before implementation.
+- Treat T003-T005 as the only constitution-justified pre-test exceptions; they create compile-enabling seams only.
+- After Phase 2, write and observe failing automated tests before production behavior work:
+  - US1: T006-T008 before T009
+  - US2: T010-T011 before T012
+  - US3: T013-T015 and T017 before T016
 - Do not run tasks in parallel when they edit the same file.
 - Keep `NextPaste/HomeView.swift` tasks sequential across T009, T012, and T016.
 - Keep `NextPasteUITests/HistoryListUITests.swift` tasks sequential across T007 and T011.
@@ -181,8 +185,8 @@
 - **Foundational**: T003, T004, and T005 can run in parallel after Setup.
 - **US1**: T006, T007, and T008 can run in parallel before T009.
 - **US2**: T010 and T011 can run in parallel before T012.
-- **US3**: T013, T014, and T015 can run in parallel before T016.
-- **Polish**: T018-T022 are sequential validation/evidence tasks after code completion.
+- **US3**: T013, T014, T015, and T017 can run in parallel before T016.
+- **Polish**: T018 should run before T019-T022; T019 and T020 may share evidence context but should remain sequential to avoid mixing regression and manual-offline recording; T021-T022 follow validation completion.
 
 ## Parallel Example: User Story 1
 
@@ -214,6 +218,7 @@ Run together:
 - T013 in NextPasteTests/ClipHistoryTests.swift
 - T014 in NextPasteUITests/ClipRowActionsUITests.swift
 - T015 in NextPasteUITests/ClipboardImageRowActionsUITests.swift and NextPasteUITests/ClipboardAutoCaptureUITests.swift
+- T017 in NextPasteTests/ClipboardRowPresentationTests.swift
 
 Then complete:
 - T016 in NextPaste/HomeView.swift
@@ -221,12 +226,12 @@ Then complete:
 
 ## Validation Checklist
 
-- [ ] Unit tests from `specs/010-clipboard-history-search/quickstart.md` pass.
-- [ ] UI tests from `specs/010-clipboard-history-search/quickstart.md` pass.
-- [ ] Full regression suite from `specs/010-clipboard-history-search/quickstart.md` passes.
-- [ ] Manual validation covers large history, trackpad interaction, keyboard navigation, and VoiceOver while searching.
-- [ ] Regression validation confirms clipboard monitoring, swipe actions, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, and multi-selection unchanged/not applicable.
-- [ ] SonarQube evidence is captured and any false positives are justified.
+- [ ] Build, unit-test, UI-test, and full-regression commands from `specs/010-clipboard-history-search/quickstart.md` pass.
+- [ ] Automated validation results satisfy the matrix in `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`.
+- [ ] Regression validation confirms clipboard monitoring, clipboard auto-capture, native swipe actions including Magic Mouse behavior where supported, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, and multi-selection unchanged/not applicable.
+- [ ] Manual validation covers large history, keyboard navigation, mouse, trackpad, VoiceOver, and Magic Mouse native swipe behavior where available while searching.
+- [ ] Offline validation confirms disconnected-network operation produces identical local search behavior, clipboard monitoring/capture continue, and no CloudKit or other remote dependency is required.
+- [ ] SonarQube evidence is captured and any false positives are justified exactly as required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`.
 
 ## Implementation Strategy
 
@@ -234,25 +239,28 @@ Then complete:
 
 1. Complete Phase 1.
 2. Complete Phase 2.
-3. Complete Phase 3 (US1).
+3. Complete Phase 3 (US1) with failing tests before T009.
 4. Validate US1 independently before starting later stories.
 
 ### Incremental Delivery
 
 1. Deliver US1 for native local search.
 2. Add US2 for ordering and empty-state consistency.
-3. Add US3 for live updates and interaction preservation.
-4. Finish with Phase 6 regression, manual validation, and SonarQube evidence.
+3. Add US3 for live updates, interaction preservation, and offline/local-first regression coverage.
+4. Finish with Phase 6 automated, regression, manual, offline, and SonarQube validation.
 
 ### Suggested Team Split
 
 1. One developer handles T003-T005.
-2. After Phase 2, separate developers can take US1 test tasks (T006-T008), US2 test tasks (T010-T011 after US1), and US3 test tasks (T013-T015 after US1).
+2. After Phase 2, separate developers can take US1 test tasks (T006-T008), US2 test tasks (T010-T011 after US1), and US3 test tasks (T013-T015 and T017 after US1).
 3. Keep all `HomeView.swift` implementation tasks with one owner to avoid merge conflicts.
 
 ## Notes
 
-- `quickstart.md` is the authoritative source for validation commands, manual validation, and SonarQube evidence requirements.
+- `contracts/validation-and-sonar-contract.md` is the authoritative source for validation ownership, the automated validation matrix, the regression matrix, manual validation, offline validation, and SonarQube evidence requirements.
+- `quickstart.md` is the authoritative source for command invocations plus validation-reference links only.
 - `contracts/history-search-ui-contract.md` is the authoritative source for behavioral and UI contract requirements.
+- Magic Mouse coverage is required only where macOS exposes the same native swipe support as the existing row interactions.
+- Drag-and-drop and multi-selection remain unchanged/not applicable for Feature 010 and must be recorded that way during regression/manual validation.
 - Do not add OCR search, AI semantic search, CloudKit search, background indexing, search suggestions, saved searches, tag search, wildcard search, regex search, fuzzy search, or third-party search frameworks.
 - All task descriptions include inline FR/SC traceability and exact file paths.

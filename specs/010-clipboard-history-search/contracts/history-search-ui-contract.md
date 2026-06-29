@@ -3,6 +3,8 @@
 **Feature**: Clipboard History Search  
 **Date**: 2026-06-29
 
+Validation ownership for automated coverage, regression matrix, manual validation, offline validation, and SonarQube evidence lives in [validation-and-sonar-contract.md](validation-and-sonar-contract.md). This document defines the user-visible behavior contract only.
+
 ## 1. Search Input Contract
 
 - The app exposes exactly one search field for clipboard history.
