@@ -38,12 +38,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 
 Launch the app with populated text and image rows before running manual validation.
 
-Record manual results and evidence directly in the matrix defined in `contracts/validation-and-sonar-contract.md`.
-
-When executing the manual pass, ensure you cover:
-- trackpad gesture scenarios
-- Magic Mouse scenarios when hardware is available
-- regression and accessibility checks required by the validation contract
+Record manual results and evidence directly in the matrix defined in `contracts/validation-and-sonar-contract.md`, which is the canonical source for required scenarios and validation details.
 
 ## SonarQube Evidence
 

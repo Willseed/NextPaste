@@ -31,26 +31,9 @@ Applies to the clipboard history list in `HomeView` for both text and image rows
    - iconography
    - motion language
 
-## Interaction Validation Matrix
+## Validation Reference
 
-| Scenario | Input method | Expected outcome |
-| --- | --- | --- |
-| Leading action position | Trackpad or Magic Mouse | The pin-toggle action always appears in the same leading swipe position |
-| Unpinned row right swipe | Trackpad | Reveals **Pin** in the stable leading action slot |
-| Pinned row right swipe | Trackpad | Reveals **Unpin** in the stable leading action slot |
-| Left swipe | Trackpad | Reveals **Delete** in the trailing action slot |
-| Unpinned row right swipe | Magic Mouse when supported | Reveals **Pin** in the stable leading action slot |
-| Pinned row right swipe | Magic Mouse when supported | Reveals **Unpin** in the stable leading action slot |
-| Left swipe | Magic Mouse when supported | Reveals **Delete** in the trailing action slot |
-| Full swipe | Trackpad or Magic Mouse when supported | Reveals the action but does not auto-execute it |
-| Sub-threshold swipe | Trackpad or Magic Mouse when supported | Snaps back and reveals nothing |
-| Deliberate horizontal swipe | Trackpad or Magic Mouse when supported | Reveals the swipe action without triggering copy |
-| Primarily vertical gesture | Trackpad or Magic Mouse when supported | Continues vertical scrolling and reveals no swipe action |
-| Normal click/tap | Trackpad, Magic Mouse click, or mouse | Runs the existing copy behavior |
-| Non-gesture mouse | External mouse without gesture support | Preserves click behavior and does not emulate swipe |
-| Keyboard shortcuts | Keyboard | Existing non-swipe keyboard access remains available |
-| VoiceOver actions | VoiceOver | Existing row content and non-swipe actions remain available |
-| Context menu coexistence | Any available pointing device | No context-menu change is introduced or required |
+Validation scenarios, manual evidence tracking, and SonarQube requirements are owned by `contracts/validation-and-sonar-contract.md`. This interaction contract remains the source of truth for the swipe semantics those validations must preserve.
 
 ## Implementation Notes
 

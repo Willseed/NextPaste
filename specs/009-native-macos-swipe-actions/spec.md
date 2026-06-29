@@ -155,28 +155,26 @@ mouse interactions, any current context-menu baseline, and list ordering still m
 - **FR-006**: The system MUST preserve the existing delete behavior so that deleting through a
   revealed swipe action removes only the targeted row.
 - **FR-007**: The system MUST preserve existing keyboard shortcuts and keyboard navigation for the
-  clipboard-history list.
+  clipboard-history list, and Pin/Unpin plus Delete MUST remain available through those existing
+  keyboard interaction methods without requiring a swipe gesture.
 - **FR-008**: The system MUST preserve existing accessibility behavior, including VoiceOver access
-  to row content and available row actions.
-- **FR-008a**: The system MUST preserve existing VoiceOver actions unchanged; swipe actions are
-  additive and MUST NOT replace, remove, or redefine any current VoiceOver-exposed row actions.
+  to row content and available row actions; swipe actions are additive and MUST NOT replace,
+  remove, or redefine any current VoiceOver-exposed row actions, and Pin/Unpin plus Delete MUST
+  remain available through existing accessibility actions without requiring a swipe gesture.
 - **FR-009**: The system MUST NOT introduce or require context-menu changes for clipboard-history
-  rows as part of this feature.
-- **FR-009b**: The system MUST preserve any existing row context menus unchanged and MUST NOT add,
-  remove, or redefine context-menu entries as part of this feature.
-- **FR-009a**: Swipe actions SHALL be additive only; Pin/Unpin and Delete MUST remain available
-  through existing platform-native interaction methods, including keyboard shortcuts, VoiceOver
-  accessibility actions, and any current context-menu baseline, without requiring a swipe gesture.
-- **FR-010**: The system MUST preserve existing mouse-based row interactions.
-- **FR-010a**: The system MUST preserve drag-and-drop behavior unchanged and MUST NOT introduce,
-  remove, or redefine drag-and-drop interactions as part of this feature.
-- **FR-010b**: The system MUST preserve multi-selection behavior unchanged and MUST NOT introduce,
-  remove, or redefine multi-selection interactions as part of this feature.
+  rows as part of this feature; any existing row context menus MUST remain unchanged, the feature
+  MUST NOT add, remove, or redefine context-menu entries, and any existing context-menu baseline
+  for Pin/Unpin or Delete MUST remain available without requiring a swipe gesture.
+- **FR-010**: The system MUST preserve existing mouse-based row interactions, drag-and-drop
+  behavior, and multi-selection behavior unchanged, and MUST NOT introduce, remove, or redefine
+  those non-swipe interaction models as part of this feature.
 - **FR-011**: The system MUST preserve the current visual design language for history rows,
   including design tokens, typography, spacing, colors, corner radius, motion, and icons.
 - **FR-012**: The system MUST follow Apple Human Interface Guidelines for macOS list interactions.
-- **FR-013**: The system MUST use native macOS interaction behavior for swipe actions and MUST NOT
-  replace standard platform interaction patterns with a custom gesture model.
+- **FR-013**: The system MUST use native macOS interaction behavior and Apple-native interaction
+  APIs for swipe actions and related row interactions, and MUST NOT replace standard platform
+  interaction patterns with a custom gesture model or use third-party gesture libraries or
+  third-party interaction frameworks for this feature.
 - **FR-013a**: The system MUST implement row swipe interactions using SwiftUI `List` row
   `.swipeActions` and MUST NOT add custom horizontal drag gesture handling for swipe-action
   reveal behavior.
@@ -194,9 +192,6 @@ mouse interactions, any current context-menu baseline, and list ordering still m
   copy.
 - **FR-013f**: The system MUST preserve primarily vertical gestures as vertical scrolling of the
   history list and MUST NOT reveal swipe actions during that scrolling gesture.
-- **FR-013g**: The system MUST use only Apple-native interaction APIs for swipe-action behavior and
-  related row interactions; third-party gesture libraries and third-party interaction frameworks are
-  not permitted for this feature.
 - **FR-014**: The clipboard-driven processing flow MUST remain unchanged for this feature:
   `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
 - **FR-015**: The feature MUST remain local-first and fully available without network access because
