@@ -34,8 +34,8 @@
 
 **Purpose**: Confirm the task scope is the narrow row direction fix and identify the exact production/test files before adding tests.
 
-- [ ] T001 Review current swipe direction ownership in `NextPaste/HomeView.swift`, `NextPasteUITests/RowRobot.swift`, and `specs/008-restore-swipe-actions/contracts/row-swipe-actions-contract.md` before code changes [FR-001, FR-002, FR-003, FR-004; SC-001, SC-002, SC-003, SC-004]
-- [ ] T002 [P] Confirm preservation surfaces in `NextPaste/DesignSystem/Components/ClipboardRow.swift`, `NextPaste/DesignSystem/Components/ImageClipboardRow.swift`, `NextPaste/DesignSystem/Components/SharedRowPresentation.swift`, `NextPaste/DesignSystem/Components/RowActionControlGroup.swift`, and `specs/008-restore-swipe-actions/contracts/behavior-preservation-contract.md` [FR-010, FR-011, FR-012; SC-009]
+- [X] T001 Review current swipe direction ownership in `NextPaste/HomeView.swift`, `NextPasteUITests/RowRobot.swift`, and `specs/008-restore-swipe-actions/contracts/row-swipe-actions-contract.md` before code changes [FR-001, FR-002, FR-003, FR-004; SC-001, SC-002, SC-003, SC-004]
+- [X] T002 [P] Confirm preservation surfaces in `NextPaste/DesignSystem/Components/ClipboardRow.swift`, `NextPaste/DesignSystem/Components/ImageClipboardRow.swift`, `NextPaste/DesignSystem/Components/SharedRowPresentation.swift`, `NextPaste/DesignSystem/Components/RowActionControlGroup.swift`, and `specs/008-restore-swipe-actions/contracts/behavior-preservation-contract.md` [FR-010, FR-011, FR-012; SC-009]
 
 ---
 
@@ -45,7 +45,7 @@
 
 **⚠️ CRITICAL**: No production implementation should begin until the targeted UI test tasks in User Story 1 are written and observed failing or proving the current regression.
 
-- [ ] T003 [P] Add direction-named UI test helper methods in `NextPasteUITests/RowRobot.swift` that drag right with positive offset to reveal `pin-clip-button` and drag left with negative offset to reveal `delete-clip-button`, while keeping existing helper wrappers compatible [FR-001, FR-002, FR-003, FR-004, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-010]
+- [X] T003 [P] Add direction-named UI test helper methods in `NextPasteUITests/RowRobot.swift` that drag right with positive offset to reveal `pin-clip-button` and drag left with negative offset to reveal `delete-clip-button`, while keeping existing helper wrappers compatible [FR-001, FR-002, FR-003, FR-004, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-010]
 
 **Checkpoint**: Direction-specific UI tests can now be written without hiding the gesture direction behind ambiguous helper names.
 
@@ -61,15 +61,15 @@
 
 > **NOTE: Write these tests FIRST and ensure they fail for the regression before implementation, or document that they already pass because the behavior is already restored.**
 
-- [ ] T004 [P] [US1] Add a text row right-swipe Pin UI regression test in `NextPasteUITests/ClipRowActionsUITests.swift` using the direction-named right-swipe helper and asserting `pin-clip-button` [FR-001, FR-014; SC-001, SC-010]
-- [ ] T005 [US1] Add a text row left-swipe Delete UI regression test in `NextPasteUITests/ClipRowActionsUITests.swift` using the direction-named left-swipe helper and asserting `delete-clip-button` [FR-002, FR-014; SC-002, SC-010]
-- [ ] T006 [P] [US1] Add an image row right-swipe Pin UI regression test in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using the direction-named right-swipe helper and asserting `pin-clip-button` [FR-003, FR-015; SC-003, SC-010]
-- [ ] T007 [US1] Add an image row left-swipe Delete UI regression test in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using the direction-named left-swipe helper and asserting `delete-clip-button` [FR-004, FR-015; SC-004, SC-010]
+- [X] T004 [P] [US1] Add a text row right-swipe Pin UI regression test in `NextPasteUITests/ClipRowActionsUITests.swift` using the direction-named right-swipe helper and asserting `pin-clip-button` [FR-001, FR-014; SC-001, SC-010]
+- [X] T005 [US1] Add a text row left-swipe Delete UI regression test in `NextPasteUITests/ClipRowActionsUITests.swift` using the direction-named left-swipe helper and asserting `delete-clip-button` [FR-002, FR-014; SC-002, SC-010]
+- [X] T006 [P] [US1] Add an image row right-swipe Pin UI regression test in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using the direction-named right-swipe helper and asserting `pin-clip-button` [FR-003, FR-015; SC-003, SC-010]
+- [X] T007 [US1] Add an image row left-swipe Delete UI regression test in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using the direction-named left-swipe helper and asserting `delete-clip-button` [FR-004, FR-015; SC-004, SC-010]
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Correct only the custom drag translation mapping in `NextPaste/HomeView.swift` so positive/right movement sets `.pin(clip.id)` and negative/left movement sets `.delete(clip.id)` for text and image rows, preserving leading-edge Pin and trailing-edge Delete `.swipeActions` [FR-001, FR-002, FR-003, FR-004, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-010]
-- [ ] T009 [US1] Verify text and image rows still route through shared `ClipRowView` action flags in `NextPaste/HomeView.swift` and `NextPaste/ClipRowView.swift` without adding row-type-specific visual branches [FR-003, FR-004, FR-010, FR-011, FR-012, FR-015; SC-003, SC-004, SC-009, SC-010]
+- [X] T008 [US1] Correct only the custom drag translation mapping in `NextPaste/HomeView.swift` so positive/right movement sets `.pin(clip.id)` and negative/left movement sets `.delete(clip.id)` for text and image rows, preserving leading-edge Pin and trailing-edge Delete `.swipeActions` [FR-001, FR-002, FR-003, FR-004, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-010]
+- [X] T009 [US1] Verify text and image rows still route through shared `ClipRowView` action flags in `NextPaste/HomeView.swift` and `NextPaste/ClipRowView.swift` without adding row-type-specific visual branches [FR-003, FR-004, FR-010, FR-011, FR-012, FR-015; SC-003, SC-004, SC-009, SC-010]
 
 **Checkpoint**: User Story 1 is independently functional when the four direction-specific UI tests pass for text and image rows.
 
@@ -83,12 +83,12 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T010 [P] [US2] Update text row outcome UI tests in `NextPasteUITests/ClipRowActionsUITests.swift` so pin toggling is activated from right swipe and selected-row deletion from left swipe while row tap copy and pinned-first ordering remain asserted [FR-005, FR-006, FR-007, FR-008, FR-009, FR-016; SC-005, SC-006, SC-007, SC-008]
-- [ ] T011 [P] [US2] Update image row outcome UI tests in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` so image pin toggling is activated from right swipe and selected-row deletion from left swipe while image row tap copy and pinned-first ordering remain asserted [FR-005, FR-006, FR-007, FR-008, FR-009, FR-016; SC-005, SC-006, SC-007, SC-008]
+- [X] T010 [P] [US2] Update text row outcome UI tests in `NextPasteUITests/ClipRowActionsUITests.swift` so pin toggling is activated from right swipe and selected-row deletion from left swipe while row tap copy and pinned-first ordering remain asserted [FR-005, FR-006, FR-007, FR-008, FR-009, FR-016; SC-005, SC-006, SC-007, SC-008]
+- [X] T011 [P] [US2] Update image row outcome UI tests in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` so image pin toggling is activated from right swipe and selected-row deletion from left swipe while image row tap copy and pinned-first ordering remain asserted [FR-005, FR-006, FR-007, FR-008, FR-009, FR-016; SC-005, SC-006, SC-007, SC-008]
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Preserve existing `copyClip(_:)`, `deleteClip(_:)`, `togglePin(_:)`, and reveal-reset behavior in `NextPaste/HomeView.swift`, and do not alter `NextPaste/ClipItem.swift` history sorting or pin persistence [FR-005, FR-006, FR-007, FR-008, FR-009, FR-013, FR-016; SC-005, SC-006, SC-007, SC-008]
+- [X] T012 [US2] Preserve existing `copyClip(_:)`, `deleteClip(_:)`, `togglePin(_:)`, and reveal-reset behavior in `NextPaste/HomeView.swift`, and do not alter `NextPaste/ClipItem.swift` history sorting or pin persistence [FR-005, FR-006, FR-007, FR-008, FR-009, FR-013, FR-016; SC-005, SC-006, SC-007, SC-008]
 
 **Checkpoint**: User Stories 1 and 2 are independently functional when direction tests, selected-row action tests, copy tests, and pinned-first ordering tests pass.
 
@@ -102,13 +102,13 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T013 [P] [US3] Update or confirm row action identifier, label, order, and design-token timing assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` remain unchanged for copy, Pin, Unpin, Delete, copied feedback, and pinned state [FR-010, FR-011, FR-016; SC-009, SC-010]
-- [ ] T014 [P] [US3] Update or confirm text/image presentation routing assertions in `NextPasteTests/ClipRowViewTests.swift` so the direction fix does not change shared row routing or capture-related presentation boundaries [FR-003, FR-004, FR-010, FR-012, FR-016; SC-003, SC-004, SC-009]
+- [X] T013 [P] [US3] Update or confirm row action identifier, label, order, and design-token timing assertions in `NextPasteTests/ClipboardRowPresentationTests.swift` remain unchanged for copy, Pin, Unpin, Delete, copied feedback, and pinned state [FR-010, FR-011, FR-016; SC-009, SC-010]
+- [X] T014 [P] [US3] Update or confirm text/image presentation routing assertions in `NextPasteTests/ClipRowViewTests.swift` so the direction fix does not change shared row routing or capture-related presentation boundaries [FR-003, FR-004, FR-010, FR-012, FR-016; SC-003, SC-004, SC-009]
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Review production diffs and keep `NextPaste/DesignSystem/Components/ClipboardRow.swift`, `NextPaste/DesignSystem/Components/ImageClipboardRow.swift`, `NextPaste/DesignSystem/Components/SharedRowPresentation.swift`, `NextPaste/DesignSystem/Components/RowActionControlGroup.swift`, `NextPaste/DesignSystem/Theme/DesignTokens.swift`, and `NextPaste/DesignSystem/Theme/AppTheme.swift` unchanged unless a test-proven mechanical correction is required [FR-010, FR-011; SC-009]
-- [ ] T016 [US3] Confirm no scope creep in `NextPaste/ClipboardCaptureService.swift`, `NextPaste/ClipboardMonitor.swift`, `NextPaste/ImageClips/ImageClipFileStore.swift`, and `NextPaste.xcodeproj/project.pbxproj` by leaving clipboard capture, image capture, OCR, AI, CloudKit, telemetry, and dependency configuration unchanged [FR-012, FR-013; SC-009]
+- [X] T015 [US3] Review production diffs and keep `NextPaste/DesignSystem/Components/ClipboardRow.swift`, `NextPaste/DesignSystem/Components/ImageClipboardRow.swift`, `NextPaste/DesignSystem/Components/SharedRowPresentation.swift`, `NextPaste/DesignSystem/Components/RowActionControlGroup.swift`, `NextPaste/DesignSystem/Theme/DesignTokens.swift`, and `NextPaste/DesignSystem/Theme/AppTheme.swift` unchanged unless a test-proven mechanical correction is required [FR-010, FR-011; SC-009]
+- [X] T016 [US3] Confirm no scope creep in `NextPaste/ClipboardCaptureService.swift`, `NextPaste/ClipboardMonitor.swift`, `NextPaste/ImageClips/ImageClipFileStore.swift`, and `NextPaste.xcodeproj/project.pbxproj` by leaving clipboard capture, image capture, OCR, AI, CloudKit, telemetry, and dependency configuration unchanged [FR-012, FR-013; SC-009]
 
 **Checkpoint**: All user stories are independently functional and no visual, capture, sync, dependency, OCR, or AI behavior has changed.
 
@@ -118,9 +118,9 @@
 
 **Purpose**: Validate the full behavior fix and record required quality evidence.
 
-- [ ] T017 Run targeted UI regression validation from `specs/008-restore-swipe-actions/quickstart.md` for `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/ClipRowActionsUITests -only-testing:NextPasteUITests/ClipboardImageRowActionsUITests test` [FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-014, FR-015, FR-016; SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-010]
-- [ ] T018 Run targeted unit regression validation from `specs/008-restore-swipe-actions/quickstart.md` for `NextPasteTests/ClipboardRowPresentationTests.swift`, `NextPasteTests/ClipRowViewTests.swift`, and `NextPasteTests/ClipHistoryTests.swift` using `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipboardRowPresentationTests -only-testing:NextPasteTests/ClipRowViewTests -only-testing:NextPasteTests/ClipHistoryTests test` [FR-005, FR-006, FR-008, FR-009, FR-010, FR-011, FR-013, FR-016; SC-005, SC-006, SC-008, SC-009]
-- [ ] T019 Run full regression validation from `specs/008-restore-swipe-actions/quickstart.md` with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` to cover the full `NextPaste.xcodeproj` app, unit, and UI targets [FR-008, FR-009, FR-012, FR-013, FR-016; SC-008, SC-009, SC-010]
+- [X] T017 Run targeted UI regression validation from `specs/008-restore-swipe-actions/quickstart.md` for `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/ClipboardImageRowActionsUITests.swift` using `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/ClipRowActionsUITests -only-testing:NextPasteUITests/ClipboardImageRowActionsUITests test` [FR-001, FR-002, FR-003, FR-004, FR-005, FR-006, FR-007, FR-014, FR-015, FR-016; SC-001, SC-002, SC-003, SC-004, SC-005, SC-006, SC-007, SC-010]
+- [X] T018 Run targeted unit regression validation from `specs/008-restore-swipe-actions/quickstart.md` for `NextPasteTests/ClipboardRowPresentationTests.swift`, `NextPasteTests/ClipRowViewTests.swift`, and `NextPasteTests/ClipHistoryTests.swift` using `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/ClipboardRowPresentationTests -only-testing:NextPasteTests/ClipRowViewTests -only-testing:NextPasteTests/ClipHistoryTests test` [FR-005, FR-006, FR-008, FR-009, FR-010, FR-011, FR-013, FR-016; SC-005, SC-006, SC-008, SC-009]
+- [X] T019 Run full regression validation from `specs/008-restore-swipe-actions/quickstart.md` with `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test` to cover the full `NextPaste.xcodeproj` app, unit, and UI targets [FR-008, FR-009, FR-012, FR-013, FR-016; SC-008, SC-009, SC-010]
 - [ ] T020 Record accepted SonarQube Project Health evidence in `specs/008-restore-swipe-actions/sonar-evidence.md`, including quality gate status and feature-introduced Bugs, Vulnerabilities, Security Hotspots, Code Smells, Coverage, Reliability, Security, Maintainability, and New Code duplication status [FR-017; SC-011]
 
 ---

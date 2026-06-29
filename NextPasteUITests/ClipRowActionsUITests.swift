@@ -51,12 +51,12 @@ final class ClipRowActionsUITests: UITestCase {
         copyButton.tap()
         UITestAssertions.assertCopiedFeedback(in: app)
 
-        let pinButton = row.revealPinAction(for: UITestFixtures.RowActions.accessibleAction)
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertEqual(pinButton.identifier, "pin-clip-button")
         XCTAssertTrue(pinButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
 
-        let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.accessibleAction)
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
         XCTAssertTrue(deleteButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
@@ -88,6 +88,38 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testRightSwipeRevealsPinActionForTextRow() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
+        history.assertClipRowIdentifierExists()
+        assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app)
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.olderPinTarget)
+
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+    }
+
+    @MainActor
+    func testLeftSwipeRevealsDeleteActionForTextRow() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
+        history.assertClipRowIdentifierExists()
+        assertTextRowIdentifier(for: UITestFixtures.RowActions.deleteTarget, in: app)
+
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.deleteTarget)
+
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+    }
+
+    @MainActor
     func testLeftSwipeDeleteRemovesOnlySelectedClip() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
@@ -105,7 +137,7 @@ final class ClipRowActionsUITests: UITestCase {
             in: app
         ).identifier
 
-        let deleteButton = row.revealDeleteAction(for: UITestFixtures.RowActions.deleteTarget)
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.deleteTarget)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
         deleteButton.tap()
 
@@ -147,7 +179,7 @@ final class ClipRowActionsUITests: UITestCase {
         let olderPinTarget = app.staticTexts[UITestFixtures.RowActions.olderPinTarget]
         let newerUnpinned = app.staticTexts[UITestFixtures.RowActions.newerUnpinned]
         UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
-        let pinButton = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.olderPinTarget)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
 
@@ -162,7 +194,7 @@ final class ClipRowActionsUITests: UITestCase {
             newerUnpinnedIdentifier
         )
 
-        let unpinButton = row.revealPinAction(for: UITestFixtures.RowActions.olderPinTarget)
+        let unpinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.olderPinTarget)
         UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
         unpinButton.tap()
 
@@ -206,7 +238,7 @@ final class ClipRowActionsUITests: UITestCase {
             localOnlyPinnedCopyIdentifier
         )
 
-        _ = row.revealPinAction(for: UITestFixtures.RowActions.localOnlyPinnedCopy)
+        _ = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.localOnlyPinnedCopy)
         app.buttons["pin-clip-button"].tap()
         UITestAssertions.assertPinnedIconExists(in: app)
         XCTAssertEqual(
@@ -218,7 +250,7 @@ final class ClipRowActionsUITests: UITestCase {
             appearsAbove: app.staticTexts[UITestFixtures.RowActions.localOnlyDelete]
         )
 
-        _ = row.revealDeleteAction(for: UITestFixtures.RowActions.localOnlyDelete)
+        _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.localOnlyDelete)
         app.buttons["delete-clip-button"].tap()
 
         UITestAssertions.assertDoesNotExist(
@@ -289,7 +321,7 @@ final class ClipRowActionsUITests: UITestCase {
             autoCapturedActionIdentifier
         )
 
-        _ = row.revealPinAction(for: UITestFixtures.RowActions.autoCapturedAction)
+        _ = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.autoCapturedAction)
         app.buttons["pin-clip-button"].tap()
         UITestAssertions.assertPinnedIconExists(in: app)
         XCTAssertEqual(
@@ -297,7 +329,7 @@ final class ClipRowActionsUITests: UITestCase {
             autoCapturedActionIdentifier
         )
 
-        _ = row.revealDeleteAction(for: UITestFixtures.RowActions.autoCapturedCompanion)
+        _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.autoCapturedCompanion)
         app.buttons["delete-clip-button"].tap()
 
         XCTAssertTrue(app.staticTexts[UITestFixtures.RowActions.autoCapturedAction].exists)

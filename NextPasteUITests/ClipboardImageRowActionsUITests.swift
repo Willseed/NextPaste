@@ -60,7 +60,43 @@ final class ClipboardImageRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testDeleteActionRemovesOnlySelectedImageClip() throws {
+    func testRightSwipeRevealsPinActionForImageRow() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.olderPinTarget
+
+        clipboard.captureImage(fixture)
+        clipboard.assertImageRow(for: fixture)
+
+        let pinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+    }
+
+    @MainActor
+    func testLeftSwipeRevealsDeleteActionForImageRow() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.deleteTarget
+
+        clipboard.captureImage(fixture)
+        clipboard.assertImageRow(for: fixture)
+
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+    }
+
+    @MainActor
+    func testLeftSwipeDeleteRemovesOnlySelectedImageClip() throws {
         let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
@@ -70,7 +106,9 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         clipboard.captureImage(target)
         clipboard.captureImage(companion)
 
-        let deleteButton = row.revealImageDeleteAction(forThumbnailDescription: target.thumbnailDescription)
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: target.thumbnailDescription
+        )
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
         deleteButton.tap()
 
@@ -79,7 +117,7 @@ final class ClipboardImageRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testPinActionTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering() throws {
+    func testRightSwipePinTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering() throws {
         let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
@@ -93,14 +131,18 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         let newerRow = clipboard.assertImageRow(for: newerUnpinned)
         UITestAssertions.assert(newerRow, appearsAbove: olderRow)
 
-        let pinButton = row.revealImagePinAction(forThumbnailDescription: olderPinTarget.thumbnailDescription)
+        let pinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: olderPinTarget.thumbnailDescription
+        )
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
 
         UITestAssertions.assertImagePinnedIconExists(in: app)
         UITestAssertions.assert(olderRow, appearsAbove: newerRow)
 
-        let unpinButton = row.revealImagePinAction(forThumbnailDescription: olderPinTarget.thumbnailDescription)
+        let unpinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: olderPinTarget.thumbnailDescription
+        )
         UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
         unpinButton.tap()
 

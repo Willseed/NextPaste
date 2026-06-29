@@ -51,12 +51,16 @@ struct ClipboardRowPresentationTests {
         #expect(ClipboardRowPresentation.InteractionState.deleting.animationDuration == DesignTokens.Motion.rowDeletion)
     }
 
-    @Test("describes row action accessibility labels")
-    func describesRowActionAccessibilityLabels() {
+    @Test("describes row action accessibility labels and symbols")
+    func describesRowActionAccessibilityLabelsAndSymbols() {
         #expect(ClipboardRowPresentation.RowAction.copy.accessibilityLabel == "Copy")
         #expect(ClipboardRowPresentation.RowAction.delete.accessibilityLabel == "Delete")
         #expect(ClipboardRowPresentation.RowAction.pin(isPinned: false).accessibilityLabel == "Pin")
         #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).accessibilityLabel == "Unpin")
+        #expect(ClipboardRowPresentation.RowAction.copy.symbolName == DesignTokens.Icons.clipboard)
+        #expect(ClipboardRowPresentation.RowAction.delete.symbolName == DesignTokens.Icons.delete)
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: false).symbolName == DesignTokens.Icons.pin)
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).symbolName == DesignTokens.Icons.unpin)
     }
 
     @Test("shared row action controls preserve copy pin delete order and identifiers")

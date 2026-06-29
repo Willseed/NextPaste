@@ -42,4 +42,37 @@ struct ClipRowViewTests {
         #expect(ClipRowView.presentationKind(for: textClip) == .text)
         #expect(ClipRowView.presentationKind(for: legacyClip) == .text)
     }
+
+    @Test("preserves shared action flags for text and image rows")
+    @MainActor
+    func preservesSharedActionFlagsForTextAndImageRows() {
+        let textClip = ClipItem(textContent: "Shared text row")
+        let imageClip = ClipItem.imageClip(
+            ImageClipInitialization(
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-shared-image-row",
+                    dimensions: ImageClipInitialization.Dimensions(
+                        width: 640,
+                        height: 480
+                    ),
+                    byteCount: 2048,
+                    utType: "public.png",
+                    filename: "shared-image-row.png",
+                    thumbnail: ImageClipInitialization.Thumbnail(
+                        filename: "shared-image-row-thumbnail.png",
+                        description: "Shared image row thumbnail"
+                    )
+                )
+            )
+        )
+        let textRow = ClipRowView(clip: textClip, showsDeleteAction: true, showsPinAction: false)
+        let imageRow = ClipRowView(clip: imageClip, showsDeleteAction: true, showsPinAction: false)
+
+        #expect(textRow.showsDeleteAction)
+        #expect(textRow.showsPinAction == false)
+        #expect(imageRow.showsDeleteAction)
+        #expect(imageRow.showsPinAction == false)
+        #expect(ClipRowView.presentationKind(for: textRow.clip) == .text)
+        #expect(ClipRowView.presentationKind(for: imageRow.clip) == .image)
+    }
 }

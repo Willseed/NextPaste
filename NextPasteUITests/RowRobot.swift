@@ -73,6 +73,14 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        revealDeleteActionWithLeftSwipe(for: clipText, file: file, line: line)
+    }
+
+    func revealDeleteActionWithLeftSwipe(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
         let row = textRow(containing: clipText, file: file, line: line)
         return revealAction(
             on: row,
@@ -86,6 +94,14 @@ struct RowRobot {
     }
 
     func revealPinAction(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        revealPinActionWithRightSwipe(for: clipText, file: file, line: line)
+    }
+
+    func revealPinActionWithRightSwipe(
         for clipText: String,
         file: StaticString = #filePath,
         line: UInt = #line
@@ -107,6 +123,18 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: thumbnailDescription,
+            file: file,
+            line: line
+        )
+    }
+
+    func revealImageDeleteActionWithLeftSwipe(
+        forThumbnailDescription thumbnailDescription: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
         let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
         return revealAction(
             on: row,
@@ -120,6 +148,18 @@ struct RowRobot {
     }
 
     func revealImagePinAction(
+        forThumbnailDescription thumbnailDescription: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: thumbnailDescription,
+            file: file,
+            line: line
+        )
+    }
+
+    func revealImagePinActionWithRightSwipe(
         forThumbnailDescription thumbnailDescription: String,
         file: StaticString = #filePath,
         line: UInt = #line
