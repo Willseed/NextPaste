@@ -264,6 +264,72 @@ enum UITestAssertions {
         )
     }
 
+    @discardableResult
+    static func assertFirstVisibleClipRowFullyVisibleBelowFixedHeader(
+        in app: XCUIApplication,
+        timeout: TimeInterval = defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let historyList = assertHistoryListExists(in: app, timeout: timeout, file: file, line: line)
+        let row = assertExists(
+            firstVisibleClipRow(in: app),
+            "Expected a visible clip row",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        let fixedHeaderBottom = fixedHeaderBottom(in: app)
+
+        XCTAssertGreaterThanOrEqual(
+            row.frame.minY,
+            fixedHeaderBottom,
+            "Expected the first visible row to start below the fixed header region",
+            file: file,
+            line: line
+        )
+        XCTAssertGreaterThanOrEqual(
+            row.frame.minY,
+            historyList.frame.minY,
+            "Expected the first visible row to stay within the history viewport",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThanOrEqual(
+            row.frame.maxY,
+            historyList.frame.maxY,
+            "Expected the first visible row to remain fully inside the history viewport",
+            file: file,
+            line: line
+        )
+        return row
+    }
+
+    static func fixedHeaderBottom(in app: XCUIApplication) -> CGFloat {
+        var lowerBoundary = app.descendants(matching: .any)["app-toolbar"].frame.maxY
+
+        let searchField = app.searchFields.firstMatch
+        if searchField.exists {
+            lowerBoundary = max(lowerBoundary, searchField.frame.maxY)
+        }
+
+        let fallbackSearchField = app.textFields.firstMatch
+        if fallbackSearchField.exists {
+            lowerBoundary = max(lowerBoundary, fallbackSearchField.frame.maxY)
+        }
+
+        let settingsPlaceholder = app.staticTexts["settings-placeholder-message"]
+        if settingsPlaceholder.exists {
+            lowerBoundary = max(lowerBoundary, settingsPlaceholder.frame.maxY)
+        }
+
+        return lowerBoundary
+    }
+
+    static func firstVisibleClipRow(in app: XCUIApplication) -> XCUIElement {
+        visibleClipRows(in: app).first ?? app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")).firstMatch
+    }
+
     static func assertClipRowIdentifierExists(
         in app: XCUIApplication,
         timeout: TimeInterval = defaultTimeout,
@@ -454,6 +520,23 @@ enum UITestAssertions {
 
     private static func copyFeedbackElement(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)[UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier]
+    }
+
+    private static func visibleClipRows(in app: XCUIApplication) -> [XCUIElement] {
+        let predicate = NSPredicate(format: "identifier BEGINSWITH %@", "clip-row-")
+        return app.descendants(matching: .any)
+            .matching(predicate)
+            .allElementsBoundByIndex
+            .filter { element in
+                element.exists && element.frame.height > 0 && element.frame.width > 0
+            }
+            .sorted { lhs, rhs in
+                if lhs.frame.minY == rhs.frame.minY {
+                    return lhs.frame.minX < rhs.frame.minX
+                }
+
+                return lhs.frame.minY < rhs.frame.minY
+            }
     }
 
     private static func combinedAccessibilityText(of element: XCUIElement) -> String {

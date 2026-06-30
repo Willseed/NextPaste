@@ -117,4 +117,44 @@ final class ClipboardAutoCaptureUITests: UITestCase {
             .assertRowExists(withText: UITestFixtures.Search.matchingCapture)
             .assertRowExists(withText: UITestFixtures.Search.nonMatchingCapture)
     }
+
+    @MainActor
+    func testAutoCaptureKeepsFirstVisibleRowFullyVisibleBelowFixedHeader() throws {
+        let app = launchCaptureApp(windowSizePreset: .small)
+        let clipboard = clipboardRobot(for: app)
+        let history = historyRobot(for: app)
+
+        clipboard.capture(UITestFixtures.History.initialVisibleBaseline, timeout: 2)
+        clipboard.capture(UITestFixtures.History.resizeCaptureClip, timeout: 2)
+
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.History.resizeCaptureClip)
+    }
+
+    @MainActor
+    func testActiveSearchAutoCaptureKeepsMatchingClipVisibleWithoutMovingNonMatchingRows() throws {
+        let app = launchOfflineCaptureApp(windowSizePreset: .small)
+        let clipboard = clipboardRobot(for: app)
+        let history = historyRobot(for: app)
+
+        history.enterSearchQuery(UITestFixtures.Search.autoCaptureQuery)
+            .assertSearchEmptyState()
+
+        clipboard.capture(UITestFixtures.Search.matchingCapture, timeout: 2)
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.Search.matchingCapture)
+
+        let matchingFirstVisibleRowIdentifier = history.firstVisibleClipRow().identifier
+
+        clipboard.setString(UITestFixtures.Search.nonMatchingCapture)
+        RunLoop.current.run(until: Date().addingTimeInterval(1))
+
+        history
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingCapture)
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.Search.matchingCapture)
+        XCTAssertEqual(history.firstVisibleClipRow().identifier, matchingFirstVisibleRowIdentifier)
+    }
 }

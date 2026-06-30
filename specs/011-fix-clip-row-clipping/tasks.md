@@ -21,9 +21,9 @@ criteria (`SC-*`) in the task text.
 
 **Purpose**: Prepare reusable UI-test seams and deterministic launch helpers before production work.
 
-- [ ] T001 [P] Add fixed-header boundary and first-visible-row geometry assertions in NextPasteUITests/UITestAssertions.swift [FR-001, FR-013, FR-014, FR-015; SC-001, SC-004, SC-005]
-- [ ] T002 [P] Add reusable search, first-row lookup, and visibility helper flows in NextPasteUITests/HistoryRobot.swift [FR-002, FR-004, FR-011, FR-014; SC-001, SC-002, SC-003]
-- [ ] T003 [P] Add deterministic default/small/medium/tall launch presets and resize helpers in NextPasteUITests/UITestAppLauncher.swift [FR-013, FR-015; SC-004, SC-005]
+- [X] T001 [P] Add fixed-header boundary and first-visible-row geometry assertions in NextPasteUITests/UITestAssertions.swift [FR-001, FR-013, FR-014, FR-015; SC-001, SC-004, SC-005]
+- [X] T002 [P] Add reusable search, first-row lookup, and visibility helper flows in NextPasteUITests/HistoryRobot.swift [FR-002, FR-004, FR-011, FR-014; SC-001, SC-002, SC-003]
+- [X] T003 [P] Add deterministic default/small/medium/tall launch presets and resize helpers in NextPasteUITests/UITestAppLauncher.swift [FR-013, FR-015; SC-004, SC-005]
 
 ---
 
@@ -33,8 +33,8 @@ criteria (`SC-*`) in the task text.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Introduce viewport geometry, inset, and corrective-scroll decision types in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
-- [ ] T005 Prepare `HomeView` measurement, fixed-header boundary, and scroll-coordination seams in NextPaste/HomeView.swift so the researched layout/inset correction can be implemented without reopening root-cause investigation [FR-001, FR-002, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
+- [X] T004 Introduce viewport geometry, inset, and corrective-scroll decision types in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
+- [X] T005 Prepare `HomeView` measurement, fixed-header boundary, and scroll-coordination seams in NextPaste/HomeView.swift so the researched layout/inset correction can be implemented without reopening root-cause investigation [FR-001, FR-002, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
 
 **Checkpoint**: Shared geometry seams and viewport decision scaffolding are ready for story work.
 
@@ -52,14 +52,14 @@ with no extra manual scrolling.
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T006 [P] [US1] Add failing unit coverage for top inset, visibility thresholds, and corrective-scroll decisions in NextPasteTests/HistoryViewportVisibilityTests.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
-- [ ] T007 [P] [US1] Add manual clip creation visibility regression coverage in NextPasteUITests/CreateTextClipUITests.swift [FR-002, FR-014; SC-001, SC-002]
-- [ ] T008 [P] [US1] Add automatic clipboard capture visibility regression coverage in NextPasteUITests/ClipboardAutoCaptureUITests.swift [FR-002, FR-009, FR-010, FR-014; SC-001, SC-002]
+- [X] T006 [P] [US1] Add failing unit coverage for top inset, visibility thresholds, and corrective-scroll decisions in NextPasteTests/HistoryViewportVisibilityTests.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
+- [X] T007 [P] [US1] Add manual clip creation visibility regression coverage in NextPasteUITests/CreateTextClipUITests.swift [FR-002, FR-014; SC-001, SC-002]
+- [X] T008 [P] [US1] Add automatic clipboard capture visibility regression coverage in NextPasteUITests/ClipboardAutoCaptureUITests.swift [FR-002, FR-009, FR-010, FR-014; SC-001, SC-002]
 
 ### Implementation for User Story 1
 
-- [ ] T009 [US1] Implement measured fixed-header boundary, top inset, and minimal corrective-scroll rules in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
-- [ ] T010 [US1] Apply the layout correction so the first visible inserted row settles below the full header region in NextPaste/HomeView.swift [FR-001, FR-002, FR-003, FR-008, FR-012; SC-001, SC-002, SC-005]
+- [X] T009 [US1] Implement measured fixed-header boundary, top inset, and minimal corrective-scroll rules in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-004]
+- [X] T010 [US1] Apply the layout correction so the first visible inserted row settles below the full header region in NextPaste/HomeView.swift [FR-001, FR-002, FR-003, FR-008, FR-012; SC-001, SC-002, SC-005]
 
 **Checkpoint**: Manual and automatic insertion both work in normal history view with the top row
 fully visible.
@@ -77,14 +77,14 @@ filtered inserts must avoid unnecessary scroll movement, and ordering must remai
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T011 [P] [US2] Add active-search manual-insert visibility coverage for matching and non-matching cases in NextPasteUITests/CreateTextClipUITests.swift [FR-004, FR-011, FR-014; SC-001, SC-003]
-- [ ] T012 [P] [US2] Add active-search automatic-capture visibility coverage for matching and non-matching cases in NextPasteUITests/ClipboardAutoCaptureUITests.swift [FR-004, FR-009, FR-010, FR-011, FR-014; SC-001, SC-003]
-- [ ] T013 [P] [US2] Add pinned-first and newest-first visibility regression coverage in NextPasteUITests/HistoryListUITests.swift [FR-005, FR-006, FR-014; SC-003, SC-004]
+- [X] T011 [P] [US2] Add active-search manual-insert visibility coverage for matching and non-matching cases in NextPasteUITests/CreateTextClipUITests.swift [FR-004, FR-011, FR-014; SC-001, SC-003]
+- [X] T012 [P] [US2] Add active-search automatic-capture visibility coverage for matching and non-matching cases in NextPasteUITests/ClipboardAutoCaptureUITests.swift [FR-004, FR-009, FR-010, FR-011, FR-014; SC-001, SC-003]
+- [X] T013 [P] [US2] Add pinned-first and newest-first visibility regression coverage in NextPasteUITests/HistoryListUITests.swift [FR-005, FR-006, FR-014; SC-003, SC-004]
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Extend filtered, pinned, and non-matching insertion decision rules in NextPaste/HistoryViewportVisibility.swift [FR-004, FR-005, FR-006, FR-011, FR-012; SC-003, SC-004]
-- [ ] T015 [US2] Wire filtered-history, pinned-first, and no-unnecessary-scroll behavior into NextPaste/HomeView.swift [FR-004, FR-005, FR-006, FR-011; SC-003, SC-004]
+- [X] T014 [US2] Extend filtered, pinned, and non-matching insertion decision rules in NextPaste/HistoryViewportVisibility.swift [FR-004, FR-005, FR-006, FR-011, FR-012; SC-003, SC-004]
+- [X] T015 [US2] Wire filtered-history, pinned-first, and no-unnecessary-scroll behavior into NextPaste/HomeView.swift [FR-004, FR-005, FR-006, FR-011; SC-003, SC-004]
 
 **Checkpoint**: Filtered history and pinned history keep the same ordering semantics while inheriting
 the top-row visibility guarantee.
@@ -102,12 +102,12 @@ and complete the contract-defined SC-005 visual review before final regression.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T016 [P] [US3] Add copy, pin, unpin, delete, swipe, keyboard navigation, focus behavior, existing shortcut parity, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-015; SC-005]
-- [ ] T017 [P] [US3] Add default/small/medium/tall plus live-resize visibility coverage in NextPasteUITests/HistoryListUITests.swift [FR-013, FR-014, FR-015; SC-004, SC-005]
+- [X] T016 [P] [US3] Add copy, pin, unpin, delete, swipe, keyboard navigation, focus behavior, existing shortcut parity, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-015; SC-005]
+- [X] T017 [P] [US3] Add default/small/medium/tall plus live-resize visibility coverage in NextPasteUITests/HistoryListUITests.swift [FR-013, FR-014, FR-015; SC-004, SC-005]
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Recompute header boundary during native resize and preserve no-gap scroll settling in NextPaste/HomeView.swift [FR-007, FR-008, FR-013, FR-015; SC-004, SC-005]
+- [X] T018 [US3] Recompute header boundary during native resize and preserve no-gap scroll settling in NextPaste/HomeView.swift [FR-007, FR-008, FR-013, FR-015; SC-004, SC-005]
 
 **Checkpoint**: The visibility fix behaves natively across resize and row-interaction scenarios.
 
@@ -117,8 +117,8 @@ and complete the contract-defined SC-005 visual review before final regression.
 
 **Purpose**: Execute feature validation in the required order and capture final quality evidence.
 
-- [ ] T019 Execute build health and targeted unit validation commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-001, FR-003, FR-012, FR-013, FR-014; SC-001, SC-002, SC-004]
-- [ ] T020 Execute the targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift as required by the Validation Contract before the SC-005 visual review and final regression [FR-002, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-013, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-005]
+- [X] T019 Execute build health and targeted unit validation commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-001, FR-003, FR-012, FR-013, FR-014; SC-001, SC-002, SC-004]
+- [X] T020 Execute the targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift as required by the Validation Contract before the SC-005 visual review and final regression [FR-002, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-013, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-005]
 - [ ] T021 Execute the dedicated SC-005 visual review step after T020 and before T022 by following specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md without duplicating its validation detail in this file [FR-008, FR-014, FR-015; SC-005]
 - [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because this feature changes a shared history-list surface [FR-002, FR-004, FR-005, FR-006, FR-007, FR-009, FR-010, FR-011, FR-013, FR-014, FR-015; SC-001, SC-002, SC-003, SC-004, SC-005]
 - [ ] T023 Record the SonarQube Project Health evidence required by specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for the changed NextPaste/, NextPasteTests/, and NextPasteUITests/ files [FR-014, FR-016; SC-006]

@@ -482,4 +482,39 @@ final class ClipRowActionsUITests: UITestCase {
             timeout: 2
         )
     }
+
+    @MainActor
+    func testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection() throws {
+        let app = launchApp(windowSizePreset: .small)
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClip(UITestFixtures.RowActions.copyTarget)
+        try history.createTextClip(UITestFixtures.RowActions.deleteCompanion)
+
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.RowActions.deleteCompanion)
+
+        row.tapRow(withText: UITestFixtures.RowActions.deleteCompanion)
+        UITestAssertions.assertCopiedFeedback(in: app)
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.deleteCompanion)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        UITestAssertions.assertPinnedIconExists(in: app)
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.RowActions.deleteCompanion)
+
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.deleteCompanion)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.RowActions.copyTarget)
+    }
 }

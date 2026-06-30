@@ -11,6 +11,11 @@ enum UITestFixtures {
         static let newerText = "Newer local clip"
         static let longMultilineText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)
         static let expectedLongMultilinePreview = String(repeating: "A", count: 60) + " " + String(repeating: "B", count: 59) + "..."
+        static let initialVisibleBaseline = "Initial visible baseline clip"
+        static let pinnedTopClip = "Pinned viewport anchor clip"
+        static let unpinnedTopClip = "Unpinned viewport anchor clip"
+        static let resizeManualClip = "Manual clip after resize"
+        static let resizeCaptureClip = "Captured clip after resize"
     }
 
     enum Search {

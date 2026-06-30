@@ -16,8 +16,11 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
-    func launchApp(extraArguments: [String] = []) -> XCUIApplication {
-        let app = UITestAppLauncher.makeApp()
+    func launchApp(
+        extraArguments: [String] = [],
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = UITestAppLauncher.makeApp(windowSizePreset: windowSizePreset)
         app.launchArguments.append(contentsOf: extraArguments)
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
@@ -29,8 +32,14 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
-    func launchCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = UITestAppLauncher.launchAutoCaptureApp(pollInterval: pollInterval)
+    func launchCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = UITestAppLauncher.launchAutoCaptureApp(
+            pollInterval: pollInterval,
+            windowSizePreset: windowSizePreset
+        )
         addTeardownBlock {
             self.closeApp(app)
         }
@@ -39,8 +48,14 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
-    func launchOfflineCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = UITestAppLauncher.makeOfflineAutoCaptureApp(pollInterval: pollInterval)
+    func launchOfflineCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = UITestAppLauncher.makeOfflineAutoCaptureApp(
+            pollInterval: pollInterval,
+            windowSizePreset: windowSizePreset
+        )
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {

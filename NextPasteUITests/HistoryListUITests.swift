@@ -93,4 +93,44 @@ final class HistoryListUITests: UITestCase {
         _ = row.textRowElement(containing: UITestFixtures.Search.unpinnedNewerMatch)
         history.assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
     }
+
+    @MainActor
+    func testPinnedFirstAndNewestFirstRowsStayFullyVisibleAfterInsertion() throws {
+        let app = launchApp(windowSizePreset: .small)
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.History.unpinnedTopClip)
+        try history.createTextClip(UITestFixtures.History.resizeManualClip)
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.History.resizeManualClip)
+
+        try history.createTextClip(UITestFixtures.History.pinnedTopClip)
+        row.pin(UITestFixtures.History.pinnedTopClip)
+
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.History.pinnedTopClip)
+    }
+
+    @MainActor
+    func testFirstVisibleRowRemainsFullyVisibleAcrossWindowSizePresetsAndLiveResize() throws {
+        let app = launchApp(windowSizePreset: .defaultSize)
+        let history = historyRobot(for: app)
+
+        for preset in [
+            UITestAppLauncher.WindowSizePreset.small,
+            .medium,
+            .tall
+        ] {
+            UITestAppLauncher.resizeMainWindow(in: app, to: preset)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+
+            try history.createTextClip("Resize visibility clip \(preset.rawValue)")
+            history
+                .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+                .assertFirstVisibleClipRowContains("Resize visibility clip \(preset.rawValue)")
+        }
+    }
 }

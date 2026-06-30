@@ -9,15 +9,32 @@ import XCTest
 
 @MainActor
 enum UITestAppLauncher {
+    enum WindowSizePreset: String {
+        case defaultSize = "default"
+        case small
+        case medium
+        case tall
+
+        fileprivate var accessibilityIdentifier: String {
+            "ui-test-window-size-\(rawValue)"
+        }
+    }
+
     static let uiTestingArgument = "-ui-testing"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
+    private static let windowSizePresetArgument = "-ui-test-window-size"
     private static let mainWindowReadyIdentifier = "new-clip-button"
 
-    static func makeApp(enableClipboardMonitor: Bool = false) -> XCUIApplication {
+    static func makeApp(
+        enableClipboardMonitor: Bool = false,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchArguments.append(contentsOf: [
             uiTestingArgument,
+            windowSizePresetArgument,
+            windowSizePreset.rawValue,
             "-ApplePersistenceIgnoreState",
             "YES"
         ])
@@ -27,15 +44,18 @@ enum UITestAppLauncher {
         return app
     }
 
-    static func launchApp() -> XCUIApplication {
-        let app = makeApp()
+    static func launchApp(windowSizePreset: WindowSizePreset = .defaultSize) -> XCUIApplication {
+        let app = makeApp(windowSizePreset: windowSizePreset)
         app.launch()
         prepareMainWindow(in: app)
         return app
     }
 
-    static func makeAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = makeApp(enableClipboardMonitor: true)
+    static func makeAutoCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = makeApp(enableClipboardMonitor: true, windowSizePreset: windowSizePreset)
         app.launchArguments.append(contentsOf: [
             clipboardMonitorPollIntervalArgument,
             String(pollInterval)
@@ -43,14 +63,20 @@ enum UITestAppLauncher {
         return app
     }
 
-    static func makeOfflineAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = makeAutoCaptureApp(pollInterval: pollInterval)
+    static func makeOfflineAutoCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = makeAutoCaptureApp(pollInterval: pollInterval, windowSizePreset: windowSizePreset)
         app.launchArguments.append(UITestFixtures.Search.offlineLaunchArgument)
         return app
     }
 
-    static func launchAutoCaptureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = makeAutoCaptureApp(pollInterval: pollInterval)
+    static func launchAutoCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = makeAutoCaptureApp(pollInterval: pollInterval, windowSizePreset: windowSizePreset)
         app.launch()
         prepareMainWindow(in: app)
         return app
@@ -123,5 +149,16 @@ enum UITestAppLauncher {
 
         app.typeKey("m", modifierFlags: [.command])
 #endif
+    }
+
+    static func resizeMainWindow(
+        in app: XCUIApplication,
+        to preset: WindowSizePreset,
+        timeout: TimeInterval = 2
+    ) {
+        let button = app.buttons[preset.accessibilityIdentifier]
+        if button.waitForExistence(timeout: timeout) {
+            button.tap()
+        }
     }
 }

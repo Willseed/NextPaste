@@ -22,6 +22,10 @@ struct HomeView: View {
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
+    @State private var headerFrame: CGRect = .null
+    @State private var settingsMessageFrame: CGRect = .null
+    @State private var listViewportFrame: CGRect = .null
+    @State private var hasAppliedLaunchWindowSize = false
 
     var body: some View {
         ZStack {
@@ -29,6 +33,8 @@ struct HomeView: View {
                 .ignoresSafeArea()
 
             accessibilityMarkers
+
+            uiTestWindowSizeControls
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(
@@ -42,6 +48,7 @@ struct HomeView: View {
                     }
                     .accessibilityIdentifier("new-clip-button")
                 }
+                .background(measuredFrameReader(for: .header))
 
                 if let settingsPlaceholderMessage {
                     Text(settingsPlaceholderMessage)
@@ -49,34 +56,29 @@ struct HomeView: View {
                         .foregroundStyle(appTheme.textSecondary.color)
                         .accessibilityIdentifier("settings-placeholder-message")
                         .accessibilityLabel(settingsPlaceholderMessage)
+                        .background(measuredFrameReader(for: .settingsMessage))
                 }
 
-                Group {
-                    if visibleClips.isEmpty {
-                        EmptyStateView(kind: searchText.isEmpty ? .history : .search)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else {
-                        List {
-                            ForEach(visibleClips) { clip in
-                                clipRow(for: clip)
-                            }
-                        }
-                        .padding(DesignTokens.Spacing.small)
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
-                        .background(appTheme.surface.color)
-                        .accessibilityIdentifier("clip-history-list")
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                historyContent
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .padding(DesignTokens.Spacing.xLarge)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .onPreferenceChange(HistoryMeasuredFramePreferenceKey.self) { frames in
+            headerFrame = frames[.header] ?? .null
+            settingsMessageFrame = frames[.settingsMessage] ?? .null
+            listViewportFrame = frames[.viewport] ?? .null
         }
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
         .searchable(text: $searchText, prompt: "Search clips")
+#if os(macOS)
+        .task {
+            await applyLaunchWindowSizeIfNeeded()
+        }
+#endif
         .onDisappear {
             copyFeedbackTask?.cancel()
         }
@@ -99,6 +101,26 @@ struct HomeView: View {
 
     private var visibleClips: [ClipItem] {
         ClipItem.filteredHistory(clips, matching: searchText)
+    }
+
+    private var fixedHeaderBottom: CGFloat {
+        [headerFrame, settingsMessageFrame]
+            .compactMap { frame in
+                guard frame.isNull == false, frame.isEmpty == false else {
+                    return nil
+                }
+
+                return frame.maxY
+            }
+            .max() ?? 0
+    }
+
+    private var historyTopInset: CGFloat {
+        HistoryViewportVisibility.measuredTopInset(
+            viewportMinY: listViewportFrame.minY,
+            fixedHeaderBottom: fixedHeaderBottom,
+            minimumTopInset: DesignTokens.Spacing.xSmall
+        )
     }
 
     private func copyImageClip(_ clip: ClipItem) -> Bool {
@@ -145,6 +167,32 @@ struct HomeView: View {
     private func clearCopyFeedback() {
         copyFeedbackTask?.cancel()
         copiedClipID = nil
+    }
+
+    private var historyContent: some View {
+        Group {
+            if visibleClips.isEmpty {
+                EmptyStateView(kind: searchText.isEmpty ? .history : .search)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                historyList
+            }
+        }
+    }
+
+    private var historyList: some View {
+        List {
+            ForEach(visibleClips) { clip in
+                clipRow(for: clip)
+            }
+        }
+        .padding(DesignTokens.Spacing.small)
+        .contentMargins(.top, historyTopInset, for: .scrollContent)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
+        .background(appTheme.surface.color)
+        .background(measuredFrameReader(for: .viewport))
+        .accessibilityIdentifier("clip-history-list")
     }
 
     private func openSettingsOrShowPlaceholder() {
@@ -238,6 +286,30 @@ struct HomeView: View {
         .allowsHitTesting(false)
     }
 
+    @ViewBuilder
+    private var uiTestWindowSizeControls: some View {
+#if os(macOS)
+        if isUITesting {
+            VStack(alignment: .leading, spacing: 1) {
+                ForEach(HistoryUITestWindowSize.allCases) { preset in
+                    Button {
+                        resizeMainWindow(to: preset)
+                    } label: {
+                        Text(preset.accessibilityLabel)
+                            .font(.caption2)
+                            .frame(width: 1, height: 1)
+                            .opacity(0.01)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier(preset.accessibilityIdentifier)
+                    .accessibilityLabel(preset.accessibilityLabel)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+#endif
+    }
+
     private func accessibilityMarker(identifier: String, value: String, label: String) -> some View {
         Text(label)
             .font(.caption2)
@@ -247,12 +319,118 @@ struct HomeView: View {
             .accessibilityLabel(label)
             .accessibilityValue(value)
     }
+
+    private func measuredFrameReader(for measuredFrame: HistoryMeasuredFrame) -> some View {
+        GeometryReader { geometry in
+            Color.clear.preference(
+                key: HistoryMeasuredFramePreferenceKey.self,
+                value: [measuredFrame: geometry.frame(in: .global)]
+            )
+        }
+    }
+
+#if os(macOS)
+    private var isUITesting: Bool {
+        ProcessInfo.processInfo.arguments.contains("-ui-testing")
+    }
+
+    private var launchWindowSizePreset: HistoryUITestWindowSize? {
+        guard let presetIndex = ProcessInfo.processInfo.arguments.firstIndex(of: HistoryUITestWindowSize.launchArgument),
+              ProcessInfo.processInfo.arguments.indices.contains(presetIndex + 1) else {
+            return nil
+        }
+
+        return HistoryUITestWindowSize(rawValue: ProcessInfo.processInfo.arguments[presetIndex + 1])
+    }
+
+    private func applyLaunchWindowSizeIfNeeded() async {
+        guard hasAppliedLaunchWindowSize == false,
+              let launchWindowSizePreset else {
+            return
+        }
+
+        hasAppliedLaunchWindowSize = true
+        await Task.yield()
+        scheduleWindowResize(to: launchWindowSizePreset)
+    }
+
+    private func resizeMainWindow(to preset: HistoryUITestWindowSize) {
+        scheduleWindowResize(to: preset)
+    }
+
+    private func scheduleWindowResize(to preset: HistoryUITestWindowSize) {
+        DispatchQueue.main.async {
+            applyWindowResize(to: preset)
+        }
+    }
+
+    private func applyWindowResize(to preset: HistoryUITestWindowSize) {
+        guard let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first else {
+            return
+        }
+
+        let origin = window.frame.origin
+        let contentRect = NSRect(origin: .zero, size: preset.contentSize)
+        let frame = window.frameRect(forContentRect: contentRect)
+        guard window.frame.size != frame.size else {
+            return
+        }
+
+        window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
+    }
+#endif
 }
 
 #Preview {
     HomeView()
         .modelContainer(for: ClipItem.self, inMemory: true)
 }
+
+private enum HistoryMeasuredFrame: Hashable {
+    case header
+    case settingsMessage
+    case viewport
+}
+
+private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [HistoryMeasuredFrame: CGRect] = [:]
+
+    static func reduce(value: inout [HistoryMeasuredFrame: CGRect], nextValue: () -> [HistoryMeasuredFrame: CGRect]) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newValue in newValue })
+    }
+}
+
+#if os(macOS)
+private enum HistoryUITestWindowSize: String, CaseIterable, Identifiable {
+    static let launchArgument = "-ui-test-window-size"
+
+    case defaultSize = "default"
+    case small
+    case medium
+    case tall
+
+    var id: String { rawValue }
+
+    var contentSize: NSSize {
+        switch self {
+        case .defaultSize, .medium:
+            return NSSize(width: 640, height: 480)
+        case .small:
+            return NSSize(width: 520, height: 380)
+        case .tall:
+            return NSSize(width: 640, height: 720)
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        "ui-test-window-size-\(rawValue)"
+    }
+
+    var accessibilityLabel: String {
+        "Set \(rawValue) window size"
+    }
+}
+#endif
 
 @MainActor
 struct ClipDeletionAction {

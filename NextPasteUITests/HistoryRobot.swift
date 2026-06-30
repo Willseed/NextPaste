@@ -168,7 +168,17 @@ struct HistoryRobot {
         UITestAssertions.assertExists(saveButton, "Expected Save Clip button", file: file, line: line)
         saveButton.tap()
 
-        UITestAssertions.assertHistoryListExists(in: app, file: file, line: line)
+        let historyList = app.descendants(matching: .any)["clip-history-list"]
+        let searchEmptyStateTitle = app.staticTexts["search-empty-state-title"]
+        let historyEmptyStateTitle = app.staticTexts["empty-state-title"]
+        XCTAssertTrue(
+            historyList.waitForExistence(timeout: UITestAssertions.defaultTimeout) ||
+                searchEmptyStateTitle.waitForExistence(timeout: 1) ||
+                historyEmptyStateTitle.waitForExistence(timeout: 1),
+            "Expected history surface to return after saving a clip",
+            file: file,
+            line: line
+        )
         return self
     }
 
@@ -237,6 +247,48 @@ struct HistoryRobot {
             file: file,
             line: line
         )
+    }
+
+    func firstVisibleClipRow(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        _ = historyList(timeout: timeout, file: file, line: line)
+        return UITestAssertions.assertExists(
+            UITestAssertions.firstVisibleClipRow(in: app),
+            "Expected a visible clip row",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func assertFirstVisibleClipRowFullyVisibleBelowFixedHeader(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        _ = UITestAssertions.assertFirstVisibleClipRowFullyVisibleBelowFixedHeader(
+            in: app,
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+    @discardableResult
+    func assertFirstVisibleClipRowContains(
+        _ expectedText: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        let row = firstVisibleClipRow(timeout: timeout, file: file, line: line)
+        UITestAssertions.assertAccessibleTextContains(row, expectedText, file: file, line: line)
+        return self
     }
 
     func clipRowCount() -> Int {

@@ -74,6 +74,47 @@ final class CreateTextClipUITests: XCTestCase {
     }
 
     @MainActor
+    func testManualCreationKeepsFirstVisibleRowFullyVisibleBelowFixedHeader() throws {
+        let app = UITestAppLauncher.launchApp(windowSizePreset: .small)
+        let history = HistoryRobot(app: app)
+
+        try history.createTextClip(UITestFixtures.History.initialVisibleBaseline)
+        try history.createTextClip(UITestFixtures.History.resizeManualClip)
+
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.History.resizeManualClip)
+    }
+
+    @MainActor
+    func testActiveSearchManualCreationShowsMatchingClipWithoutMovingNonMatchingRows() throws {
+        let app = UITestAppLauncher.launchApp(windowSizePreset: .small)
+        let history = HistoryRobot(app: app)
+
+        try history.createTextClip(UITestFixtures.Search.matchingText)
+        history.enterSearchQuery(UITestFixtures.Search.textQuery)
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains(UITestFixtures.Search.matchingText)
+
+        let matchingFirstVisibleRowIdentifier = history.firstVisibleClipRow().identifier
+
+        try history.createTextClip("Manual alpha visibility clip")
+        history
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains("Manual alpha visibility clip")
+
+        let insertedFirstVisibleRowIdentifier = history.firstVisibleClipRow().identifier
+        XCTAssertNotEqual(insertedFirstVisibleRowIdentifier, matchingFirstVisibleRowIdentifier)
+
+        try history.createTextClip(UITestFixtures.Search.nonMatchingText)
+        history
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
+            .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+            .assertFirstVisibleClipRowContains("Manual alpha visibility clip")
+        XCTAssertEqual(history.firstVisibleClipRow().identifier, insertedFirstVisibleRowIdentifier)
+    }
+
+    @MainActor
     private func openNewClip(in app: XCUIApplication) throws -> XCUIElement {
         let newClipButton = app.buttons["new-clip-button"]
         guard newClipButton.waitForExistence(timeout: 5) else {
