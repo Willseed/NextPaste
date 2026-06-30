@@ -55,7 +55,7 @@ You are updating the project constitution at `.specify/memory/constitution.md`. 
 **Note**: If `.specify/memory/constitution.md` does not exist yet, it should have been initialized from `.specify/templates/constitution-template.md` during project setup. If it's missing, copy the template first.
 
 **Governance inheritance order**: Treat governance propagation as a dependency-ordered chain:
-`Constitution` → `Templates` → `Agents` → `Generated Feature` → `Representative Validation`
+`Constitution` → `Templates` → `Agents` → `Generated Feature Artifacts` → `Representative Validation`
 → `Sync Impact`. This agent operates at the Constitution layer. Downstream propagation and
 completion claims MUST preserve that order. If the active feature includes
 `contracts/validation-and-sonar-contract.md`, that contract remains the sole owner of validation
@@ -88,12 +88,18 @@ Follow this execution flow:
    - Read `.specify/templates/plan-template.md` and ensure any "Constitution Check" or rules align with updated principles.
    - Read `.specify/templates/spec-template.md` for scope/requirements alignment—update if constitution adds/removes mandatory sections or constraints.
    - Read `.specify/templates/tasks-template.md` and ensure task categorization reflects new or removed principle-driven task types (e.g., observability, versioning, testing discipline).
+   - Read `.specify/templates/checklist-template.md`, `.specify/templates/quickstart-template.md`, and
+     `.specify/templates/contracts/validation-and-sonar-contract.md` to confirm lifecycle ownership,
+     governance-analysis classification, and propagation-order expectations remain aligned.
    - Read `.github/agents/speckit.constitution.agent.md`, `.github/agents/speckit.specify.agent.md`,
      `.github/agents/speckit.clarify.agent.md`, `.github/agents/speckit.plan.agent.md`,
      `.github/agents/speckit.tasks.agent.md`, `.github/agents/speckit.analyze.agent.md`, and
-     `.github/agents/speckit.implement.agent.md` and ensure each explicitly inherits the v2.5
-     governance chain from Constitution through Templates and Agents into Generated Feature,
-     Representative Validation, and Sync Impact.
+     `.github/agents/speckit.implement.agent.md` and ensure each explicitly inherits the v2.6
+     governance chain from Constitution through Templates and Agents into Generated Feature
+     Artifacts, Representative Validation, and Sync Impact.
+   - Ensure Analyze-oriented shared instructions enforce exact one-of-three finding classification:
+     Governance Defect, Implementation Pending, Verification Pending; only Governance Defect and
+     Governance Inconsistency may block governance readiness.
    - Read each command file in `.specify/templates/commands/*.md` (including this one) to verify no outdated references (agent-specific names like CLAUDE only) remain when generic guidance is required.
    - Read any runtime guidance docs (e.g., `README.md`, `docs/quickstart.md`, or agent-specific guidance files if present). Update references to principles changed.
 

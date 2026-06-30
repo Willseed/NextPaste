@@ -52,6 +52,20 @@ of each story.
 Validation tasks MUST list targeted commands or selectors before any full-suite command. If a full
 regression task is included, it MUST state why the gate applies.
 
+## Governance Execution Rules *(mandatory for governance features)*
+
+1. Execute governance implementation in propagation order:
+   `Templates -> Agents -> Copilot Instructions -> Generated Governance Artifacts`.
+2. Preserve incremental synchronization: update only impacted governance artifacts; avoid
+   regeneration of unaffected sections.
+3. Every Analyze finding MUST be classified as exactly one of:
+   `Governance Defect`, `Implementation Pending`, or `Verification Pending`.
+4. Only `Governance Defect` and `Governance Inconsistency` block governance readiness.
+   `Implementation Pending` and `Verification Pending` remain actionable but non-blocking.
+5. Validation lifecycle ownership remains in
+   `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`; tasks may reference it but
+   MUST NOT redefine lifecycle states.
+
 <!--
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
@@ -205,10 +219,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
   motion, and component styling in user-facing UI
 - [ ] TXXX **Governance Review**: Review the spec, plan, tasks, checklist, and validation contract for alignment and consistent inheritance
-- [ ] TXXX **Analyze enforcement**: Execute `/speckit.analyze` as a mandatory checkpoint to programmatically verify complete propagation through Constitution -> Templates -> Agents before representative feature validation
+- [ ] TXXX **Analyze Checkpoint A**: Execute `/speckit.analyze` after template propagation and classify each finding as Governance Defect, Implementation Pending, or Verification Pending
+- [ ] TXXX **Analyze Checkpoint B**: Execute `/speckit.analyze` after agent and Copilot-instruction propagation to verify governance inheritance and lifecycle ownership
+- [ ] TXXX **Analyze Checkpoint C**: Execute `/speckit.analyze` after generated-governance-artifact updates to verify propagation completeness before representative validation execution
 - [ ] TXXX **Representative Feature Validation**: Validate against at least one existing representative feature (e.g., `specs/011-fix-clip-row-clipping`) for backward compatibility, and, where practical, a newly generated feature for forward-generation correctness
 - [ ] TXXX **Final Governance Regression**: Run full regression checks across all shared artifacts
-- [ ] TXXX **Sync Impact Closure**: Close the Sync Impact and record migration follow-up decisions
+- [ ] TXXX **Sync Impact Closure**: Close Sync Impact only after contract-owned representative validation is executed and no blocking Governance Defect/Governance Inconsistency remains
 - [ ] TXXX **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale
 - [ ] TXXX **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change
 
@@ -224,6 +240,8 @@ Examples of foundational tasks (adjust based on your project):
   - User stories can then proceed in parallel (if staffed)
   - Or sequentially in priority order (P1 -> P2 -> P3)
 - **Polish (Final Phase)**: Depends on all desired user stories being complete
+- **Governance closure (when applicable)**: Depends on Analyze Checkpoints A/B/C completion,
+  representative validation execution, and contract-owned Sync Impact closure conditions
 
 ### User Story Dependencies
 
@@ -241,6 +259,9 @@ Examples of foundational tasks (adjust based on your project):
   regression task
 - Shared validation execution belongs in the Validation Contract, not in task-local matrices
 - Story complete before moving to next priority
+- Governance readiness blocks only on Governance Defect or Governance Inconsistency findings; keep
+  Implementation Pending and Verification Pending visible as follow-up work without misclassifying
+  them as governance failure
 
 ### Parallel Opportunities
 

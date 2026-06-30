@@ -57,11 +57,20 @@ command MUST run only after `/speckit.tasks` has successfully produced a complet
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.analyze`.
 
 **Governance inheritance model**: Analyze governance as the dependency-ordered chain
-`Constitution` → `Templates` → `Agents` → `Generated Feature` → `Representative Validation` →
+`Constitution` → `Templates` → `Agents` → `Generated Feature Artifacts` → `Representative Validation` →
 `Sync Impact`. This agent operates at the `Agents` layer and evaluates generated-feature artifacts
 plus downstream proof signals. It MUST verify inheritance and drift without redefining the
 validation lifecycle; when present, `contracts/validation-and-sonar-contract.md` remains the
 canonical lifecycle owner.
+
+**Governance Analysis Accuracy (Constitution v2.6)**:
+
+- Every finding MUST be classified as exactly one of: `Governance Defect`, `Implementation Pending`,
+  or `Verification Pending`.
+- Governance readiness may be blocked only by `Governance Defect` and
+  `Governance Inconsistency`.
+- `Implementation Pending` and `Verification Pending` findings MUST remain visible follow-up work but
+  MUST NOT be treated as governance-readiness blockers.
 
 ## Execution Steps
 
@@ -168,7 +177,17 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Validation ordering contradictions (e.g., full regression required before targeted commands, or
   UI tests standing in for pure-logic validation without justification)
 
-### 5. Severity Assignment
+#### G. Classification Rules (mandatory)
+
+- Assign exactly one governance classification to each finding:
+  - **Governance Defect**: constitutional conflict, governance inversion, competing lifecycle owner,
+    blocking inconsistency, or mandatory propagation/readiness rule violation
+  - **Implementation Pending**: required governance implementation change not yet completed
+  - **Verification Pending**: required representative validation, checkpoint execution, or evidence
+    collection not yet executed
+- Do not assign multiple governance classifications to a single finding.
+
+### 5. Governance Classification and Severity Assignment
 
 Use this heuristic to prioritize findings:
 
@@ -181,15 +200,21 @@ Use this heuristic to prioritize findings:
 - **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case
 - **LOW**: Style/wording improvements, minor redundancy not affecting execution order
 
+Then apply governance-readiness mapping:
+
+- Readiness **blocked** when a finding is classified as `Governance Defect` or
+  `Governance Inconsistency`.
+- Readiness **not blocked** by `Implementation Pending` or `Verification Pending`.
+
 ### 6. Produce Compact Analysis Report
 
 Output a Markdown report (no file writes) with the following structure:
 
 ## Specification Analysis Report
 
-| ID | Category | Severity | Location(s) | Summary | Recommendation |
-|----|----------|----------|-------------|---------|----------------|
-| A1 | Duplication | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
+| ID | Category | Governance Classification | Severity | Location(s) | Summary | Recommendation |
+|----|----------|---------------------------|----------|-------------|---------|----------------|
+| A1 | Duplication | Governance Defect | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
 
 (Add one row per finding; generate stable IDs prefixed by category initial.)
 
@@ -213,13 +238,25 @@ redefinition is found)
 - Ambiguity Count
 - Duplication Count
 - Critical Issues Count
+- Governance Defect Count
+- Implementation Pending Count
+- Verification Pending Count
+
+**Governance Readiness Decision:**
+
+- `BLOCKED` when any Governance Defect or Governance Inconsistency remains open.
+- `READY` when no Governance Defect or Governance Inconsistency remains open, even if
+  Implementation Pending or Verification Pending findings still exist.
 
 ### 7. Provide Next Actions
 
 At end of report, output a concise Next Actions block:
 
-- If CRITICAL issues exist: Recommend resolving before `/speckit.implement`
-- If only LOW/MEDIUM: User may proceed, but provide improvement suggestions
+- If Governance Defect/Governance Inconsistency findings exist: Recommend resolving before
+  `/speckit.implement`
+- If only Implementation Pending/Verification Pending findings remain: User may proceed while keeping
+  those items tracked as follow-up work
+- If only LOW/MEDIUM non-blocking findings remain: User may proceed, but provide improvement suggestions
 - Provide explicit command suggestions: e.g., "Run /speckit.specify with refinement", "Run /speckit.plan to adjust architecture", "Manually edit tasks.md to add coverage for 'performance-metrics'"
 
 ### 8. Offer Remediation

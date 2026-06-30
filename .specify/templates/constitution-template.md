@@ -12,6 +12,7 @@ Templates requiring updates:
 - [ ] .specify/templates/plan-template.md
 - [ ] .specify/templates/tasks-template.md
 - [ ] .specify/templates/checklist-template.md
+- [ ] .specify/templates/quickstart-template.md
 - [ ] .specify/templates/contracts/validation-and-sonar-contract.md
 - [ ] .github/copilot-instructions.md
 - [ ] .github/agents/
@@ -241,6 +242,22 @@ speculative abstractions, placeholder architecture, or unrelated scope expansion
 Rationale: Refactoring should make the codebase easier to maintain without creating surprise
 product changes.
 
+### XVII. Governance Evolution and Analysis Accuracy
+
+Governance improvements discovered during Analyze or implementation MUST be treated as incremental
+evolution of the current governance specification. Maintainers MUST amend this constitution and
+execute the governance workflow rather than creating a parallel governance feature track.
+
+Analyze findings MUST be classified into exactly three categories: Governance Defect,
+Implementation Pending, and Verification Pending. Governance readiness may be blocked only by
+Governance Defects and Governance Inconsistencies. Implementation Pending represents unfinished
+implementation work and Verification Pending represents required validation that has not yet been
+executed. Neither Implementation Pending nor Verification Pending may be treated as a governance
+failure.
+
+Rationale: Governance quality improves when classifications are precise and every improvement is
+absorbed into one authoritative governance lifecycle.
+
 ## Technical Constraints
 
 [PROJECT_NAME] is an Apple-platform application whose default implementation stack is
@@ -255,18 +272,39 @@ platform provides an equivalent capability.
 
 ## Governance Workflow
 
-All governance and feature work MUST follow the same specification-driven lifecycle:
-`/speckit.specify` -> `/speckit.clarify` -> `/speckit.plan` -> `/speckit.tasks` ->
-`/speckit.analyze` -> `/speckit.implement`. Constitution changes MUST be specified and planned like
-product changes, even when they affect governance artifacts only.
+Governance improvements discovered during Analyze or implementation MUST be treated as governance
+evolution, not as a new governance feature stream. Required workflow order is
+`Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`.
+
+`/speckit.specify` owns the Specification step, `/speckit.clarify` MAY refine specification details
+inside that step, and `/speckit.plan`, `/speckit.tasks`, `/speckit.analyze`, and
+`/speckit.implement` MUST execute in order after constitution changes are recorded.
+
+### Governance Propagation Order
+
+Mandatory propagation order is
+`Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`.
+
+No downstream governance artifact may introduce, enforce, redefine, or reorder governance before
+the upstream governing layer owns it. Governance inversion MUST be reported as a blocking issue.
+
+### Analyze Classification and Governance Readiness
+
+Analyze agents MUST classify every finding into exactly one category: Governance Defect,
+Implementation Pending, or Verification Pending.
+
+Only Governance Defects and Governance Inconsistencies may block governance readiness.
+Implementation Pending findings represent unfinished implementation work. Verification Pending
+findings represent required validation not yet executed. Neither category may be classified as a
+governance failure.
 
 Before a governance change is complete, maintainers MUST:
 
 1. Record the governing change in the constitution and update the Sync Impact Report.
 2. Identify every dependent template, shared agent, instruction source, and validation artifact that
    must stay aligned.
-3. Propagate the change through those sources before allowing downstream feature generation to rely
-   on it.
+3. Propagate the change through those sources in the mandatory propagation order before allowing
+   downstream feature generation to rely on it.
 4. Validate the change against at least one existing representative feature.
 5. Validate the change against one newly generated feature when practical; if not practical, record
    why existing-feature validation is sufficient.
@@ -282,6 +320,15 @@ This constitution supersedes conflicting project practices, templates, and featu
 Changes to constitutional requirements require proposed text, rationale, migration guidance, an
 updated Sync Impact Report, and explicit project-owner approval before dependent artifacts are
 considered synchronized.
+
+Every executable lifecycle MUST have exactly one authoritative owner. This includes the Validation
+Lifecycle, Governance Lifecycle, Release Lifecycle, and Migration Lifecycle. Non-owner artifacts MAY
+reference the owner lifecycle, but they MUST NOT redefine, partially restate, reorder, or create
+competing lifecycle definitions.
+
+Validation Lifecycle ownership remains in
+`specs/<feature>/contracts/validation-and-sonar-contract.md`. Related artifacts may reference that
+owner, but they MUST NOT duplicate or compete with its lifecycle definitions.
 
 Versioning MUST follow semantic rules: MAJOR for backward-incompatible removal or redefinition of a
 core governance rule, MINOR for new principles or materially expanded mandatory guidance, and PATCH

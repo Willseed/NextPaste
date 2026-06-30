@@ -35,6 +35,17 @@ List targeted commands first and reserve full regression for final gates only.
 If full regression is required, document why the gate applies. UI tests must not duplicate
 coverage already provided by reliable unit or integration tests.
 
+## 3a. Governance Analysis Accuracy *(required for governance features)*
+
+- Classify every governance finding as exactly one category:
+  `Governance Defect`, `Implementation Pending`, or `Verification Pending`.
+- Governance readiness may be blocked only by `Governance Defect` and
+  `Governance Inconsistency`.
+- `Implementation Pending` means required implementation work remains incomplete and is non-blocking
+  for governance readiness.
+- `Verification Pending` means required validation has not yet executed and is non-blocking for
+  governance readiness.
+
 ## 4. Automated Validation Matrix
 
 | Validation area | Execution source | Required evidence |
@@ -100,6 +111,8 @@ platform-native behavior cannot be faithfully simulated.
 ## 11. Representative Validation
 
 - [Define the representative validation set to confirm backward compatibility (on at least one existing representative feature) and forward-generation correctness (on a newly generated disposable feature) before treating the governance or feature change as effective.]
+- [Until execution occurs, representative validation status MUST remain pending/deferred. Do not mark
+  representative validation PASS before evidence is recorded.]
 
 ## 12. Release Readiness Validation
 
@@ -107,6 +120,10 @@ platform-native behavior cannot be faithfully simulated.
 - Confirm targeted validation, final regression validation when required, manual,
   offline/local-first, accessibility/platform, and performance validation rows are satisfied.
 - Confirm Sync Impact closure, SonarQube evidence, and Constitution completion gates are satisfied in order.
+- For governance features, confirm Analyze findings are fully classified and that no
+  Governance Defect/Governance Inconsistency remains open before readiness is declared.
+- For governance features, do not close Sync Impact until representative validation execution
+  evidence is recorded.
 - Confirm any feature-specific evidence artifacts or approvals required before release.
 
 ## 13. SonarQube Evidence Requirements

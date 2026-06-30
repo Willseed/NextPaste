@@ -16,13 +16,13 @@ rg -n "Version|Sync Impact|Template-First Governance|Validation Governance|Gover
 ### Template verification
 
 ```bash
-rg -n "supported Apple platforms|authoritative source|root cause|performance budget|platform-specific validation|Sync Impact|representative" .specify/templates/spec-template.md .specify/templates/plan-template.md .specify/templates/tasks-template.md .specify/templates/checklist-template.md .specify/templates/constitution-template.md .specify/templates/contracts/validation-and-sonar-contract.md
+rg -n "supported Apple platforms|authoritative source|root cause|performance budget|platform-specific validation|Sync Impact|representative|Governance Defect|Implementation Pending|Verification Pending|Generated Feature Artifacts|Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement" .specify/templates/spec-template.md .specify/templates/plan-template.md .specify/templates/tasks-template.md .specify/templates/checklist-template.md .specify/templates/quickstart-template.md .specify/templates/constitution-template.md .specify/templates/contracts/validation-and-sonar-contract.md
 ```
 
 ### Agent verification
 
 ```bash
-rg -n "supported Apple platforms|orphan|traceability drift|root cause|performance budget|Sync Impact|representative" .github/agents/speckit.constitution.agent.md .github/agents/speckit.specify.agent.md .github/agents/speckit.clarify.agent.md .github/agents/speckit.plan.agent.md .github/agents/speckit.tasks.agent.md .github/agents/speckit.analyze.agent.md .github/agents/speckit.implement.agent.md .github/copilot-instructions.md
+rg -n "supported Apple platforms|orphan|traceability drift|root cause|performance budget|Sync Impact|representative|Governance Defect|Implementation Pending|Verification Pending|Generated Feature Artifacts|Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact" .github/agents/speckit.constitution.agent.md .github/agents/speckit.specify.agent.md .github/agents/speckit.clarify.agent.md .github/agents/speckit.plan.agent.md .github/agents/speckit.tasks.agent.md .github/agents/speckit.analyze.agent.md .github/agents/speckit.implement.agent.md .github/copilot-instructions.md
 ```
 
 ## Representative validation entry points

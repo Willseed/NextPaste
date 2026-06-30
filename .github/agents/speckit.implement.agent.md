@@ -90,7 +90,7 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Required when present**: Read `contracts/validation-and-sonar-contract.md` as the
      canonical validation source and do not invent a separate validation lifecycle here
    - Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates`
-     → `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`
+     → `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -176,6 +176,11 @@ You **MUST** consider the user input before proceeding (if not empty).
      validation explicitly verifies inheritance for `speckit.constitution`, `speckit.specify`,
      `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
      `speckit.implement`
+   - For governance features, preserve Analyze classification accuracy: every finding must be
+     recorded as exactly one of Governance Defect, Implementation Pending, or Verification Pending
+   - For governance features, block implementation readiness only on Governance Defect or Governance
+     Inconsistency findings; keep Implementation Pending and Verification Pending open without
+     misclassifying them as governance failure
    - Confirm applicable keyboard, VoiceOver, trackpad, Magic Mouse, mouse, context-menu,
      drag-and-drop, focus, scrolling, and multi-selection behaviors remain native and consistent
 

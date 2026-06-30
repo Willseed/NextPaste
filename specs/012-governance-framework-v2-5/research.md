@@ -1,4 +1,4 @@
-# Governance Framework v2.5 Research
+# Governance Framework v2.6 Research
 
 ## Decision 1: Treat governance as the product boundary
 
@@ -17,10 +17,12 @@
 ## Decision 2: Use a strict propagation dependency chain
 
 - **Decision**: Propagate governance changes in this order: Constitution, shared templates, shared
-  agents and Copilot instructions, representative validation, then Sync Impact completion.
+  agents, Copilot instructions, generated governance artifacts, representative validation, then Sync
+  Impact completion.
 - **Rationale**: The Constitution is the highest authority, templates are the shared documentation
-  owner, agents and Copilot instructions operationalize generation and analysis, and Sync Impact can
-  only close after downstream propagation is proven.
+  owner, agents and Copilot instructions operationalize generation and analysis, generated
+  governance artifacts prove downstream inheritance, and Sync Impact can only close after the full
+  chain is proven.
 - **Alternatives considered**:
   - Updating templates or agents before the Constitution — rejected because it would invert
     governance authority.
@@ -33,7 +35,7 @@
   cross-cutting project rules promote to the Constitution, repeated artifact structure promotes to a
   shared template, enforcement/generation logic promotes to agent behavior, and feature-local
   handling remains valid only for isolated or intentionally unique findings.
-- **Rationale**: This matches the clarified specification and preserves Constitution v2.4.0’s
+- **Rationale**: This matches the clarified specification and preserves Constitution v2.6.0’s
   template-first threshold for repeated structure while avoiding automatic promotion without review.
 - **Alternatives considered**:
   - Automatic promotion after two features — rejected because it removes governance judgment.
@@ -72,3 +74,26 @@
 - **Alternatives considered**:
   - Immediate repository-wide migration — rejected because it expands scope and raises drift risk.
   - No migration path at all — rejected because it would hide compatibility problems.
+
+## Decision 7: Enforce Governance Analysis Accuracy classifications
+
+- **Decision**: Require Analyze outputs to classify each finding as exactly one of Governance Defect,
+  Implementation Pending, or Verification Pending.
+- **Rationale**: Constitution v2.6 improves governance readiness decisions by separating blocking
+  governance defects from non-blocking implementation and verification follow-up work.
+- **Alternatives considered**:
+  - Keeping severity-only reporting — rejected because severity alone cannot enforce lifecycle
+    readiness semantics.
+  - Treating all pending work as governance failure — rejected because it blocks execution despite
+    non-defect status.
+
+## Decision 8: Apply incremental synchronization by propagation stage
+
+- **Decision**: Synchronize governance updates incrementally in propagation order and preserve
+  completed work rather than regenerating all artifacts.
+- **Rationale**: Incremental synchronization reduces churn, avoids accidental drift in completed
+  artifacts, and preserves traceability of what changed at each stage.
+- **Alternatives considered**:
+  - Full regeneration on each governance amendment — rejected because it risks unintended rewrites
+    and obscures true governance deltas.
+  - Ad-hoc updates without stage order — rejected because it can introduce governance inversion.

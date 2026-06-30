@@ -64,8 +64,8 @@ You **MUST** consider the user input before proceeding (if not empty).
      validation source
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates`
-     → `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`. Generate
-     `tasks.md` only as part of the `Generated Feature` layer, and keep validation lifecycle
+     → `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`. Generate
+     `tasks.md` only as part of the `Generated Feature Artifacts` layer, and keep validation lifecycle
      ownership in `contracts/validation-and-sonar-contract.md` instead of recreating it locally.
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
@@ -101,6 +101,13 @@ You **MUST** consider the user input before proceeding (if not empty).
      explicitly verifies inheritance for `speckit.constitution`, `speckit.specify`,
      `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
      `speckit.implement`
+   - For governance features, include propagation-ordered execution tasks for
+     `Templates -> Agents -> Copilot Instructions -> Generated Governance Artifacts`
+   - For governance features, include Analyze Checkpoints A/B/C tasks and require each finding to
+     be classified as exactly one of Governance Defect, Implementation Pending, or Verification
+     Pending, with readiness blocked only by Governance Defect/Governance Inconsistency
+   - For governance features, preserve incremental synchronization and migration-by-exception tasks
+     instead of blanket historical rewrites
    - Put targeted validation commands before any full-suite command and document the reason for
      any required full regression
    - Dependencies section showing story completion order

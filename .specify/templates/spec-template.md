@@ -136,6 +136,19 @@ by [specific action] and delivers [specific value]"]
 - **FR-016**: Refactoring work MUST identify the existing observable behavior being preserved and
   include regression coverage demonstrating behavior parity, without speculative abstractions
 
+For governance-focused features, requirements MUST also document:
+
+- Governance evolution workflow order:
+  `Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`
+- Governance propagation order:
+  `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`
+- Analyze classification and readiness semantics: each finding maps to exactly one of
+  `Governance Defect`, `Implementation Pending`, or `Verification Pending`; only `Governance Defect`
+  and `Governance Inconsistency` block governance readiness
+- Lifecycle ownership boundaries: validation lifecycle ownership remains in
+  `contracts/validation-and-sonar-contract.md`, while spec/plan/tasks/checklists reference it
+  without redefining it
+
 *Example of marking unclear requirements:*
 
 - **FR-017**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
@@ -154,6 +167,8 @@ by [specific action] and delivers [specific value]"]
 - `quickstart.md` is an execution guide only and links back to the Validation Contract.
 - Feature artifacts may add feature-specific validation context, but MUST NOT recreate shared
   validation matrices, repeated Sonar rules, or template-owned review structures.
+- For governance features, representative validation and Sync Impact lifecycle statuses MUST remain
+  pending/deferred until execution evidence is recorded in the Validation Contract.
 
 ## Success Criteria *(mandatory)*
 
@@ -183,6 +198,11 @@ by [specific action] and delivers [specific value]"]
   commands and Validation Contract references"]
 - **SC-011**: [Refactor parity metric, e.g., "All refactoring scenarios preserve existing
   observable behavior in automated regression tests"]
+- **SC-012**: [Governance-analysis metric for governance features, e.g., "Every Analyze finding is
+  classified as Governance Defect, Implementation Pending, or Verification Pending with no
+  unclassified findings"]
+- **SC-013**: [Governance-readiness metric for governance features, e.g., "Governance readiness
+  blocks only on Governance Defects or Governance Inconsistencies"]
 
 ## Assumptions
 

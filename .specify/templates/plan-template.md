@@ -114,10 +114,46 @@ Capture the root-cause-first triad before implementation begins:
 ## Sync Impact Planning
 
 - [Identify every template, shared agent, and Copilot instruction source requiring synchronization. Sync Impact completion is a mandatory gate.]
+- [For governance features, keep Sync Impact status open until contract-owned representative
+  validation executes and downstream propagation is confirmed.]
 
 ## Representative Validation Strategy
 
 - [Define the representative validation set to prove backward compatibility (on at least one existing feature) and forward-generation correctness (on a newly generated disposable feature).]
+- [For governance features, representative validation status MUST NOT be marked PASS before execution
+  evidence is recorded in `contracts/validation-and-sonar-contract.md`.]
+
+## Governance Evolution Workflow *(mandatory for governance features)*
+
+- [Plan updates in this order:
+  `Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`]
+- [Treat governance improvements discovered during Analyze or implementation as incremental updates to
+  the current governance feature, not as a parallel governance stream.]
+- [Keep validation lifecycle ownership in
+  `contracts/validation-and-sonar-contract.md`; plan artifacts reference but do not redefine it.]
+
+## Governance Propagation Dependency Graph *(mandatory for governance features)*
+
+- [Document propagation dependencies in this order:
+  `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`]
+- [List concrete paths for each layer and any blocking dependencies.]
+- [Call out propagation inversions as blocking governance defects.]
+
+## Analyze Checkpoints *(mandatory for governance features)*
+
+- [Checkpoint A (post-template propagation): classify findings as exactly one of `Governance Defect`,
+  `Implementation Pending`, `Verification Pending`; only Governance Defect/Inconsistency blocks readiness.]
+- [Checkpoint B (post-agent/instruction propagation): re-run classification and confirm lifecycle
+  ownership stays centralized in the Validation Contract.]
+- [Checkpoint C (post-generated-artifact propagation): confirm Representative Validation and Sync
+  Impact remain pending until execution evidence exists.]
+
+## Incremental Synchronization & Migration Strategy *(mandatory for governance features)*
+
+- [Apply synchronization incrementally by propagation layer rather than regenerating all artifacts.]
+- [Preserve completed work; update only affected governance surfaces.]
+- [Use migration-by-exception for historical features: create follow-up work only when representative
+  validation reveals a compatibility gap.]
 
 ## Project Structure
 

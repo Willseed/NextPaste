@@ -57,6 +57,13 @@ and requirements.
 - [ ] CHKXXX Feature defines measurable performance budgets and triggers only where the feature affects user-visible or materially impactful internal operations, and Analyze checks are set up to detect performance or validation-ownership gaps
 - [ ] CHKXXX Sync Impact gating is identified explicitly, tracing all downstream artifacts that must stay synchronized
 - [ ] CHKXXX Representative validation is planned using at least one existing representative feature (for backward compatibility) and one newly generated feature (for forward-generation correctness)
+- [ ] CHKXXX Governance propagation order is documented as `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`
+- [ ] CHKXXX Governance evolution workflow is documented as `Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`
+- [ ] CHKXXX Analyze findings are classified as exactly one of Governance Defect, Implementation Pending, or Verification Pending
+- [ ] CHKXXX Governance readiness blocks only on Governance Defects or Governance Inconsistencies; Implementation Pending and Verification Pending are tracked as non-blocking
+- [ ] CHKXXX Validation lifecycle ownership remains in `contracts/validation-and-sonar-contract.md`, and no competing lifecycle owner is introduced
+- [ ] CHKXXX Representative Validation and Sync Impact statuses are not marked PASS/closed before execution evidence exists in the Validation Contract
+- [ ] CHKXXX Incremental synchronization preserves completed governance work and updates only impacted layers/artifacts
 - [ ] CHKXXX Governance completion gates (Governance Review -> Representative Feature Validation -> Final Governance Regression -> Sync Impact Closure -> SonarQube Evidence -> Constitution Completion) are planned and verified in order
 - [ ] CHKXXX Shared template-owned structures are inherited rather than redefined locally
 - [ ] CHKXXX User-facing UI follows shared design tokens and introduces no undocumented visual

@@ -59,8 +59,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
 
 2a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
-   `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`. The plan and its
-   generated artifacts populate the `Generated Feature` layer and MUST prepare downstream
+   `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`. The plan and its
+   generated artifacts populate the `Generated Feature Artifacts` layer and MUST prepare downstream
    Representative Validation and Sync Impact without moving lifecycle ownership out of
    `contracts/validation-and-sonar-contract.md`.
 
@@ -70,6 +70,15 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Evaluate gates (ERROR if violations unjustified)
    - Create or update `contracts/validation-and-sonar-contract.md` from the shared template as the
      canonical validation source for the feature
+   - For governance features, encode governance evolution workflow as
+     `Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`
+   - For governance features, encode governance propagation order as
+     `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`
+   - For governance features, define Analyze Checkpoints A/B/C and enforce classification of each
+     finding as exactly one of Governance Defect, Implementation Pending, or Verification Pending,
+     where only Governance Defect/Governance Inconsistency blocks readiness
+   - Preserve incremental synchronization and migration-by-exception strategy for historical
+     artifacts
    - When the feature updates shared governance, ensure the generated validation contract and
      quickstart require representative validation to explicitly verify inheritance for
      `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,

@@ -36,5 +36,16 @@ Use [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sona
 
 - Use `contracts/validation-and-sonar-contract.md` to record validation evidence.
 - Record SonarQube Project Health Gate passing results there.
-- Close Sync Impact items.
-- Complete Constitution update steps.
+- Keep representative validation and Sync Impact lifecycle statuses pending/deferred until execution
+  evidence is recorded in the Validation Contract.
+- Close Sync Impact items only after contract-owned representative validation execution completes.
+- Complete Constitution update steps only after Sync Impact closure criteria are satisfied.
+
+## Analyze Checkpoints *(for governance features)*
+
+- **Checkpoint A (templates propagated)**: Classify each finding as exactly one of Governance Defect,
+  Implementation Pending, or Verification Pending.
+- **Checkpoint B (agents/instructions propagated)**: Re-run classification and verify lifecycle
+  ownership remains in `contracts/validation-and-sonar-contract.md`.
+- **Checkpoint C (generated artifacts propagated)**: Confirm representative validation and Sync Impact
+  status remain pending until execution evidence exists.
