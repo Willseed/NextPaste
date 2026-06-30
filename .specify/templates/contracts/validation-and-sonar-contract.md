@@ -76,6 +76,7 @@ platform-native behavior cannot be faithfully simulated.
 
 ## 8. Accessibility and Platform Validation
 
+- Declare supported Apple platforms explicitly (e.g., macOS, iOS, xros) and separate shared from platform-specific validation expectations.
 - Identify the affected interaction methods, including keyboard, mouse, trackpad, Magic Mouse,
   focus, scrolling, context menus, drag and drop, multi-selection, accessibility actions, and
   VoiceOver where applicable.
@@ -92,18 +93,23 @@ platform-native behavior cannot be faithfully simulated.
 
 ## 10. Performance Validation
 
-- Define the performance expectations that matter for the feature.
+- Define performance-budget triggers and measurable performance expectations (mandatory when feature affects responsiveness, launch, clipboard capture, search, thumbnail generation, persistence latency, or memory behavior; otherwise, state N/A).
 - Record how validation proves those expectations without inventing feature-local structure outside
   this contract.
 
-## 11. Release Readiness Validation
+## 11. Representative Validation
+
+- [Define the representative validation set to confirm backward compatibility (on at least one existing representative feature) and forward-generation correctness (on a newly generated disposable feature) before treating the governance or feature change as effective.]
+
+## 12. Release Readiness Validation
 
 - Confirm build/test/run commands completed successfully through `quickstart.md`.
 - Confirm targeted validation, final regression validation when required, manual,
   offline/local-first, accessibility/platform, and performance validation rows are satisfied.
+- Confirm Sync Impact closure, SonarQube evidence, and Constitution completion gates are satisfied in order.
 - Confirm any feature-specific evidence artifacts or approvals required before release.
 
-## 12. SonarQube Evidence Requirements
+## 13. SonarQube Evidence Requirements
 
 1. Recorded evidence shows the branch or PR passes the configured SonarQube Project Health gate.
 2. Recorded evidence shows zero unresolved feature-introduced issues, or documents each approved

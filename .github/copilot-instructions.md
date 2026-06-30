@@ -32,11 +32,13 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 
 ## Key conventions
 
-- Follow the NextPaste constitution in `.specify/memory/constitution.md`: features must treat the
-  system clipboard as the primary source of clips, preserve local-first automatic capture, protect
-  user content by default, include automated tests, prefer Apple-native frameworks, and pass the
-  post-implementation SonarQube Project Health gate with recorded evidence. User-facing UI must
-  follow the shared design system, user interactions must preserve native Apple platform behavior
+- Follow the NextPaste constitution in `.specify/memory/constitution.md` and enforce the v2.5 governance pillars:
+  1. Continuous Quality Improvement: Evaluate recurring Analyze findings for promotion to shared governance sources before feature-local fixes.
+  2. Apple Platform Consistency: Explicitly declare supported Apple platforms, prefer shared business logic, and preserve native platform interactions.
+  3. Spec Traceability Governance: Respect spec.md as the sole authoritative source of FR and SC identifiers. Report orphan identifiers and redefined identifiers as blocking Analyze errors.
+  4. Root Cause First Engineering: Document the likely root cause, investigation strategy, and confirmation criteria in plans before implementation.
+  5. Performance Budget Governance: Mandate measurable performance budgets only where a feature affects responsiveness, launch, clipboard capture, search, thumbnail generation, persistence latency, or memory behavior.
+  User-facing UI must follow the shared design system, user interactions must preserve native Apple platform behavior
   and documented Apple HIG alignment, refactors must preserve observable behavior with regression
   coverage while avoiding speculative abstractions, validation ownership must remain centralized in
   `specs/<feature>/contracts/validation-and-sonar-contract.md`, and repeated documentation

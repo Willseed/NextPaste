@@ -91,6 +91,34 @@ scrolling, multi-selection, trackpad gestures, VoiceOver or N/A]
   documents any Apple HIG deviation with explicit product justification, and points validation
   execution back to the Validation Contract.
 
+## Root Cause Investigation Approach
+
+Capture the root-cause-first triad before implementation begins:
+
+### Likely Root Causes
+- [Identify underlying causes instead of compensating for symptoms]
+
+### Investigation Strategy
+- [Define strategy to confirm or disprove root-cause hypotheses]
+
+### Confirmation Criteria
+- [Define clear criteria to confirm underlying causes are resolved]
+
+### Temporary Workaround Criteria
+- [If fully confirming root cause before implementation is not practical, record best hypothesis, missing evidence, guardrails, and criteria to confirm afterward. Document why workaround is temporary.]
+
+## Performance Budget & Triggers
+
+- [Mandatory when feature affects user-visible responsiveness or materially impactful internal operations (launch, capture, search, thumbnail generation, persistence latency, memory). Define the budget, or state N/A.]
+
+## Sync Impact Planning
+
+- [Identify every template, shared agent, and Copilot instruction source requiring synchronization. Sync Impact completion is a mandatory gate.]
+
+## Representative Validation Strategy
+
+- [Define the representative validation set to prove backward compatibility (on at least one existing feature) and forward-generation correctness (on a newly generated disposable feature).]
+
 ## Project Structure
 
 ### Documentation (this feature)

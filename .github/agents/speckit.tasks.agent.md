@@ -149,7 +149,7 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 **CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
 
-**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the feature specification or if user requests TDD approach.
+**Tests are REQUIRED when behavior changes**: Generate automated tests when behavior or interaction changes are introduced. Validation must be tiered and proportional, with targeted tests specified before full regression commands. Full regression is reserved for defined gates and must include a documented reason.
 
 ### Checklist Format (REQUIRED)
 

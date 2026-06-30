@@ -50,3 +50,11 @@ git --no-pager diff --stat -- .specify .github specs/012-governance-framework-v2
 After the final governance regression gate, record SonarQube evidence or Sonar scope applicability
 exactly as required by
 [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+
+## 8. Sync Impact Closure
+
+Verify downstream propagation of templates and agents, closing the Sync Impact and resolving migration items exactly as required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+
+## 9. Constitution Completion
+
+Complete the Constitution update process, incrementing the version and archiving the ratified change exactly as required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).

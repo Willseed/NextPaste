@@ -87,6 +87,7 @@ by [specific action] and delivers [specific value]"]
   Mouse gestures, context menus, drag and drop, focus behavior, scrolling behavior,
   multi-selection behavior, accessibility actions, VoiceOver support, navigation patterns, or
   state N/A]
+- **Supported Apple Platforms**: [Declare supported Apple platforms explicitly (e.g., macOS, iOS, xros) or state N/A]
 - **Native Platform Behavior**: [Describe the Apple-native APIs, behaviors, and conventions this
   feature reuses or preserves]
 - **Validation Contract Reference**: Validation ownership for automated, manual, regression,
@@ -123,22 +124,23 @@ by [specific action] and delivers [specific value]"]
 - **FR-011**: Feature artifacts MUST reference
   `contracts/validation-and-sonar-contract.md` as the canonical validation source and MUST NOT
   redefine validation matrices, regression ownership, or Sonar evidence rules locally
-- **FR-012**: `quickstart.md` MUST contain only build commands, test commands, execution
+- **FR-012**: This specification (spec.md) is the sole authoritative source of Functional Requirement (FR-###) and Success Criteria (SC-###) identifiers. No downstream artifact (plan.md, tasks.md, checklists) may redefine, renumber, extend, or invent identifiers.
+- **FR-013**: `quickstart.md` MUST contain only build commands, test commands, execution
   instructions, and references to `contracts/validation-and-sonar-contract.md`
-- **FR-013**: Any feature that changes user interaction MUST describe affected interaction methods,
+- **FR-014**: Any feature that changes user interaction MUST describe affected interaction methods,
   preserve Apple-native interaction behavior unless explicitly changed, and identify the behavior
   that the Validation Contract must validate
-- **FR-014**: Any intentional deviation from Apple Human Interface Guidelines or standard Apple
+- **FR-015**: Any intentional deviation from Apple Human Interface Guidelines or standard Apple
   interaction conventions MUST be documented with explicit product justification in the
   specification
-- **FR-015**: Refactoring work MUST identify the existing observable behavior being preserved and
+- **FR-016**: Refactoring work MUST identify the existing observable behavior being preserved and
   include regression coverage demonstrating behavior parity, without speculative abstractions
 
 *Example of marking unclear requirements:*
 
-- **FR-016**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
+- **FR-017**: System MUST support clipboard content types [NEEDS CLARIFICATION: text only, text +
   images, files, or another scope?]
-- **FR-017**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
+- **FR-018**: System MUST retain local clipboard history for [NEEDS CLARIFICATION: retention period
   or storage cap not specified]
 
 ### Key Entities *(include if feature involves data)*

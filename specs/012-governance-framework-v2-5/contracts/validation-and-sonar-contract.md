@@ -34,16 +34,13 @@ List targeted steps first and reserve full governance regression for the final g
 
 ## 3. Targeted Validation Strategy
 
-1. Review the Constitution amendment and Sync Impact first.
-2. Verify the shared templates inherit the same governance rules.
-3. Verify the shared agent instructions and Copilot instructions encode the same rules.
-4. Validate one representative existing feature for backward compatibility.
-5. Validate one representative newly generated feature when practical for forward-generation
-   correctness.
-6. Run full governance regression only after the targeted reviews pass and before Sync Impact is
-   marked complete.
-7. Record SonarQube evidence after implementation when the changed files participate in the
-   configured Sonar scope, or record the documented scope rationale when they do not.
+The canonical governance execution order is:
+1. **Governance Review**: Review the Constitution amendment, shared templates, shared agent instructions, and Copilot instructions to ensure alignment and consistent inheritance.
+2. **Representative Feature Validation**: Validate against at least one existing feature (e.g., `specs/011-fix-clip-row-clipping`) to confirm backward compatibility and, where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient), one newly generated feature (e.g., a disposable feature generated after the updates land) to confirm forward-generation correctness.
+3. **Final Governance Regression**: Run full governance regression checks across all shared artifacts.
+4. **Sync Impact Closure**: Verify downstream propagation of templates and agents, closing the Sync Impact and resolving migration items.
+5. **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale.
+6. **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change.
 
 If full governance regression is required, document why the gate applies. Representative validation
 must not be skipped merely because the shared artifacts appear internally consistent.
@@ -56,7 +53,7 @@ must not be skipped merely because the shared artifacts appear internally consis
 | Template verification | `quickstart.md` template verification step | Evidence shows shared templates encode platform declarations, FR/SC authority, root-cause planning, performance-budget prompts, and centralized validation ownership consistently |
 | Agent verification | `quickstart.md` agent verification step | Evidence shows shared generation and analysis agents plus Copilot instructions reflect the same governance rules and severities |
 | Existing-feature representative validation | `quickstart.md` representative existing-feature step | Evidence shows the selected existing feature remains compatible with the updated shared governance without requiring silent artifact rewrites |
-| Newly generated representative validation | `quickstart.md` representative generated-feature step | Evidence shows a disposable newly generated feature inherits the updated governance structure automatically when practical |
+| Newly generated representative validation | `quickstart.md` representative generated-feature step | Evidence shows a disposable newly generated feature inherits the updated governance structure automatically when practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient) |
 | Analyze enforcement | `quickstart.md` agent verification and representative validation steps | Evidence shows orphan FR/orphan SC handling is blocking and traceability drift severity matches the clarified governance policy |
 | Performance-governance adoption | `quickstart.md` template and representative validation steps | Evidence shows templates and representative features require measurable budgets only for user-visible or materially impactful internal operations |
 | Sync Impact completion | `quickstart.md` full governance regression step | Evidence shows every dependent shared artifact was updated or explicitly deferred with a reason before closure |
@@ -90,7 +87,7 @@ must not be skipped merely because the shared artifacts appear internally consis
 | --- | --- | --- |
 | Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, and Sync Impact are coherent and governance-only |
 | Backward compatibility review | Representative existing-feature review | Reviewer confirms the selected existing feature remains compatible without hidden migrations |
-| Forward-generation review | Representative newly generated feature review where practical | Reviewer confirms the disposable feature inherits the new governance rules without manual patching |
+| Forward-generation review | Representative newly generated feature review where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient) | Reviewer confirms the disposable feature inherits the new governance rules without manual patching |
 | Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred |
 
 Manual validation must supplement the targeted verification steps and must not replace representative
@@ -123,8 +120,7 @@ validation or Sync Impact review.
 ## 11. Representative Validation
 
 - **Existing feature**: `specs/011-fix-clip-row-clipping`
-- **New feature**: one disposable feature generated after the shared governance changes land, when
-  practical
+- **New feature**: one disposable feature generated after the shared governance changes land, when practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient)
 - **Required proof**:
   1. Existing-feature validation demonstrates backward compatibility.
   2. Newly generated feature validation demonstrates forward-generation correctness.

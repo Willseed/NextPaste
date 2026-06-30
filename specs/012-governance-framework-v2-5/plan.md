@@ -35,10 +35,7 @@ source for automated, manual, regression, offline/local-first, accessibility, pl
 performance, release-readiness, and SonarQube validation. This plan references that contract
 instead of redefining its matrices.
 
-**Tiered Test Strategy**: Follow `quickstart.md` and the Validation Contract in this order:
-Constitution review, template verification, agent verification, representative existing-feature
-validation, representative newly generated feature validation when practical, full governance
-regression only after the targeted checks pass, then SonarQube evidence where applicable.
+**Tiered Test Strategy**: Follow the canonical governance execution order centralized in [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md). A mandatory Analyze enforcement checkpoint is executed to programmatically verify propagation through constitution → templates → agents before representative feature validation.
 
 **Target Platform**: Repository governance for all NextPaste-supported Apple platforms, executed
 from the existing macOS-based Spec Kit workflow
@@ -304,16 +301,11 @@ Sync Impact Completion
 
 ## Governance Validation Strategy
 
-Use [quickstart.md](quickstart.md) for ordered execution steps and
-[contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) for
-validation ownership. The validation order for this feature is:
+Validation ownership is centralized in the single source of truth: [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md). `quickstart.md` remains execution-only. 
 
-1. Constitution review
-2. Template verification
-3. Agent verification
-4. Representative feature validation
-5. Full governance regression
-6. SonarQube evidence where applicable
+Analyze enforcement is a mandatory checkpoint in the validation lifecycle. It programmatically verifies propagation through:
+`Constitution` → `Templates` → `Agents` → `Representative Feature Validation`
+to prevent governance-level regressions before closing out the Sync Impact.
 
 ## Sync Impact Plan
 

@@ -11,10 +11,12 @@ description: "Task list template for feature implementation"
 contracts/, and `contracts/validation-and-sonar-contract.md`
 
 **Validation Contract**: `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`
-owns the automated validation matrix, manual validation matrix, regression validation matrix,
+owns validation governance, including the automated validation matrix, manual validation matrix, regression validation matrix,
 offline/local-first validation, accessibility validation, platform-specific validation,
-performance validation, release-readiness validation, and SonarQube evidence requirements.
+performance validation, representative-feature validation, release-readiness validation, Sync Impact gating, and SonarQube evidence requirements.
 `quickstart.md` owns build/test/run commands and Validation Contract references only.
+
+**FR/SC Authority**: This task list MUST reference Functional Requirement (FR-###) and Success Criteria (SC-###) identifiers from the feature specification (spec.md) only, which is the sole authoritative source of requirements. Downstream tasks MUST NOT renumber, redefine, extend, or invent identifiers.
 
 **Tests**: Generate automated test tasks when the specification or constitution requires them, and
 generate validation execution tasks that reference the Validation Contract instead of restating its
@@ -202,14 +204,13 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Offline support review for local-first clipboard behavior
 - [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
   motion, and component styling in user-facing UI
-- [ ] TXXX Execute build/test/run commands from specs/[###-feature-name]/quickstart.md and evaluate
-  targeted commands first, then run full regression only if the defined gate applies and the reason
-  is documented, evaluating results against
-  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
-- [ ] TXXX Execute manual, accessibility, platform-specific, performance, and release-readiness
-  validation from specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
-- [ ] TXXX Run SonarQube Project Health validation and record evidence exactly as required by
-  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
+- [ ] TXXX **Governance Review**: Review the spec, plan, tasks, checklist, and validation contract for alignment and consistent inheritance
+- [ ] TXXX **Analyze enforcement**: Execute `/speckit.analyze` as a mandatory checkpoint to programmatically verify complete propagation through Constitution -> Templates -> Agents before representative feature validation
+- [ ] TXXX **Representative Feature Validation**: Validate against at least one existing representative feature (e.g., `specs/011-fix-clip-row-clipping`) for backward compatibility, and, where practical, a newly generated feature for forward-generation correctness
+- [ ] TXXX **Final Governance Regression**: Run full regression checks across all shared artifacts
+- [ ] TXXX **Sync Impact Closure**: Close the Sync Impact and record migration follow-up decisions
+- [ ] TXXX **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale
+- [ ] TXXX **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change
 
 ---
 

@@ -51,6 +51,13 @@ and requirements.
 - [ ] CHKXXX UI tests do not duplicate reliable lower-level automated coverage
 - [ ] CHKXXX Manual validation supplements automated validation only where platform-native behavior
   cannot be simulated reliably
+- [ ] CHKXXX Feature explicitly declares supported Apple platforms and separates shared from platform-specific validation
+- [ ] CHKXXX Feature respects spec.md as the sole authoritative source of FR and SC identifiers, and downstream artifacts do not redefine, renumber, extend, or invent identifiers
+- [ ] CHKXXX Feature plan documents the root-cause-first triad: likely root cause, investigation strategy, and confirmation criteria (with temporary workaround criteria documented explicitly if needed)
+- [ ] CHKXXX Feature defines measurable performance budgets and triggers only where the feature affects user-visible or materially impactful internal operations, and Analyze checks are set up to detect performance or validation-ownership gaps
+- [ ] CHKXXX Sync Impact gating is identified explicitly, tracing all downstream artifacts that must stay synchronized
+- [ ] CHKXXX Representative validation is planned using at least one existing representative feature (for backward compatibility) and one newly generated feature (for forward-generation correctness)
+- [ ] CHKXXX Governance completion gates (Governance Review -> Representative Feature Validation -> Final Governance Regression -> Sync Impact Closure -> SonarQube Evidence -> Constitution Completion) are planned and verified in order
 - [ ] CHKXXX Shared template-owned structures are inherited rather than redefined locally
 - [ ] CHKXXX User-facing UI follows shared design tokens and introduces no undocumented visual
   patterns

@@ -42,7 +42,7 @@
 
 ## Decision 4: Make representative validation the compatibility gate
 
-- **Decision**: Validate one existing feature and, where practical, one newly generated feature
+- **Decision**: Validate one existing feature and, where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient), one newly generated feature
   before treating the governance change as effective.
 - **Rationale**: Existing-feature validation proves backward compatibility; newly generated feature
   validation proves forward-generation correctness. Together they prevent one-sided governance

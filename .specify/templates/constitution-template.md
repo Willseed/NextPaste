@@ -1,50 +1,53 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+# [Project Name] Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Clipboard-First Product
+[Define product trigger flow, e.g., Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI. Manual flows are secondary and optional.]
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Local-First Architecture
+[Define local storage source of truth. Network-failure/sync failure MUST NOT block core capture or retrieval.]
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Privacy by Default
+[All telemetry, behavior tracking, and third-party monitoring SDKs are prohibited. Document explicit consent requirements for any user data transmission.]
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Automatic Capture
+[Describe automatic, passive capture requirements and how capture pipeline interruptions are forbidden without explicit spec justifications.]
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Test-First Development
+[Automated tests MUST be written first. Define coverage rules for core pipelines, user flows, and integrations.]
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### VI. Test Execution Efficiency
+[Layered, proportional validation strategy: targeted unit, targeted integration, targeted UI, and full regression only at defined gates.]
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VII. Native Simplicity & Platform Stack
+[Prefer target platform native frameworks, APIs, and components over custom event/gesture models or third-party abstractions.]
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+### VIII. Consistent Design System
+[User-facing UI MUST use shared design tokens and establish no undocumented visual patterns.]
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### IX. Refactoring Integrity
+[Refactoring MUST preserve observable behavior with regression coverage and introduce no speculative abstractions.]
+
+### X. Validation Governance
+[Validation Contract is the single validated source of truth. Feature specs, plans, tasks, and checklists reference validation instead of redefining it.]
+
+### XI. Template-First Governance
+[Repeated documentation structures MUST be promoted to templates. Plans, tasks, checklists inherit structure from templates.]
+
+### XII. Apple Platform Consistency
+[Declare supported Apple platforms explicitly, preserve equivalent business behavior, and enforce Apple Human Interface Guidelines.]
+
+## Technical Constraints
+
+[Specify permissible languages, database/persistence frameworks, UI systems, and prohibited SDKs or libraries.]
+
+## Development Workflow & Quality Gates
+
+[Define the Spec Kit lifecycle commands: specify, clarify, plan, tasks, analyze, implement. Set the SonarQube Project Health Gate rules.]
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+Constitution amendments require Proposed Text, Rationale, Migration Guidance, and a Sync Impact Report, incrementing the version accordingly.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: [Ratification Date] | **Last Amended**: [Last Amended Date]
