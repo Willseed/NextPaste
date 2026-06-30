@@ -25,9 +25,9 @@ Downstream artifacts requiring synchronization:
 - ⚠ pending .github/agents/speckit.analyze.agent.md
 - ⚠ pending .github/agents/speckit.implement.agent.md
 Representative validation:
-- Deferred until downstream synchronization updates are applied
+- Deferred — not yet executed.
 Sync Impact closure:
-- Deferred until downstream synchronization updates are applied
+- Deferred — not yet executed.
 Follow-up TODOs:
 - None
 -->

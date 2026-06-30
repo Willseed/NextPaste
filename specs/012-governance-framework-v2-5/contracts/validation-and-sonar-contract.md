@@ -102,7 +102,7 @@ Representative validation of a newly generated feature is REQUIRED when it can b
 | Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, and Sync Impact are coherent and governance-only | **PASS** - Confirmed Constitution v2.6.0 content is coherent, aligned, and strictly within scope. |
 | Backward compatibility review | Representative existing-feature review | Reviewer confirms the selected existing feature remains compatible without hidden migrations | **DEFERRED** - Representative existing-feature validation has not been executed in this synchronization pass. |
 | Forward-generation review | Representative newly generated feature review when the representative generated-feature requirement applies | Reviewer confirms the disposable feature inherits the new governance rules without manual patching, or records why existing-feature validation is sufficient | **DEFERRED** - Representative generated-feature validation has not been executed in this synchronization pass. |
-| Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred | **DEFERRED** - Sync Impact closure remains deferred until downstream synchronization updates are applied. |
+| Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred | **DEFERRED** - Sync Impact closure has not been executed in this synchronization pass and remains deferred until representative validation and closeout evidence are recorded. |
 
 Manual validation must supplement the targeted verification steps and must not replace representative
 validation or Sync Impact review.
@@ -143,8 +143,8 @@ validation or Sync Impact review.
 
 ### Current Lifecycle Status (Constitution v2.6 Consistency)
 
-- **Representative Validation**: **DEFERRED** — deferred until downstream synchronization updates are applied.
-- **Sync Impact Closure**: **DEFERRED** — deferred until downstream synchronization updates are applied.
+- **Representative Validation**: **DEFERRED** — representative validation has not been executed in this synchronization pass.
+- **Sync Impact Closure**: **DEFERRED** — Sync Impact closeout has not been executed in this synchronization pass and remains lifecycle-owned until representative validation and closeout evidence are recorded.
 
 ## 12. Release Readiness Validation
 
