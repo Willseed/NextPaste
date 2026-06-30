@@ -65,6 +65,13 @@ Execution steps:
 
 2. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
 
+2a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
+    `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`. Clarifications
+    update the current spec only as part of the `Generated Feature` layer. Preserve downstream
+    Representative Validation and Sync Impact traceability by inheriting governance from shared
+    sources instead of inventing feature-local lifecycle ownership. When present,
+    `contracts/validation-and-sonar-contract.md` remains the lifecycle owner.
+
 3. Load the current spec file. Perform a structured ambiguity & coverage scan using this taxonomy. For each category, mark status: Clear / Partial / Missing. Produce an internal coverage map used for prioritization (do not output raw map unless no questions will be asked).
 
    Functional Scope & Behavior:

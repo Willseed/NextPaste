@@ -2,59 +2,73 @@
 
 Use [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md) as
 the canonical source for validation ownership, representative validation, regression scope, Sync
-Impact completion, and SonarQube applicability requirements.
+Impact completion, SonarQube applicability requirements, and the only authoritative governance
+execution lifecycle.
 
-## 1. Constitution review
+## Review command entry points
+
+### Constitution review
 
 ```bash
 rg -n "Version|Sync Impact|Template-First Governance|Validation Governance|Native Apple User Experience|Test Execution Efficiency" .specify/memory/constitution.md
 ```
 
-## 2. Template verification
+### Template verification
 
 ```bash
 rg -n "supported Apple platforms|authoritative source|root cause|performance budget|platform-specific validation|Sync Impact|representative" .specify/templates/spec-template.md .specify/templates/plan-template.md .specify/templates/tasks-template.md .specify/templates/checklist-template.md .specify/templates/constitution-template.md .specify/templates/contracts/validation-and-sonar-contract.md
 ```
 
-## 3. Agent verification
+### Agent verification
 
 ```bash
-rg -n "supported Apple platforms|orphan|traceability drift|root cause|performance budget|Sync Impact|representative" .github/agents/speckit.constitution.agent.md .github/agents/speckit.specify.agent.md .github/agents/speckit.clarify.agent.md .github/agents/speckit.plan.agent.md .github/agents/speckit.tasks.agent.md .github/agents/speckit.analyze.agent.md .github/copilot-instructions.md
+rg -n "supported Apple platforms|orphan|traceability drift|root cause|performance budget|Sync Impact|representative" .github/agents/speckit.constitution.agent.md .github/agents/speckit.specify.agent.md .github/agents/speckit.clarify.agent.md .github/agents/speckit.plan.agent.md .github/agents/speckit.tasks.agent.md .github/agents/speckit.analyze.agent.md .github/agents/speckit.implement.agent.md .github/copilot-instructions.md
 ```
 
-## 4. Representative existing-feature validation
+## Representative validation entry points
 
 Use `specs/011-fix-clip-row-clipping` as the backward-compatibility representative feature. After
 the shared governance changes are implemented, inspect its `spec.md`, `plan.md`, and `tasks.md`, or
 run the normal Speckit analysis flow against it, to confirm the updated governance rules do not
 require hidden migrations.
 
-## 5. Representative newly generated feature validation
+Representative validation of a newly generated feature is REQUIRED when it can be performed without
+modifying product code and remains within the governance feature scope. Otherwise, document why
+representative validation using existing features is sufficient.
 
-Where practical, generate one disposable feature after the shared governance updates land and run
-the normal `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`, and
-`/speckit.analyze` flow against it to confirm forward-generation correctness. Discard the temporary
-feature after recording the validation outcome.
+When that requirement applies, generate one disposable feature after the shared governance updates
+land and run the normal `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`, `/speckit.tasks`,
+and `/speckit.analyze` flow against it to confirm forward-generation correctness. Discard the
+temporary feature after recording the validation outcome.
 
-## 6. Full governance regression gate
+Representative validation must prove governance inheritance through `speckit.constitution`,
+`speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
+`speckit.implement` before Sync Impact Closure.
+Use the generated artifacts plus the shared `speckit.implement` guardrails to confirm that
+implementation would remain governance-only without modifying product code during this validation.
 
-Run this only after the targeted review steps above pass, because the feature changes shared
-governance artifacts that affect future specification, planning, task generation, and analysis.
+## Regression command entry point
+
+Run this when the Validation Contract reaches the final governance regression stage.
 
 ```bash
 git --no-pager diff --stat -- .specify .github specs/012-governance-framework-v2-5
 ```
 
-## 7. SonarQube evidence
+## Analyze entry points
 
-After the final governance regression gate, record SonarQube evidence or Sonar scope applicability
-exactly as required by
-[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+- **Early Analyze**: use the normal `/speckit.analyze` flow as a governance-consistency check before
+  implementation propagation closes.
+- **Final Analyze**: use the normal `/speckit.analyze` flow as a readiness check before Constitution
+  Completion.
 
-## 8. Sync Impact Closure
+Analyze timing is operational support only. The Validation Contract remains the sole lifecycle owner.
 
-Verify downstream propagation of templates and agents, closing the Sync Impact and resolving migration items exactly as required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+## Contract-owned closeout entry points
 
-## 9. Constitution Completion
-
-Complete the Constitution update process, incrementing the version and archiving the ratified change exactly as required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+- **SonarQube evidence**: record evidence or Sonar scope applicability exactly as required by
+  [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+- **Sync Impact Closure**: verify downstream propagation and migration-item status exactly as
+  required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+- **Constitution Completion**: complete versioning and ratification closeout exactly as required by
+  [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).

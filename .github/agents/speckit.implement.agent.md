@@ -87,6 +87,10 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read research.md for technical decisions and constraints
    - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
+   - **Required when present**: Read `contracts/validation-and-sonar-contract.md` as the
+     canonical validation source and do not invent a separate validation lifecycle here
+   - Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates`
+     → `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -168,6 +172,10 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
+   - For governance features, do not close Sync Impact until the contract-owned representative
+     validation explicitly verifies inheritance for `speckit.constitution`, `speckit.specify`,
+     `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
+     `speckit.implement`
    - Confirm applicable keyboard, VoiceOver, trackpad, Magic Mouse, mouse, context-menu,
      drag-and-drop, focus, scrolling, and multi-selection behaviors remain native and consistent
 

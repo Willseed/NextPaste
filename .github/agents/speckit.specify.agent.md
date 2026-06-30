@@ -113,6 +113,13 @@ Given that feature description, do this:
 
 5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
 
+5a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
+    `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`. Inherit shared
+    governance from the Constitution and resolved template, generate the specification as the
+    `Generated Feature` layer, and preserve downstream traceability for Representative Validation
+    and Sync Impact without creating a separate validation lifecycle owner. When present,
+    `contracts/validation-and-sonar-contract.md` remains the lifecycle owner.
+
 6. Follow this execution flow:
     1. Parse user description from arguments
        If empty: ERROR "No feature description provided"

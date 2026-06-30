@@ -89,7 +89,9 @@ relationships. No application runtime models, SwiftData schema, or product entit
   - `follow_up_required`
 - **Validation rules**:
   - Must include at least one existing feature
-  - Should include one newly generated feature when practical
+  - Representative validation of a newly generated feature is REQUIRED when it can be performed
+    without modifying product code and remains within the governance feature scope. Otherwise,
+    document why representative validation using existing features is sufficient.
   - Sync Impact cannot close while required representative validation is unresolved
 
 ### 7. Sync Impact Item

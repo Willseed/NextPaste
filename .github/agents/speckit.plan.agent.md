@@ -58,12 +58,22 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
 
+2a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
+   `Agents` → `Generated Feature` → `Representative Validation` → `Sync Impact`. The plan and its
+   generated artifacts populate the `Generated Feature` layer and MUST prepare downstream
+   Representative Validation and Sync Impact without moving lifecycle ownership out of
+   `contracts/validation-and-sonar-contract.md`.
+
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
    - Create or update `contracts/validation-and-sonar-contract.md` from the shared template as the
      canonical validation source for the feature
+   - When the feature updates shared governance, ensure the generated validation contract and
+     quickstart require representative validation to explicitly verify inheritance for
+     `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,
+     `speckit.tasks`, `speckit.analyze`, and `speckit.implement` before Sync Impact closure
    - For user-facing interaction changes, identify impacted interaction models, reused
      Apple-native APIs and behaviors, required automated/manual validation, and any justified HIG
      deviations

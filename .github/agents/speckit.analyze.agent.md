@@ -56,6 +56,13 @@ command MUST run only after `/speckit.tasks` has successfully produced a complet
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.analyze`.
 
+**Governance inheritance model**: Analyze governance as the dependency-ordered chain
+`Constitution` → `Templates` → `Agents` → `Generated Feature` → `Representative Validation` →
+`Sync Impact`. This agent operates at the `Agents` layer and evaluates generated-feature artifacts
+plus downstream proof signals. It MUST verify inheritance and drift without redefining the
+validation lifecycle; when present, `contracts/validation-and-sonar-contract.md` remains the
+canonical lifecycle owner.
+
 ## Execution Steps
 
 ### 1. Initialize Analysis Context
@@ -140,6 +147,9 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
   inheritance, or feature-local redefinition of template-owned structures
 - Any spec/plan/tasks/checklist behavior that reproduces Validation Contract ownership instead of
   referencing `contracts/validation-and-sonar-contract.md`
+- Any governance feature whose representative validation evidence does not explicitly verify
+  inheritance for `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,
+  `speckit.tasks`, `speckit.analyze`, and `speckit.implement` before Sync Impact closure
 - Any unnecessary full-regression requirement, duplicated UI test coverage, or overly broad
   validation command that bypasses the tiered test strategy
 
@@ -163,7 +173,8 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 Use this heuristic to prioritize findings:
 
 - **CRITICAL**: Violates constitution MUST, duplicates Validation Contract ownership, duplicates a
-  template-owned structure, missing core spec artifact, or requirement with zero coverage that
+  template-owned structure, missing core spec artifact, missing governance-agent propagation proof
+  in representative validation for a governance feature, or requirement with zero coverage that
   blocks baseline functionality
 - **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute,
   untestable acceptance criterion, or unjustified broad validation scope
