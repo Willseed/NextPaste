@@ -85,11 +85,15 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
+   - Generate a tiered validation strategy that orders targeted unit, targeted integration,
+     targeted UI, final-gate full regression, then SonarQube evidence
    - For user-facing interaction changes, include automated interaction tests where reliable,
      manual validation tasks for native platform interactions automation cannot faithfully
      simulate, and regression validation for affected existing interaction methods
    - Reference template-owned validation through `contracts/validation-and-sonar-contract.md`
      instead of recreating validation matrices, Sonar rules, or review checklists inside `tasks.md`
+   - Put targeted validation commands before any full-suite command and document the reason for
+     any required full regression
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
@@ -205,13 +209,17 @@ Every task MUST strictly follow this format:
    - Story-specific setup → within that story's phase
    - Shared validation ownership stays in the Validation Contract; tasks only reference and
      execute it
+   - Full regression tasks appear only at feature completion, release readiness, or when shared
+     infrastructure, persistence, app launch, navigation, or cross-cutting interaction behavior is
+     affected; include the reason in the task
 
 ### Phase Structure
 
 - **Phase 1**: Setup (project initialization)
 - **Phase 2**: Foundational (blocking prerequisites - MUST complete before user stories)
 - **Phase 3+**: User Stories in priority order (P1, P2, P3...)
-  - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration
+  - Within each story: Targeted unit tests → targeted integration tests → targeted UI tests only
+    where required → Models → Services → Endpoints → Integration
   - Each phase should be a complete, independently testable increment
 - **Final Phase**: Polish & Cross-Cutting Concerns
 

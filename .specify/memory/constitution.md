@@ -1,28 +1,31 @@
 <!--
 Sync Impact Report
-Version change: 2.2.0 -> 2.3.0
+Version change: 2.3.0 -> 2.4.0
 Modified principles:
-- Added principle: X. Validation Governance
-- Added principle: XI. Template-First Governance
-- Renumbered principle: X. Native Apple User Experience -> XII. Native Apple User Experience
+- Added principle: VI. Test Execution Efficiency
+- Renumbered principle: VI. Simplicity and Apple-Native Stack -> VII. Simplicity and Apple-Native Stack
+- Renumbered principle: VII. SonarQube Project Health Gate -> VIII. SonarQube Project Health Gate
+- Renumbered principle: VIII. Consistent Design System -> IX. Consistent Design System
+- Renumbered principle: IX. Refactoring Integrity -> X. Refactoring Integrity
+- Renumbered principle: X. Validation Governance -> XI. Validation Governance
+- Renumbered principle: XI. Template-First Governance -> XII. Template-First Governance
+- Renumbered principle: XII. Native Apple User Experience -> XIII. Native Apple User Experience
 Added sections:
-- Governance validation rules
-- Governance template rules
+- Development workflow tiered validation rules
+- Governance test-efficiency rules
 Removed sections:
 - None
 Templates requiring updates:
-- ✅ .specify/templates/spec-template.md
 - ✅ .specify/templates/plan-template.md
 - ✅ .specify/templates/tasks-template.md
 - ✅ .specify/templates/checklist-template.md
 - ✅ .specify/templates/contracts/validation-and-sonar-contract.md
-- ⚠ .specify/templates/quickstart-template.md (not present in repository)
-- ⚠ .specify/templates/research-template.md (not present in repository)
 - ✅ .github/copilot-instructions.md
 - ✅ .github/agents/speckit.plan.agent.md
 - ✅ .github/agents/speckit.tasks.agent.md
 - ✅ .github/agents/speckit.analyze.agent.md
-Follow-up TODOs: None
+Follow-up TODOs:
+- Consider adding `.specify/templates/quickstart-template.md` if quickstart generation becomes template-driven.
 -->
 
 # NextPaste Constitution
@@ -85,7 +88,27 @@ Features that add AI output MUST also validate typed result contracts and failur
 Rationale: Clipboard-first behavior is easy to regress in subtle ways, and automated coverage is
 required to keep capture, privacy, and history behavior reliable as the app evolves.
 
-### VI. Simplicity and Apple-Native Stack
+### VI. Test Execution Efficiency
+
+Automated validation MUST be layered and proportional to the change being made. Feature tasks MUST
+prefer the smallest reliable test scope first. Unit tests MUST be preferred for pure logic.
+Integration tests MUST cover cross-component behavior. UI tests MUST be reserved for user-visible
+flows that cannot be reliably validated at lower levels, and they MUST avoid duplicating coverage
+already provided by unit or integration tests.
+
+Full regression MUST NOT be required after every individual task. Full regression MUST be required
+only at feature completion, release readiness, or when a change affects shared infrastructure,
+persistence, app launch, navigation, or cross-cutting interaction behavior. Tasks MUST specify
+targeted test commands before full-suite commands. If full regression is mandatory, the reason MUST
+be documented. Manual validation MUST not duplicate automated validation unless platform-native
+behavior cannot be simulated reliably. Test helpers, fixtures, and launch modes SHOULD be optimized
+to reduce runtime while preserving behavior parity.
+
+Rationale: Validation confidence depends on running the right tests at the right layer. Tiered
+execution keeps Test-First Development practical, reduces unnecessary runtime, and preserves
+release-quality confidence for shared or high-risk changes.
+
+### VII. Simplicity and Apple-Native Stack
 
 Implementation MUST prefer Apple-native frameworks and the smallest design that satisfies the
 specification. Approved technologies are SwiftUI, SwiftData, Observation, Vision, Foundation
@@ -98,7 +121,7 @@ prohibited unless this constitution is amended first.
 Rationale: A focused Apple-native stack keeps the capture path fast, understandable, local-first,
 and easier to maintain.
 
-### VII. SonarQube Project Health Gate
+### VIII. SonarQube Project Health Gate
 
 After `/speckit.implement` completes for any feature, the SonarQube Project Health dashboard MUST
 show zero unresolved issues for the implemented change before the feature is considered complete.
@@ -118,7 +141,7 @@ Rationale: Automated implementation checks are incomplete without project-health
 quality system that reviewers use to identify reliability, security, maintainability, coverage, and
 duplication regressions.
 
-### VIII. Consistent Design System
+### IX. Consistent Design System
 
 All user-facing interfaces MUST follow the project's design system. New screens MUST reuse the
 established design language. Colors, typography, spacing, corner radius, iconography, motion, and
@@ -130,7 +153,7 @@ patterns. Features MUST preserve visual consistency across all supported Apple p
 Rationale: A consistent visual language reduces cognitive load, improves usability, and keeps the
 product feeling cohesive as features grow.
 
-### IX. Refactoring Integrity
+### X. Refactoring Integrity
 
 Refactoring exists to improve maintainability without changing user-visible behavior. Every
 refactor MUST preserve existing observable behavior unless the specification explicitly defines
@@ -143,7 +166,7 @@ rather than being hidden inside a refactor.
 Rationale: Refactoring should improve code quality while maintaining predictable product behavior
 and minimizing regression risk.
 
-### X. Validation Governance
+### XI. Validation Governance
 
 Every feature MUST inherit a standardized validation structure from the Spec Kit templates rather
 than redefining validation artifacts independently. The Validation Contract is the single source of
@@ -162,7 +185,7 @@ it may appear in a feature artifact.
 Rationale: Validation is project infrastructure, not feature logic. Centralizing validation reduces
 maintenance cost while improving consistency, review quality, and release readiness.
 
-### XI. Template-First Governance
+### XII. Template-First Governance
 
 Any documentation structure that appears in three or more independent features MUST be promoted
 into a shared Spec Kit template. Feature artifacts MUST inherit shared project structure from
@@ -173,12 +196,14 @@ sections, and review checklists.
 
 Templates are the authoritative definition of shared documentation structure. Feature artifacts MAY
 extend templates only with feature-specific information and MUST NOT redefine template-owned
-structures.
+structures. Shared templates MUST include a standard tiered test strategy. `quickstart.md` MUST
+list targeted commands first and full regression only as a final gate. The Validation Contract MUST
+distinguish targeted validation from final regression validation.
 
 Rationale: Repeated documentation eventually diverges. Template-first governance keeps every
 feature consistent while reducing maintenance effort and documentation drift.
 
-### XII. Native Apple User Experience
+### XIII. Native Apple User Experience
 
 All user-facing interactions MUST follow native interaction patterns of the target Apple platform
 and MUST feel native rather than application-specific. Implementations MUST prefer Apple-native
@@ -237,6 +262,18 @@ instead of duplicating its template-owned structures. `quickstart.md` MUST remai
 guide only and MUST contain only build commands, test commands, execution instructions, and
 references to the Validation Contract.
 
+Each `tasks.md` MUST include a tiered validation strategy in this order: 1. targeted unit tests,
+2. targeted integration tests, 3. targeted UI tests, 4. full regression only at defined gates,
+and 5. SonarQube evidence after implementation. Targeted validation commands MUST appear before
+full-suite commands. Full regression is required only at feature completion, release readiness, or
+when the change affects shared infrastructure, persistence, app launch, navigation, or cross-
+cutting interaction behavior. If full regression is required, the reason MUST be documented.
+
+Manual validation MUST supplement automated validation rather than duplicate it, unless
+platform-native behavior cannot be simulated reliably. UI test coverage MUST not restate coverage
+already provided by reliable unit or integration tests. Test helpers, fixtures, and launch modes
+SHOULD be optimized to reduce runtime while preserving behavior parity.
+
 Shared documentation structures MUST originate from `.specify/templates/`. Plans MUST reference
 templates instead of reproducing shared governance rules. Tasks MUST reference template-owned
 validation instead of redefining validation ownership. Risk tables, rollback sections, review
@@ -271,19 +308,25 @@ feature artifacts. When conflicts are found, the constitution governs unless it 
 **Validation**: The Validation Contract is the canonical validation source. `quickstart.md` is an
 execution guide only. Specifications, plans, tasks, and checklists reference validation instead of
 redefining it. SonarQube evidence requirements are inherited from the Validation Contract. No
-feature may duplicate validation matrices.
+feature may duplicate validation matrices. Targeted validation commands MUST be listed before full
+regression commands, and final regression gates MUST be clearly distinguished from targeted
+validation.
 
 **Templates**: Spec Kit templates are the authoritative project documentation model. Shared
 documentation structures MUST originate from templates. Feature artifacts may extend templates only
 with feature-specific content. Repeated documentation MUST be promoted into templates before it is
-repeated locally again.
+repeated locally again. Shared templates MUST include the standard tiered test strategy and define
+when full regression becomes mandatory.
 
 **Constitution**: `/speckit.analyze` MUST report duplicated validation ownership, duplicated
 template-owned structures, inconsistent template inheritance, and feature-local redefinition of
 template-owned structures as Constitution Alignment violations. Duplicated template-owned structure
 MUST also be reported as Documentation Drift. `/speckit.plan` MUST reference templates instead of
-reproducing shared governance. `/speckit.tasks` MUST reference template-owned validation instead of
-redefining validation ownership.
+reproducing shared governance and MUST generate quickstart execution guides with targeted commands
+before any final regression gate. `/speckit.tasks` MUST reference template-owned validation instead
+of redefining validation ownership. `/speckit.analyze` MUST also flag unnecessary full-regression
+requirements, duplicated UI test coverage, or overly broad validation commands. `/speckit.tasks`
+MUST generate targeted validation tasks before full regression tasks.
 
 Every constitution amendment MUST include the proposed text, rationale, impact on existing
 specifications or features, migration guidance for affected templates or code, and a Sync Impact
@@ -295,8 +338,9 @@ Clarifications, wording changes, and non-semantic corrections require a PATCH ve
 product-direction change that redefines the primary source or capture behavior of clips is a MAJOR
 change.
 
-The SonarQube Project Health Gate, Validation Governance, Template-First Governance, design-system
-requirements, native Apple user experience requirements, and refactoring-integrity requirements may
-be changed, weakened, or waived only through a constitution amendment.
+The SonarQube Project Health Gate, Test-First Development, Test Execution Efficiency, Validation
+Governance, Template-First Governance, design-system requirements, native Apple user experience
+requirements, privacy and local-first requirements, and refactoring-integrity requirements may be
+changed, weakened, or waived only through a constitution amendment.
 
-**Version**: 2.3.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-30
+**Version**: 2.4.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-30

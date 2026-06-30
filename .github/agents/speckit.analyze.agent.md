@@ -140,6 +140,8 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
   inheritance, or feature-local redefinition of template-owned structures
 - Any spec/plan/tasks/checklist behavior that reproduces Validation Contract ownership instead of
   referencing `contracts/validation-and-sonar-contract.md`
+- Any unnecessary full-regression requirement, duplicated UI test coverage, or overly broad
+  validation command that bypasses the tiered test strategy
 
 #### E. Coverage Gaps
 
@@ -153,6 +155,8 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Data entities referenced in plan but absent in spec (or vice versa)
 - Task ordering contradictions (e.g., integration tasks before foundational setup tasks without dependency note)
 - Conflicting requirements (e.g., one requires Next.js while other specifies Vue)
+- Validation ordering contradictions (e.g., full regression required before targeted commands, or
+  UI tests standing in for pure-logic validation without justification)
 
 ### 5. Severity Assignment
 
@@ -161,7 +165,8 @@ Use this heuristic to prioritize findings:
 - **CRITICAL**: Violates constitution MUST, duplicates Validation Contract ownership, duplicates a
   template-owned structure, missing core spec artifact, or requirement with zero coverage that
   blocks baseline functionality
-- **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute, untestable acceptance criterion
+- **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute,
+  untestable acceptance criterion, or unjustified broad validation scope
 - **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case
 - **LOW**: Style/wording improvements, minor redundancy not affecting execution order
 

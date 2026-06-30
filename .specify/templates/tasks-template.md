@@ -18,7 +18,9 @@ performance validation, release-readiness validation, and SonarQube evidence req
 
 **Tests**: Generate automated test tasks when the specification or constitution requires them, and
 generate validation execution tasks that reference the Validation Contract instead of restating its
-matrices or ownership rules inside `tasks.md`.
+matrices or ownership rules inside `tasks.md`. Prefer the smallest reliable scope first: targeted
+unit tests, then targeted integration tests, then targeted UI tests only where lower layers are not
+reliable. Full regression belongs only at defined gates and must include a documented reason.
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing
 of each story.
@@ -35,6 +37,18 @@ of each story.
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
+
+## Tiered Validation Strategy
+
+1. Targeted unit tests for pure logic
+2. Targeted integration tests for cross-component behavior
+3. Targeted UI tests only for user-visible flows that lower layers cannot validate reliably
+4. Full regression only at feature completion, release readiness, or when shared infrastructure,
+   persistence, app launch, navigation, or cross-cutting interaction behavior is affected
+5. SonarQube evidence after implementation
+
+Validation tasks MUST list targeted commands or selectors before any full-suite command. If a full
+regression task is included, it MUST state why the gate applies.
 
 <!--
   ============================================================================
@@ -94,12 +108,12 @@ Examples of foundational tasks (adjust based on your project):
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Unit test for clipboard monitoring or deduplication behavior in
-  NextPasteTests/[Name]Tests.swift
-- [ ] T011 [P] [US1] UI test for [critical clipboard/history journey] in
-  NextPasteUITests/[Name]UITests.swift
-- [ ] T012 [P] [US1] Persistence or sorting regression test for captured clips in
-  NextPasteTests/[Name]PersistenceTests.swift
+- [ ] T010 [P] [US1] Run targeted unit test command for clipboard monitoring or deduplication
+  behavior in NextPasteTests/[Name]Tests.swift
+- [ ] T011 [P] [US1] Run targeted integration test command for [cross-component clipboard/history
+  journey] in NextPasteTests/[Name]IntegrationTests.swift
+- [ ] T012 [P] [US1] Run targeted UI test command for [critical user-visible flow that lower layers
+  cannot validate reliably] in NextPasteUITests/[Name]UITests.swift
 - [ ] T013 [US1] Reference and, if needed, extend feature-specific validation execution in
   specs/[###-feature-name]/contracts/validation-and-sonar-contract.md without duplicating its
   template-owned matrices
@@ -127,8 +141,9 @@ Examples of foundational tasks (adjust based on your project):
 ### Tests for User Story 2 ⚠️
 
 - [ ] T020 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T021 [P] [US2] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
-- [ ] T022 [P] [US2] Offline/privacy behavior test for [scenario] in
+- [ ] T021 [P] [US2] Targeted integration or UI test command for [critical user journey], using UI
+  coverage only if lower layers cannot validate it reliably, in NextPasteUITests/[Name]UITests.swift
+- [ ] T022 [P] [US2] Targeted offline/privacy behavior test command for [scenario] in
   NextPasteTests/[Name]PrivacyTests.swift
 - [ ] T023 [US2] Reference the Validation Contract in
   specs/[###-feature-name]/contracts/validation-and-sonar-contract.md for any story-specific
@@ -153,8 +168,10 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T028 [P] [US3] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T029 [P] [US3] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
+- [ ] T028 [P] [US3] Targeted unit or integration test command for [requirement/schema] in
+  NextPasteTests/[Name]Tests.swift
+- [ ] T029 [P] [US3] Targeted UI test command for [critical user-visible journey not covered at
+  lower levels] in NextPasteUITests/[Name]UITests.swift
 - [ ] T030 [US3] Reference manual/platform/performance/release-readiness execution from
   specs/[###-feature-name]/contracts/validation-and-sonar-contract.md instead of recreating that
   checklist in tasks.md
@@ -186,7 +203,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
   motion, and component styling in user-facing UI
 - [ ] TXXX Execute build/test/run commands from specs/[###-feature-name]/quickstart.md and evaluate
-  them against specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
+  targeted commands first, then run full regression only if the defined gate applies and the reason
+  is documented, evaluating results against
+  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
 - [ ] TXXX Execute manual, accessibility, platform-specific, performance, and release-readiness
   validation from specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
 - [ ] TXXX Run SonarQube Project Health validation and record evidence exactly as required by
@@ -217,6 +236,8 @@ Examples of foundational tasks (adjust based on your project):
 - Models before services
 - Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
+- Prefer targeted unit, then targeted integration, then targeted UI validation before any full
+  regression task
 - Shared validation execution belongs in the Validation Contract, not in task-local matrices
 - Story complete before moving to next priority
 
@@ -285,6 +306,9 @@ With multiple developers:
 - Verify tests fail before implementing
 - Do not duplicate contract-owned validation matrices, regression definitions, risk tables,
   rollback sections, or Sonar evidence rules inside `tasks.md`
+- Do not require full regression after every task; include it only at defined gates and document
+  the reason
+- Do not duplicate reliable unit or integration coverage with UI tests
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

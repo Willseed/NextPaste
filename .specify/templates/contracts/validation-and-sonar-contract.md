@@ -7,7 +7,8 @@ This document is the single source of truth for validation ownership. It owns th
 validation matrix, manual validation matrix, regression validation matrix, SonarQube Project Health
 evidence, offline/local-first validation, accessibility validation, platform-specific validation,
 performance validation, and release-readiness validation. `quickstart.md` contains only build
-commands, test commands, execution instructions, and references back to this contract.
+commands, test commands, execution instructions, and references back to this contract, with
+targeted commands listed before any final regression gate.
 
 ## 1. Scope and Validation Ownership
 
@@ -20,26 +21,48 @@ commands, test commands, execution instructions, and references back to this con
 ## 2. Command Source
 
 Run the build, test, and execution commands listed in [`../quickstart.md`](../quickstart.md).
+List targeted commands first and reserve full regression for final gates only.
 
-## 3. Automated Validation Matrix
+## 3. Targeted Validation Strategy
+
+1. Targeted unit tests for pure logic
+2. Targeted integration tests for cross-component behavior
+3. Targeted UI tests only for user-visible flows that lower layers cannot validate reliably
+4. Full regression only at feature completion, release readiness, or when shared infrastructure,
+   persistence, app launch, navigation, or cross-cutting interaction behavior is affected
+5. SonarQube evidence after implementation
+
+If full regression is required, document why the gate applies. UI tests must not duplicate
+coverage already provided by reliable unit or integration tests.
+
+## 4. Automated Validation Matrix
 
 | Validation area | Execution source | Required evidence |
 | --- | --- | --- |
 | Build health | `quickstart.md` build command | [What a successful build proves] |
-| Core feature behavior | `quickstart.md` automated test command(s) | [What automated tests must prove] |
-| Regression behavior | `quickstart.md` automated test command(s) | [Which existing behaviors must remain intact] |
+| Targeted unit validation | `quickstart.md` targeted unit test command(s) | [What pure-logic automated tests must prove] |
+| Targeted integration validation | `quickstart.md` targeted integration test command(s) | [What cross-component automated tests must prove] |
+| Targeted UI validation | `quickstart.md` targeted UI test command(s) where reliable | [Which user-visible flows require UI automation because lower layers are insufficient] |
 | Offline/local-first behavior | `quickstart.md` automated test command(s) | [What disconnected/local-only automation must prove] |
 | Accessibility and platform behavior | `quickstart.md` automated test command(s) where reliable | [Which programmatically observable accessibility/platform behaviors automation proves] |
 | Performance behavior | `quickstart.md` automated test command(s) or profiled execution command | [What performance evidence automation captures] |
 
-## 4. Regression Validation Matrix
+## 5. Final Regression Validation
+
+- Define the full-regression command used only at feature completion, release readiness, or another
+  qualifying gate.
+- Document the exact reason the full-regression gate applies.
+- Record which shared infrastructure, persistence, app launch, navigation, or cross-cutting
+  interaction behavior requires the broader run when applicable.
+
+## 6. Regression Validation Matrix
 
 | Behavior | Expected regression result |
 | --- | --- |
 | [Existing behavior] | [Expected preserved outcome] |
 | [Another existing behavior] | [Expected preserved outcome] |
 
-## 5. Manual Validation Matrix
+## 7. Manual Validation Matrix
 
 | Validation area | Scenario reference | Required evidence |
 | --- | --- | --- |
@@ -48,7 +71,10 @@ Run the build, test, and execution commands listed in [`../quickstart.md`](../qu
 | Offline/local-first confirmation | [Scenario name] | [What must be observed manually] |
 | Release readiness | [Scenario name] | [What sign-off must be collected] |
 
-## 6. Accessibility and Platform Validation
+Manual validation must supplement automated validation and must not duplicate it unless
+platform-native behavior cannot be faithfully simulated.
+
+## 8. Accessibility and Platform Validation
 
 - Identify the affected interaction methods, including keyboard, mouse, trackpad, Magic Mouse,
   focus, scrolling, context menus, drag and drop, multi-selection, accessibility actions, and
@@ -58,26 +84,26 @@ Run the build, test, and execution commands listed in [`../quickstart.md`](../qu
 - Record any approved Apple HIG deviations and the validation needed to prove they remain
   intentional.
 
-## 7. Offline / Local-First Validation
+## 9. Offline / Local-First Validation
 
 - Define the disconnected-network scenarios that prove local storage, local processing, and local
   retrieval continue to work without remote dependencies.
 - Identify the automated evidence and final manual confirmation required for offline behavior.
 
-## 8. Performance Validation
+## 10. Performance Validation
 
 - Define the performance expectations that matter for the feature.
 - Record how validation proves those expectations without inventing feature-local structure outside
   this contract.
 
-## 9. Release Readiness Validation
+## 11. Release Readiness Validation
 
 - Confirm build/test/run commands completed successfully through `quickstart.md`.
-- Confirm automated, regression, manual, offline/local-first, accessibility/platform, and
-  performance validation rows are satisfied.
+- Confirm targeted validation, final regression validation when required, manual,
+  offline/local-first, accessibility/platform, and performance validation rows are satisfied.
 - Confirm any feature-specific evidence artifacts or approvals required before release.
 
-## 10. SonarQube Evidence Requirements
+## 12. SonarQube Evidence Requirements
 
 1. Recorded evidence shows the branch or PR passes the configured SonarQube Project Health gate.
 2. Recorded evidence shows zero unresolved feature-introduced issues, or documents each approved

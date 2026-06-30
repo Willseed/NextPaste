@@ -45,6 +45,11 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   commands, execution instructions, and references to the feature's Validation Contract. Feature
   specs, plans, tasks, and checklists should reference the Validation Contract instead of
   duplicating validation matrices, regression definitions, or SonarQube evidence rules.
+- Prefer the smallest reliable test scope first: targeted unit tests for pure logic, targeted
+  integration tests for cross-component behavior, targeted UI tests only for user-visible flows
+  that lower layers cannot validate reliably, and full regression only at feature completion,
+  release readiness, or for shared infrastructure, persistence, app launch, navigation, or
+  cross-cutting interaction changes. When full regression is necessary, document why.
 - Preserve the SwiftData flow already in place: add new persisted types to the schema in `NextPasteApp`, fetch them with `@Query`, and write through `modelContext`.
 - Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms.
 - Unit tests and UI tests use different frameworks on purpose: `NextPasteTests` uses the newer `Testing` module, while `NextPasteUITests` still uses `XCTest`. Follow the existing framework for each target instead of mixing them.

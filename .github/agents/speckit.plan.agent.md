@@ -155,6 +155,9 @@ Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generate
    - Keep this artifact execution-only
    - Include only build commands, test commands, execution instructions, and references to
      `contracts/validation-and-sonar-contract.md`
+   - Order commands by tiered validation scope: targeted unit, targeted integration, targeted UI,
+     and full regression only as the final gate when applicable
+   - If full regression is required, document why the gate applies
    - Do not duplicate validation matrices, regression definitions, evidence requirements, or
      expected-outcome checklists from the Validation Contract
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites

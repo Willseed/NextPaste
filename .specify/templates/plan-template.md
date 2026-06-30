@@ -32,6 +32,10 @@ is the canonical source for automated, manual, regression, offline/local-first, 
 platform-specific, performance, release-readiness, and SonarQube validation. This plan references
 that contract instead of redefining its matrices.
 
+**Tiered Test Strategy**: [Document the smallest reliable validation layers first: targeted unit
+tests, targeted integration tests, targeted UI tests only where lower layers are insufficient, and
+full regression only at defined gates with the reason documented]
+
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
 **Interaction Models**: [e.g., keyboard shortcuts, context menus, drag and drop, focus,
@@ -62,6 +66,9 @@ scrolling, multi-selection, trackpad gestures, VoiceOver or N/A]
   persistence, and history refresh behavior for clipboard changes while the app is running.
 - **Test-first coverage**: Automated tests are planned for each new requirement, and validation
   execution is delegated to the Validation Contract rather than duplicated in this plan.
+- **Test execution efficiency**: Validation is tiered and proportional to the change. The plan
+  identifies targeted unit, integration, and UI coverage before any full regression requirement and
+  documents the reason if a full suite is mandatory.
 - **Native simplicity**: SwiftUI, SwiftData, Observation, Vision, Foundation Models, Foundation,
   and CloudKit are the default choices. Any dependency or platform deviation is justified with a
   concrete capability gap and privacy impact.
@@ -161,10 +168,10 @@ directories captured above]
 ## Validation References
 
 - Use [quickstart.md](quickstart.md) for build commands, test commands, execution instructions, and
-  Validation Contract links only.
+  Validation Contract links only, with targeted commands listed before any final regression gate.
 - Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) as
-  the single source of truth for validation ownership, matrices, performance validation,
-  release-readiness validation, and SonarQube evidence requirements.
+  the single source of truth for validation ownership, targeted versus final regression validation,
+  performance validation, release-readiness validation, and SonarQube evidence requirements.
 
 ## Complexity Tracking
 

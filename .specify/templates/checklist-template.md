@@ -45,6 +45,12 @@ and requirements.
   `contracts/validation-and-sonar-contract.md` and is not duplicated in this checklist
 - [ ] CHKXXX `quickstart.md` remains an execution guide only and links back to the Validation
   Contract
+- [ ] CHKXXX Validation follows the tiered strategy: targeted unit, targeted integration, targeted
+  UI where needed, and full regression only at defined gates
+- [ ] CHKXXX Any full-regression requirement documents why the gate applies
+- [ ] CHKXXX UI tests do not duplicate reliable lower-level automated coverage
+- [ ] CHKXXX Manual validation supplements automated validation only where platform-native behavior
+  cannot be simulated reliably
 - [ ] CHKXXX Shared template-owned structures are inherited rather than redefined locally
 - [ ] CHKXXX User-facing UI follows shared design tokens and introduces no undocumented visual
   patterns
