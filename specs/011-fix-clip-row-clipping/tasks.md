@@ -12,10 +12,11 @@ performance validation, release-readiness validation, and SonarQube evidence req
 `quickstart.md` owns build/test/run commands and Validation Contract references only.
 
 **Tests**: This feature requires automated test coverage per the specification and constitution.
-Use the smallest reliable scope first: targeted unit tests for pure viewport logic, no dedicated
-integration target in this repo, targeted UI coverage for user-visible list behavior, full
-regression only at the final gate because `NextPaste/HomeView.swift` changes a shared history-list
-surface, then SonarQube evidence.
+Use the smallest reliable scope first: targeted unit tests in
+`NextPasteTests/HistoryViewportVisibilityTests.swift` for extracted viewport visibility logic, no
+dedicated integration target in this repo, targeted UI coverage for user-visible list behavior,
+manual validation after targeted UI execution, full regression only at the final gate because
+`NextPaste/HomeView.swift` changes a shared history-list surface, then SonarQube evidence.
 
 **Traceability Rule**: Every task includes linked functional requirements (`FR-*`) and success
 criteria (`SC-*`) in the task text.
@@ -48,9 +49,10 @@ criteria (`SC-*`) in the task text.
 **Goal**: Ensure automatic clipboard capture and manual clip creation leave the newest visible row
 fully below the complete fixed header region.
 
-**Independent Test**: Run the targeted unit scope for viewport logic plus the targeted manual-create
-and auto-capture UI tests; both insertion paths must show the first visible row fully below the
-header with no extra manual scrolling.
+**Independent Test**: Run targeted unit validation for
+`NextPasteTests/HistoryViewportVisibilityTests.swift` plus the targeted manual-create and
+auto-capture UI tests; both insertion paths must show the first visible row fully below the header
+with no extra manual scrolling.
 
 ### Tests for User Story 1 ⚠️
 
@@ -95,16 +97,17 @@ the top-row visibility guarantee.
 
 ## Phase 5: User Story 3 - Preserve row interactions and native resizing behavior (Priority: P3)
 
-**Goal**: Keep native macOS resize behavior, copy/pin/delete/swipe actions, keyboard reachability,
-context menus, and accessibility intact after the layout correction.
+**Goal**: Keep native macOS resize behavior, copy, pin, unpin, delete, and swipe actions, keyboard
+navigation and focus behavior (no feature-owned keyboard shortcuts), context menus, and
+accessibility intact after the layout correction.
 
-**Independent Test**: Run targeted interaction and resize UI coverage, then manually validate live
-resizing and the required height bands; row actions must behave exactly as before while the top row
-stays fully visible.
+**Independent Test**: Run targeted interaction and resize UI coverage, then execute the required
+manual validation before final regression; copy, pin, unpin, delete, and swipe actions plus
+keyboard navigation and focus behavior must remain unchanged while the top row stays fully visible.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T016 [P] [US3] Add copy, pin, delete, swipe, keyboard, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-019; SC-001, SC-006]
+- [ ] T016 [P] [US3] Add copy, pin, unpin, delete, swipe, keyboard navigation and focus behavior, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-019; SC-001, SC-006]
 - [ ] T017 [P] [US3] Add default/small/medium/tall plus live-resize visibility coverage in NextPasteUITests/HistoryListUITests.swift [FR-013, FR-014, FR-015, FR-019; SC-001, SC-005, SC-006]
 
 ### Implementation for User Story 3
@@ -119,10 +122,10 @@ stays fully visible.
 
 **Purpose**: Execute feature validation in the required order and capture final quality evidence.
 
-- [ ] T019 Execute build health and targeted unit commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-014, FR-017, FR-018; SC-001, SC-002]
+- [ ] T019 Execute build health and targeted unit validation commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-014, FR-017, FR-018; SC-001, SC-002]
 - [ ] T020 Execute targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006]
-- [ ] T021 Execute manual validation from specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for default/small/medium/tall, live resize, search active, pinned, automatic capture, and manual creation scenarios [FR-015, FR-017, FR-019; SC-005, SC-006, SC-007]
-- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md because NextPaste/HomeView.swift changes shared history layout, search, capture, and row-interaction behavior [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006, SC-007]
+- [ ] T021 Execute the Validation Contract manual validation step after T020 and before T022, covering the contract-defined resize, insertion-source, history-mode, copy, pin, unpin, delete, swipe, and keyboard navigation and focus behavior checks without recreating its matrices in this file [FR-015, FR-017, FR-019; SC-005, SC-006, SC-007]
+- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because NextPaste/HomeView.swift changes shared history layout, search, capture, and row-interaction behavior including copy, pin, unpin, delete, and swipe flows [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006, SC-007]
 - [ ] T023 Record SonarQube Project Health evidence exactly as required by specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for the changed NextPaste/, NextPasteTests/, and NextPasteUITests/ files [FR-016, FR-017; SC-008]
 
 ---
@@ -138,7 +141,8 @@ stays fully visible.
   `NextPaste/HomeView.swift` and `NextPaste/HistoryViewportVisibility.swift`.
 - **Phase 4 → Phase 5**: User Story 3 depends on User Story 2 because resize behavior builds on the
   same corrected viewport logic in `NextPaste/HomeView.swift`.
-- **Phase 6**: Final validation depends on all desired story phases completing first.
+- **Phase 6**: Final validation depends on all desired story phases completing first, and Phase 6
+  must execute in the order `T019 -> T020 -> T021 -> T022 -> T023`.
 
 ### User Story Dependencies
 
@@ -152,7 +156,8 @@ stays fully visible.
 - Write or update automated tests before implementation tasks in that story.
 - Complete `NextPaste/HistoryViewportVisibility.swift` changes before the dependent
   `NextPaste/HomeView.swift` changes in the same story.
-- Keep targeted validation ahead of the final regression gate.
+- Keep targeted unit validation, targeted UI validation, manual validation, and the final full
+  regression gate in that order.
 - Do **not** run tasks in parallel when they edit the same file.
 
 ### Dependency Graph
@@ -207,13 +212,16 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 
 ## Tiered Validation Strategy
 
-1. **Targeted unit tests first**: `T019` executes the smallest reliable viewport-helper scope.
+1. **Targeted unit tests first**: `T019` executes the smallest reliable
+   `NextPasteTests/HistoryViewportVisibilityTests.swift` scope.
 2. **Targeted integration tests**: No dedicated integration target exists in this repo; cross-file
    behavior is intentionally validated by targeted UI coverage.
 3. **Targeted UI tests next**: `T020` executes manual-create, auto-capture, filtered, pinned, and
-   interaction regression coverage.
-4. **Manual validation after targeted automation**: `T021` covers native resize and window-height
-   scenarios automation cannot fully guarantee.
+   interaction regression coverage, including copy, pin, unpin, delete, swipe, and keyboard
+   navigation and focus behavior checks owned by the targeted UI suite.
+4. **Manual validation after targeted UI execution**: `T021` is an explicit execution step between
+   targeted UI validation and final regression, and it references the Validation Contract rather
+   than duplicating its matrices.
 5. **Final full regression gate**: `T022` runs only at feature completion because the change affects
    a shared history-list surface.
 6. **SonarQube evidence last**: `T023` records the required project-health evidence.
@@ -265,8 +273,8 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 2. **MVP**: fix default insertion visibility in full history (US1).
 3. **Behavior preservation**: extend the fix to filtered and pinned states (US2).
 4. **Platform polish**: finalize resize and interaction regression protection (US3).
-5. **Release gate**: execute targeted validation, manual validation, full regression, then SonarQube
-   evidence capture.
+5. **Release gate**: execute targeted unit validation, targeted UI validation, manual validation,
+   full regression, then SonarQube evidence capture.
 
 ### Parallel Team Strategy
 
@@ -284,5 +292,6 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 - User-story tasks include `[US1]`, `[US2]`, or `[US3]` for direct story traceability.
 - Validation execution references the Validation Contract instead of recreating validation matrices.
 - The final regression gate is intentionally deferred until completion because the change touches
-  shared history layout, capture refresh, search, and row interactions.
+  shared history layout, capture refresh, search, and row interactions including copy, pin, unpin,
+  delete, swipe, and keyboard navigation and focus behavior.
 - All tasks follow the required checklist format and include exact file paths plus FR/SC traceability.

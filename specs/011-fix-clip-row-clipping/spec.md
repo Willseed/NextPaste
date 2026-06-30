@@ -14,7 +14,7 @@
 
 - Q: Which area counts as the fixed header region for first-row visibility? → A: All persistent UI above the list counts: the toolbar search field plus the `Clips` header row with the `New Clip` and `Settings` buttons.
 - Q: Which insertion sources and list modes require immediate full row visibility? → A: Automatic clipboard capture and manual clip creation must both show the newest visible row fully visible immediately after insertion in both full-history and search-filtered views, and pinned rows use the same top inset behavior.
-- Q: What implementation approach and scrolling policy are allowed? → A: The fix must use layout or inset correction rather than visual redesign, and automatic scrolling after insertion is allowed only as needed to ensure the first visible row is fully visible.
+- Q: What implementation approach and scrolling policy are allowed? → A: The fix must use layout or inset correction rather than visual redesign, and corrective automatic scrolling after insertion is allowed only after layout settles and only when the newly inserted first visible row’s full bounds are not below the fixed header region.
 - Q: How should automated and manual regression validation confirm first-row visibility? → A: UI tests must verify the first visible row's full visible bounds are below the fixed header region after insertion, and manual validation must cover live resizing plus small, medium, and tall macOS window heights.
 
 ## User Scenarios & Testing *(mandatory)*
@@ -57,12 +57,12 @@ As a user interacting with clipboard history in differently sized macOS windows,
 
 **Why this priority**: The issue appears in a user-visible layout area that is sensitive to resizing and scrolling, so regression protection is required for native interactions.
 
-**Independent Test**: Can be fully tested by resizing the macOS window to small, medium, and tall heights, inserting clips, and confirming row visibility plus unchanged copy, pin, delete, and swipe actions during live resizing.
+**Independent Test**: Can be fully tested by resizing the macOS window to small, medium, and tall heights, inserting clips, and confirming row visibility plus unchanged copy, pin, unpin, delete, and swipe actions during live resizing.
 
 **Acceptance Scenarios**:
 
 1. **Given** the macOS window height changes, **When** a new clip is inserted after resizing, **Then** the first visible row still renders fully below the fixed header region.
-2. **Given** a newly inserted clip is fully visible after the layout update, **When** the user performs copy, pin, delete, or swipe actions on visible rows, **Then** those actions behave the same as before the fix.
+2. **Given** a newly inserted clip is fully visible after the layout update, **When** the user performs copy, pin, unpin, delete, or swipe actions on visible rows, **Then** those actions behave the same as before the fix.
 3. **Given** the app automatically scrolls after a new insertion, **When** the scroll position settles, **Then** the visible row alignment matches native platform expectations and does not require an extra manual scroll to reveal clipped content.
 
 ---
@@ -73,14 +73,14 @@ As a user interacting with clipboard history in differently sized macOS windows,
 - The layout must remain correct when the history list already contains pinned clips above newly inserted unpinned clips, using the same top inset behavior for pinned rows.
 - The layout must remain correct when search filtering is active and a matching clip is inserted by automatic clipboard capture or manual clip creation.
 - The layout must remain correct when search filtering is active and a non-matching clip is inserted without changing the visible rows.
-- The layout must remain correct when several clips are inserted in quick succession while the user stays at or near the top of the list.
-- Automatic scrolling is allowed only when needed to keep the first visible row fully visible, and it must not create a gap above the first visible row or otherwise change the existing visual design language.
-- The fix must not change copy, pin, delete, context-menu, keyboard, accessibility, or native swipe behavior for visible rows.
+- The layout must remain correct when several clips are inserted in quick succession while the newest eligible row is already the first visible row and its full bounds are below the fixed header region before each insertion.
+- Corrective automatic scrolling is allowed only after layout settles and only when the newly inserted first visible row’s full bounds are not below the fixed header region, and it must not create a gap above the first visible row or otherwise change the existing visual design language.
+- The fix must not change copy, pin, unpin, delete, context-menu, accessibility, or native swipe behavior for visible rows, and it must not introduce feature-owned keyboard shortcuts or change existing keyboard navigation and focus behavior.
 
 ## Interaction Methods & Platform Expectations *(mandatory when interaction changes)*
 
-- **Affected Interaction Methods**: Scrolling behavior, automatic scroll positioning, keyboard navigation, mouse interactions, trackpad scrolling, Magic Mouse scrolling, native swipe actions, context menus, accessibility actions, VoiceOver support, and macOS window resizing behavior
-- **Native Platform Behavior**: The history list continues to use native Apple scrolling and row interaction behavior. The fix uses layout or inset correction to correct the visible alignment of the top row beneath the existing header area and may use automatic scrolling only when needed to keep the first visible row fully visible. It does not introduce a custom interaction model or redesigned layout pattern.
+- **Affected Interaction Methods**: Scrolling behavior, automatic scroll positioning, keyboard navigation, keyboard focus, mouse interactions, trackpad scrolling, Magic Mouse scrolling, native swipe actions, context menus, accessibility actions, VoiceOver support, and macOS window resizing behavior
+- **Native Platform Behavior**: The history list continues to use native Apple scrolling and row interaction behavior. The fix uses layout or inset correction to correct the visible alignment of the top row beneath the existing header area and may use corrective automatic scrolling only after layout settles and only when the newly inserted first visible row’s full bounds are not below the fixed header region. No feature-owned keyboard shortcuts are introduced, and existing keyboard navigation and focus behavior remain unchanged. It does not introduce a custom interaction model or redesigned layout pattern.
 - **Validation Contract Reference**: Validation ownership for automated, manual, regression, offline/local-first, accessibility, platform-specific, performance, release-readiness, and SonarQube checks lives in `contracts/validation-and-sonar-contract.md`. This specification defines the observable row-visibility behavior that the Validation Contract must verify.
 - **Documented Deviations**: None
 
@@ -90,11 +90,11 @@ As a user interacting with clipboard history in differently sized macOS windows,
 
 - **FR-001**: The first visible clipboard-history row MUST render completely below the fixed header region, which includes all persistent UI above the list: the toolbar search field plus the `Clips` header row with the `New Clip` and `Settings` buttons.
 - **FR-002**: Newly inserted clips from automatic clipboard capture and manual clip creation MUST never appear clipped by the fixed header region when they become visible after insertion.
-- **FR-003**: Automatic scrolling after insertion MUST be allowed only when needed and, when used, MUST position the first visible row completely within the visible viewport immediately after insertion.
+- **FR-003**: Corrective automatic scrolling after insertion MUST be allowed only after layout settles and only when the newly inserted first visible row’s full bounds are not below the fixed header region and, when used, MUST position that row completely within the visible viewport.
 - **FR-004**: Search-filtered history MUST preserve the same top-row visibility behavior as the unfiltered history for both automatic clipboard capture and manual clip creation.
 - **FR-005**: Pinned-first ordering MUST remain unchanged, and pinned rows MUST use the same top inset behavior as unpinned rows.
 - **FR-006**: Newest-first ordering within each ordering group MUST remain unchanged.
-- **FR-007**: Copy, pin, delete, context-menu, keyboard, accessibility, and native swipe behaviors MUST remain unchanged.
+- **FR-007**: Copy, pin, unpin, delete, context-menu, accessibility, and native swipe behaviors MUST remain unchanged, and the feature MUST NOT introduce feature-owned keyboard shortcuts or alter existing keyboard navigation and focus behavior.
 - **FR-008**: The fix MUST preserve the current visual design language, including spacing, typography, corner radius, colors, and animations.
 - **FR-009**: The app MUST preserve the existing clipboard-driven processing flow: `Clipboard Changed -> Detect -> Validate -> Deduplicate -> Persist -> Refresh UI`.
 - **FR-010**: Clipboard capture, local persistence, and history refresh MUST continue to work without requiring network access, CloudKit queries, OCR, AI processing, or any remote dependency.
@@ -141,7 +141,7 @@ As a user interacting with clipboard history in differently sized macOS windows,
 - **SC-003**: In 100% of automated search-layout tests, filtered results preserve the same first-row visibility behavior as the unfiltered list.
 - **SC-004**: In 100% of automated ordering regression tests, pinned-first ordering and newest-first ordering within each group remain unchanged after the fix.
 - **SC-005**: Manual validation across small, medium, and tall macOS window heights plus live resizing confirms that the fixed header region never overlaps the first visible row after insertion.
-- **SC-006**: Manual validation confirms copy, pin, delete, and native swipe actions behave identically before and after the fix.
+- **SC-006**: Manual validation confirms copy, pin, unpin, delete, and native swipe actions behave identically before and after the fix.
 - **SC-007**: Visual review confirms the change introduces no unintended changes to spacing, typography, corner radius, color usage, or animations.
 - **SC-008**: SonarQube Project Health evidence is recorded before completion and shows zero unresolved feature-introduced issues, or documented false positives with justification.
 

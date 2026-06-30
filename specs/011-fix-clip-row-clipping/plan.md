@@ -11,7 +11,8 @@ fixed header region immediately after automatic clipboard capture or manual clip
 full-history and active-search views. The implementation will preserve the existing toolbar,
 searchable field, `Clips` header row, `New Clip` and `Settings` actions, pinned-first/newest-first
 ordering, and all row interactions by using Apple-native SwiftUI layout/inset correction first and
-only adding programmatic scrolling when the first visible row would otherwise remain clipped.
+only adding corrective programmatic scrolling after layout settles when the newly inserted first
+visible row’s full bounds are not below the fixed header region.
 
 ## Technical Context
 
@@ -41,8 +42,9 @@ history-list layout, searchable header behavior, and cross-cutting insertion flo
 NextPaste -destination 'platform=macOS'`
 
 **Interaction Models**: Native toolbar search field, in-content header toolbar, list scrolling,
-automatic scroll settling, mouse, trackpad, Magic Mouse, keyboard navigation, context menus,
-native swipe actions, accessibility actions, VoiceOver, and live window resizing
+automatic scroll settling, mouse, trackpad, Magic Mouse, keyboard navigation, keyboard focus,
+context menus, native swipe actions, accessibility actions, VoiceOver, and live window resizing;
+no feature-owned keyboard shortcuts are introduced
 
 **Project Type**: desktop-app
 
@@ -86,8 +88,9 @@ changes
   validation source and `quickstart.md` stays execution-only.
 - **Template-first governance**: PASS — this plan inherits template structure and keeps repeated
   validation content in the shared contract.
-- **Native Apple user experience**: PASS — scrolling, search, swipe actions, keyboard, VoiceOver,
-  and resizing stay Apple-native with no approved HIG deviations.
+- **Native Apple user experience**: PASS — scrolling, search, swipe actions, keyboard navigation,
+  keyboard focus, VoiceOver, and resizing stay Apple-native with no approved HIG deviations, and
+  no feature-owned keyboard shortcuts are added.
 
 **Post-Design Re-check**: PASS — Phase 0 research and Phase 1 design kept the solution inside
 native SwiftUI list/inset behavior, introduced no constitutional violations, and maintained
@@ -124,8 +127,7 @@ NextPaste/
 
 NextPasteTests/
 ├── ClipHistoryTests.swift
-├── ClipItemTests.swift
-└── [optional extracted viewport-helper tests if a pure-logic helper is introduced]
+└── HistoryViewportVisibilityTests.swift
 
 NextPasteUITests/
 ├── ClipboardAutoCaptureUITests.swift
@@ -137,8 +139,8 @@ NextPasteUITests/
 ```
 
 **Structure Decision**: Keep the existing single Xcode app project. Limit production-code changes
-primarily to `NextPaste/HomeView.swift` and only introduce a separate helper file if the
-visibility/scroll decision logic becomes complex enough to justify isolated unit tests.
+primarily to `NextPaste/HomeView.swift` and keep `NextPasteTests/HistoryViewportVisibilityTests.swift`
+as the targeted pure-logic validation surface for extracted viewport/scroll decision logic.
 
 ## Root Cause Investigation Approach
 
@@ -168,7 +170,7 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
 | `NextPasteUITests/HistoryRobot.swift` | Shared helper for search/manual-create/row lookup flows |
 | `NextPasteUITests/UITestAssertions.swift` | Frame-based assertions proving the first visible row is below the fixed header region |
 | `NextPasteUITests/UITestAppLauncher.swift` | Deterministic window-size presets or launch seams for small/medium/tall validation if required |
-| `NextPasteTests/ClipItemTests.swift` or a new helper test file | Targeted pure-logic coverage only if scroll/inset decision logic is extracted into a separate testable type |
+| `NextPasteTests/HistoryViewportVisibilityTests.swift` | Targeted pure-logic coverage for extracted viewport visibility and corrective-scroll decision logic |
 
 ## Layout / Inset Strategy
 
@@ -179,7 +181,8 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
 - Use measured layout/inset correction rather than hard-coded visual padding so the top-most list
   content starts below the fixed header region across small, medium, and tall window heights.
 - Prefer native SwiftUI list/content inset behavior over a `ScrollView` rewrite so swipe actions,
-  row accessibility, keyboard navigation, and list interaction semantics remain unchanged.
+  row accessibility, keyboard navigation, keyboard focus, and list interaction semantics remain
+  unchanged.
 - Apply the correction at the list viewport level so pinned rows, unpinned rows, full-history
   results, and search-filtered results all inherit the same first-row visibility behavior.
 - Recompute the effective inset during live resizing so the first visible row stays fully visible
@@ -188,11 +191,13 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
 ## Optional Automatic Scrolling Strategy
 
 - Default behavior is layout/inset correction first; no automatic scrolling occurs when the updated
-  inset already leaves the first visible row fully visible.
-- Record whether the user is already at or near the top of the list when a new clip is inserted.
-- After auto-capture or manual save, perform programmatic scrolling only when the inserted row is
-  supposed to become visible and the row would otherwise remain partially hidden by the fixed
-  header region.
+  inset already leaves the newly inserted first visible row’s full bounds below the fixed header
+  region after layout settles.
+- Determine whether the newly inserted row is expected to become the first visible row for the
+  current ordering and filter state, instead of using vague proximity-to-top heuristics.
+- After auto-capture or manual save, perform corrective programmatic scrolling only when the
+  inserted row is supposed to become the first visible row and, after layout settles, that row’s
+  full bounds are not below the fixed header region.
 - Do not auto-scroll when a new clip does not affect the visible filtered result set (for example,
   a non-matching clip inserted while search filtering is active).
 - Anchor any corrective scroll to the first relevant visible row only, preserving pinned-first and
@@ -208,8 +213,9 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
   changing ordering rules.
 - Reuse stable row identifiers plus a fixed-header-bottom geometry seam or equivalent frame helper
   to make the “fully visible below header” assertion deterministic on macOS.
-- Keep regression smoke coverage for copy, pin/unpin, delete, native swipe actions, keyboard
-  reachability, VoiceOver labels, and context-menu availability after the layout change.
+- Keep regression smoke coverage for copy, pin, unpin, delete, native swipe actions, keyboard
+  navigation and focus behavior, VoiceOver labels, and context-menu availability after the layout
+  change. No feature-owned keyboard shortcuts are expected.
 - Run the full suite only as the final gate because the history list is a shared interaction
   surface spanning search, capture, row actions, and resizing behavior.
 
@@ -223,14 +229,16 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
   the same top inset behavior.
 - Confirm there is no visual redesign: no new spacing language, no changed colors, typography,
   radius, icons, or animation behavior, and no permanent empty gap above the first visible row.
-- Smoke existing row interactions after insertion and resize: copy, pin/unpin, delete, native
-  swipe actions, keyboard access, VoiceOver announcements, and context menus.
+- Smoke existing row interactions after insertion and resize: copy, pin, unpin, delete, native
+  swipe actions, keyboard navigation and focus behavior, VoiceOver announcements, and context
+  menus. No feature-owned keyboard shortcuts are expected.
 
 ## Tiered Validation Commands
 
 - Execute commands in [quickstart.md](quickstart.md) in this order: build health, targeted unit
-  coverage (if a pure-logic helper exists), targeted integration note (none dedicated in this
-  repo), targeted UI coverage, then the final full regression gate.
+  coverage for `NextPasteTests/HistoryViewportVisibilityTests.swift`, targeted integration note
+  (none dedicated in this repo), targeted UI coverage, manual validation, then the final full
+  regression gate.
 - Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) for
   the required evidence attached to each command, including manual, offline/local-first,
   accessibility/platform, performance, release-readiness, and SonarQube results.
@@ -268,7 +276,7 @@ visibility/scroll decision logic becomes complex enough to justify isolated unit
 | --- | --- | --- |
 | Under-corrected top inset still leaves the first row partially hidden | The user-visible regression would remain in one or more size/search states | Measure the effective header region, validate with targeted frame-based UI tests, and include small/medium/tall plus live-resize manual checks |
 | Over-correction creates a visible gap above the first row | The fix would violate the “no redesign” constraint and degrade visual polish | Prefer measured content inset over hard-coded padding and verify no persistent gap in automated/manual validation |
-| Automatic scrolling fires too often | Unnecessary scroll movement could feel non-native and disrupt filtered or mid-list browsing | Gate scroll correction on “at/near top” and actual visibility need, with targeted search and ordering regressions |
+| Automatic scrolling fires too often | Unnecessary scroll movement could feel non-native and disrupt filtered or mid-list browsing | Gate scroll correction on whether the inserted row should become the first visible row and whether its full bounds are below the fixed header region after layout settles, with targeted search and ordering regressions |
 | Search-filtered and pinned-first views diverge from full-history behavior | The feature would behave inconsistently across supported list modes | Apply correction at the list viewport layer and add dedicated filtered/pinned regression cases |
 | macOS UI geometry assertions become flaky | Unreliable tests would weaken confidence in the fix | Reuse stable accessibility identifiers, add a minimal geometry seam if needed, and prefer deterministic size presets plus one dedicated live-resize smoke test |
 
