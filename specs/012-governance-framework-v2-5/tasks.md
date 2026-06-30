@@ -20,9 +20,9 @@ implementation work in `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/`.
 
 **Purpose**: Establish governance-only scope boundaries, dependency order, and traceability baseline.
 
-- [ ] T001 Capture governance-only implementation boundary and explicit non-goals in specs/012-governance-framework-v2-5/plan.md [FR-031; SC-007]
-- [ ] T002 [P] Add objective-to-FR/SC traceability seed mapping in specs/012-governance-framework-v2-5/research.md for Constitution, templates, agents, validation, and Sync Impact workstreams [FR-029, FR-032; SC-007]
-- [ ] T003 [P] Update specs/012-governance-framework-v2-5/quickstart.md so execution entry points reference the Validation Contract for lifecycle ownership instead of restating local validation order [FR-027, FR-029, FR-032; SC-007, SC-008]
+- [X] T001 Capture governance-only implementation boundary and explicit non-goals in specs/012-governance-framework-v2-5/plan.md [FR-031; SC-007]
+- [X] T002 [P] Add objective-to-FR/SC traceability seed mapping in specs/012-governance-framework-v2-5/research.md for Constitution, templates, agents, validation, and Sync Impact workstreams [FR-029, FR-032; SC-007]
+- [X] T003 [P] Update specs/012-governance-framework-v2-5/quickstart.md so execution entry points reference the Validation Contract for lifecycle ownership instead of restating local validation order [FR-027, FR-029, FR-032; SC-007, SC-008]
 
 ---
 
@@ -32,10 +32,10 @@ implementation work in `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/`.
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
-- [ ] T004 Define Sync Impact dependency checklist and closure prerequisites in specs/012-governance-framework-v2-5/plan.md [FR-026, FR-027, FR-029; SC-007]
-- [ ] T005 [P] Define representative-validation evidence fields and migration-trigger policy in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-032; SC-008]
-- [ ] T006 [P] Add validation-ownership guardrails in specs/012-governance-framework-v2-5/quickstart.md so execution steps reference the contract instead of restating validation matrices [FR-032; SC-007]
-- [ ] T007 Consolidate no-same-file parallel-edit governance guardrails in specs/012-governance-framework-v2-5/plan.md for downstream execution phases [FR-026, FR-029; SC-007]
+- [X] T004 Define Sync Impact dependency checklist and closure prerequisites in specs/012-governance-framework-v2-5/plan.md [FR-026, FR-027, FR-029; SC-007]
+- [X] T005 [P] Define representative-validation evidence fields and migration-trigger policy in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-032; SC-008]
+- [X] T006 [P] Add validation-ownership guardrails in specs/012-governance-framework-v2-5/quickstart.md so execution steps reference the contract instead of restating validation matrices [FR-032; SC-007]
+- [X] T007 Consolidate no-same-file parallel-edit governance guardrails in specs/012-governance-framework-v2-5/plan.md for downstream execution phases [FR-026, FR-029; SC-007]
 
 **Checkpoint**: Governance baseline, ownership boundaries, and contract-owned lifecycle references are defined.
 
@@ -52,12 +52,12 @@ areas are explicit, non-contradictory, and aligned with FR/SC authority and Sync
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Add Continuous Quality Improvement governance text and promotion thresholds in .specify/memory/constitution.md [FR-001, FR-002, FR-003, FR-004, FR-005; SC-001, SC-006]
-- [ ] T009 [US1] Add Apple Platform Consistency governance rules for supported-platform declaration, behavior equivalence, and native interaction expectations in .specify/memory/constitution.md [FR-006, FR-007, FR-008, FR-009, FR-010, FR-011; SC-004, SC-005]
-- [ ] T010 [US1] Add Spec Traceability Governance rules defining spec-only FR/SC authority and orphan/drift severities in .specify/memory/constitution.md [FR-012, FR-013, FR-014, FR-015, FR-016; SC-002, SC-003]
-- [ ] T011 [US1] Add Root Cause First Engineering governance and workaround constraints in .specify/memory/constitution.md [FR-017, FR-018, FR-019, FR-020, FR-021; SC-006]
-- [ ] T012 [US1] Add Performance Budget Governance criteria and Analyze enforcement expectations in .specify/memory/constitution.md [FR-022, FR-023, FR-024, FR-025; SC-009]
-- [ ] T013 [US1] Amend governance lifecycle and Sync Impact gate language in .specify/memory/constitution.md to require representative validation before governance changes become effective [FR-026, FR-027, FR-028, FR-029, FR-030, FR-032; SC-007, SC-008]
+- [X] T008 [US1] Add Continuous Quality Improvement governance text and promotion thresholds in .specify/memory/constitution.md [FR-001, FR-002, FR-003, FR-004, FR-005; SC-001, SC-006]
+- [X] T009 [US1] Add Apple Platform Consistency governance rules for supported-platform declaration, behavior equivalence, and native interaction expectations in .specify/memory/constitution.md [FR-006, FR-007, FR-008, FR-009, FR-010, FR-011; SC-004, SC-005]
+- [X] T010 [US1] Add Spec Traceability Governance rules defining spec-only FR/SC authority and orphan/drift severities in .specify/memory/constitution.md [FR-012, FR-013, FR-014, FR-015, FR-016; SC-002, SC-003]
+- [X] T011 [US1] Add Root Cause First Engineering governance and workaround constraints in .specify/memory/constitution.md [FR-017, FR-018, FR-019, FR-020, FR-021; SC-006]
+- [X] T012 [US1] Add Performance Budget Governance criteria and Analyze enforcement expectations in .specify/memory/constitution.md [FR-022, FR-023, FR-024, FR-025; SC-009]
+- [X] T013 [US1] Amend governance lifecycle and Sync Impact gate language in .specify/memory/constitution.md to require representative validation before governance changes become effective [FR-026, FR-027, FR-028, FR-029, FR-030, FR-032; SC-007, SC-008]
 
 **Checkpoint**: Constitution v2.5 governance rules are explicit and upstream-authoritative.
 
@@ -74,12 +74,12 @@ inherit from templates without local redefinition.
 
 ### Implementation for User Story 2
 
-- [ ] T014 [P] [US2] Update governance prompts and inheritance rules in .specify/templates/spec-template.md for platform declarations, FR/SC source authority, and promotion-review expectations [FR-004, FR-006, FR-007, FR-010, FR-011, FR-012, FR-013, FR-028, FR-032; SC-001, SC-003, SC-004]
-- [ ] T015 [P] [US2] Update planning governance requirements in .specify/templates/plan-template.md for root-cause-first planning, temporary workaround criteria, performance-budget triggers, and Sync Impact planning [FR-017, FR-019, FR-020, FR-021, FR-023, FR-024, FR-026, FR-027, FR-029; SC-007, SC-009]
-- [ ] T016 [P] [US2] Update governance task-generation rules in .specify/templates/tasks-template.md for dependency-aware execution, traceability mapping, and ordered validation gates [FR-011, FR-012, FR-027, FR-028, FR-029, FR-032; SC-003, SC-007]
-- [ ] T017 [P] [US2] Update .specify/templates/checklist-template.md with governance checks for platform consistency, validation ownership, template-first propagation, and performance-governance coverage [FR-006, FR-008, FR-009, FR-011, FR-022, FR-023, FR-028, FR-032; SC-004, SC-005, SC-009]
-- [ ] T018 [P] [US2] Update .specify/templates/contracts/validation-and-sonar-contract.md so representative validation, governance regression, Sync Impact verification, SonarQube evidence, and Constitution Completion remain contract-owned while Analyze stays a supporting checkpoint [FR-022, FR-027, FR-030, FR-032; SC-007, SC-008, SC-009]
-- [ ] T019 [US2] Normalize governance references in specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, and specs/012-governance-framework-v2-5/quickstart.md to remove non-template-owned duplication [FR-028, FR-032; SC-001, SC-007]
+- [X] T014 [P] [US2] Update governance prompts and inheritance rules in .specify/templates/spec-template.md for platform declarations, FR/SC source authority, and promotion-review expectations [FR-004, FR-006, FR-007, FR-010, FR-011, FR-012, FR-013, FR-028, FR-032; SC-001, SC-003, SC-004]
+- [X] T015 [P] [US2] Update planning governance requirements in .specify/templates/plan-template.md for root-cause-first planning, temporary workaround criteria, performance-budget triggers, and Sync Impact planning [FR-017, FR-019, FR-020, FR-021, FR-023, FR-024, FR-026, FR-027, FR-029; SC-007, SC-009]
+- [X] T016 [P] [US2] Update governance task-generation rules in .specify/templates/tasks-template.md for dependency-aware execution, traceability mapping, and ordered validation gates [FR-011, FR-012, FR-027, FR-028, FR-029, FR-032; SC-003, SC-007]
+- [X] T017 [P] [US2] Update .specify/templates/checklist-template.md with governance checks for platform consistency, validation ownership, template-first propagation, and performance-governance coverage [FR-006, FR-008, FR-009, FR-011, FR-022, FR-023, FR-028, FR-032; SC-004, SC-005, SC-009]
+- [X] T018 [P] [US2] Update .specify/templates/contracts/validation-and-sonar-contract.md so representative validation, governance regression, Sync Impact verification, SonarQube evidence, and Constitution Completion remain contract-owned while Analyze stays a supporting checkpoint [FR-022, FR-027, FR-030, FR-032; SC-007, SC-008, SC-009]
+- [X] T019 [US2] Normalize governance references in specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, and specs/012-governance-framework-v2-5/quickstart.md to remove non-template-owned duplication [FR-028, FR-032; SC-001, SC-007]
 
 **Checkpoint**: Shared templates are the sole owner of repeated governance structure.
 
@@ -95,12 +95,12 @@ rules are inherited by reference and enforced consistently without creating comp
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Update constitutional inheritance and governance constraints in .github/agents/speckit.constitution.agent.md and .github/agents/speckit.specify.agent.md for platform declarations, FR/SC authority, and Sync Impact awareness [FR-006, FR-012, FR-013, FR-026, FR-029; SC-003, SC-004, SC-007]
-- [ ] T021 [P] [US3] Update governance-focused clarification logic in .github/agents/speckit.clarify.agent.md for traceability, root-cause hypotheses, platform consistency, and performance-budget gaps [FR-010, FR-014, FR-017, FR-019, FR-023, FR-025; SC-002, SC-004, SC-009]
-- [ ] T022 [P] [US3] Update governance propagation and Validation-Contract reference rules in .github/agents/speckit.plan.agent.md and .github/agents/speckit.tasks.agent.md [FR-019, FR-024, FR-027, FR-028, FR-029, FR-032; SC-001, SC-007, SC-008]
-- [ ] T023 [P] [US3] Update severity and governance-drift enforcement in .github/agents/speckit.analyze.agent.md for orphan FR/SC blocking, traceability drift rules, platform consistency, and performance governance [FR-014, FR-015, FR-016, FR-025, FR-028; SC-002, SC-003, SC-009]
-- [ ] T024 [P] [US3] Update governance execution guardrails in .github/agents/speckit.implement.agent.md to preserve governance-only scope and constitutional inheritance [FR-029, FR-031, FR-032; SC-007]
-- [ ] T025 [US3] Update .github/copilot-instructions.md to align key governance conventions and managed plan guidance with Constitution v2.5 rules [FR-026, FR-027, FR-029, FR-031, FR-032; SC-007]
+- [X] T020 [P] [US3] Update constitutional inheritance and governance constraints in .github/agents/speckit.constitution.agent.md and .github/agents/speckit.specify.agent.md for platform declarations, FR/SC authority, and Sync Impact awareness [FR-006, FR-012, FR-013, FR-026, FR-029; SC-003, SC-004, SC-007]
+- [X] T021 [P] [US3] Update governance-focused clarification logic in .github/agents/speckit.clarify.agent.md for traceability, root-cause hypotheses, platform consistency, and performance-budget gaps [FR-010, FR-014, FR-017, FR-019, FR-023, FR-025; SC-002, SC-004, SC-009]
+- [X] T022 [P] [US3] Update governance propagation and Validation-Contract reference rules in .github/agents/speckit.plan.agent.md and .github/agents/speckit.tasks.agent.md [FR-019, FR-024, FR-027, FR-028, FR-029, FR-032; SC-001, SC-007, SC-008]
+- [X] T023 [P] [US3] Update severity and governance-drift enforcement in .github/agents/speckit.analyze.agent.md for orphan FR/SC blocking, traceability drift rules, platform consistency, and performance governance [FR-014, FR-015, FR-016, FR-025, FR-028; SC-002, SC-003, SC-009]
+- [X] T024 [P] [US3] Update governance execution guardrails in .github/agents/speckit.implement.agent.md to preserve governance-only scope and constitutional inheritance [FR-029, FR-031, FR-032; SC-007]
+- [X] T025 [US3] Update .github/copilot-instructions.md to align key governance conventions and managed plan guidance with Constitution v2.5 rules [FR-026, FR-027, FR-029, FR-031, FR-032; SC-007]
 
 **Checkpoint**: Speckit and Copilot instruction surfaces enforce the same governance rules as shared sources.
 
@@ -118,10 +118,10 @@ Contract.
 
 ### Validation for User Story 4
 
-- [ ] T026 [US4] Execute Governance Review from specs/012-governance-framework-v2-5/quickstart.md for constitution, template, all-governance-agent, and Copilot alignment and capture evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-026, FR-027, FR-029, FR-032; SC-007]
-- [ ] T027 [US4] Execute representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md and record backward-compatibility outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-031; SC-008]
-- [ ] T028 [US4] Generate disposable representative artifacts under specs/013-governance-v25-representative/ when the Validation Contract requires generated-feature validation, then run /speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze, review `/speckit.implement` governance guardrails without modifying product code, and record forward-generation outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-029, FR-030, FR-031; SC-008]
-- [ ] T029 [US4] Record migration follow-up decisions from representative validation in specs/012-governance-framework-v2-5/research.md and keep unresolved items open for Sync Impact closure [FR-026, FR-027, FR-030; SC-007, SC-008]
+- [X] T026 [US4] Execute Governance Review from specs/012-governance-framework-v2-5/quickstart.md for constitution, template, all-governance-agent, and Copilot alignment and capture evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-026, FR-027, FR-029, FR-032; SC-007]
+- [X] T027 [US4] Execute representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md and record backward-compatibility outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-031; SC-008]
+- [X] T028 [US4] Generate disposable representative artifacts under specs/013-governance-v25-representative/ when the Validation Contract requires generated-feature validation, then run /speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze, review `/speckit.implement` governance guardrails without modifying product code, and record forward-generation outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-029, FR-030, FR-031; SC-008]
+- [X] T029 [US4] Record migration follow-up decisions from representative validation in specs/012-governance-framework-v2-5/research.md and keep unresolved items open for Sync Impact closure [FR-026, FR-027, FR-030; SC-007, SC-008]
 
 **Checkpoint**: Backward and forward governance compatibility are both evidenced.
 
@@ -137,13 +137,13 @@ readiness Analyze reports expected severities, and evidence is centralized in th
 
 ### Validation for User Story 5
 
-- [ ] T030 [US5] Execute Final Governance Regression from specs/012-governance-framework-v2-5/quickstart.md after representative validation and document the shared-governance gate reason in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-032; SC-007]
-- [ ] T031 [P] [US5] Run traceability verification commands from specs/012-governance-framework-v2-5/quickstart.md across specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/tasks.md, and .specify/templates/ [FR-012, FR-013, FR-014, FR-015, FR-016; SC-002, SC-003]
-- [ ] T032 [P] [US5] Run validation-ownership duplication verification commands from specs/012-governance-framework-v2-5/quickstart.md across specs/, .specify/templates/, .github/agents/, and .github/copilot-instructions.md [FR-028, FR-032; SC-001, SC-007]
-- [ ] T033 [P] [US5] Run platform consistency verification commands from specs/012-governance-framework-v2-5/quickstart.md for supported-platform declarations and shared-vs-platform-specific validation boundaries [FR-006, FR-007, FR-008, FR-009, FR-010, FR-011; SC-004, SC-005]
-- [ ] T034 [P] [US5] Run performance-governance verification commands from specs/012-governance-framework-v2-5/quickstart.md for measurable budget requirements and non-performance exemptions [FR-022, FR-023, FR-024, FR-025; SC-009]
-- [ ] T035 [US5] Execute final readiness Analyze with /speckit.analyze before Constitution Completion to programmatically verify governance propagation across specs/012-governance-framework-v2-5/ and specs/013-governance-v25-representative/ when generated-feature validation applies, then capture severity outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-014, FR-015, FR-016, FR-025, FR-028, FR-032; SC-002, SC-003, SC-009]
-- [ ] T036 [US5] Consolidate governance regression, traceability, validation-ownership, platform, performance, and analyze evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-032; SC-007, SC-009]
+- [X] T030 [US5] Execute Final Governance Regression from specs/012-governance-framework-v2-5/quickstart.md after representative validation and document the shared-governance gate reason in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-032; SC-007]
+- [X] T031 [P] [US5] Run traceability verification commands from specs/012-governance-framework-v2-5/quickstart.md across specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/tasks.md, and .specify/templates/ [FR-012, FR-013, FR-014, FR-015, FR-016; SC-002, SC-003]
+- [X] T032 [P] [US5] Run validation-ownership duplication verification commands from specs/012-governance-framework-v2-5/quickstart.md across specs/, .specify/templates/, .github/agents/, and .github/copilot-instructions.md [FR-028, FR-032; SC-001, SC-007]
+- [X] T033 [P] [US5] Run platform consistency verification commands from specs/012-governance-framework-v2-5/quickstart.md for supported-platform declarations and shared-vs-platform-specific validation boundaries [FR-006, FR-007, FR-008, FR-009, FR-010, FR-011; SC-004, SC-005]
+- [X] T034 [P] [US5] Run performance-governance verification commands from specs/012-governance-framework-v2-5/quickstart.md for measurable budget requirements and non-performance exemptions [FR-022, FR-023, FR-024, FR-025; SC-009]
+- [X] T035 [US5] Execute final readiness Analyze with /speckit.analyze before Constitution Completion to programmatically verify governance propagation across specs/012-governance-framework-v2-5/ and specs/013-governance-v25-representative/ when generated-feature validation applies, then capture severity outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-014, FR-015, FR-016, FR-025, FR-028, FR-032; SC-002, SC-003, SC-009]
+- [X] T036 [US5] Consolidate governance regression, traceability, validation-ownership, platform, performance, and analyze evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-032; SC-007, SC-009]
 
 **Checkpoint**: Governance regression and verification evidence is complete and contract-owned.
 
@@ -160,10 +160,10 @@ required readiness evidence.
 
 ### Implementation for User Story 6
 
-- [ ] T037 [P] [US6] Update Sync Impact Report and constitution semantic version metadata in .specify/memory/constitution.md (v2.4.0 -> v2.5.0) with dependent artifact statuses and deferred items [FR-026, FR-027, FR-029; SC-007]
-- [ ] T038 [P] [US6] Update migration notes and deferred compatibility work in specs/012-governance-framework-v2-5/research.md based on representative validation and regression outcomes [FR-026, FR-027, FR-030; SC-007, SC-008]
-- [ ] T039 [US6] Synchronize governance references and completion status across specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/quickstart.md, and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-028, FR-029, FR-032; SC-007]
-- [ ] T040 [US6] Execute Constitution Completion by closing Sync Impact only after the Validation Contract records all required readiness evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-030; SC-007, SC-008]
+- [X] T037 [P] [US6] Update Sync Impact Report and constitution semantic version metadata in .specify/memory/constitution.md (v2.4.0 -> v2.5.0) with dependent artifact statuses and deferred items [FR-026, FR-027, FR-029; SC-007]
+- [X] T038 [P] [US6] Update migration notes and deferred compatibility work in specs/012-governance-framework-v2-5/research.md based on representative validation and regression outcomes [FR-026, FR-027, FR-030; SC-007, SC-008]
+- [X] T039 [US6] Synchronize governance references and completion status across specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/quickstart.md, and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-028, FR-029, FR-032; SC-007]
+- [X] T040 [US6] Execute Constitution Completion by closing Sync Impact only after the Validation Contract records all required readiness evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-030; SC-007, SC-008]
 
 **Checkpoint**: Sync Impact is closed with explicit evidence-backed governance completion.
 
@@ -173,8 +173,8 @@ required readiness evidence.
 
 **Purpose**: Complete release-quality governance evidence and enforce governance-only scope.
 
-- [ ] T041 Execute SonarQube project-health evidence or Sonar-scope applicability recording in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md for all changed governance files [FR-032; SC-007]
-- [ ] T042 Verify and document governance-only file-change scope (no product implementation changes) in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md using repository diff review [FR-031; SC-007]
+- [X] T041 Execute SonarQube project-health evidence or Sonar-scope applicability recording in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md for all changed governance files [FR-032; SC-007]
+- [X] T042 Verify and document governance-only file-change scope (no product implementation changes) in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md using repository diff review [FR-031; SC-007]
 
 ---
 
@@ -262,18 +262,18 @@ Task: "T034 Run performance-governance verification commands from quickstart.md"
 
 ## Governance-Specific Completion Criteria
 
-- [ ] Constitution v2.5 governance text is complete for continuous improvement, platform consistency,
+- [X] Constitution v2.5 governance text is complete for continuous improvement, platform consistency,
       traceability, root-cause-first, and performance-budget governance.
-- [ ] Shared templates and shared Validation Contract template inherit governance with zero
+- [X] Shared templates and shared Validation Contract template inherit governance with zero
       template-owned structure duplication outside template surfaces.
-- [ ] `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`,
+- [X] `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`,
       `/speckit.tasks`, `/speckit.analyze`, and `/speckit.implement` instructions inherit
       constitutional rules by default.
-- [ ] Governance execution lifecycle remains owned only by `contracts/validation-and-sonar-contract.md`, with no local restatement.
-- [ ] Representative validation proves backward compatibility and forward-generation correctness.
-- [ ] Sync Impact, migration notes, governance version update, and documentation synchronization are
+- [X] Governance execution lifecycle remains owned only by `contracts/validation-and-sonar-contract.md`, with no local restatement.
+- [X] Representative validation proves backward compatibility and forward-generation correctness.
+- [X] Sync Impact, migration notes, governance version update, and documentation synchronization are
       complete with evidence.
-- [ ] No production application/product implementation tasks were added or executed.
+- [X] No production application/product implementation tasks were added or executed.
 
 ---
 
