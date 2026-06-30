@@ -7,18 +7,21 @@ description: "Task list template for feature implementation"
 
 **Input**: Design documents from `/specs/[###-feature-name]/`
 
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
+**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md,
+contracts/, and `contracts/validation-and-sonar-contract.md`
 
-**Tests**: Automated tests are REQUIRED by the constitution for every new feature. Include test
-tasks that map to the feature specification, clipboard monitoring, deduplication, local
-persistence, row actions, sorting, privacy/offline behavior, and AI output validation contracts
-where applicable. Include post-implementation SonarQube Project Health validation and evidence
-tasks for every code or test change. Include design-system validation tasks for user-facing UI
-changes, native interaction regression tasks for every affected interaction method, manual
-validation tasks for platform interactions automated UI tests cannot faithfully simulate, and
-behavior-parity regression tasks for refactors.
+**Validation Contract**: `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`
+owns the automated validation matrix, manual validation matrix, regression validation matrix,
+offline/local-first validation, accessibility validation, platform-specific validation,
+performance validation, release-readiness validation, and SonarQube evidence requirements.
+`quickstart.md` owns build/test/run commands and Validation Contract references only.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
+**Tests**: Generate automated test tasks when the specification or constitution requires them, and
+generate validation execution tasks that reference the Validation Contract instead of restating its
+matrices or ownership rules inside `tasks.md`.
+
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing
+of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -97,8 +100,9 @@ Examples of foundational tasks (adjust based on your project):
   NextPasteUITests/[Name]UITests.swift
 - [ ] T012 [P] [US1] Persistence or sorting regression test for captured clips in
   NextPasteTests/[Name]PersistenceTests.swift
-- [ ] T013 [US1] Manual validation of native interaction behavior changes (e.g., trackpad, Magic
-  Mouse, keyboard shortcuts, context menus, drag and drop, VoiceOver) in specs/[###-feature]/quickstart.md
+- [ ] T013 [US1] Reference and, if needed, extend feature-specific validation execution in
+  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md without duplicating its
+  template-owned matrices
 
 ### Implementation for User Story 1
 
@@ -126,8 +130,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] T021 [P] [US2] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
 - [ ] T022 [P] [US2] Offline/privacy behavior test for [scenario] in
   NextPasteTests/[Name]PrivacyTests.swift
-- [ ] T023 [US2] Manual validation for affected native interaction methods in
-  specs/[###-feature]/quickstart.md
+- [ ] T023 [US2] Reference the Validation Contract in
+  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md for any story-specific
+  execution additions instead of redefining local validation ownership
 
 ### Implementation for User Story 2
 
@@ -150,8 +155,9 @@ Examples of foundational tasks (adjust based on your project):
 
 - [ ] T028 [P] [US3] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
 - [ ] T029 [P] [US3] UI test for [critical user journey] in NextPasteUITests/[Name]UITests.swift
-- [ ] T030 [US3] Manual validation for affected native interaction methods in
-  specs/[###-feature]/quickstart.md
+- [ ] T030 [US3] Reference manual/platform/performance/release-readiness execution from
+  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md instead of recreating that
+  checklist in tasks.md
 
 ### Implementation for User Story 3
 
@@ -179,16 +185,12 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX Offline support review for local-first clipboard behavior
 - [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
   motion, and component styling in user-facing UI
-- [ ] TXXX Native interaction regression review for keyboard, mouse, trackpad, Magic Mouse, focus,
-  scrolling, multi-selection, context-menu, drag-and-drop, and navigation behavior where
-  applicable
-- [ ] TXXX Verify Apple Human Interface Guidelines alignment and document any approved deviations
-- [ ] TXXX Validate keyboard accessibility and VoiceOver behavior for affected user-facing flows
-- [ ] TXXX Refactoring integrity review verifying behavior parity and absence of speculative
-  abstractions
-- [ ] TXXX Run quickstart.md validation
-- [ ] TXXX Run SonarQube Project Health validation for production and test code touched by the feature
-- [ ] TXXX Record SonarQube evidence before commit or PR completion
+- [ ] TXXX Execute build/test/run commands from specs/[###-feature-name]/quickstart.md and evaluate
+  them against specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
+- [ ] TXXX Execute manual, accessibility, platform-specific, performance, and release-readiness
+  validation from specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
+- [ ] TXXX Run SonarQube Project Health validation and record evidence exactly as required by
+  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md
 
 ---
 
@@ -200,7 +202,7 @@ Examples of foundational tasks (adjust based on your project):
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 → P2 → P3)
+  - Or sequentially in priority order (P1 -> P2 -> P3)
 - **Polish (Final Phase)**: Depends on all desired user stories being complete
 
 ### User Story Dependencies
@@ -215,10 +217,7 @@ Examples of foundational tasks (adjust based on your project):
 - Models before services
 - Clipboard monitoring and persistence before optional sync/export integrations
 - Core implementation before integration
-- Design-system validation before user-facing UI completion
-- Native interaction regression validation before user-facing interaction completion
-- Refactor behavior-parity validation before refactor completion
-- SonarQube Project Health validation after `/speckit.implement` and before completion
+- Shared validation execution belongs in the Validation Contract, not in task-local matrices
 - Story complete before moving to next priority
 
 ### Parallel Opportunities
@@ -258,11 +257,11 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 
 ### Incremental Delivery
 
-1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
-3. Add User Story 2 → Test independently → Deploy/Demo
-4. Add User Story 3 → Test independently → Deploy/Demo
-5. Run SonarQube Project Health validation and record evidence before completion
+1. Complete Setup + Foundational -> Foundation ready
+2. Add User Story 1 -> Test independently -> Deploy/Demo (MVP!)
+3. Add User Story 2 -> Test independently -> Deploy/Demo
+4. Add User Story 3 -> Test independently -> Deploy/Demo
+5. Execute the Validation Contract and record Sonar evidence before completion
 6. Each story adds value without breaking previous stories
 
 ### Parallel Team Strategy
@@ -284,13 +283,8 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
-- Verify user-facing UI follows the shared design system and any new visual patterns are justified
-- Verify native Apple interaction behavior is preserved unless the specification explicitly changes
-  it, and capture manual validation for interactions automation cannot faithfully simulate
-- Verify refactors preserve observable behavior and reduce maintenance cost without speculative
-  abstractions
-- Verify SonarQube Project Health passes after implementation; fix introduced issues or document
-  false positives with justification
+- Do not duplicate contract-owned validation matrices, regression definitions, risk tables,
+  rollback sections, or Sonar evidence rules inside `tasks.md`
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

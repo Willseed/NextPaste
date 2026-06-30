@@ -4,9 +4,16 @@
 
 **Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`, `quickstart.md`, `contracts/history-search-ui-contract.md`, `contracts/validation-and-sonar-contract.md`, `.specify/memory/constitution.md`
 
-**Validation Sources**: `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` is the authoritative source for the automated validation matrix, regression matrix, manual validation, offline/local-first validation, final disconnected-network confirmation, and SonarQube evidence requirements. `specs/010-clipboard-history-search/quickstart.md` is referenced for command invocations plus validation-reference links only. `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` remains the behavioral/UI contract.
+**Validation Sources**: `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`
+is the authoritative source for automated, manual, regression, offline/local-first,
+accessibility, platform-specific, performance, release-readiness, and SonarQube validation.
+`specs/010-clipboard-history-search/quickstart.md` is execution-only and contains command
+invocations plus validation-reference links. `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md`
+remains the behavioral/UI contract.
 
-**Tests**: Automated unit/UI/regression coverage is required by the constitution, including offline/local-first coverage that proves disconnected-network search parity, continued clipboard monitoring, identical local results, and no CloudKit or remote dependency. Except for the narrow compile-enabling seams in Phase 2, automated tests must be written and observed failing before production behavior implementation. Manual native-interaction validation, final disconnected-network confirmation, and SonarQube validation must be completed per `contracts/validation-and-sonar-contract.md` before completion; manual confirmation supplements and must not replace automated validation.
+**Tests**: Automated tests are required by the constitution. Validation execution tasks below
+reference `contracts/validation-and-sonar-contract.md` instead of redefining its matrices or
+ownership rules inside `tasks.md`.
 
 ## Requirement Traceability
 
@@ -144,8 +151,8 @@
 **Purpose**: Finish automated command execution, contract-owned regression validation, manual validation, automated offline/local-first validation, final disconnected-network confirmation, and SonarQube evidence capture required by the constitution.
 
 - [ ] T018 Execute the build, unit-test, UI-test, and full-regression commands from `specs/010-clipboard-history-search/quickstart.md`, then evaluate the results against the automated validation matrix in `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`, including mandatory offline/local-first automated evidence (FR-022, SC-001, SC-002, SC-003, SC-004, SC-005, SC-006)
-- [ ] T019 Execute the regression matrix from `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` for clipboard auto-capture, clipboard monitoring, native swipe actions including Magic Mouse behavior where macOS exposes native swipe support, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, multi-selection unchanged/not applicable, and automated disconnected-network local-only behavior proving search continues, results remain identical, and no CloudKit/remote dependency exists (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-008, SC-009, SC-011)
-- [ ] T020 Execute the manual validation scenarios from `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` and `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` for search responsiveness with at least 1,000 clipboard records, keyboard navigation, mouse, trackpad, VoiceOver, Magic Mouse native swipe behavior where available, and the final disconnected-network scenario that supplements automated offline/local-first validation while recording drag-and-drop and multi-selection as unchanged/not applicable (FR-015, FR-018, FR-019, FR-020, FR-023, SC-009, SC-010, SC-011)
+- [ ] T019 Execute the regression validation matrix from `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` for preserved search behavior, preserved row interactions, unchanged drag-and-drop and multi-selection status, and local-only operation (FR-011, FR-012, FR-013, FR-014, FR-015, FR-019, FR-020, FR-022, FR-023, SC-007, SC-008, SC-009, SC-011)
+- [ ] T020 Execute the manual, accessibility/platform, offline/local-first, performance, and release-readiness validation defined in `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` and `specs/010-clipboard-history-search/contracts/history-search-ui-contract.md` (FR-015, FR-018, FR-019, FR-020, FR-023, SC-009, SC-010, SC-011)
 - [ ] T021 Run the SonarQube or SonarCloud analysis required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` and verify the Project Health gate plus coverage/duplication requirements remain compliant with no new unresolved issues (FR-024, SC-012)
 - [ ] T022 Record SonarQube evidence and any false-positive justification in `specs/010-clipboard-history-search/sonarqube-evidence.md` exactly as required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md` (FR-024, SC-012)
 
@@ -224,15 +231,12 @@ Then complete:
 - T017 in NextPaste/HomeView.swift
 ```
 
-## Validation Checklist
+## Validation References
 
-- [ ] Build, unit-test, UI-test, and full-regression commands from `specs/010-clipboard-history-search/quickstart.md` pass.
-- [ ] Automated validation results satisfy the matrix in `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`.
-- [ ] Regression validation confirms clipboard monitoring, clipboard auto-capture, native swipe actions including Magic Mouse behavior where supported, context menu, keyboard shortcuts, drag-and-drop unchanged/not applicable, and multi-selection unchanged/not applicable.
-- [ ] Manual validation covers search responsiveness with at least 1,000 clipboard records, keyboard navigation, mouse, trackpad, VoiceOver, and Magic Mouse native swipe behavior where available while searching.
-- [ ] Automated offline/local-first validation confirms disconnected-network operation produces identical local search behavior, clipboard monitoring/capture continue, and no CloudKit or other remote dependency is required.
-- [ ] Manual disconnected-network validation is executed only as final confirmation and recorded as a supplement to, not a replacement for, automated offline/local-first validation.
-- [ ] SonarQube evidence is captured and any false positives are justified exactly as required by `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`.
+- Execute build/test/run commands from `specs/010-clipboard-history-search/quickstart.md`.
+- Execute automated, regression, manual, accessibility/platform, offline/local-first, performance,
+  release-readiness, and SonarQube validation from
+  `specs/010-clipboard-history-search/contracts/validation-and-sonar-contract.md`.
 
 ## Implementation Strategy
 

@@ -21,11 +21,8 @@
   If the story changes user interaction, it must also identify affected interaction methods
   (keyboard, mouse, trackpad, context menu, drag and drop, focus, scrolling, multi-selection,
   accessibility actions, VoiceOver, navigation patterns) and any Apple HIG deviation.
-  Think of each story as a standalone slice of functionality that can be:
-  - Developed independently
-  - Tested independently
-  - Deployed independently
-  - Demonstrated to users independently
+  Do not duplicate validation matrices or Sonar evidence rules here; those belong in
+  `contracts/validation-and-sonar-contract.md`.
 -->
 
 ### User Story 1 - [Brief Title] (Priority: P1)
@@ -34,7 +31,8 @@
 
 **Why this priority**: [Explain the value and why it has this priority level]
 
-**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested by [specific action] and delivers [specific value]"]
+**Independent Test**: [Describe how this can be tested independently - e.g., "Can be fully tested
+by [specific action] and delivers [specific value]"]
 
 **Acceptance Scenarios**:
 
@@ -91,6 +89,10 @@
   state N/A]
 - **Native Platform Behavior**: [Describe the Apple-native APIs, behaviors, and conventions this
   feature reuses or preserves]
+- **Validation Contract Reference**: Validation ownership for automated, manual, regression,
+  offline/local-first, accessibility, platform-specific, performance, release-readiness, and
+  SonarQube checks lives in `contracts/validation-and-sonar-contract.md`. Summarize only the
+  feature-specific interaction expectations here.
 - **Documented Deviations**: [List any intentional Apple HIG or platform-convention deviations with
   explicit product justification, or state None]
 
@@ -118,15 +120,14 @@
   refresh behavior for captured clips
 - **FR-010**: Features that add AI-generated outputs MUST define validation schemas or typed
   contracts for those outputs
-- **FR-011**: Implementation completion MUST include SonarQube Project Health evidence showing zero
-  unresolved feature-introduced issues, or documented false positives with justification
-- **FR-012**: User-facing interfaces MUST follow the shared design system, including colors,
-  typography, spacing, corner radius, iconography, motion, and component styling; new visual
-  patterns MUST be justified and documented
+- **FR-011**: Feature artifacts MUST reference
+  `contracts/validation-and-sonar-contract.md` as the canonical validation source and MUST NOT
+  redefine validation matrices, regression ownership, or Sonar evidence rules locally
+- **FR-012**: `quickstart.md` MUST contain only build commands, test commands, execution
+  instructions, and references to `contracts/validation-and-sonar-contract.md`
 - **FR-013**: Any feature that changes user interaction MUST describe affected interaction methods,
-  preserve Apple-native interaction behavior unless explicitly changed, and identify automated
-  tests plus manual validation needed for native platform interactions that automation cannot
-  faithfully simulate
+  preserve Apple-native interaction behavior unless explicitly changed, and identify the behavior
+  that the Validation Contract must validate
 - **FR-014**: Any intentional deviation from Apple Human Interface Guidelines or standard Apple
   interaction conventions MUST be documented with explicit product justification in the
   specification
@@ -145,12 +146,19 @@
 - **[Entity 1]**: [What it represents, key attributes without implementation]
 - **[Entity 2]**: [What it represents, relationships to other entities]
 
+## Validation Contract Reference *(mandatory)*
+
+- Validation ownership belongs in `contracts/validation-and-sonar-contract.md`.
+- `quickstart.md` is an execution guide only and links back to the Validation Contract.
+- Feature artifacts may add feature-specific validation context, but MUST NOT recreate shared
+  validation matrices, repeated Sonar rules, or template-owned review structures.
+
 ## Success Criteria *(mandatory)*
 
 <!--
   ACTION REQUIRED: Define measurable success criteria.
   These must be measurable. Prefer technology-agnostic user outcomes, and include mandated
-  project quality gates such as SonarQube Project Health when required by the constitution.
+  project quality gates through Validation Contract references instead of duplicating matrices.
 -->
 
 ### Measurable Outcomes
@@ -163,15 +171,14 @@
   Save while the app is running"]
 - **SC-006**: [Privacy/offline metric, e.g., "Core capture and retrieval work without network
   access in 100% of tested scenarios"]
-- **SC-007**: [Quality gate metric, e.g., "SonarQube Project Health reports zero unresolved issues
-  for the implemented change, with evidence recorded before commit or PR completion"]
+- **SC-007**: [Template-governance metric, e.g., "Feature artifacts reference the Validation
+  Contract and duplicate zero template-owned validation structures"]
 - **SC-008**: [Design consistency metric, e.g., "All user-facing UI changes use shared design tokens
   and introduce zero undocumented visual patterns"]
 - **SC-009**: [Native interaction metric, e.g., "All affected interaction methods preserve native
-  Apple behavior, with automated coverage where reliable and manual validation where automation
-  cannot faithfully simulate the platform interaction"]
-- **SC-010**: [Release-readiness metric, e.g., "Applicable keyboard accessibility, VoiceOver,
-  trackpad, mouse, context-menu, drag-and-drop, and Apple HIG checks pass before release"]
+  Apple behavior, with execution defined in the Validation Contract"]
+- **SC-010**: [Execution-guide metric, e.g., "`quickstart.md` remains limited to build/test/run
+  commands and Validation Contract references"]
 - **SC-011**: [Refactor parity metric, e.g., "All refactoring scenarios preserve existing
   observable behavior in automated regression tests"]
 

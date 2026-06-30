@@ -2,22 +2,26 @@
 Sync Impact Report
 Version change: 2.2.0 -> 2.3.0
 Modified principles:
-- Added principle: X. Native Apple User Experience
+- Added principle: X. Validation Governance
+- Added principle: XI. Template-First Governance
+- Renumbered principle: X. Native Apple User Experience -> XII. Native Apple User Experience
 Added sections:
-- None
+- Governance validation rules
+- Governance template rules
 Removed sections:
 - None
 Templates requiring updates:
-- ✅ .specify/templates/plan-template.md
 - ✅ .specify/templates/spec-template.md
+- ✅ .specify/templates/plan-template.md
 - ✅ .specify/templates/tasks-template.md
 - ✅ .specify/templates/checklist-template.md
+- ✅ .specify/templates/contracts/validation-and-sonar-contract.md
+- ⚠ .specify/templates/quickstart-template.md (not present in repository)
+- ⚠ .specify/templates/research-template.md (not present in repository)
 - ✅ .github/copilot-instructions.md
 - ✅ .github/agents/speckit.plan.agent.md
 - ✅ .github/agents/speckit.tasks.agent.md
 - ✅ .github/agents/speckit.analyze.agent.md
-- ✅ .github/agents/speckit.implement.agent.md
-- ✅ .specify/templates/commands/*.md (no command templates present)
 Follow-up TODOs: None
 -->
 
@@ -33,7 +37,7 @@ without requiring user confirmation. Manual clip creation is secondary and optio
 workflow for core product behavior MUST remain `Clipboard Changed -> Detect -> Validate ->
 Deduplicate -> Persist -> Refresh UI`.
 
-Rationale: NextPaste now exists first to capture clipboard history reliably and instantly, so the
+Rationale: NextPaste exists first to capture clipboard history reliably and instantly, so the
 product must optimize for passive capture instead of manual save flows.
 
 ### II. Local-First Architecture
@@ -100,8 +104,8 @@ After `/speckit.implement` completes for any feature, the SonarQube Project Heal
 show zero unresolved issues for the implemented change before the feature is considered complete.
 The required post-implementation state is: Bugs 0, Vulnerabilities 0, Security Hotspots requiring
 review 0, Code Smells 0, Coverage violations 0, Reliability issues 0, Security issues 0, and
-Maintainability issues 0. Duplications on New Code MUST be 0, or within the configured quality gate
-threshold when SonarQube reports duplication as a percentage-based gate.
+Maintainability issues 0. Duplications on New Code MUST be 0, or within the configured quality
+gate threshold when SonarQube reports duplication as a percentage-based gate.
 
 Any SonarQube issue introduced by the feature MUST be fixed or explicitly documented as a false
 positive with justification. SonarQube evidence MUST be recorded before commit or PR completion and
@@ -139,7 +143,42 @@ rather than being hidden inside a refactor.
 Rationale: Refactoring should improve code quality while maintaining predictable product behavior
 and minimizing regression risk.
 
-### X. Native Apple User Experience
+### X. Validation Governance
+
+Every feature MUST inherit a standardized validation structure from the Spec Kit templates rather
+than redefining validation artifacts independently. The Validation Contract is the single source of
+truth for the automated validation matrix, manual validation matrix, regression validation matrix,
+SonarQube Project Health evidence, offline and local-first validation, accessibility validation,
+platform-specific validation, performance validation, and release-readiness validation.
+
+`quickstart.md` MUST contain only build commands, test commands, execution instructions, and
+references to the Validation Contract. Specifications, plans, tasks, and checklists MUST reference
+the Validation Contract instead of duplicating validation rules, evidence matrices, or regression
+definitions. Validation ownership MUST remain centralized to prevent documentation drift, ownership
+conflicts, duplicate matrices, inconsistent Sonar requirements, and divergent manual validation
+procedures. Any new validation type MUST first be added to the Validation Contract template before
+it may appear in a feature artifact.
+
+Rationale: Validation is project infrastructure, not feature logic. Centralizing validation reduces
+maintenance cost while improving consistency, review quality, and release readiness.
+
+### XI. Template-First Governance
+
+Any documentation structure that appears in three or more independent features MUST be promoted
+into a shared Spec Kit template. Feature artifacts MUST inherit shared project structure from
+templates instead of redefining it locally. Examples include requirement traceability tables,
+validation matrices, SonarQube evidence, manual validation sections, regression checklists,
+performance validation, accessibility validation, platform validation, risk tables, rollback
+sections, and review checklists.
+
+Templates are the authoritative definition of shared documentation structure. Feature artifacts MAY
+extend templates only with feature-specific information and MUST NOT redefine template-owned
+structures.
+
+Rationale: Repeated documentation eventually diverges. Template-first governance keeps every
+feature consistent while reducing maintenance effort and documentation drift.
+
+### XII. Native Apple User Experience
 
 All user-facing interactions MUST follow native interaction patterns of the target Apple platform
 and MUST feel native rather than application-specific. Implementations MUST prefer Apple-native
@@ -185,11 +224,24 @@ Health Gate MUST pass before the feature is complete.
 Each specification MUST define the clipboard-triggered user flow, content-type handling,
 deduplication rules, measurable acceptance criteria, privacy expectations, offline behavior, and
 any optional manual creation or sync/export scope. Each plan MUST pass a Constitution Check before
-Phase 0 research and again after Phase 1 design. Each task list MUST map implementation and test
-tasks back to specification requirements and user stories, including clipboard monitoring and local
-persistence coverage where applicable. Each task list MUST include post-implementation SonarQube
-validation and evidence tasks unless the feature is explicitly documentation-only and no code or
-test files change.
+Phase 0 research and again after Phase 1 design. Each task list MUST map implementation work back
+to specification requirements and user stories, including clipboard monitoring and local
+persistence coverage where applicable.
+
+Each feature MUST create or inherit `contracts/validation-and-sonar-contract.md` as the canonical
+validation source. That contract owns the automated validation matrix, manual validation matrix,
+regression validation matrix, offline and local-first validation, accessibility validation,
+platform-specific validation, performance validation, release-readiness validation, and SonarQube
+evidence requirements. Specifications, plans, tasks, and checklists MUST reference that contract
+instead of duplicating its template-owned structures. `quickstart.md` MUST remain an execution
+guide only and MUST contain only build commands, test commands, execution instructions, and
+references to the Validation Contract.
+
+Shared documentation structures MUST originate from `.specify/templates/`. Plans MUST reference
+templates instead of reproducing shared governance rules. Tasks MUST reference template-owned
+validation instead of redefining validation ownership. Risk tables, rollback sections, review
+checklists, validation matrices, and similar repeated structures MUST be maintained in templates
+and populated with feature-specific content only.
 
 Every specification that changes user interaction MUST describe affected interaction methods,
 including applicable keyboard shortcuts, context menus, drag and drop, focus, scrolling,
@@ -197,35 +249,41 @@ multi-selection, trackpad, Magic Mouse, mouse, accessibility actions, VoiceOver 
 navigation patterns. Each plan MUST identify impacted interaction models, the Apple-native APIs or
 behaviors being reused, any manual validation required for native interactions that automated UI
 tests cannot faithfully simulate, and any intentional HIG deviation with explicit product
-justification. Each task list MUST include automated interaction tests where reliable, manual
-validation for native platform interactions that automation cannot faithfully simulate, and
-regression validation for every existing interaction method affected by the change. `/speckit.analyze`
-MUST verify consistency with the Native Apple User Experience principle, and `/speckit.implement`
-MUST preserve native interaction behavior unless the specification explicitly changes it.
+justification. Each task list MUST include automated interaction tests where reliable and
+implementation tasks that preserve native interaction behavior unless the specification explicitly
+changes it. Validation execution details for those interaction methods MUST live in the Validation
+Contract rather than being restated in other artifacts.
 
 Before release, reviewers MUST verify that all requirements trace to implementation tasks, all
 tasks map back to a specification, acceptance criteria are measurable, automated tests cover new
-behavior, clipboard capture stays local-first, and privacy plus offline support have been
-reviewed. Reviewers MUST also verify that SonarQube evidence is recorded and that no unresolved
-feature-introduced SonarQube issues remain, except documented false positives with justification.
-User-facing changes MUST be reviewed for design-system consistency. Refactors MUST be reviewed for
-behavior parity, reduced maintenance cost, and absence of speculative architecture.
-Release readiness review MUST additionally verify compliance with Apple Human Interface Guidelines,
-native interaction consistency, keyboard accessibility, VoiceOver accessibility, trackpad support,
-mouse support, context-menu behavior, and drag-and-drop behavior where applicable.
+behavior, clipboard capture stays local-first, privacy plus offline support have been reviewed, and
+the Validation Contract has been executed without duplicated ownership elsewhere. Reviewers MUST
+also verify that SonarQube evidence is recorded and that no unresolved feature-introduced
+SonarQube issues remain, except documented false positives with justification. User-facing changes
+MUST be reviewed for design-system consistency. Refactors MUST be reviewed for behavior parity,
+reduced maintenance cost, and absence of speculative architecture.
 
 ## Governance
 
-This constitution supersedes conflicting project practices, templates, and implementation plans.
-When conflicts are found, the constitution governs unless it is amended first.
+This constitution supersedes conflicting project practices, templates, implementation plans, and
+feature artifacts. When conflicts are found, the constitution governs unless it is amended first.
 
-The SonarQube Project Health Gate is a mandatory quality-gate policy addition. It may be changed,
-weakened, or waived only through a constitution amendment.
+**Validation**: The Validation Contract is the canonical validation source. `quickstart.md` is an
+execution guide only. Specifications, plans, tasks, and checklists reference validation instead of
+redefining it. SonarQube evidence requirements are inherited from the Validation Contract. No
+feature may duplicate validation matrices.
 
-No feature specification, plan, task list, or checklist may weaken native Apple interaction
-behavior without first amending this constitution. Any intentional deviation from Apple Human
-Interface Guidelines or standard Apple interaction conventions MUST be documented and justified in
-the specification before approval.
+**Templates**: Spec Kit templates are the authoritative project documentation model. Shared
+documentation structures MUST originate from templates. Feature artifacts may extend templates only
+with feature-specific content. Repeated documentation MUST be promoted into templates before it is
+repeated locally again.
+
+**Constitution**: `/speckit.analyze` MUST report duplicated validation ownership, duplicated
+template-owned structures, inconsistent template inheritance, and feature-local redefinition of
+template-owned structures as Constitution Alignment violations. Duplicated template-owned structure
+MUST also be reported as Documentation Drift. `/speckit.plan` MUST reference templates instead of
+reproducing shared governance. `/speckit.tasks` MUST reference template-owned validation instead of
+redefining validation ownership.
 
 Every constitution amendment MUST include the proposed text, rationale, impact on existing
 specifications or features, migration guidance for affected templates or code, and a Sync Impact
@@ -237,14 +295,8 @@ Clarifications, wording changes, and non-semantic corrections require a PATCH ve
 product-direction change that redefines the primary source or capture behavior of clips is a MAJOR
 change.
 
-Every `/speckit.plan` output MUST include a Constitution Check. Every `/speckit.analyze` review
-MUST flag contradictions between spec, plan, tasks, and this constitution. Release readiness
-review MUST confirm compliance with clipboard-first behavior, local-first storage, privacy
-protections, automated testing, Apple-native simplicity constraints, and the SonarQube Project
-Health Gate. Release readiness review MUST also confirm design-system consistency for user-facing
-changes, native Apple user experience compliance for applicable interaction methods, and
-refactoring integrity for refactor-only work. No feature specification, plan, task list, or
-checklist may weaken the SonarQube, design-system, native-Apple-user-experience, or
-refactoring-integrity gates without first amending this constitution.
+The SonarQube Project Health Gate, Validation Governance, Template-First Governance, design-system
+requirements, native Apple user experience requirements, and refactoring-integrity requirements may
+be changed, weakened, or waived only through a constitution amendment.
 
-**Version**: 2.3.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-29
+**Version**: 2.3.0 | **Ratified**: 2026-06-24 | **Last Amended**: 2026-06-30

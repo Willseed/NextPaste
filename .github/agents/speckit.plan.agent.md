@@ -62,6 +62,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
+   - Create or update `contracts/validation-and-sonar-contract.md` from the shared template as the
+     canonical validation source for the feature
    - For user-facing interaction changes, identify impacted interaction models, reused
      Apple-native APIs and behaviors, required automated/manual validation, and any justified HIG
      deviations
@@ -146,18 +148,22 @@ Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generate
    - Document the contract format appropriate for the project type
    - Examples: public APIs for libraries, command schemas for CLI tools, endpoints for web services, grammars for parsers, UI contracts for applications
    - Skip if project is purely internal (build scripts, one-off tools, etc.)
+   - Always create or refresh `contracts/validation-and-sonar-contract.md` from the template and
+     keep all shared validation ownership there instead of in plan/spec/tasks/checklists
 
-3. **Create quickstart validation guide** → `quickstart.md`:
-   - Document runnable validation scenarios that prove the feature works end-to-end
-   - Include prerequisites, setup commands, test/run commands, and expected outcomes
-   - Use links or references to contracts and data model details instead of duplicating them
+3. **Create quickstart execution guide** → `quickstart.md`:
+   - Keep this artifact execution-only
+   - Include only build commands, test commands, execution instructions, and references to
+     `contracts/validation-and-sonar-contract.md`
+   - Do not duplicate validation matrices, regression definitions, evidence requirements, or
+     expected-outcome checklists from the Validation Contract
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
-   - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase
 
 4. **Agent context update**:
    - Update the plan reference between the `<!-- SPECKIT START -->` and `<!-- SPECKIT END -->` markers in `.github/copilot-instructions.md` to point to the plan file created in step 1 (the IMPL_PLAN path)
 
-**Output**: data-model.md, /contracts/*, quickstart.md, updated agent context file
+**Output**: data-model.md, /contracts/* (including `validation-and-sonar-contract.md`),
+quickstart.md, updated agent context file
 
 ## Key rules
 

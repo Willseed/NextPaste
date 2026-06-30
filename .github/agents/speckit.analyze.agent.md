@@ -46,7 +46,9 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
+Identify inconsistencies, duplications, ambiguities, underspecified items, and documentation drift
+across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This
+command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
 
 ## Operating Constraints
 
@@ -134,6 +136,10 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Any interaction-changing spec, plan, or task set that omits affected interaction methods,
   Apple-native API/behavior expectations, justified HIG deviations, or automated/manual native
   interaction regression validation
+- Any duplicated validation ownership, duplicated template-owned section, inconsistent template
+  inheritance, or feature-local redefinition of template-owned structures
+- Any spec/plan/tasks/checklist behavior that reproduces Validation Contract ownership instead of
+  referencing `contracts/validation-and-sonar-contract.md`
 
 #### E. Coverage Gaps
 
@@ -152,7 +158,9 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 
 Use this heuristic to prioritize findings:
 
-- **CRITICAL**: Violates constitution MUST, missing core spec artifact, or requirement with zero coverage that blocks baseline functionality
+- **CRITICAL**: Violates constitution MUST, duplicates Validation Contract ownership, duplicates a
+  template-owned structure, missing core spec artifact, or requirement with zero coverage that
+  blocks baseline functionality
 - **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute, untestable acceptance criterion
 - **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case
 - **LOW**: Style/wording improvements, minor redundancy not affecting execution order
@@ -175,6 +183,9 @@ Output a Markdown report (no file writes) with the following structure:
 |-----------------|-----------|----------|-------|
 
 **Constitution Alignment Issues:** (if any)
+
+**Documentation Drift:** (if any duplicated template-owned structure or Validation Contract
+redefinition is found)
 
 **Unmapped Tasks:** (if any)
 

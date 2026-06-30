@@ -4,7 +4,8 @@
 
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
 
-**Note**: This template is filled in by the `/speckit.plan` command. See `.specify/templates/plan-template.md` for the execution workflow.
+**Note**: This template is filled in by the `/speckit.plan` command. See
+`.specify/templates/plan-template.md` for the execution workflow.
 
 ## Summary
 
@@ -25,6 +26,11 @@
 **Storage**: [if applicable, e.g., PostgreSQL, CoreData, files or N/A]
 
 **Testing**: [e.g., pytest, XCTest, cargo test or NEEDS CLARIFICATION]
+
+**Validation Contract**: `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`
+is the canonical source for automated, manual, regression, offline/local-first, accessibility,
+platform-specific, performance, release-readiness, and SonarQube validation. This plan references
+that contract instead of redefining its matrices.
 
 **Target Platform**: [e.g., Linux server, iOS 15+, WASM or NEEDS CLARIFICATION]
 
@@ -54,25 +60,29 @@ scrolling, multi-selection, trackpad gestures, VoiceOver or N/A]
   user opt-in, documented data scope, retention assumptions, and local fallback behavior.
 - **Automatic capture**: The plan defines content-type identification, duplicate handling,
   persistence, and history refresh behavior for clipboard changes while the app is running.
-- **Test-first coverage**: Automated tests are planned for each new requirement. Clipboard behavior
-  includes monitoring, deduplication, local persistence, row actions, sorting, and offline
-  coverage. Features with AI outputs add typed contract validation and failure tests.
+- **Test-first coverage**: Automated tests are planned for each new requirement, and validation
+  execution is delegated to the Validation Contract rather than duplicated in this plan.
 - **Native simplicity**: SwiftUI, SwiftData, Observation, Vision, Foundation Models, Foundation,
   and CloudKit are the default choices. Any dependency or platform deviation is justified with a
   concrete capability gap and privacy impact.
-- **SonarQube project health gate**: After `/speckit.implement`, the feature is not complete until
-  SonarQube Project Health shows zero unresolved feature-introduced issues, or documented false
-  positives with justification, and evidence is recorded before commit or PR completion.
+- **SonarQube project health gate**: Release readiness inherits SonarQube requirements from the
+  Validation Contract and records evidence there without redefining the gate in this plan.
 - **Consistent design system**: User-facing UI follows shared design tokens for colors,
   typography, spacing, radius, iconography, motion, and component styling. New visual patterns are
   justified in the specification and documented in the design system.
-- **Native Apple user experience**: For any interaction change, the plan identifies affected
-  interaction methods, prefers Apple-native APIs and behaviors over custom interaction models,
-  documents any Apple HIG deviation with explicit product justification, and plans automated plus
-  manual interaction regression validation where needed.
 - **Refactoring integrity**: Refactors preserve existing observable behavior unless the
   specification explicitly defines behavior changes, include regression coverage for behavior
   parity, and avoid speculative abstractions.
+- **Validation governance**: The plan references `contracts/validation-and-sonar-contract.md` as
+  the single source of truth for validation ownership, keeps `quickstart.md` execution-only, and
+  does not duplicate validation matrices, regression definitions, or Sonar evidence rules.
+- **Template-first governance**: Shared structures such as validation references, risk tables, and
+  rollback strategy inherit this template and add feature-specific content only; repeated local
+  documentation is promoted into templates instead of being redefined here.
+- **Native Apple user experience**: For any interaction change, the plan identifies affected
+  interaction methods, prefers Apple-native APIs and behaviors over custom interaction models,
+  documents any Apple HIG deviation with explicit product justification, and points validation
+  execution back to the Validation Contract.
 
 ## Project Structure
 
@@ -80,12 +90,13 @@ scrolling, multi-selection, trackpad gestures, VoiceOver or N/A]
 
 ```text
 specs/[###-feature]/
-├── plan.md              # This file (/speckit.plan command output)
-├── research.md          # Phase 0 output (/speckit.plan command)
-├── data-model.md        # Phase 1 output (/speckit.plan command)
-├── quickstart.md        # Phase 1 output (/speckit.plan command)
-├── contracts/           # Phase 1 output (/speckit.plan command)
-└── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
+├── plan.md                                  # This file (/speckit.plan command output)
+├── research.md                              # Phase 0 output (/speckit.plan command)
+├── data-model.md                            # Phase 1 output (/speckit.plan command)
+├── quickstart.md                            # Build/test/run commands plus validation-contract references only
+├── contracts/
+│   └── validation-and-sonar-contract.md     # Canonical validation ownership
+└── tasks.md                                 # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
 ### Source Code (repository root)
@@ -134,6 +145,26 @@ ios/ or android/
 
 **Structure Decision**: [Document the selected structure and reference the real
 directories captured above]
+
+## Risk Assessment
+
+| Risk | Why it matters | Mitigation |
+| --- | --- | --- |
+| [Risk] | [Why it matters] | [Mitigation] |
+
+## Rollback Strategy
+
+1. [Rollback step for the primary change]
+2. [Rollback step for dependent data or UI changes]
+3. [Rollback validation command or confirmation]
+
+## Validation References
+
+- Use [quickstart.md](quickstart.md) for build commands, test commands, execution instructions, and
+  Validation Contract links only.
+- Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) as
+  the single source of truth for validation ownership, matrices, performance validation,
+  release-readiness validation, and SonarQube evidence requirements.
 
 ## Complexity Tracking
 

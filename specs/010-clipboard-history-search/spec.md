@@ -17,7 +17,12 @@
 - Q: What content is searchable? → A: Search covers stored text clip content and allowed searchable image metadata only; it excludes CloudKit content and all remote data.
 - Q: How should results be ordered? → A: Search filters the existing clipboard-history ordering only; it preserves pinned-first ordering and newest-first ordering within each section without relevance re-ranking.
 - Q: How should search affect updates and interactions? → A: Empty query restores the full history, no-match queries show a dedicated empty-search state, clipboard monitoring continues during search, new matching clips appear immediately, new non-matching clips stay hidden, and copy, pin, delete, native swipe, context menu, keyboard, and VoiceOver behaviors remain available in filtered results.
-- Q: What UI, performance, and validation constraints apply? → A: The feature uses one Apple-native search field in the existing toolbar with no redesign or extra filtering controls, runs locally without background indexing or third-party search libraries, updates visible results in the same UI refresh cycle as each query change, includes automated tests for filtering, ordering, live updates, offline behavior, and filtered row actions, requires manual native-interaction and accessibility validation, and records SonarQube evidence.
+- Q: What UI, performance, and validation constraints apply? → A: The feature uses one
+  Apple-native search field in the existing toolbar with no redesign or extra filtering controls,
+  runs locally without background indexing or third-party search libraries, updates visible
+  results in the same UI refresh cycle as each query change, and inherits validation execution
+  from `contracts/validation-and-sonar-contract.md` while keeping `quickstart.md`
+  execution-only.
 
 ## Searchable Image Metadata Terminology
 
@@ -99,8 +104,20 @@ As a user who continues copying, pinning, copying-back, deleting, and swiping wh
 
 - **Affected Interaction Methods**: Keyboard text entry, keyboard shortcuts, keyboard focus, list navigation, scrolling behavior, mouse interactions, trackpad interactions, Magic Mouse swipe interactions where macOS exposes the same native swipe actions, native swipe actions, context menus, accessibility actions, VoiceOver support, toolbar interaction, plus unchanged drag-and-drop and multi-selection behavior
 - **Native Platform Behavior**: The feature adds one standard Apple-native search field to the existing toolbar and updates the visible history list as the user types while preserving the current native row interactions, scrolling behavior, focus behavior, context-menu behavior, keyboard behavior, accessibility behavior, and swipe behavior for visible results. Drag-and-drop remains unchanged and no new drag targets or drop affordances are introduced. Multi-selection remains unchanged and the feature introduces no new selection mode or batch-action workflow.
-- **Validation & Review Expectations**: Automated and manual review must confirm keyboard, mouse, trackpad, Magic Mouse swipe behavior where available, context-menu behavior, VoiceOver behavior, offline/disconnected-network behavior, and that drag-and-drop plus multi-selection remain unchanged or not applicable for filtered results.
+- **Validation Contract Reference**: Automated, manual, regression, offline/local-first,
+  accessibility, platform-specific, performance, release-readiness, and SonarQube validation
+  ownership lives in `contracts/validation-and-sonar-contract.md`. This specification defines the
+  behavior to validate, but it does not own the validation matrices.
 - **Documented Deviations**: None
+
+## Validation Contract Reference *(mandatory)*
+
+- Validation ownership for this feature is centralized in
+  `contracts/validation-and-sonar-contract.md`.
+- `quickstart.md` remains limited to build commands, test commands, execution instructions, and
+  references to the Validation Contract.
+- Feature artifacts should add only feature-specific validation context outside the Validation
+  Contract and must not duplicate template-owned validation matrices.
 
 ## Requirements *(mandatory)*
 

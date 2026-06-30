@@ -273,18 +273,28 @@ The logical entities and transitions are recorded in [data-model.md](data-model.
 
 ### Phase 3: Testing strategy
 
-1. Implement the automated unit coverage required by `contracts/validation-and-sonar-contract.md` for case-insensitive substring matching, text search, allowed searchable image metadata search, empty-query restoration, ordering preservation, and filtered-result updates after pin/unpin or delete.
-2. Implement the automated UI coverage required by `contracts/validation-and-sonar-contract.md` for live filtering while typing, no-match empty search state, clearing the query, filtered row actions, and filtered text/image row interaction regression.
-3. Implement the live-update and regression coverage required by `contracts/validation-and-sonar-contract.md` for active-search auto-capture behavior, ordering, copy/pin/delete, keyboard shortcuts, context menus, native swipe behavior including Magic Mouse where coverage is possible, accessibility, and unchanged drag-and-drop plus multi-selection behavior.
-4. Execute the manual accessibility, native-interaction, and offline/disconnected-network validation scenarios owned by `contracts/validation-and-sonar-contract.md`, using `quickstart.md` only for command invocations and validation-reference links.
+1. Implement the automated coverage required by `contracts/validation-and-sonar-contract.md`
+   without redefining its matrices in this plan.
+2. Keep feature-specific UI behavior expectations in
+   `contracts/history-search-ui-contract.md` and keep shared validation ownership in
+   `contracts/validation-and-sonar-contract.md`.
+3. Execute manual, accessibility, platform-specific, offline/local-first, and performance
+   validation from `contracts/validation-and-sonar-contract.md`, using `quickstart.md` only for
+   command invocations and validation-reference links.
 
-**Phase 3 outcome**: implementation-aligned automated and manual validation coverage that satisfies the contract-owned validation matrix without redefining it here.
+**Phase 3 outcome**: implementation-aligned validation coverage that satisfies the contract-owned
+matrices without redefining them here.
 
 ### Phase 4: Contract-owned validation execution and release readiness
 
 1. Run the build, unit-test, UI-test, and full-regression commands listed in [quickstart.md](quickstart.md).
-2. Collect the validation evidence required by [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md), including local-only behavior, offline/disconnected-network behavior, preserved clipboard capture, preserved ordering and row actions, preserved design-system behavior, preserved keyboard/mouse/trackpad/Magic Mouse/context-menu/VoiceOver behavior, and unchanged drag-and-drop plus multi-selection behavior.
-3. Record the SonarQube Project Health evidence and any justified false-positive dispositions exactly as required by [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md).
+2. Collect the release-readiness evidence required by
+   [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md),
+   including automated, regression, manual, offline/local-first, accessibility/platform, and
+   performance validation.
+3. Record the SonarQube Project Health evidence and any justified false-positive dispositions
+   exactly as required by
+   [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md).
 
 **Phase 4 outcome**: release-readiness evidence captured according to the contract-owned validation and Sonar requirements.
 
@@ -339,8 +349,12 @@ The logical entities and transitions are recorded in [data-model.md](data-model.
 
 ## Validation References
 
-- Use [quickstart.md](quickstart.md) for command invocations plus validation-reference links only.
-- Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) as the single source of truth for validation ownership, manual/offline validation, regression expectations, and SonarQube evidence requirements.
+- Use [quickstart.md](quickstart.md) for build commands, test commands, execution instructions, and
+  validation-reference links only.
+- Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) as
+  the single source of truth for validation ownership, automated/manual/regression validation,
+  offline/local-first validation, accessibility/platform validation, performance validation,
+  release-readiness validation, and SonarQube evidence requirements.
 
 ## Complexity Tracking
 

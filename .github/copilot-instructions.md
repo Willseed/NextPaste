@@ -37,8 +37,14 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   user content by default, include automated tests, prefer Apple-native frameworks, and pass the
   post-implementation SonarQube Project Health gate with recorded evidence. User-facing UI must
   follow the shared design system, user interactions must preserve native Apple platform behavior
-  and documented Apple HIG alignment, and refactors must preserve observable behavior with
-  regression coverage while avoiding speculative abstractions.
+  and documented Apple HIG alignment, refactors must preserve observable behavior with regression
+  coverage while avoiding speculative abstractions, validation ownership must remain centralized in
+  `specs/<feature>/contracts/validation-and-sonar-contract.md`, and repeated documentation
+  structures must be promoted into `.specify/templates/` instead of being redefined per feature.
+- Keep validation artifacts centralized: `quickstart.md` must contain only build commands, test
+  commands, execution instructions, and references to the feature's Validation Contract. Feature
+  specs, plans, tasks, and checklists should reference the Validation Contract instead of
+  duplicating validation matrices, regression definitions, or SonarQube evidence rules.
 - Preserve the SwiftData flow already in place: add new persisted types to the schema in `NextPasteApp`, fetch them with `@Query`, and write through `modelContext`.
 - Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms.
 - Unit tests and UI tests use different frameworks on purpose: `NextPasteTests` uses the newer `Testing` module, while `NextPasteUITests` still uses `XCTest`. Follow the existing framework for each target instead of mixing them.

@@ -60,6 +60,8 @@ You **MUST** consider the user input before proceeding (if not empty).
 2. **Load design documents**: Read from FEATURE_DIR:
    - **Required**: plan.md (tech stack, libraries, structure), spec.md (user stories with priorities)
    - **Optional**: data-model.md (entities), contracts/ (interface contracts), research.md (decisions), quickstart.md (test scenarios)
+   - **Required when present**: `contracts/validation-and-sonar-contract.md` as the canonical
+     validation source
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
@@ -86,6 +88,8 @@ You **MUST** consider the user input before proceeding (if not empty).
    - For user-facing interaction changes, include automated interaction tests where reliable,
      manual validation tasks for native platform interactions automation cannot faithfully
      simulate, and regression validation for affected existing interaction methods
+   - Reference template-owned validation through `contracts/validation-and-sonar-contract.md`
+     instead of recreating validation matrices, Sonar rules, or review checklists inside `tasks.md`
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
@@ -199,6 +203,8 @@ Every task MUST strictly follow this format:
    - Shared infrastructure → Setup phase (Phase 1)
    - Foundational/blocking tasks → Foundational phase (Phase 2)
    - Story-specific setup → within that story's phase
+   - Shared validation ownership stays in the Validation Contract; tasks only reference and
+     execute it
 
 ### Phase Structure
 
