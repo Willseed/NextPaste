@@ -119,11 +119,11 @@ Contract.
 ### Validation for User Story 4
 
 - [X] T026 [US4] Execute Governance Review from specs/012-governance-framework-v2-5/quickstart.md for constitution, template, all-governance-agent, and Copilot alignment and capture evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-026, FR-027, FR-029, FR-032; SC-007]
-- [X] T027 [US4] Execute representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md and record backward-compatibility outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-031; SC-008]
-- [X] T028 [US4] Generate disposable representative artifacts under specs/013-governance-v25-representative/ when the Validation Contract requires generated-feature validation, then run /speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze, review `/speckit.implement` governance guardrails without modifying product code, and record forward-generation outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-029, FR-030, FR-031; SC-008]
-- [X] T029 [US4] Record migration follow-up decisions from representative validation in specs/012-governance-framework-v2-5/research.md and keep unresolved items open for Sync Impact closure [FR-026, FR-027, FR-030; SC-007, SC-008]
+- [ ] T027 [US4] Execute representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md and record backward-compatibility outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-031; SC-008]
+- [ ] T028 [US4] Generate disposable representative artifacts under specs/013-governance-v25-representative/ when the Validation Contract requires generated-feature validation, then run /speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze, review `/speckit.implement` governance guardrails without modifying product code, and record forward-generation outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-029, FR-030, FR-031; SC-008]
+- [ ] T029 [US4] Record migration follow-up decisions from representative validation in specs/012-governance-framework-v2-5/research.md and keep unresolved items open for Sync Impact closure [FR-026, FR-027, FR-030; SC-007, SC-008]
 
-**Checkpoint**: Backward and forward governance compatibility are both evidenced.
+**Checkpoint**: Representative validation is deferred; backward and forward governance compatibility evidence remains pending.
 
 ---
 
@@ -163,9 +163,9 @@ required readiness evidence.
 - [X] T037 [P] [US6] Update Sync Impact Report and constitution semantic version metadata in .specify/memory/constitution.md (v2.4.0 -> v2.5.0) with dependent artifact statuses and deferred items [FR-026, FR-027, FR-029; SC-007]
 - [X] T038 [P] [US6] Update migration notes and deferred compatibility work in specs/012-governance-framework-v2-5/research.md based on representative validation and regression outcomes [FR-026, FR-027, FR-030; SC-007, SC-008]
 - [X] T039 [US6] Synchronize governance references and completion status across specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/quickstart.md, and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-028, FR-029, FR-032; SC-007]
-- [X] T040 [US6] Execute Constitution Completion by closing Sync Impact only after the Validation Contract records all required readiness evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-030; SC-007, SC-008]
+- [ ] T040 [US6] Execute Constitution Completion by closing Sync Impact only after the Validation Contract records all required readiness evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-027, FR-029, FR-030; SC-007, SC-008]
 
-**Checkpoint**: Sync Impact is closed with explicit evidence-backed governance completion.
+**Checkpoint**: Sync Impact closure is deferred; evidence-backed governance completion remains pending.
 
 ---
 
@@ -382,9 +382,10 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
       `/speckit.tasks`, `/speckit.analyze`, and `/speckit.implement` instructions inherit
       constitutional rules by default.
 - [X] Governance execution lifecycle remains owned only by `contracts/validation-and-sonar-contract.md`, with no local restatement.
-- [X] Representative validation proves backward compatibility and forward-generation correctness.
-- [X] Sync Impact, migration notes, governance version update, and documentation synchronization are
-      complete with evidence.
+- [ ] Representative validation is deferred; backward compatibility and forward-generation correctness
+      evidence remains pending.
+- [ ] Sync Impact closure is deferred; migration notes, governance version update, and documentation
+      synchronization evidence remains pending.
 - [X] No production application/product implementation tasks were added or executed.
 - [ ] Propagation chain enforcement is explicit and evidenced in the mandatory order: Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact, with no downstream governance ownership before upstream ownership.
 - [ ] Validation, governance, release, and migration lifecycles each have one authoritative owner with no competing lifecycle definitions.
