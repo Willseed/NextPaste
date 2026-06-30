@@ -31,15 +31,12 @@ files; no storage schema changes planned
 
 **Validation Contract**:
 `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md` is the canonical
-source for automated, manual, regression, offline/local-first, accessibility, platform-specific,
-performance, release-readiness, and SonarQube validation. This plan references that contract
-instead of redefining its matrices.
+source for validation ownership, sequencing, required evidence, and SonarQube expectations. This
+plan references that contract instead of restating validation matrices or governance rules.
 
-**Tiered Test Strategy**: Run build health first, then the smallest reliable unit scope for any
-extracted viewport decision helper, then targeted UI coverage for manual insert, automatic
-clipboard capture, filtered-search insertion, pinned-first visibility, and interaction regression.
-Run the full `xcodebuild ... test` suite only at the final gate because the change affects shared
-history-list layout, searchable header behavior, and cross-cutting insertion flows.
+**Tiered Test Strategy**: Follow `quickstart.md` and the Validation Contract for build, targeted,
+manual, and final-gate execution order. This plan stays focused on the layout, inset, and first-row
+visibility regression surface.
 
 **Target Platform**: macOS app target built with `xcodebuild -project NextPaste.xcodeproj -scheme
 NextPaste -destination 'platform=macOS'`
@@ -125,6 +122,7 @@ NextPasteTests/
 └── HistoryViewportVisibilityTests.swift
 
 NextPasteUITests/
+├── ClipRowActionsUITests.swift
 ├── ClipboardAutoCaptureUITests.swift
 ├── CreateTextClipUITests.swift
 ├── HistoryListUITests.swift
@@ -159,6 +157,7 @@ validation artifacts already called for in `tasks.md`.
 | `NextPaste/HomeView.swift` | Primary implementation site for header measurement, list inset correction, optional scroll settling, and any test-only geometry markers |
 | `NextPaste/HistoryViewportVisibility.swift` | Extracted visibility, boundary, and corrective-scroll decision logic shared by the `HomeView` layout fix |
 | `NextPasteTests/HistoryViewportVisibilityTests.swift` | Targeted pure-logic coverage for extracted viewport visibility and corrective-scroll decision logic |
+| `NextPasteUITests/ClipRowActionsUITests.swift` | Existing row-action regression coverage referenced by `quickstart.md` and the Validation Contract |
 | `NextPasteUITests/HistoryListUITests.swift` | Search, ordering, and top-row visibility regression coverage |
 | `NextPasteUITests/ClipboardAutoCaptureUITests.swift` | Auto-capture visibility coverage in full and filtered views |
 | `NextPasteUITests/CreateTextClipUITests.swift` | Manual clip creation visibility coverage |
@@ -201,58 +200,27 @@ validation artifacts already called for in `tasks.md`.
 
 ## UI Regression Strategy
 
-- Add or update targeted UI coverage for both insertion sources: manual `New Clip` save and
-  automatic clipboard capture.
-- Verify the first visible row’s full bounds are below the fixed header region after insertion in
-  full-history and active-search scenarios.
-- Include pinned-first ordering coverage so pinned rows inherit the same top inset behavior without
-  changing ordering rules.
-- Reuse stable row identifiers plus a fixed-header-bottom geometry seam or equivalent frame helper
-  to make the “fully visible below header” assertion deterministic on macOS.
-- Keep automated regression coverage for copy, pin, unpin, delete, native swipe actions, and
-  layout assertions after the layout change.
-- Regression expectations must also preserve keyboard navigation, focus behavior, and existing
-  shortcut parity, with native macOS interaction feel and accessibility perception owned by manual
-  validation.
-- No feature-owned keyboard shortcuts are modified.
-- Run the full suite only as the final gate because the history list is a shared interaction
-  surface spanning search, capture, row actions, and resizing behavior.
+Keep automated coverage focused on this feature’s shared history-list regression surface: first-row
+visibility after insertion, search-state behavior, pinned-first ordering, and unchanged row-action
+behavior. Command ownership, evidence requirements, and final-gate rules remain in `quickstart.md`
+and the Validation Contract.
 
 ## Manual Visual Validation Strategy
 
-- Validate live resizing plus small, medium, and tall macOS window heights.
-- For each height band, confirm the newest visible row is fully below the fixed header region after
-  both manual clip creation and automatic clipboard capture.
-- Repeat the check with active search filtering for both matching and non-matching insertions.
-- Confirm pinned-first ordering and newest-first ordering remain intact while pinned rows receive
-  the same top inset behavior.
-- Confirm visual appearance manually: no new spacing language, no changed colors, typography,
-  radius, icons, or animation behavior, and no permanent empty gap above the first visible row.
-- Confirm native scrolling feel, live window resize behavior, native macOS interaction, and
-  accessibility perception remain unchanged, including keyboard navigation, focus behavior,
-  existing shortcut parity, VoiceOver perception, and context menus.
-- No feature-owned keyboard shortcuts are modified.
+Manual review remains required for the visual first-row visibility outcome, especially during live
+resizing and across representative window heights. Exact scenarios, reviewer responsibilities, and
+evidence requirements stay centralized in the Validation Contract.
 
 ## Tiered Validation Commands
 
-- Execute commands in [quickstart.md](quickstart.md) in this order: build health, targeted unit
-  coverage for `NextPasteTests/HistoryViewportVisibilityTests.swift`, targeted integration note
-  (none dedicated in this repo), targeted UI coverage, manual validation, then the final full
-  regression gate.
-- Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) for
-  the required evidence attached to each command, including manual, offline/local-first,
-  accessibility/platform, performance, release-readiness, and SonarQube results.
-- Full regression is justified only at the final gate because this feature changes shared history
-  layout and visibility behavior across multiple insertion and interaction paths.
+Use [quickstart.md](quickstart.md) for ordered build, test, and manual execution commands and
+[contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) for
+validation ownership, required evidence, and final-gate expectations.
 
 ## SonarQube Evidence Requirements
 
-- Record SonarQube Project Health evidence for the feature branch or PR after implementation and
-  before completion.
-- Evidence must show zero unresolved feature-introduced issues, or explicitly document each
-  approved false positive with justification.
-- Coverage and duplication must remain within the configured quality gate, and any artifact or note
-  should point back to the Validation Contract instead of redefining Sonar policy locally.
+Record SonarQube Project Health evidence exactly as defined in the Validation Contract; this plan
+does not duplicate those evidence rules.
 
 ## Phase 0 Research Output
 
@@ -294,8 +262,8 @@ validation artifacts already called for in `tasks.md`.
 - Use [quickstart.md](quickstart.md) for build commands, test commands, execution instructions, and
   Validation Contract links only, with targeted commands listed before any final regression gate.
 - Use [contracts/validation-and-sonar-contract.md](contracts/validation-and-sonar-contract.md) as
-  the single source of truth for validation ownership, targeted versus final regression validation,
-  performance validation, release-readiness validation, and SonarQube evidence requirements.
+  the single source of truth for validation ownership, governance, and SonarQube evidence
+  requirements.
 
 ## Complexity Tracking
 

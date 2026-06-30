@@ -15,7 +15,7 @@
 - Q: Which area counts as the fixed header region for first-row visibility? → A: All persistent UI above the list counts: the toolbar search field plus the `Clips` header row with the `New Clip` and `Settings` buttons.
 - Q: Which insertion sources and list modes require immediate full row visibility? → A: Automatic clipboard capture and manual clip creation must both show the newest visible row fully visible immediately after insertion in both full-history and search-filtered views, and pinned rows use the same top inset behavior.
 - Q: What implementation approach and scrolling policy are allowed? → A: The fix must use layout or inset correction rather than visual redesign, and corrective automatic scrolling after insertion is allowed only after the first layout pass has completed and the first visible row's bounds are available and only when the newly inserted first visible row’s full bounds are not below the fixed header region.
-- Q: How should automated and manual regression validation confirm first-row visibility? → A: UI tests must verify the first visible row's full visible bounds are below the fixed header region after insertion and automate copy, pin, unpin, delete, and swipe regression assertions, while manual validation must cover live resizing plus small, medium, and tall macOS window heights, visual appearance, native scrolling feel, native macOS interaction, and accessibility perception.
+- Q: How should validation for first-row visibility be governed? → A: This specification defines the observable row-visibility behavior and related feature intent, while execution details and evidence ownership live in `contracts/validation-and-sonar-contract.md`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -57,7 +57,7 @@ As a user interacting with clipboard history in differently sized macOS windows,
 
 **Why this priority**: The issue appears in a user-visible layout area that is sensitive to resizing and scrolling, so regression protection is required for native interactions.
 
-**Independent Test**: Can be fully tested by combining automated regression assertions for copy, pin, unpin, delete, and swipe behavior with manual resizing checks across small, medium, and tall macOS window heights.
+**Independent Test**: Can be fully tested by verifying the corrected layout remains stable across supported macOS window heights while existing row interactions continue to behave the same way.
 
 **Acceptance Scenarios**:
 
@@ -81,7 +81,7 @@ As a user interacting with clipboard history in differently sized macOS windows,
 
 - **Affected Interaction Methods**: Scrolling behavior, automatic scroll positioning, keyboard navigation, keyboard focus, mouse interactions, trackpad scrolling, Magic Mouse scrolling, native swipe actions, context menus, accessibility actions, VoiceOver support, and macOS window resizing behavior
 - **Native Platform Behavior**: The history list continues to use native Apple scrolling and row interaction behavior. The fix uses layout or inset correction to correct the visible alignment of the top row beneath the existing header area and may use corrective automatic scrolling only after the first layout pass has completed and the first visible row's bounds are available and only when the newly inserted first visible row’s full bounds are not below the fixed header region. Keyboard navigation, focus behavior, and existing shortcut parity remain unchanged. No feature-owned keyboard shortcuts are modified. It does not introduce a custom interaction model or redesigned layout pattern.
-- **Validation Contract Reference**: Validation ownership for automated, manual, regression, offline/local-first, accessibility, platform-specific, performance, release-readiness, and SonarQube checks lives in `contracts/validation-and-sonar-contract.md`. This specification defines the observable row-visibility behavior that the Validation Contract must verify.
+- **Validation Contract Reference**: Validation ownership lives in `contracts/validation-and-sonar-contract.md`. This specification defines the observable row-visibility behavior that the Validation Contract must verify.
 - **Documented Deviations**: None
 
 ## Requirements *(mandatory)*
@@ -101,12 +101,8 @@ As a user interacting with clipboard history in differently sized macOS windows,
 - **FR-011**: Search behavior, search scope, matching behavior, and search controls MUST remain unchanged apart from the corrected top-row visibility behavior.
 - **FR-012**: The fix MUST achieve the corrected top-row visibility through layout or inset correction, with corrective automatic scrolling limited to the conditions in FR-003, rather than through visual redesign.
 - **FR-013**: The feature MUST preserve current clipboard-history layout behavior during macOS native window resizing and across small, medium, and tall window heights.
-- **FR-014**: The feature MUST include automated UI regression coverage verifying that the first visible row's full visible bounds are below the fixed header region after insertion and that copy, pin, unpin, delete, and native swipe behavior remain unchanged.
-- **FR-015**: The feature MUST include manual validation covering live macOS native window resizing, small, medium, and tall window heights, visual appearance, native scrolling feel, native macOS interaction, and accessibility perception for the top-row visibility scenario.
-- **FR-016**: Implementation completion MUST include SonarQube Project Health evidence showing zero unresolved feature-introduced issues, or documented false positives with justification.
-- **FR-017**: The feature MUST reference `contracts/validation-and-sonar-contract.md` as the canonical validation source and MUST NOT redefine shared validation matrices or Sonar evidence rules in feature artifacts.
-- **FR-018**: `quickstart.md` MUST remain limited to build commands, test commands, execution instructions, and references to `contracts/validation-and-sonar-contract.md`.
-- **FR-019**: The feature MUST preserve native Apple interaction expectations for scrolling, list navigation, and row actions, and MUST document any deviation before implementation begins.
+- **FR-014**: This specification MUST defer validation ownership to `contracts/validation-and-sonar-contract.md` and MUST NOT redefine shared validation matrices, evidence rules, or template-owned validation governance.
+- **FR-015**: The feature MUST preserve native Apple interaction expectations for scrolling, list navigation, and row actions, and MUST document any deviation before implementation begins.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -118,9 +114,8 @@ As a user interacting with clipboard history in differently sized macOS windows,
 ## Validation Contract Reference *(mandatory)*
 
 - Validation ownership belongs in `contracts/validation-and-sonar-contract.md`.
-- `quickstart.md` is an execution guide only and links back to the Validation Contract.
-- Feature-specific validation ownership for this spec is limited to: automated coverage for layout plus copy/pin/unpin/delete/swipe assertions, and manual validation for visual appearance, window resize behavior, native scrolling feel, native macOS interaction, and accessibility perception.
-- Feature artifacts may add feature-specific validation context, but MUST NOT recreate shared validation matrices, repeated Sonar rules, or template-owned review structures.
+- `quickstart.md` remains an execution guide and references the Validation Contract.
+- This specification defines feature-specific behavior, scope, and acceptance intent only; validation execution details and evidence requirements are owned by the Validation Contract.
 
 ## Out of Scope
 
@@ -137,14 +132,11 @@ As a user interacting with clipboard history in differently sized macOS windows,
 
 ### Measurable Outcomes
 
-- **SC-001**: In 100% of automated regression tests for new insertions, the first visible clipboard-history row's full visible bounds are below the fixed header region with no clipped content.
-- **SC-002**: In 100% of automated scroll-positioning tests, automatic scrolling after insertion leaves the first visible row completely within the visible viewport.
-- **SC-003**: In 100% of automated search-layout tests, filtered results preserve the same first-row visibility behavior as the unfiltered list.
-- **SC-004**: In 100% of automated ordering regression tests, pinned-first ordering and newest-first ordering within each group remain unchanged after the fix.
-- **SC-005**: Manual validation across small, medium, and tall macOS window heights plus live resizing confirms that the fixed header region never overlaps the first visible row after insertion and that native scrolling feel remains unchanged.
-- **SC-006**: In 100% of automated interaction regression tests, copy, pin, unpin, delete, and native swipe actions behave identically before and after the fix.
-- **SC-007**: Visual review confirms the change introduces no unintended changes to spacing, typography, corner radius, color usage, or animations.
-- **SC-008**: SonarQube Project Health evidence is recorded before completion and shows zero unresolved feature-introduced issues, or documented false positives with justification.
+- **SC-001**: After any automatic clipboard capture or manual clip creation that becomes the first visible row, that row appears fully below the fixed header region with no clipped content.
+- **SC-002**: Full-history and search-filtered views use the same corrected first-row visibility behavior without changing which rows are shown.
+- **SC-003**: Pinned-first ordering and newest-first ordering within each ordering group remain unchanged after the fix.
+- **SC-004**: The corrected layout does not introduce a persistent empty gap above the first visible row and remains stable during live resizing across supported macOS window heights.
+- **SC-005**: Existing row interactions and the current visual design language remain unchanged while the clipping issue is resolved.
 
 ## Assumptions
 

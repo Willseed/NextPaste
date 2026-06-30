@@ -5,19 +5,14 @@
 **Prerequisites**: `plan.md` (required), `spec.md` (required), `research.md`, `data-model.md`,
 `contracts/`, and `contracts/validation-and-sonar-contract.md`
 
-**Validation Contract**: `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md`
-owns the automated validation matrix, manual validation matrix, regression validation matrix,
-offline/local-first validation, accessibility validation, platform-specific validation,
-performance validation, release-readiness validation, and SonarQube evidence requirements.
-`quickstart.md` owns build/test/run commands and Validation Contract references only.
+**Validation Contract**: Validation ownership, review expectations, regression gates, and
+SonarQube evidence requirements are defined only in
+`specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md`. `quickstart.md`
+owns build/test/run commands and references back to that contract.
 
-**Tests**: This feature requires automated test coverage per the specification and constitution.
-Use the smallest reliable scope first: targeted unit tests in
-`NextPasteTests/HistoryViewportVisibilityTests.swift` for extracted viewport visibility logic, no
-dedicated integration target in this repo, targeted UI coverage for user-visible list behavior,
-the dedicated SC-007 Validation Contract execution step after targeted UI execution, full
-regression only at the final gate because `NextPaste/HomeView.swift` changes a shared history-list
-surface, then SonarQube evidence.
+**Tests**: This feature requires automated coverage per the specification and constitution. Follow
+`quickstart.md` and the Validation Contract, using the smallest reliable test scope first and
+reserving broader regression for the contract-defined final gate.
 
 **Traceability Rule**: Every task includes linked functional requirements (`FR-*`) and success
 criteria (`SC-*`) in the task text.
@@ -39,7 +34,7 @@ criteria (`SC-*`) in the task text.
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete.
 
 - [ ] T004 Introduce viewport geometry, inset, and corrective-scroll decision types in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-005]
-- [ ] T005 Investigate whether first-row clipping originates from safe area, scroll content inset, list padding, ScrollViewReader, insertion timing, or geometry calculation while instrumenting seams in NextPaste/HomeView.swift [FR-001, FR-002, FR-003, FR-012, FR-013; SC-001, SC-002, SC-005]
+- [ ] T005 Investigate whether first-row clipping originates from safe area, scroll content inset, list padding, ScrollViewReader, insertion timing, or geometry calculation while instrumenting seams in NextPaste/HomeView.swift; completion requires the root cause to be identified and documented, the affected layout mechanism to be named, the proposed fix path to be selected, and no production code to be changed during investigation unless that work is explicitly part of the next implementation task [FR-001, FR-002, FR-003, FR-012, FR-013; SC-001, SC-002, SC-005]
 
 **Checkpoint**: Shared geometry seams and viewport decision scaffolding are ready for story work.
 
@@ -102,11 +97,8 @@ the top-row visibility guarantee.
 navigation and focus behavior, context menus, and accessibility intact after the layout
 correction. No feature-owned keyboard shortcuts are modified.
 
-**Independent Test**: Run targeted interaction and resize UI coverage so automated validation owns
-copy, pin, unpin, delete, swipe, and layout assertions, then execute the dedicated SC-007
-Validation Contract review step before final regression; keyboard navigation, focus behavior, and
-existing shortcut parity must remain unchanged while manual validation owns visual appearance,
-window resize, native scrolling feel, native macOS interaction, and accessibility perception.
+**Independent Test**: Run the targeted interaction and resize validation required by `quickstart.md`
+and complete the contract-defined SC-007 review before final regression.
 
 ### Tests for User Story 3 ⚠️
 
@@ -126,10 +118,10 @@ window resize, native scrolling feel, native macOS interaction, and accessibilit
 **Purpose**: Execute feature validation in the required order and capture final quality evidence.
 
 - [ ] T019 Execute build health and targeted unit validation commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-014, FR-017, FR-018; SC-001, SC-002]
-- [ ] T020 Execute targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift so automated validation owns copy, pin, unpin, delete, swipe, layout, keyboard navigation, focus behavior, and existing shortcut parity assertions [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006]
-- [ ] T021 Execute the dedicated SC-007 Validation Contract review step after T020 and before T022 by referencing specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for visual appearance, window resize, native scrolling feel, native macOS interaction, and accessibility perception without recreating its matrices in this file [FR-015, FR-017, FR-019; SC-005, SC-007]
-- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because NextPaste/HomeView.swift changes shared history layout, search, capture, keyboard navigation, focus behavior, and row-interaction surfaces while preserving existing shortcut parity [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004]
-- [ ] T023 Record SonarQube Project Health evidence exactly as required by specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for the changed NextPaste/, NextPasteTests/, and NextPasteUITests/ files [FR-016, FR-017; SC-008]
+- [ ] T020 Execute the targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift as required by the Validation Contract before SC-007 and final regression [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006]
+- [ ] T021 Execute the dedicated SC-007 review step after T020 and before T022 by following specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md without duplicating its validation detail in this file [FR-015, FR-017, FR-019; SC-005, SC-007]
+- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because this feature changes a shared history-list surface [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004]
+- [ ] T023 Record the SonarQube Project Health evidence required by specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for the changed NextPaste/, NextPasteTests/, and NextPasteUITests/ files [FR-016, FR-017; SC-008]
 
 ---
 
@@ -215,21 +207,9 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 
 ## Tiered Validation Strategy
 
-1. **Targeted unit tests first**: `T019` executes the smallest reliable
-   `NextPasteTests/HistoryViewportVisibilityTests.swift` scope.
-2. **Targeted integration tests**: No dedicated integration target exists in this repo; cross-file
-   behavior is intentionally validated by targeted UI coverage.
-3. **Targeted UI tests next**: `T020` executes manual-create, auto-capture, filtered, pinned, and
-   interaction regression coverage, with automated validation owning copy, pin, unpin, delete,
-   swipe, layout, keyboard navigation, focus behavior, and existing shortcut parity assertions.
-4. **Validation Contract review after targeted UI execution**: `T021` is the dedicated SC-007
-   execution step between targeted UI validation and final regression, and it references the
-   Validation Contract instead of duplicating its matrices while keeping manual validation focused on
-   visual appearance, window resize, native scrolling feel, native macOS interaction, and
-   accessibility perception.
-5. **Final full regression gate**: `T022` runs only at feature completion because the change affects
-   a shared history-list surface.
-6. **SonarQube evidence last**: `T023` records the required project-health evidence.
+Follow the validation order defined by `T019`-`T023`, `quickstart.md`, and the Validation Contract:
+use the smallest reliable targeted coverage first, complete the dedicated SC-007 contract step
+before final regression, and record SonarQube evidence last.
 
 ---
 
@@ -278,8 +258,8 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 2. **MVP**: fix default insertion visibility in full history (US1).
 3. **Behavior preservation**: extend the fix to filtered and pinned states (US2).
 4. **Platform polish**: finalize resize and interaction regression protection (US3).
-5. **Release gate**: execute targeted unit validation, targeted UI validation, the dedicated SC-007
-   Validation Contract review step, full regression, then SonarQube evidence capture.
+5. **Release gate**: execute validation in the order defined by `T019`-`T023`, `quickstart.md`, and
+   the Validation Contract.
 
 ### Parallel Team Strategy
 
@@ -295,8 +275,8 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 
 - `[P]` is used only for tasks that can proceed without editing the same file.
 - User-story tasks include `[US1]`, `[US2]`, or `[US3]` for direct story traceability.
-- Validation execution references the Validation Contract instead of recreating validation matrices,
-  with `T021` reserved as the dedicated SC-007 review step.
+- Validation execution references the Validation Contract instead of recreating its matrices,
+  evidence rules, or governance language, with `T021` reserved as the dedicated SC-007 review step.
 - The final regression gate is intentionally deferred until completion because the change touches
   shared history layout, capture refresh, search, and row interactions while preserving keyboard
   navigation, focus behavior, and existing shortcut parity. No feature-owned keyboard shortcuts are

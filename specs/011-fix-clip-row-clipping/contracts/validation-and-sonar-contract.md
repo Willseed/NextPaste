@@ -47,7 +47,8 @@ contract instead of restating its validation matrices.
    assertions after the visibility correction.
 5. Execute dedicated manual step **SC-007 Visual Review** after implementation, after targeted
    automated validation completes, and after the first layout pass has completed and the first
-   visible row's bounds are available.
+   visible row's bounds are available. SC-007 explicitly owns visual confirmation that the fix does
+   not alter the existing animation behavior.
 6. Run full regression only at feature completion/release readiness because the change affects a
    shared history-list surface spanning search, capture, row actions, and resizing behavior.
 7. Record SonarQube evidence after implementation and before completion.
@@ -104,8 +105,12 @@ coverage already provided by reliable unit or integration tests.
   - No clipping occurs on the first visible row.
   - No unexpected spacing appears above the first visible row.
   - No design-token changes are introduced.
+  - Spacing, radius, colors, and typography remain unchanged.
+  - Existing animations remain unchanged.
 - **Required evidence**:
-  - Manual visual confirmation recorded in the feature evidence.
+  - Manual visual confirmation recorded in the feature evidence explicitly confirms no clipping, no
+    unexpected top gap, no design-token changes, unchanged spacing/radius/colors/typography, and
+    unchanged animations.
   - UI test assertion reference where automated coverage exists for the same layout state.
   - Reviewer sign-off.
   - Before/after screenshots may be attached as supporting evidence but are not mandatory.
@@ -114,7 +119,7 @@ coverage already provided by reliable unit or integration tests.
 
 | Validation area | Scenario reference | Required evidence |
 | --- | --- | --- |
-| SC-007 visual appearance | Dedicated SC-007 visual review after the targeted automated run | Manual visual confirmation, optional screenshot, referenced UI assertion where available, and reviewer sign-off prove the first visible row is completely below the fixed header region with no clipping, no unexpected spacing above the first row, and no design-token changes |
+| SC-007 visual appearance | Dedicated SC-007 visual review after the targeted automated run | Manual visual confirmation, optional screenshot, referenced UI assertion where available, and reviewer sign-off prove the first visible row is completely below the fixed header region with no clipping, no unexpected spacing above the first row, no design-token changes, unchanged spacing/radius/colors/typography, and unchanged animations |
 | Window resizing and scrolling feel | Live macOS window resizing during the `quickstart.md` execution-only manual run, including after insertions at small, medium, and tall heights | Confirm the settled state remains visually correct, native scrolling feel is preserved, and no duplicate interaction checks are recorded for copy/pin/unpin/delete/swipe behaviors already covered by UI tests |
 | Native macOS interaction | Mouse, trackpad, Magic Mouse, and context-menu usage during the execution-only manual run | Confirm the layout fix does not introduce non-native interaction behavior while relying on automated coverage for deterministic row-action assertions |
 | Accessibility perception | VoiceOver announcement quality and perceived focus clarity during the execution-only manual run | Confirm perceived accessibility remains acceptable without restating deterministic keyboard/layout assertions already owned by automation |
