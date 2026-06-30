@@ -8,12 +8,14 @@
 
 Correct the `HomeView` history layout so the newest visible row always renders fully below the
 fixed header region immediately after automatic clipboard capture or manual clip creation, in both
-full-history and active-search views. The implementation will preserve the existing toolbar,
-searchable field, `Clips` header row, `New Clip` and `Settings` actions, pinned-first/newest-first
-ordering, and all row interactions by using Apple-native SwiftUI layout/inset correction first and
-only adding corrective programmatic scrolling after the first layout pass has completed and the
-first visible row's bounds are available and only when the newly inserted first visible row’s full
-bounds are not below the fixed header region.
+full-history and active-search views. The implementation scope stays limited to
+`NextPaste/HomeView.swift`, extracted `NextPaste/HistoryViewportVisibility.swift` decision logic,
+targeted test coverage, and validation artifacts. The implementation will preserve the existing
+toolbar, searchable field, `Clips` header row, `New Clip` and `Settings` actions,
+pinned-first/newest-first ordering, and all row interactions by using Apple-native SwiftUI
+layout/inset correction first and only adding corrective programmatic scrolling after the first
+layout pass has completed and the first visible row's bounds are available and only when the newly
+inserted first visible row's full bounds are not below the fixed header region.
 
 ## Technical Context
 
@@ -112,22 +114,14 @@ specs/011-fix-clip-row-clipping/
 └── tasks.md
 ```
 
-### Source Code (repository root)
+### Expected implementation surface (repository root)
 
 ```text
 NextPaste/
-├── ClipItem.swift
-├── ClipboardCaptureService.swift
-├── ClipboardMonitor.swift
-├── DesignSystem/
-│   └── Components/
-│       └── AppToolbar.swift
 ├── HomeView.swift
-├── NewClipView.swift
-└── NextPasteApp.swift
+└── HistoryViewportVisibility.swift
 
 NextPasteTests/
-├── ClipHistoryTests.swift
 └── HistoryViewportVisibilityTests.swift
 
 NextPasteUITests/
@@ -140,43 +134,44 @@ NextPasteUITests/
 ```
 
 **Structure Decision**: Keep the existing single Xcode app project. Limit production-code changes
-primarily to `NextPaste/HomeView.swift` and keep `NextPasteTests/HistoryViewportVisibilityTests.swift`
-as the targeted pure-logic validation surface for extracted viewport/scroll decision logic.
+to `NextPaste/HomeView.swift` plus extracted `NextPaste/HistoryViewportVisibility.swift`
+viewport-decision logic, with tests and documentation constrained to the targeted coverage and
+validation artifacts already called for in `tasks.md`.
 
 ## Root Cause Investigation Approach
 
-1. Confirm the current `HomeView` composition (`AppToolbar` + optional message + `List` +
-   `.searchable`) reserves only row padding for the list and does not reserve top scroll-content
-   space for the composite fixed header region.
-2. Trace both insertion paths (`ClipboardCaptureService.captureClipboardText(...)` and
-   `saveManualTextClip(...)`) to verify they insert clips into SwiftData successfully but leave
-   top-row visibility entirely to passive list refresh behavior.
+1. Confirm the current `HomeView` composition (toolbar search, optional message, in-content header
+   controls, and `List`) reserves only row padding for the list and does not reserve top
+   scroll-content space for the composite fixed header region.
+2. Trace the existing automatic-capture and manual-create insertion flows as behavioral inputs to
+   the visibility fix while keeping implementation changes inside `HomeView` and
+   `HistoryViewportVisibility`.
 3. Inspect current UI-test identifiers and frame-assertion helpers to establish a stable automated
    way to verify the first visible row sits below the full fixed header region after insertion.
-4. Implement the smallest Apple-native correction in `HomeView` first: measured fixed-header
-   geometry, list top inset/content-margin correction, and conditional programmatic scroll only if
-   the row would still be obscured.
+4. Implement the smallest Apple-native correction by extracting measured fixed-header boundary and
+   corrective-scroll decision logic into `HistoryViewportVisibility.swift`, then applying that
+   result in `HomeView`.
 
 ## Expected Files
 
 | Path | Role in the feature |
 | --- | --- |
 | `NextPaste/HomeView.swift` | Primary implementation site for header measurement, list inset correction, optional scroll settling, and any test-only geometry markers |
-| `NextPaste/DesignSystem/Components/AppToolbar.swift` | Read-only baseline for preserved layout; only touched if a non-visual measurement/accessibility seam is needed |
-| `NextPaste/ClipboardCaptureService.swift` | Read-only insertion path reference for auto-capture sequencing; behavior should remain unchanged |
-| `NextPaste/NewClipView.swift` | Manual clip insertion path reference; only touched if save-flow notification plumbing is required for conditional scroll |
+| `NextPaste/HistoryViewportVisibility.swift` | Extracted visibility, boundary, and corrective-scroll decision logic shared by the `HomeView` layout fix |
+| `NextPasteTests/HistoryViewportVisibilityTests.swift` | Targeted pure-logic coverage for extracted viewport visibility and corrective-scroll decision logic |
 | `NextPasteUITests/HistoryListUITests.swift` | Search, ordering, and top-row visibility regression coverage |
 | `NextPasteUITests/ClipboardAutoCaptureUITests.swift` | Auto-capture visibility coverage in full and filtered views |
 | `NextPasteUITests/CreateTextClipUITests.swift` | Manual clip creation visibility coverage |
 | `NextPasteUITests/HistoryRobot.swift` | Shared helper for search/manual-create/row lookup flows |
 | `NextPasteUITests/UITestAssertions.swift` | Frame-based assertions proving the first visible row is below the fixed header region |
 | `NextPasteUITests/UITestAppLauncher.swift` | Deterministic window-size presets or launch seams for small/medium/tall validation if required |
-| `NextPasteTests/HistoryViewportVisibilityTests.swift` | Targeted pure-logic coverage for extracted viewport visibility and corrective-scroll decision logic |
+| `specs/011-fix-clip-row-clipping/quickstart.md` | Ordered execution commands for targeted validation and the final regression gate |
+| `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md` | Canonical validation ownership for manual review, regression sequencing, and SonarQube evidence |
 
 ## Layout / Inset Strategy
 
-- Preserve the existing `AppToolbar`, native `.searchable` toolbar search field, `List`, row
-  styling, and overall single-column layout.
+- Preserve the existing toolbar, native `.searchable` toolbar search field, `List`, row styling,
+  and overall single-column layout.
 - Treat the fixed header region as all persistent UI above the list: the macOS toolbar search field
   plus the in-content `Clips` header row, `New Clip` button, and `Settings` button.
 - Use measured layout/inset correction rather than hard-coded visual padding so the top-most list
