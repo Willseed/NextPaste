@@ -43,10 +43,14 @@ contract instead of restating its validation matrices.
    insertion, and pinned-first first-row visibility because the bug is a user-visible macOS layout
    issue that lower layers cannot prove reliably.
 4. Keep interaction-regression UI smoke coverage for copy, pin, unpin, delete, swipe, keyboard
-   navigation/focus behavior, and accessibility reachability after the visibility correction.
-5. Run full regression only at feature completion/release readiness because the change affects a
+   navigation/focus behavior, existing shortcut parity, accessibility reachability, and layout
+   assertions after the visibility correction.
+5. Execute dedicated manual step **SC-007 Visual Review** after implementation, after targeted
+   automated validation completes, and after the first layout pass has completed and the first
+   visible row's bounds are available.
+6. Run full regression only at feature completion/release readiness because the change affects a
    shared history-list surface spanning search, capture, row actions, and resizing behavior.
-6. Record SonarQube evidence after implementation and before completion.
+7. Record SonarQube evidence after implementation and before completion.
 
 If full regression is required, document why the gate applies. UI tests must not duplicate
 coverage already provided by reliable unit or integration tests.
@@ -58,9 +62,10 @@ coverage already provided by reliable unit or integration tests.
 | Build health | `quickstart.md` build command | `xcodebuild` succeeds for the macOS app target and all planned test bundles still compile |
 | Targeted unit validation | `quickstart.md` targeted unit command(s) for `HistoryViewportVisibilityTests.swift` | Targeted unit coverage proves the viewport/header visibility rules and the corrective-scroll decision rules for this feature; unrelated `ClipItemTests` output is not acceptable substitute evidence |
 | Targeted integration validation | `quickstart.md` integration note | This repo has no dedicated integration target; feature-level cross-component behavior is intentionally covered by targeted UI automation |
-| Targeted UI validation | `quickstart.md` targeted UI command(s) | UI tests prove manual and automatic insertions leave the first visible row fully below the fixed header region in full-history and filtered views |
+| Targeted UI validation | `quickstart.md` targeted UI command(s) | UI tests prove manual and automatic insertions leave the first visible row fully below the fixed header region in full-history and filtered views after the first layout pass has completed and the first visible row's bounds are available |
+| Interaction-regression automation | `quickstart.md` targeted UI command(s) | Automated validation owns copy, pin, unpin, delete, native swipe, keyboard navigation, focus behavior, existing shortcut parity, and layout assertions; the automated evidence must show these behaviors remain unchanged while the visibility correction is active |
 | Offline/local-first behavior | `quickstart.md` clipboard auto-capture UI command(s) | Auto-capture, persistence, and history refresh continue to work locally without network dependencies while the visibility fix is active |
-| Accessibility and platform behavior | `quickstart.md` targeted UI command(s) and interaction smoke coverage | Search field access, keyboard navigation/focus behavior, VoiceOver-friendly row identifiers/labels, swipe actions, and macOS-native resize behavior remain intact |
+| Accessibility and platform behavior | `quickstart.md` targeted UI command(s) and interaction smoke coverage | Automated coverage proves search field access, keyboard navigation/focus behavior, VoiceOver-friendly row identifiers/labels, and stable layout assertions where identifiers make those checks reliable |
 | Performance behavior | `quickstart.md` targeted UI command(s) plus manual observation | For each insertion/update cycle, at most one corrective auto-scroll may occur after layout settles, and only if the first visible row still overlaps the fixed header region; the final settled state has the first visible row fully below the header with no persistent top gap and no repeated oscillation |
 
 ## 5. Final Regression Validation
@@ -71,7 +76,8 @@ coverage already provided by reliable unit or integration tests.
   actions, and live resizing.
 - **Shared behavior covered by the broader run**: app launch, list rendering, searchable toolbar
   integration, clipboard capture refresh, persisted history ordering, row actions (copy, pin,
-  unpin, delete, native swipe), keyboard navigation/focus behavior, and overall UI stability.
+  unpin, delete, native swipe), keyboard navigation, focus behavior, existing shortcut parity,
+  and overall UI stability.
 
 ## 6. Regression Validation Matrix
 
@@ -81,39 +87,59 @@ coverage already provided by reliable unit or integration tests.
 | Newest-first ordering within each group | The newest clip in each ordering group still appears first after insertion |
 | Full-history insertion visibility | Newly inserted visible rows are fully below the fixed header region |
 | Search-filtered insertion behavior | Matching insertions use the same first-row visibility behavior; non-matching insertions do not unnecessarily move visible rows |
-| Row interactions | Copy, pin, unpin, delete, native swipe actions, keyboard navigation/focus behavior, context-menu, and VoiceOver behaviors remain unchanged |
+| Row interactions | Copy, pin, unpin, delete, native swipe actions, context-menu behavior, and VoiceOver reachability remain unchanged |
+| Keyboard regression | Keyboard navigation, focus behavior, and existing shortcut parity remain unchanged. No feature-owned keyboard shortcuts are modified. |
 | Visual identity | Toolbar/search/header/button arrangement and design tokens remain unchanged with no visual redesign |
 | Top-gap avoidance | The correction does not create a persistent empty band above the first visible row |
 
-## 7. Manual Validation Matrix
+## 7. Dedicated Manual Step SC-007 Visual Review
+
+- **Execution timing**: Perform SC-007 after implementation and after targeted automated validation,
+  once the affected screen has rendered after the first layout pass has completed and the first
+  visible row's bounds are available.
+- **Reviewer responsibility**: A human reviewer must execute or directly observe the visual review,
+  confirm the acceptance criteria, and record sign-off in the validation evidence set.
+- **Acceptance criteria**:
+  - The first visible row is completely below the fixed header region.
+  - No clipping occurs on the first visible row.
+  - No unexpected spacing appears above the first visible row.
+  - No design-token changes are introduced.
+- **Required evidence**:
+  - Manual visual confirmation recorded in the feature evidence.
+  - UI test assertion reference where automated coverage exists for the same layout state.
+  - Reviewer sign-off.
+  - Before/after screenshots may be attached as supporting evidence but are not mandatory.
+
+## 8. Manual Validation Matrix
 
 | Validation area | Scenario reference | Required evidence |
 | --- | --- | --- |
-| Core user workflow | Manual clip creation during the `quickstart.md` execution-only manual run at small, medium, and tall window heights | Observe the saved clip appear fully below the fixed header region immediately after insertion |
-| Core user workflow | Automatic clipboard capture during the `quickstart.md` execution-only manual run at small, medium, and tall window heights | Observe the captured clip appear fully below the fixed header region immediately after insertion |
-| Search behavior | Active-search matching and non-matching insertions | Matching clips inherit the same visibility rule; non-matching clips do not disturb visible rows |
-| Pinned ordering | Pinned-first history when the insertion changes the first visible row after layout settles | The first visible pinned or unpinned row still clears the fixed header region and ordering is preserved |
-| Accessibility/platform behavior | Live macOS window resizing during the `quickstart.md` execution-only manual run, including after insertions at small, medium, and tall heights | The first visible row remains fully visible after layout settles, any corrective auto-scroll happens at most once per insertion only when the row still overlaps the fixed header, and interactions remain native |
-| Release readiness | Final smoke of copy, pin, unpin, delete, and native swipe actions after the fix | Confirm unchanged interaction behavior and capture sign-off notes/screenshots if needed |
+| SC-007 visual appearance | Dedicated SC-007 visual review after the targeted automated run | Manual visual confirmation, optional screenshot, referenced UI assertion where available, and reviewer sign-off prove the first visible row is completely below the fixed header region with no clipping, no unexpected spacing above the first row, and no design-token changes |
+| Window resizing and scrolling feel | Live macOS window resizing during the `quickstart.md` execution-only manual run, including after insertions at small, medium, and tall heights | Confirm the settled state remains visually correct, native scrolling feel is preserved, and no duplicate interaction checks are recorded for copy/pin/unpin/delete/swipe behaviors already covered by UI tests |
+| Native macOS interaction | Mouse, trackpad, Magic Mouse, and context-menu usage during the execution-only manual run | Confirm the layout fix does not introduce non-native interaction behavior while relying on automated coverage for deterministic row-action assertions |
+| Accessibility perception | VoiceOver announcement quality and perceived focus clarity during the execution-only manual run | Confirm perceived accessibility remains acceptable without restating deterministic keyboard/layout assertions already owned by automation |
 
 Manual validation must supplement automated validation and must not duplicate it unless
 platform-native behavior cannot be faithfully simulated.
 
-## 8. Accessibility and Platform Validation
+## 9. Accessibility and Platform Validation
 
 - Affected interaction methods: native toolbar search field, mouse, trackpad, Magic Mouse,
   keyboard navigation/focus behavior, scrolling, context menus, native swipe actions,
   accessibility actions, VoiceOver, and live window resizing.
-- No feature-owned keyboard shortcuts exist for this work. Validation must confirm keyboard
-  navigation and focus behavior remain unchanged.
-- Automated coverage should prove frame-based visibility, search access, keyboard navigation/focus behavior, and
-  row-action reachability where stable identifiers already exist.
-- Manual coverage should confirm native feel during resizing and any platform behavior that remains
-  sensitive to runtime window geometry.
+- No feature-owned keyboard shortcuts are modified.
+- Regression evidence must confirm keyboard navigation, focus behavior, and existing shortcut parity
+  remain unchanged.
+- Automated coverage should prove frame-based visibility, search access, keyboard navigation/focus
+  behavior, existing shortcut parity where detectable, and row-action reachability where stable
+  identifiers already exist.
+- Manual coverage should confirm visual appearance, native scrolling feel, accessibility
+  perception, live resizing behavior, and any platform behavior that remains sensitive to runtime
+  window geometry.
 - Approved Apple HIG deviations: none. Any future deviation would require specification approval
   before implementation.
 
-## 9. Offline / Local-First Validation
+## 10. Offline / Local-First Validation
 
 - Confirm the visibility correction does not change the local-only clipboard capture flow or
   introduce remote dependencies.
@@ -122,25 +148,27 @@ platform-native behavior cannot be faithfully simulated.
 - Final manual confirmation should verify that no network-dependent behavior is required to observe
   the layout fix.
 
-## 10. Performance Validation
+## 11. Performance Validation
 
 - The feature must preserve immediate perceived responsiveness after insertion.
 - Validation should confirm the list settles once without repeated jump/oscillation, allows at most
   one corrective auto-scroll after layout settles only when the first visible row still overlaps the
-  fixed header region, and leaves no permanent blank area above the first visible row.
+  fixed header region after the first layout pass has completed and the first visible row's bounds
+  are available, and leaves no permanent blank area above the first visible row.
 - No new performance-specific instrumentation is required unless implementation introduces a complex
   helper; if it does, document the extra evidence in this contract before completion.
 
-## 11. Release Readiness Validation
+## 12. Release Readiness Validation
 
 - Confirm the commands in `quickstart.md` completed successfully in order.
-- Confirm targeted validation rows, manual validation rows, offline/local-first validation,
-  accessibility/platform validation, and performance validation are satisfied.
+- Confirm targeted validation rows, the dedicated SC-007 visual review step, manual validation
+  rows, offline/local-first validation, accessibility/platform validation, and performance
+  validation are satisfied.
 - Confirm the final regression command completed because the change touches a shared interaction
   surface.
 - Confirm SonarQube evidence is attached or linked and any false positives are documented.
 
-## 12. SonarQube Evidence Requirements
+## 13. SonarQube Evidence Requirements
 
 1. Recorded evidence shows the feature branch or PR passes the configured SonarQube Project Health
    gate.

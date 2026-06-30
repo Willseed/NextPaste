@@ -15,8 +15,9 @@ performance validation, release-readiness validation, and SonarQube evidence req
 Use the smallest reliable scope first: targeted unit tests in
 `NextPasteTests/HistoryViewportVisibilityTests.swift` for extracted viewport visibility logic, no
 dedicated integration target in this repo, targeted UI coverage for user-visible list behavior,
-manual validation after targeted UI execution, full regression only at the final gate because
-`NextPaste/HomeView.swift` changes a shared history-list surface, then SonarQube evidence.
+the dedicated SC-007 Validation Contract execution step after targeted UI execution, full
+regression only at the final gate because `NextPaste/HomeView.swift` changes a shared history-list
+surface, then SonarQube evidence.
 
 **Traceability Rule**: Every task includes linked functional requirements (`FR-*`) and success
 criteria (`SC-*`) in the task text.
@@ -27,7 +28,7 @@ criteria (`SC-*`) in the task text.
 
 - [ ] T001 [P] Add fixed-header boundary and first-visible-row geometry assertions in NextPasteUITests/UITestAssertions.swift [FR-014, FR-017, FR-019; SC-001, SC-002]
 - [ ] T002 [P] Add reusable search, first-row lookup, and visibility helper flows in NextPasteUITests/HistoryRobot.swift [FR-004, FR-014, FR-019; SC-001, SC-003]
-- [ ] T003 [P] Add deterministic default/small/medium/tall launch presets and resize helpers in NextPasteUITests/UITestAppLauncher.swift [FR-013, FR-015, FR-019; SC-005, SC-006]
+- [ ] T003 [P] Add deterministic default/small/medium/tall launch presets and resize helpers in NextPasteUITests/UITestAppLauncher.swift [FR-013, FR-015, FR-019; SC-005]
 
 ---
 
@@ -63,7 +64,7 @@ with no extra manual scrolling.
 ### Implementation for User Story 1
 
 - [ ] T009 [US1] Implement measured fixed-header boundary, top inset, and minimal corrective-scroll rules in NextPaste/HistoryViewportVisibility.swift [FR-001, FR-003, FR-012, FR-013; SC-001, SC-002, SC-005]
-- [ ] T010 [US1] Apply the layout correction so the first visible inserted row settles below the full header region in NextPaste/HomeView.swift [FR-001, FR-002, FR-003, FR-008, FR-012, FR-019; SC-001, SC-002, SC-007]
+- [ ] T010 [US1] Apply the layout correction so the first visible inserted row settles below the full header region in NextPaste/HomeView.swift [FR-001, FR-002, FR-003, FR-008, FR-012, FR-019; SC-001, SC-002]
 
 **Checkpoint**: Manual and automatic insertion both work in normal history view with the top row
 fully visible.
@@ -88,7 +89,7 @@ filtered inserts must avoid unnecessary scroll movement, and ordering must remai
 ### Implementation for User Story 2
 
 - [ ] T014 [US2] Extend filtered, pinned, and non-matching insertion decision rules in NextPaste/HistoryViewportVisibility.swift [FR-004, FR-005, FR-006, FR-011, FR-012; SC-003, SC-004]
-- [ ] T015 [US2] Wire filtered-history, pinned-first, and no-unnecessary-scroll behavior into NextPaste/HomeView.swift [FR-004, FR-005, FR-006, FR-011, FR-019; SC-003, SC-004, SC-007]
+- [ ] T015 [US2] Wire filtered-history, pinned-first, and no-unnecessary-scroll behavior into NextPaste/HomeView.swift [FR-004, FR-005, FR-006, FR-011, FR-019; SC-003, SC-004]
 
 **Checkpoint**: Filtered history and pinned history keep the same ordering semantics while inheriting
 the top-row visibility guarantee.
@@ -98,21 +99,23 @@ the top-row visibility guarantee.
 ## Phase 5: User Story 3 - Preserve row interactions and native resizing behavior (Priority: P3)
 
 **Goal**: Keep native macOS resize behavior, copy, pin, unpin, delete, and swipe actions, keyboard
-navigation and focus behavior (no feature-owned keyboard shortcuts), context menus, and
-accessibility intact after the layout correction.
+navigation and focus behavior, context menus, and accessibility intact after the layout
+correction. No feature-owned keyboard shortcuts are modified.
 
-**Independent Test**: Run targeted interaction and resize UI coverage, then execute the required
-manual validation before final regression; copy, pin, unpin, delete, and swipe actions plus
-keyboard navigation and focus behavior must remain unchanged while the top row stays fully visible.
+**Independent Test**: Run targeted interaction and resize UI coverage so automated validation owns
+copy, pin, unpin, delete, swipe, and layout assertions, then execute the dedicated SC-007
+Validation Contract review step before final regression; keyboard navigation, focus behavior, and
+existing shortcut parity must remain unchanged while manual validation owns visual appearance,
+window resize, native scrolling feel, native macOS interaction, and accessibility perception.
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T016 [P] [US3] Add copy, pin, unpin, delete, swipe, keyboard navigation and focus behavior, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-019; SC-001, SC-006]
-- [ ] T017 [P] [US3] Add default/small/medium/tall plus live-resize visibility coverage in NextPasteUITests/HistoryListUITests.swift [FR-013, FR-014, FR-015, FR-019; SC-001, SC-005, SC-006]
+- [ ] T016 [P] [US3] Add copy, pin, unpin, delete, swipe, keyboard navigation, focus behavior, existing shortcut parity, context-menu, and VoiceOver regression coverage after the layout fix in NextPasteUITests/ClipRowActionsUITests.swift [FR-007, FR-014, FR-019; SC-001, SC-006]
+- [ ] T017 [P] [US3] Add default/small/medium/tall plus live-resize visibility coverage in NextPasteUITests/HistoryListUITests.swift [FR-013, FR-014, FR-015, FR-019; SC-001, SC-005]
 
 ### Implementation for User Story 3
 
-- [ ] T018 [US3] Recompute header boundary during native resize and preserve no-gap scroll settling in NextPaste/HomeView.swift [FR-007, FR-008, FR-013, FR-015, FR-019; SC-005, SC-006, SC-007]
+- [ ] T018 [US3] Recompute header boundary during native resize and preserve no-gap scroll settling in NextPaste/HomeView.swift [FR-007, FR-008, FR-013, FR-015, FR-019; SC-005]
 
 **Checkpoint**: The visibility fix behaves natively across resize and row-interaction scenarios.
 
@@ -123,9 +126,9 @@ keyboard navigation and focus behavior must remain unchanged while the top row s
 **Purpose**: Execute feature validation in the required order and capture final quality evidence.
 
 - [ ] T019 Execute build health and targeted unit validation commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteTests/HistoryViewportVisibilityTests.swift before broader validation [FR-014, FR-017, FR-018; SC-001, SC-002]
-- [ ] T020 Execute targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006]
-- [ ] T021 Execute the Validation Contract manual validation step after T020 and before T022, covering the contract-defined resize, insertion-source, history-mode, copy, pin, unpin, delete, swipe, and keyboard navigation and focus behavior checks without recreating its matrices in this file [FR-015, FR-017, FR-019; SC-005, SC-006, SC-007]
-- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because NextPaste/HomeView.swift changes shared history layout, search, capture, and row-interaction behavior including copy, pin, unpin, delete, and swipe flows [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006, SC-007]
+- [ ] T020 Execute targeted UI commands from specs/011-fix-clip-row-clipping/quickstart.md for NextPasteUITests/CreateTextClipUITests.swift, NextPasteUITests/ClipboardAutoCaptureUITests.swift, NextPasteUITests/HistoryListUITests.swift, and NextPasteUITests/ClipRowActionsUITests.swift so automated validation owns copy, pin, unpin, delete, swipe, layout, keyboard navigation, focus behavior, and existing shortcut parity assertions [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004, SC-006]
+- [ ] T021 Execute the dedicated SC-007 Validation Contract review step after T020 and before T022 by referencing specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for visual appearance, window resize, native scrolling feel, native macOS interaction, and accessibility perception without recreating its matrices in this file [FR-015, FR-017, FR-019; SC-005, SC-007]
+- [ ] T022 Execute the full regression gate from specs/011-fix-clip-row-clipping/quickstart.md after T021 because NextPaste/HomeView.swift changes shared history layout, search, capture, keyboard navigation, focus behavior, and row-interaction surfaces while preserving existing shortcut parity [FR-014, FR-017, FR-018, FR-019; SC-001, SC-003, SC-004]
 - [ ] T023 Record SonarQube Project Health evidence exactly as required by specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md for the changed NextPaste/, NextPasteTests/, and NextPasteUITests/ files [FR-016, FR-017; SC-008]
 
 ---
@@ -142,7 +145,7 @@ keyboard navigation and focus behavior must remain unchanged while the top row s
 - **Phase 4 → Phase 5**: User Story 3 depends on User Story 2 because resize behavior builds on the
   same corrected viewport logic in `NextPaste/HomeView.swift`.
 - **Phase 6**: Final validation depends on all desired story phases completing first, and Phase 6
-  must execute in the order `T019 -> T020 -> T021 -> T022 -> T023`.
+  must execute in the order `T019 -> T020 -> T021 (SC-007 Validation Contract step) -> T022 -> T023`.
 
 ### User Story Dependencies
 
@@ -156,8 +159,8 @@ keyboard navigation and focus behavior must remain unchanged while the top row s
 - Write or update automated tests before implementation tasks in that story.
 - Complete `NextPaste/HistoryViewportVisibility.swift` changes before the dependent
   `NextPaste/HomeView.swift` changes in the same story.
-- Keep targeted unit validation, targeted UI validation, manual validation, and the final full
-  regression gate in that order.
+- Keep targeted unit validation, targeted UI validation, the dedicated SC-007 Validation Contract
+  execution step, and the final full regression gate in that order.
 - Do **not** run tasks in parallel when they edit the same file.
 
 ### Dependency Graph
@@ -217,11 +220,13 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 2. **Targeted integration tests**: No dedicated integration target exists in this repo; cross-file
    behavior is intentionally validated by targeted UI coverage.
 3. **Targeted UI tests next**: `T020` executes manual-create, auto-capture, filtered, pinned, and
-   interaction regression coverage, including copy, pin, unpin, delete, swipe, and keyboard
-   navigation and focus behavior checks owned by the targeted UI suite.
-4. **Manual validation after targeted UI execution**: `T021` is an explicit execution step between
-   targeted UI validation and final regression, and it references the Validation Contract rather
-   than duplicating its matrices.
+   interaction regression coverage, with automated validation owning copy, pin, unpin, delete,
+   swipe, layout, keyboard navigation, focus behavior, and existing shortcut parity assertions.
+4. **Validation Contract review after targeted UI execution**: `T021` is the dedicated SC-007
+   execution step between targeted UI validation and final regression, and it references the
+   Validation Contract instead of duplicating its matrices while keeping manual validation focused on
+   visual appearance, window resize, native scrolling feel, native macOS interaction, and
+   accessibility perception.
 5. **Final full regression gate**: `T022` runs only at feature completion because the change affects
    a shared history-list surface.
 6. **SonarQube evidence last**: `T023` records the required project-health evidence.
@@ -234,26 +239,26 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 | --- | --- | --- | --- | --- |
 | T001 | Setup | `NextPasteUITests/UITestAssertions.swift` | FR-014, FR-017, FR-019 | SC-001, SC-002 |
 | T002 | Setup | `NextPasteUITests/HistoryRobot.swift` | FR-004, FR-014, FR-019 | SC-001, SC-003 |
-| T003 | Setup | `NextPasteUITests/UITestAppLauncher.swift` | FR-013, FR-015, FR-019 | SC-005, SC-006 |
+| T003 | Setup | `NextPasteUITests/UITestAppLauncher.swift` | FR-013, FR-015, FR-019 | SC-005 |
 | T004 | Foundational | `NextPaste/HistoryViewportVisibility.swift` | FR-001, FR-003, FR-012, FR-013 | SC-001, SC-002, SC-005 |
 | T005 | Foundational | `NextPaste/HomeView.swift` | FR-001, FR-002, FR-003, FR-012, FR-013 | SC-001, SC-002, SC-005 |
 | T006 | US1 | `NextPasteTests/HistoryViewportVisibilityTests.swift` | FR-001, FR-003, FR-012, FR-013 | SC-001, SC-002, SC-005 |
 | T007 | US1 | `NextPasteUITests/CreateTextClipUITests.swift` | FR-002, FR-014, FR-019 | SC-001, SC-002 |
 | T008 | US1 | `NextPasteUITests/ClipboardAutoCaptureUITests.swift` | FR-002, FR-009, FR-010, FR-014 | SC-001, SC-002 |
 | T009 | US1 | `NextPaste/HistoryViewportVisibility.swift` | FR-001, FR-003, FR-012, FR-013 | SC-001, SC-002, SC-005 |
-| T010 | US1 | `NextPaste/HomeView.swift` | FR-001, FR-002, FR-003, FR-008, FR-012, FR-019 | SC-001, SC-002, SC-007 |
+| T010 | US1 | `NextPaste/HomeView.swift` | FR-001, FR-002, FR-003, FR-008, FR-012, FR-019 | SC-001, SC-002 |
 | T011 | US2 | `NextPasteUITests/CreateTextClipUITests.swift` | FR-004, FR-011, FR-014 | SC-001, SC-003 |
 | T012 | US2 | `NextPasteUITests/ClipboardAutoCaptureUITests.swift` | FR-004, FR-009, FR-010, FR-011, FR-014 | SC-001, SC-003 |
 | T013 | US2 | `NextPasteUITests/HistoryListUITests.swift` | FR-005, FR-006, FR-014 | SC-001, SC-004 |
 | T014 | US2 | `NextPaste/HistoryViewportVisibility.swift` | FR-004, FR-005, FR-006, FR-011, FR-012 | SC-003, SC-004 |
-| T015 | US2 | `NextPaste/HomeView.swift` | FR-004, FR-005, FR-006, FR-011, FR-019 | SC-003, SC-004, SC-007 |
+| T015 | US2 | `NextPaste/HomeView.swift` | FR-004, FR-005, FR-006, FR-011, FR-019 | SC-003, SC-004 |
 | T016 | US3 | `NextPasteUITests/ClipRowActionsUITests.swift` | FR-007, FR-014, FR-019 | SC-001, SC-006 |
-| T017 | US3 | `NextPasteUITests/HistoryListUITests.swift` | FR-013, FR-014, FR-015, FR-019 | SC-001, SC-005, SC-006 |
-| T018 | US3 | `NextPaste/HomeView.swift` | FR-007, FR-008, FR-013, FR-015, FR-019 | SC-005, SC-006, SC-007 |
+| T017 | US3 | `NextPasteUITests/HistoryListUITests.swift` | FR-013, FR-014, FR-015, FR-019 | SC-001, SC-005 |
+| T018 | US3 | `NextPaste/HomeView.swift` | FR-007, FR-008, FR-013, FR-015, FR-019 | SC-005 |
 | T019 | Polish | `specs/011-fix-clip-row-clipping/quickstart.md` | FR-014, FR-017, FR-018 | SC-001, SC-002 |
 | T020 | Polish | `specs/011-fix-clip-row-clipping/quickstart.md` | FR-014, FR-017, FR-018, FR-019 | SC-001, SC-003, SC-004, SC-006 |
-| T021 | Polish | `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md` | FR-015, FR-017, FR-019 | SC-005, SC-006, SC-007 |
-| T022 | Polish | `specs/011-fix-clip-row-clipping/quickstart.md` | FR-014, FR-017, FR-018, FR-019 | SC-001, SC-003, SC-004, SC-006, SC-007 |
+| T021 | Polish | `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md` | FR-015, FR-017, FR-019 | SC-005, SC-007 |
+| T022 | Polish | `specs/011-fix-clip-row-clipping/quickstart.md` | FR-014, FR-017, FR-018, FR-019 | SC-001, SC-003, SC-004 |
 | T023 | Polish | `specs/011-fix-clip-row-clipping/contracts/validation-and-sonar-contract.md` | FR-016, FR-017 | SC-008 |
 
 ---
@@ -273,8 +278,8 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 2. **MVP**: fix default insertion visibility in full history (US1).
 3. **Behavior preservation**: extend the fix to filtered and pinned states (US2).
 4. **Platform polish**: finalize resize and interaction regression protection (US3).
-5. **Release gate**: execute targeted unit validation, targeted UI validation, manual validation,
-   full regression, then SonarQube evidence capture.
+5. **Release gate**: execute targeted unit validation, targeted UI validation, the dedicated SC-007
+   Validation Contract review step, full regression, then SonarQube evidence capture.
 
 ### Parallel Team Strategy
 
@@ -290,8 +295,10 @@ Task: "T017 Add resize visibility coverage in NextPasteUITests/HistoryListUITest
 
 - `[P]` is used only for tasks that can proceed without editing the same file.
 - User-story tasks include `[US1]`, `[US2]`, or `[US3]` for direct story traceability.
-- Validation execution references the Validation Contract instead of recreating validation matrices.
+- Validation execution references the Validation Contract instead of recreating validation matrices,
+  with `T021` reserved as the dedicated SC-007 review step.
 - The final regression gate is intentionally deferred until completion because the change touches
-  shared history layout, capture refresh, search, and row interactions including copy, pin, unpin,
-  delete, swipe, and keyboard navigation and focus behavior.
+  shared history layout, capture refresh, search, and row interactions while preserving keyboard
+  navigation, focus behavior, and existing shortcut parity. No feature-owned keyboard shortcuts are
+  modified.
 - All tasks follow the required checklist format and include exact file paths plus FR/SC traceability.

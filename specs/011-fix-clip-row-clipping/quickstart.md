@@ -52,10 +52,10 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 
 ## 5. Manual validation
 
-After the targeted UI commands pass, execute the manual viewport validation steps defined in
-[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
-Cover the required small, medium, and tall window heights plus live resize, and confirm keyboard
-navigation and focus behavior remain unchanged.
+After the targeted UI commands pass, execute the dedicated **SC-007 Visual Review** step and the
+remaining manual validation steps defined in
+[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md). Follow
+the contract for all required evidence and reviewer sign-off.
 
 ## 6. Final regression gate
 

@@ -11,8 +11,9 @@ fixed header region immediately after automatic clipboard capture or manual clip
 full-history and active-search views. The implementation will preserve the existing toolbar,
 searchable field, `Clips` header row, `New Clip` and `Settings` actions, pinned-first/newest-first
 ordering, and all row interactions by using Apple-native SwiftUI layout/inset correction first and
-only adding corrective programmatic scrolling after layout settles when the newly inserted first
-visible row’s full bounds are not below the fixed header region.
+only adding corrective programmatic scrolling after the first layout pass has completed and the
+first visible row's bounds are available and only when the newly inserted first visible row’s full
+bounds are not below the fixed header region.
 
 ## Technical Context
 
@@ -43,8 +44,8 @@ NextPaste -destination 'platform=macOS'`
 
 **Interaction Models**: Native toolbar search field, in-content header toolbar, list scrolling,
 automatic scroll settling, mouse, trackpad, Magic Mouse, keyboard navigation, keyboard focus,
-context menus, native swipe actions, accessibility actions, VoiceOver, and live window resizing;
-no feature-owned keyboard shortcuts are introduced
+context menus, native swipe actions, accessibility actions, VoiceOver, and live window resizing.
+No feature-owned keyboard shortcuts are modified.
 
 **Project Type**: desktop-app
 
@@ -89,8 +90,8 @@ changes
 - **Template-first governance**: PASS — this plan inherits template structure and keeps repeated
   validation content in the shared contract.
 - **Native Apple user experience**: PASS — scrolling, search, swipe actions, keyboard navigation,
-  keyboard focus, VoiceOver, and resizing stay Apple-native with no approved HIG deviations, and
-  no feature-owned keyboard shortcuts are added.
+  keyboard focus, VoiceOver, and resizing stay Apple-native with no approved HIG deviations.
+  No feature-owned keyboard shortcuts are modified.
 
 **Post-Design Re-check**: PASS — Phase 0 research and Phase 1 design kept the solution inside
 native SwiftUI list/inset behavior, introduced no constitutional violations, and maintained
@@ -192,11 +193,11 @@ as the targeted pure-logic validation surface for extracted viewport/scroll deci
 
 - Default behavior is layout/inset correction first; no automatic scrolling occurs when the updated
   inset already leaves the newly inserted first visible row’s full bounds below the fixed header
-  region after layout settles.
+  region after the first layout pass has completed and the first visible row's bounds are available.
 - Determine whether the newly inserted row is expected to become the first visible row for the
   current ordering and filter state, instead of using vague proximity-to-top heuristics.
 - After auto-capture or manual save, perform corrective programmatic scrolling only when the
-  inserted row is supposed to become the first visible row and, after layout settles, that row’s
+  inserted row is supposed to become the first visible row and, after the first layout pass has completed and the first visible row's bounds are available, that row’s
   full bounds are not below the fixed header region.
 - Do not auto-scroll when a new clip does not affect the visible filtered result set (for example,
   a non-matching clip inserted while search filtering is active).
@@ -213,9 +214,12 @@ as the targeted pure-logic validation surface for extracted viewport/scroll deci
   changing ordering rules.
 - Reuse stable row identifiers plus a fixed-header-bottom geometry seam or equivalent frame helper
   to make the “fully visible below header” assertion deterministic on macOS.
-- Keep regression smoke coverage for copy, pin, unpin, delete, native swipe actions, keyboard
-  navigation and focus behavior, VoiceOver labels, and context-menu availability after the layout
-  change. No feature-owned keyboard shortcuts are expected.
+- Keep automated regression coverage for copy, pin, unpin, delete, native swipe actions, and
+  layout assertions after the layout change.
+- Regression expectations must also preserve keyboard navigation, focus behavior, and existing
+  shortcut parity, with native macOS interaction feel and accessibility perception owned by manual
+  validation.
+- No feature-owned keyboard shortcuts are modified.
 - Run the full suite only as the final gate because the history list is a shared interaction
   surface spanning search, capture, row actions, and resizing behavior.
 
@@ -227,11 +231,12 @@ as the targeted pure-logic validation surface for extracted viewport/scroll deci
 - Repeat the check with active search filtering for both matching and non-matching insertions.
 - Confirm pinned-first ordering and newest-first ordering remain intact while pinned rows receive
   the same top inset behavior.
-- Confirm there is no visual redesign: no new spacing language, no changed colors, typography,
+- Confirm visual appearance manually: no new spacing language, no changed colors, typography,
   radius, icons, or animation behavior, and no permanent empty gap above the first visible row.
-- Smoke existing row interactions after insertion and resize: copy, pin, unpin, delete, native
-  swipe actions, keyboard navigation and focus behavior, VoiceOver announcements, and context
-  menus. No feature-owned keyboard shortcuts are expected.
+- Confirm native scrolling feel, live window resize behavior, native macOS interaction, and
+  accessibility perception remain unchanged, including keyboard navigation, focus behavior,
+  existing shortcut parity, VoiceOver perception, and context menus.
+- No feature-owned keyboard shortcuts are modified.
 
 ## Tiered Validation Commands
 
@@ -274,11 +279,11 @@ as the targeted pure-logic validation surface for extracted viewport/scroll deci
 
 | Risk | Why it matters | Mitigation |
 | --- | --- | --- |
-| Under-corrected top inset still leaves the first row partially hidden | The user-visible regression would remain in one or more size/search states | Measure the effective header region, validate with targeted frame-based UI tests, and include small/medium/tall plus live-resize manual checks |
-| Over-correction creates a visible gap above the first row | The fix would violate the “no redesign” constraint and degrade visual polish | Prefer measured content inset over hard-coded padding and verify no persistent gap in automated/manual validation |
-| Automatic scrolling fires too often | Unnecessary scroll movement could feel non-native and disrupt filtered or mid-list browsing | Gate scroll correction on whether the inserted row should become the first visible row and whether its full bounds are below the fixed header region after layout settles, with targeted search and ordering regressions |
-| Search-filtered and pinned-first views diverge from full-history behavior | The feature would behave inconsistently across supported list modes | Apply correction at the list viewport layer and add dedicated filtered/pinned regression cases |
-| macOS UI geometry assertions become flaky | Unreliable tests would weaken confidence in the fix | Reuse stable accessibility identifiers, add a minimal geometry seam if needed, and prefer deterministic size presets plus one dedicated live-resize smoke test |
+| Safe Area | macOS safe-area calculations can shift the effective top boundary and leave the first row partially obscured under the fixed header region | Measure the effective visible boundary from the composed header region, validate small/medium/tall windows manually, and confirm automated frame assertions use the same boundary definition |
+| List inset | An incorrect list inset can under-correct clipping or over-correct into a visible gap, violating the no-redesign constraint | Prefer measured list/content inset correction over hard-coded padding and verify both no-clipping and no-gap outcomes through automated layout assertions plus manual visual confirmation |
+| ScrollViewReader timing | Programmatic scroll requests can run before SwiftUI has applied the updated list state, causing missed or unstable corrective positioning | Gate any ScrollViewReader action so it runs only after the first layout pass has completed and the first visible row's bounds are available, and limit it to rows that should become first visible |
+| Geometry timing | Header and row geometry can be stale during insertion updates, creating flaky visibility decisions and flaky UI assertions | Use a deterministic geometry seam tied to stable identifiers, evaluate visibility only after the first layout pass has completed and the first visible row's bounds are available, and keep one focused geometry assertion helper |
+| Automatic scrolling timing | Over-eager or repeated automatic scrolling can feel non-native and disrupt filtered or pinned browsing states | Keep layout/inset correction as the default, trigger corrective scrolling only after the first layout pass has completed and the first visible row's bounds are available, and cover filtered/pinned ordering cases in targeted regression tests |
 
 ## Rollback Strategy
 
