@@ -1,4 +1,4 @@
-# Feature Specification: Governance Framework v2.5
+# Feature Specification: Governance Framework v2.6
 
 **Feature Branch**: `012-governance-framework-v2-5`
 
@@ -16,6 +16,10 @@
 - Q: What Apple platform consistency policy should future features inherit? → A: Every feature explicitly declares supported Apple platforms; business behavior stays equivalent across supported platforms; shared business logic is the default implementation strategy and platform-specific logic is permitted only where platform APIs, interaction models, or user expectations differ; native conventions apply to touch, pointer or mouse, keyboard, context menus, swipe actions, trackpad, Magic Mouse, focus, scrolling, drag and drop, accessibility actions, VoiceOver, and navigation; validation separates shared coverage from platform-specific checks.
 - Q: How should spec traceability governance and Analyze severity be defined? → A: `spec.md` is the only authoritative source of FR and SC identifiers; downstream artifacts may reference but never redefine them; orphan FR and orphan SC identifiers are blocking Analyze errors; traceability drift is a warning when references are incomplete and a blocking error when artifacts contradict, redefine, renumber, or invent identifiers.
 - Q: What governance policy should apply to workarounds, root-cause documentation, performance budgets, lifecycle gates, and scope boundaries? → A: Workarounds are acceptable only when the likely root cause cannot be fully confirmed before implementation and delaying would block meaningful progress; plans must always document likely root cause, investigation strategy, and confirmation criteria; performance budgets are mandatory for user-visible performance and for internal operations that materially affect responsiveness, capture correctness, persistence latency, search, thumbnail generation, launch, or memory; governance changes must follow the full SDD lifecycle; Constitution changes must be validated against at least one existing representative feature and, where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient), one newly created feature before becoming effective; Sync Impact is a mandatory completion gate; and this feature’s scope is limited to the Constitution, templates, shared agents, Copilot instructions, and governance documentation only.
+- Q: What propagation order governs governance updates? → A: Governance changes MUST propagate strictly in this order: Constitution → Templates → Agents → Generated Feature Artifacts → Representative Validation → Sync Impact. No downstream layer may introduce, enforce, redefine, reorder, or depend on governance rules before the upstream governing layer owns them, and Analyze must report any governance inversion as a blocking issue. This order applies to Constitution changes, template changes, agent changes, validation governance, lifecycle governance, and Sync Impact updates.
+- Q: How is executable lifecycle ownership controlled? → A: Every executable lifecycle has exactly one authoritative owner (including Validation, Governance, Release, and Migration lifecycles). Other artifacts may reference that owner but must not redefine, reorder, partially restate, or create competing lifecycle definitions. Validation lifecycle ownership remains centralized in `contracts/validation-and-sonar-contract.md`. Analyze must report lifecycle ownership drift as a blocking issue.
+- Q: How should newly discovered governance rules be handled during an active governance feature? → A: If Analyze or implementation reveals a new governance rule during an active governance feature, treat it as incremental evolution of the current governance specification rather than as a new feature stream. Amend the current `spec.md` first, then incrementally re-synchronize every affected downstream layer in propagation order and keep Sync Impact status current until synchronization is complete.
+- Q: How must governance analysis accuracy classify findings and readiness? → A: Analyze MUST classify each finding into exactly one category (Governance Defect, Implementation Pending, or Verification Pending). Governance readiness may be blocked only by Governance Defects and Governance Inconsistencies; Implementation Pending and Verification Pending remain required follow-up work but are not governance failures.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -76,6 +80,9 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - A plan proposes a workaround before identifying the likely root cause; governance must require the root-cause assessment first and label any workaround as temporary.
 - A Constitution update changes governance rules but omits one dependent template, agent, or instruction source from Sync Impact; the omission must be visible as incomplete synchronization work rather than silently accepted.
 - A governance change updates templates or agent behavior successfully for an existing feature but fails to shape a newly created feature the same way; the change must remain incomplete until forward-generation behavior is also verified where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient).
+- A template, agent, validation artifact, or Sync Impact record attempts to enforce a governance rule before the Constitution (or otherwise required upstream owner in the propagation chain) owns it; governance must treat this as inversion and block progression until upstream ownership is established.
+- Two artifacts define different execution orders for the same lifecycle (for example Release or Migration) while both claim authority; governance must treat this as lifecycle ownership drift and block completion until exactly one authoritative owner remains.
+- Analyze or planning discovers a new governance rule after planning has started; governance must evolve the current specification first and re-sync downstream planning artifacts instead of splitting the rule into a separate feature mid-lifecycle.
 
 ## Requirements *(mandatory)*
 
@@ -106,13 +113,23 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **FR-023**: Performance expectations MUST be measurable whenever a governed feature affects user-visible responsiveness or internal operations that materially affect launch, clipboard capture, search, thumbnail generation, persistence latency, or memory behavior.
 - **FR-024**: Planning governance MUST require a defined performance budget whenever the governed feature affects a performance-sensitive area covered by FR-023.
 - **FR-025**: Governance analysis SHOULD detect when measurable performance criteria are missing from a performance-relevant feature.
-- **FR-026**: Constitution changes that affect shared governance MUST identify every dependent template, shared agent, and Copilot instruction source that requires synchronization through an explicit Sync Impact process.
+- **FR-026**: Constitution changes that affect shared governance MUST identify every dependent template, shared agent, Copilot instruction source, and validation artifact that requires synchronization through an explicit Sync Impact process.
 - **FR-027**: Sync Impact completion MUST be a mandatory gate before a governance change is considered complete.
 - **FR-028**: Template-owned documentation structures MUST remain authoritative and MUST NOT diverge across feature artifacts.
-- **FR-029**: Governance changes themselves MUST follow the same specification-driven lifecycle used for other features.
+- **FR-029**: Governance changes themselves MUST follow the lifecycle `Constitution → Specification → Plan → Tasks → Analyze → Implement`.
 - **FR-030**: Constitution changes MUST be validated against at least one existing representative feature before becoming effective and SHOULD also be validated against one newly created feature when practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient) to verify forward-generation behavior.
 - **FR-031**: This governance feature MUST modify only the Constitution, templates, shared agents, Copilot instructions, and governance documentation, and MUST NOT change NextPaste product functionality, application architecture, design system, clipboard behavior, search behavior, image handling, OCR behavior, AI behavior, CloudKit behavior, SwiftData model behavior, UI behavior, or business logic.
-- **FR-032**: Validation ownership MUST remain centralized in `contracts/validation-and-sonar-contract.md`, and this specification MUST not recreate shared validation matrices, evidence rules, or other template-owned validation structures.
+- **FR-032**: Validation lifecycle ownership MUST remain centralized in `contracts/validation-and-sonar-contract.md`, and this specification MUST not recreate shared validation matrices, evidence rules, or other template-owned validation structures.
+- **FR-033**: Governance changes MUST propagate strictly in this order: Constitution → Templates → Agents → Generated Feature Artifacts → Representative Validation → Sync Impact.
+- **FR-034**: No downstream layer in the governance propagation order may introduce, enforce, redefine, reorder, or depend on a governance rule before the required upstream governing layer owns that rule.
+- **FR-035**: Analyze MUST report governance inversion against the propagation order as a blocking issue for Constitution changes, template changes, agent changes, validation governance, lifecycle governance, and Sync Impact updates.
+- **FR-036**: Every executable lifecycle MUST have exactly one authoritative owner, including at minimum the Validation Lifecycle, Governance Lifecycle, Release Lifecycle, and Migration Lifecycle.
+- **FR-037**: Artifacts that are not the authoritative lifecycle owner MAY reference lifecycle definitions but MUST NOT redefine, reorder, partially restate, or create competing lifecycle definitions.
+- **FR-038**: Analyze MUST report lifecycle ownership drift as a blocking issue whenever multiple lifecycle definitions compete or when non-owner artifacts alter lifecycle definition authority.
+- **FR-039**: If Analyze or implementation reveals a new governance rule during an active governance feature, the rule MUST be incorporated by incrementally evolving the current `spec.md` rather than creating a parallel governance feature track.
+- **FR-040**: Analyze MUST classify every governance finding into exactly one category: Governance Defect, Implementation Pending, or Verification Pending.
+- **FR-041**: Governance readiness MUST be blocked only by Governance Defects and Governance Inconsistencies; Implementation Pending and Verification Pending findings MUST be tracked for follow-up without being treated as governance failures.
+- **FR-042**: After governance evolution updates the current specification, maintainers MUST incrementally re-synchronize every affected downstream artifact layer in propagation order and keep Sync Impact status explicit until all required synchronization work is complete.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -120,6 +137,8 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **Downstream Artifact**: Any generated or maintained feature artifact that inherits governance, such as specifications, plans, tasks, checklists, instructions, and related sync-impact records.
 - **Traceability Identifier**: A functional-requirement or success-criterion identifier defined in the specification and referenced by downstream artifacts.
 - **Sync Impact**: The explicit record of which downstream governance artifacts must be updated when a governing source changes.
+- **Governance Finding Classification**: The mandatory Analyze categorization of each finding as Governance Defect, Implementation Pending, or Verification Pending.
+- **Governance Readiness**: The governance completion state that may be blocked only by Governance Defects or Governance Inconsistencies.
 - **Performance Budget**: A measurable expectation that defines acceptable performance outcomes for a governed feature when performance matters.
 - **Temporary Workaround**: A deliberately time-bounded corrective measure that is documented as incomplete until the underlying cause is addressed.
 
@@ -131,10 +150,20 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 
 ## Dependencies
 
-- Constitution v2.4.0 remains the current governing baseline that this feature extends.
-- Existing Validation Governance remains the single owner of validation structure and evidence expectations.
+- Constitution v2.6.0 is the governing baseline for this feature, including Governance Evolution and Analysis Accuracy, Governance Propagation Order, and single-owner lifecycle governance.
+- Existing Validation Governance remains the single owner of validation structure, lifecycle authority, and evidence expectations.
 - Existing Template-First Governance remains the owner of shared documentation structure.
 - Existing Test Execution Efficiency governance remains in force and is strengthened, not weakened, by this feature.
+- Analyze governance checks remain the enforcing mechanism for classification accuracy, blocking governance inversion, and blocking lifecycle ownership drift before downstream execution proceeds.
+- Sync Impact records remain the authoritative source of downstream synchronization status across templates, shared agents, instruction sources, generated artifacts, representative validation, and completion gating.
+
+## Downstream Synchronization Requirements
+
+- Shared templates MUST synchronize specification, planning, task, validation-contract, and command templates with constitution amendments before downstream generation relies on the updated governance.
+- Shared agents MUST synchronize governance-enforcement and artifact-generation behavior with constitutional updates before agent execution enforces those rules.
+- Repository instruction sources MUST synchronize Copilot governance instructions within the same propagation cycle as templates and agents.
+- Generated feature artifacts MUST be refreshed as representative synchronization evidence after upstream governance updates, including at least one existing feature and one newly generated feature when practical.
+- Sync Impact MUST track pending and completed status for each dependent downstream artifact and remain incomplete until all required updates, or approved exceptions, are explicitly recorded.
 
 ## Out of Scope
 
@@ -163,6 +192,12 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **SC-007**: Every governance change created after rollout includes an explicit Sync Impact and can be traced from governing specification through planning and task artifacts before implementation begins.
 - **SC-008**: For each governance change that alters Constitution rules after rollout, the updated governance is validated against at least one existing representative feature and, where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient), one newly created feature before the change is treated as effective.
 - **SC-009**: For each performance-relevant feature created after rollout, measurable performance budgets are present for every affected user-visible or materially impactful internal operation named in the specification.
+- **SC-010**: In the next three governance updates after rollout, downstream layers introduce, enforce, redefine, or reorder zero governance rules before their required upstream owner in the propagation order, and any seeded inversion case is reported as a blocking Analyze issue.
+- **SC-011**: In 100% of seeded governance-review scenarios that include Constitution, template, agent, validation-governance, lifecycle-governance, and Sync Impact changes, Analyze reports propagation-order inversion as blocking before implementation execution proceeds.
+- **SC-012**: For each of the next three governance lifecycle updates after rollout, Validation, Governance, Release, and Migration lifecycles each retain exactly one authoritative owner, with zero competing lifecycle definitions in downstream artifacts.
+- **SC-013**: In 100% of seeded lifecycle ownership drift scenarios, Analyze reports the drift as a blocking issue before a governance change is treated as complete.
+- **SC-014**: In 100% of seeded governance-analysis scenarios after rollout, each Analyze finding is classified into exactly one category (Governance Defect, Implementation Pending, or Verification Pending), and only Governance Defects or Governance Inconsistencies block governance readiness.
+- **SC-015**: For each of the next three governance evolutions discovered mid-lifecycle after rollout, downstream synchronization is completed incrementally in propagation order within the same governance feature stream, with Sync Impact status explicitly updated at each required layer.
 
 ## Assumptions
 
@@ -170,5 +205,8 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - The Validation Contract remains the single owner of validation structure, evidence, and execution detail.
 - Shared templates remain the authoritative owner of repeated documentation structure.
 - Existing governance principles remain in force unless this feature explicitly extends them.
-- Future governance updates continue to be created through the specification-driven workflow rather than through undocumented ad hoc edits.
+- Future governance updates continue through the specification-driven lifecycle and evolve incrementally within the active governance feature rather than through undocumented ad hoc edits or parallel governance tracks.
 - Representative-feature validation can use one existing feature to prove backward compatibility and, where practical (operationally defined: required when a newly generated feature can be created without product-code changes and within the governance feature scope; otherwise, document why existing-feature validation is sufficient), one newly created feature to prove forward-generation behavior.
+- The governance propagation layers (Constitution, Templates, Agents, Generated Feature Artifacts, Representative Validation, Sync Impact) remain present and addressable for each governance change governed by this feature.
+- Each executable lifecycle in governance scope has an identifiable authoritative owner artifact that can be referenced consistently by downstream artifacts.
+- Analyze classification semantics remain stable across governance tooling: Governance Defect, Implementation Pending, and Verification Pending are mutually exclusive, and only Governance Defect or Governance Inconsistency can block governance readiness.

@@ -1,4 +1,4 @@
-# Quickstart: Governance Framework v2.5
+# Quickstart: Governance Framework v2.6
 
 Use [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md) as
 the canonical source for validation ownership, representative validation, regression scope, Sync
@@ -10,7 +10,7 @@ execution lifecycle.
 ### Constitution review
 
 ```bash
-rg -n "Version|Sync Impact|Template-First Governance|Validation Governance|Native Apple User Experience|Test Execution Efficiency" .specify/memory/constitution.md
+rg -n "Version|Sync Impact|Template-First Governance|Validation Governance|Governance Evolution and Analysis Accuracy|Governance Propagation Order|Analyze Classification and Governance Readiness" .specify/memory/constitution.md
 ```
 
 ### Template verification
@@ -47,6 +47,10 @@ Representative validation must prove governance inheritance through `speckit.con
 Use the generated artifacts plus the shared `speckit.implement` guardrails to confirm that
 implementation would remain governance-only without modifying product code during this validation.
 
+Current lifecycle status for this synchronization pass:
+- **Representative Validation**: **DEFERRED** (not executed in this pass)
+- **Sync Impact Closure**: **DEFERRED / OPEN** (do not mark PASS before required execution evidence)
+
 ## Regression command entry point
 
 Run this when the Validation Contract reaches the final governance regression stage.
@@ -55,12 +59,18 @@ Run this when the Validation Contract reaches the final governance regression st
 git --no-pager diff --stat -- .specify .github specs/012-governance-framework-v2-5
 ```
 
-## Analyze entry points
+## Analyze entry points (Governance Analysis Accuracy, Constitution v2.6)
 
-- **Early Analyze**: use the normal `/speckit.analyze` flow as a governance-consistency check before
-  implementation propagation closes.
-- **Final Analyze**: use the normal `/speckit.analyze` flow as a readiness check before Constitution
-  Completion.
+- **Checkpoint A — Classification Accuracy**: use the normal `/speckit.analyze` flow and classify
+  each finding as exactly one of:
+  - `Governance Defect`
+  - `Implementation Pending`
+  - `Verification Pending`
+- **Checkpoint B — Propagation/Lifecycle Integrity**: use `/speckit.analyze` to detect governance
+  inversion and lifecycle ownership drift before readiness closeout.
+- **Checkpoint C — Readiness Gate**: use `/speckit.analyze` to confirm readiness blocking is limited
+  to Governance Defects and Governance Inconsistencies; Implementation Pending and Verification
+  Pending remain follow-up work and do not block readiness.
 
 Analyze timing is operational support only. The Validation Contract remains the sole lifecycle owner.
 

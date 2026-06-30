@@ -1,7 +1,7 @@
-# Governance Framework v2.5 Validation and Sonar Contract
+# Governance Framework v2.6 Validation and Sonar Contract
 
-**Feature**: Governance Framework v2.5
-**Date**: 2026-06-30
+**Feature**: Governance Framework v2.6
+**Date**: 2026-07-01
 
 This document is the single source of truth for validation ownership. It owns the automated
 validation matrix, manual validation matrix, regression validation matrix, SonarQube Project Health
@@ -47,18 +47,30 @@ must not be skipped merely because the shared artifacts appear internally consis
 
 Representative validation of a newly generated feature is REQUIRED when it can be performed without modifying product code and remains within the governance feature scope. Otherwise, document why representative validation using existing features is sufficient.
 
+### Governance Analysis Accuracy (Constitution v2.6)
+
+- Analyze findings MUST be classified as exactly one of: **Governance Defect**,
+  **Implementation Pending**, or **Verification Pending**.
+- Only **Governance Defects** and **Governance Inconsistencies** may block governance readiness.
+- **Implementation Pending** and **Verification Pending** findings MUST be tracked for follow-up and
+  MUST NOT be treated as governance-readiness blockers.
+- Analyze checkpoint evidence is recorded as:
+  1. **Checkpoint A — Classification Accuracy**
+  2. **Checkpoint B — Propagation/Lifecycle Integrity**
+  3. **Checkpoint C — Readiness Gate**
+
 ## 4. Automated Validation Matrix
 
 | Validation area | Execution source | Required evidence | Status / Evidence |
 | --- | --- | --- | --- |
-| Constitution review | `quickstart.md` constitution review entry point | Evidence shows the Constitution amendment includes governance v2.5 rules, versioning, migration guidance, and Sync Impact coverage | **PASS** - Verified Constitution v2.5.0 includes all core principles, versioning, and Sync Impact. |
-| Template verification | `quickstart.md` template verification entry point | Evidence shows shared templates encode platform declarations, FR/SC authority, root-cause planning, performance-budget prompts, and centralized validation ownership consistently | **PASS** - Verified spec, plan, tasks, checklist, and contract templates align with v2.5. |
-| Agent verification | `quickstart.md` agent verification entry point | Evidence shows `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and `speckit.implement` plus Copilot instructions reflect the same governance rules and severities | **PASS** - Verified all 7 agents and copilot instructions conform perfectly to the v2.5 rules. |
-| Existing-feature representative validation | `quickstart.md` representative existing-feature entry point | Evidence shows the selected existing feature remains compatible with the updated shared governance without requiring silent artifact rewrites | **PASS** - Checked existing feature specs/011; fully compatible without any hidden migrations. |
-| Newly generated representative validation | `quickstart.md` representative generated-feature entry point | Evidence shows a disposable newly generated feature inherits the updated governance structure automatically when the representative generated-feature requirement applies, or documents why existing-feature validation is sufficient | **PASS** - Generated disposable specs/013, which successfully inherited v2.5 structure automatically. |
-| Analyze enforcement | `quickstart.md` Analyze and representative validation entry points | Evidence shows orphan FR/orphan SC handling is blocking and traceability drift severity matches the clarified governance policy | **PASS** - Verified speckit.analyze severity rules block on orphan FR/SC and warn on minor drift. |
+| Constitution review | `quickstart.md` constitution review entry point | Evidence shows the Constitution amendment includes governance v2.6 rules, versioning, migration guidance, and Sync Impact coverage | **PASS** - Verified Constitution v2.6.0 includes governance evolution, analysis accuracy, propagation order, and lifecycle ownership rules. |
+| Template verification | `quickstart.md` template verification entry point | Evidence shows shared templates encode platform declarations, FR/SC authority, root-cause planning, performance-budget prompts, and centralized validation ownership consistently | **PENDING** - Template verification must be re-recorded after all pending v2.6 downstream synchronization updates are applied. |
+| Agent verification | `quickstart.md` agent verification entry point | Evidence shows `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and `speckit.implement` plus Copilot instructions reflect the same governance rules and severities | **PENDING** - Agent/instruction verification must be re-recorded after all pending v2.6 downstream synchronization updates are applied. |
+| Existing-feature representative validation | `quickstart.md` representative existing-feature entry point | Evidence shows the selected existing feature remains compatible with the updated shared governance without requiring silent artifact rewrites | **DEFERRED** - Representative validation was not executed in this synchronization pass and remains deferred until downstream synchronization updates are applied. |
+| Newly generated representative validation | `quickstart.md` representative generated-feature entry point | Evidence shows a disposable newly generated feature inherits the updated governance structure automatically when the representative generated-feature requirement applies, or documents why existing-feature validation is sufficient | **DEFERRED** - Representative validation was not executed in this synchronization pass and remains deferred until downstream synchronization updates are applied. |
+| Analyze enforcement | `quickstart.md` Analyze and representative validation entry points | Evidence shows Checkpoint A/B/C outcomes enforce exact finding classification, propagation/lifecycle integrity, and readiness blocking semantics | **PENDING** - v2.6 Governance Analysis Accuracy checkpoint evidence is not yet executed/recorded for this synchronization pass. |
 | Performance-governance adoption | `quickstart.md` template and representative validation entry points | Evidence shows templates and representative features require measurable budgets only for user-visible or materially impactful internal operations | **PASS** - Verified performance budget constraints apply conditionally based on feature type. |
-| Sync Impact completion | `quickstart.md` full governance regression step | Evidence shows every dependent shared artifact was updated or explicitly deferred with a reason before closure | **PASS** - Verified Sync Impact completed successfully with 100% of artifacts synchronized. |
+| Sync Impact completion | `quickstart.md` full governance regression step | Evidence shows every dependent shared artifact was updated or explicitly deferred with a reason before closure | **DEFERRED** - Sync Impact closure remains deferred until downstream synchronization updates are applied. |
 
 ## 5. Final Regression Validation
 
@@ -87,10 +99,10 @@ Representative validation of a newly generated feature is REQUIRED when it can b
 
 | Validation area | Scenario reference | Required evidence | Status / Evidence |
 | --- | --- | --- | --- |
-| Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, and Sync Impact are coherent and governance-only | **PASS** - Confirmed Constitution v2.5.0 content is coherent, aligned, and strictly within scope. |
-| Backward compatibility review | Representative existing-feature review | Reviewer confirms the selected existing feature remains compatible without hidden migrations | **PASS** - Confirmed backward compatibility with specs/011 feature-local files. |
-| Forward-generation review | Representative newly generated feature review when the representative generated-feature requirement applies | Reviewer confirms the disposable feature inherits the new governance rules without manual patching, or records why existing-feature validation is sufficient | **PASS** - Confirmed specs/013 inherited all templates and conventions cleanly. |
-| Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred | **PASS** - All dependent files successfully updated and verified. |
+| Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, and Sync Impact are coherent and governance-only | **PASS** - Confirmed Constitution v2.6.0 content is coherent, aligned, and strictly within scope. |
+| Backward compatibility review | Representative existing-feature review | Reviewer confirms the selected existing feature remains compatible without hidden migrations | **DEFERRED** - Representative existing-feature validation has not been executed in this synchronization pass. |
+| Forward-generation review | Representative newly generated feature review when the representative generated-feature requirement applies | Reviewer confirms the disposable feature inherits the new governance rules without manual patching, or records why existing-feature validation is sufficient | **DEFERRED** - Representative generated-feature validation has not been executed in this synchronization pass. |
+| Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred | **DEFERRED** - Sync Impact closure remains deferred until downstream synchronization updates are applied. |
 
 Manual validation must supplement the targeted verification steps and must not replace representative
 validation or Sync Impact review.
@@ -128,6 +140,11 @@ validation or Sync Impact review.
   2. Newly generated feature validation demonstrates forward-generation correctness.
   3. Any failed representative validation leaves Sync Impact open and creates explicit migration
      follow-up work.
+
+### Current Lifecycle Status (Constitution v2.6 Consistency)
+
+- **Representative Validation**: **DEFERRED** — deferred until downstream synchronization updates are applied.
+- **Sync Impact Closure**: **DEFERRED** — deferred until downstream synchronization updates are applied.
 
 ## 12. Release Readiness Validation
 
