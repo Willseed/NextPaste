@@ -103,6 +103,7 @@ As a user interacting with clipboard history in differently sized macOS windows,
 - **FR-013**: The feature MUST preserve current clipboard-history layout behavior during macOS native window resizing and across small, medium, and tall window heights.
 - **FR-014**: This specification MUST defer validation ownership to `contracts/validation-and-sonar-contract.md` and MUST NOT redefine shared validation matrices, evidence rules, or template-owned validation governance.
 - **FR-015**: The feature MUST preserve native Apple interaction expectations for scrolling, list navigation, and row actions, and MUST document any deviation before implementation begins.
+- **FR-016**: Feature completion MUST record SonarQube Project Health evidence exactly as required by `contracts/validation-and-sonar-contract.md` before the feature is considered complete.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -137,6 +138,7 @@ As a user interacting with clipboard history in differently sized macOS windows,
 - **SC-003**: Pinned-first ordering and newest-first ordering within each ordering group remain unchanged after the fix.
 - **SC-004**: The corrected layout does not introduce a persistent empty gap above the first visible row and remains stable during live resizing across supported macOS window heights.
 - **SC-005**: Existing row interactions and the current visual design language remain unchanged while the clipping issue is resolved.
+- **SC-006**: Release-readiness evidence records SonarQube Project Health compliance for this feature with no unresolved feature-introduced quality-gate issues.
 
 ## Assumptions
 

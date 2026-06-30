@@ -45,13 +45,13 @@ contract instead of restating its validation matrices.
 4. Keep interaction-regression UI smoke coverage for copy, pin, unpin, delete, swipe, keyboard
    navigation/focus behavior, existing shortcut parity, accessibility reachability, and layout
    assertions after the visibility correction.
-5. Execute dedicated manual step **SC-007 Visual Review** after implementation, after targeted
+5. Execute dedicated manual step **SC-005 Visual Review** after implementation, after targeted
    automated validation completes, and after the first layout pass has completed and the first
-   visible row's bounds are available. SC-007 explicitly owns visual confirmation that the fix does
+   visible row's bounds are available. SC-005 explicitly owns visual confirmation that the fix does
    not alter the existing animation behavior.
 6. Run full regression only at feature completion/release readiness because the change affects a
    shared history-list surface spanning search, capture, row actions, and resizing behavior.
-7. Record SonarQube evidence after implementation and before completion.
+7. Record SonarQube evidence after implementation and before completion to satisfy SC-006.
 
 If full regression is required, document why the gate applies. UI tests must not duplicate
 coverage already provided by reliable unit or integration tests.
@@ -93,9 +93,9 @@ coverage already provided by reliable unit or integration tests.
 | Visual identity | Toolbar/search/header/button arrangement and design tokens remain unchanged with no visual redesign |
 | Top-gap avoidance | The correction does not create a persistent empty band above the first visible row |
 
-## 7. Dedicated Manual Step SC-007 Visual Review
+## 7. Dedicated Manual Step SC-005 Visual Review
 
-- **Execution timing**: Perform SC-007 after implementation and after targeted automated validation,
+- **Execution timing**: Perform SC-005 after implementation and after targeted automated validation,
   once the affected screen has rendered after the first layout pass has completed and the first
   visible row's bounds are available.
 - **Reviewer responsibility**: A human reviewer must execute or directly observe the visual review,
@@ -119,7 +119,7 @@ coverage already provided by reliable unit or integration tests.
 
 | Validation area | Scenario reference | Required evidence |
 | --- | --- | --- |
-| SC-007 visual appearance | Dedicated SC-007 visual review after the targeted automated run | Manual visual confirmation, optional screenshot, referenced UI assertion where available, and reviewer sign-off prove the first visible row is completely below the fixed header region with no clipping, no unexpected spacing above the first row, no design-token changes, unchanged spacing/radius/colors/typography, and unchanged animations |
+| SC-005 visual appearance | Dedicated SC-005 visual review after the targeted automated run | Manual visual confirmation, optional screenshot, referenced UI assertion where available, and reviewer sign-off prove the first visible row is completely below the fixed header region with no clipping, no unexpected spacing above the first row, no design-token changes, unchanged spacing/radius/colors/typography, and unchanged animations |
 | Window resizing and scrolling feel | Live macOS window resizing during the `quickstart.md` execution-only manual run, including after insertions at small, medium, and tall heights | Confirm the settled state remains visually correct, native scrolling feel is preserved, and no duplicate interaction checks are recorded for copy/pin/unpin/delete/swipe behaviors already covered by UI tests |
 | Native macOS interaction | Mouse, trackpad, Magic Mouse, and context-menu usage during the execution-only manual run | Confirm the layout fix does not introduce non-native interaction behavior while relying on automated coverage for deterministic row-action assertions |
 | Accessibility perception | VoiceOver announcement quality and perceived focus clarity during the execution-only manual run | Confirm perceived accessibility remains acceptable without restating deterministic keyboard/layout assertions already owned by automation |
@@ -166,14 +166,16 @@ platform-native behavior cannot be faithfully simulated.
 ## 12. Release Readiness Validation
 
 - Confirm the commands in `quickstart.md` completed successfully in order.
-- Confirm targeted validation rows, the dedicated SC-007 visual review step, manual validation
+- Confirm targeted validation rows, the dedicated SC-005 visual review step, manual validation
   rows, offline/local-first validation, accessibility/platform validation, and performance
   validation are satisfied.
 - Confirm the final regression command completed because the change touches a shared interaction
   surface.
 - Confirm SonarQube evidence is attached or linked and any false positives are documented.
 
-## 13. SonarQube Evidence Requirements
+## 13. SonarQube Evidence Requirements (SC-006)
+
+SC-006 is satisfied only when the recorded SonarQube evidence meets all of the requirements below.
 
 1. Recorded evidence shows the feature branch or PR passes the configured SonarQube Project Health
    gate.
