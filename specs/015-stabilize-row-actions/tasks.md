@@ -80,11 +80,11 @@ fixed delay, or generic `RunLoop.main.perform` as the primary fix.
 
 ### Implementation for User Story 2
 
-- [ ] T012 [US2] Implement a native row-action lifecycle boundary in `NextPaste/HomeView.swift` using a verified SwiftUI presentation callback when available or a narrowly scoped AppKit visibility/introspection signal when needed, with no fixed delay, `Task.sleep`, or `RunLoop.main.perform` primary synchronization [FR-001, FR-002, FR-003, FR-007; SC-002, SC-005]
-- [ ] T013 [US2] Implement an in-memory pending Pin/Unpin row-action intent in `NextPaste/HomeView.swift` that records only the active item identity and requested Pin/Unpin action, remains non-persisted, and clears after apply/cancel [FR-001, FR-003; SC-002]
-- [ ] T014 [US2] Gate only Pin/Unpin ordering-affecting mutation and `modelContext.save()` in `NextPaste/HomeView.swift` until the selected lifecycle dismissal/completion boundary is observed, preserving final persisted semantics and avoiding a global SwiftData `@Query` synchronization layer [FR-001, FR-003, FR-004, FR-005, FR-007, FR-009; SC-002, SC-004]
-- [ ] T015 [US2] Preserve existing native leading and trailing `.swipeActions` configuration, action labels, action availability, and row UI in `NextPaste/HomeView.swift` while applying the scoped lifecycle gate [FR-002, FR-003; SC-005]
-- [ ] T016 [US2] Keep `ClipItem.historySortDescriptors` and `ClipItem.togglePinned()` behavior unchanged in `NextPaste/ClipItem.swift` unless a minimal helper is required to preserve pinned-first/newest-first semantics under the lifecycle gate [FR-004, FR-005; SC-004]
+- [X] T012 [US2] Implement a native row-action lifecycle boundary in `NextPaste/HomeView.swift` using a verified SwiftUI presentation callback when available or a narrowly scoped AppKit visibility/introspection signal when needed, with no fixed delay, `Task.sleep`, or `RunLoop.main.perform` primary synchronization [FR-001, FR-002, FR-003, FR-007; SC-002, SC-005]
+- [X] T013 [US2] Implement an in-memory pending Pin/Unpin row-action intent in `NextPaste/HomeView.swift` that records only the active item identity and requested Pin/Unpin action, remains non-persisted, and clears after apply/cancel [FR-001, FR-003; SC-002]
+- [X] T014 [US2] Gate only Pin/Unpin ordering-affecting mutation and `modelContext.save()` in `NextPaste/HomeView.swift` until the selected lifecycle dismissal/completion boundary is observed, preserving final persisted semantics and avoiding a global SwiftData `@Query` synchronization layer [FR-001, FR-003, FR-004, FR-005, FR-007, FR-009; SC-002, SC-004]
+- [X] T015 [US2] Preserve existing native leading and trailing `.swipeActions` configuration, action labels, action availability, and row UI in `NextPaste/HomeView.swift` while applying the scoped lifecycle gate [FR-002, FR-003; SC-005]
+- [X] T016 [US2] Keep `ClipItem.historySortDescriptors` and `ClipItem.togglePinned()` behavior unchanged in `NextPaste/ClipItem.swift` unless a minimal helper is required to preserve pinned-first/newest-first semantics under the lifecycle gate [FR-004, FR-005; SC-004]
 
 **Checkpoint**: User Story 2 delivers the deterministic scoped synchronization strategy.
 

@@ -22,11 +22,14 @@ struct HomeView: View {
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
-    @State private var pendingPinTasks: [UUID: Task<Void, Never>] = [:]
     @State private var headerFrame: CGRect = .null
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
     @State private var hasAppliedLaunchWindowSize = false
+    @State private var pendingPinIntent: PendingPinIntent? = nil
+    @State private var areRowActionsVisible = false
+    @State private var rowActionsObservation: Any? = nil
+    @State private var observedRowActionsTableViewID: ObjectIdentifier? = nil
 
     var body: some View {
         ZStack {
@@ -82,7 +85,15 @@ struct HomeView: View {
 #endif
         .onDisappear {
             copyFeedbackTask?.cancel()
-            cancelPendingPinTasks()
+            #if os(macOS)
+            if let obs = rowActionsObservation as? NSKeyValueObservation {
+                obs.invalidate()
+            }
+            rowActionsObservation = nil
+            observedRowActionsTableViewID = nil
+            areRowActionsVisible = false
+            #endif
+            pendingPinIntent = nil
         }
     }
 
@@ -193,6 +204,13 @@ struct HomeView: View {
         .listStyle(.plain)
         .scrollContentBackground(.hidden)
         .background(appTheme.surface.color)
+#if os(macOS)
+        .background(
+            RowActionTableViewResolver { tableView in
+                observeRowActions(on: tableView)
+            }
+        )
+#endif
         .background(measuredFrameReader(for: .viewport))
         .accessibilityIdentifier("clip-history-list")
     }
@@ -218,42 +236,30 @@ struct HomeView: View {
 #endif
 
     private func deleteClip(_ clip: ClipItem) {
-        cancelPendingPinTask(for: clip.id)
+        if pendingPinIntent?.clipID == clip.id {
+            pendingPinIntent = nil
+        }
         _ = ClipDeletionAction(modelContext: modelContext).delete(clip)
     }
 
     private func scheduleTogglePin(_ clip: ClipItem) {
-        let clipID = clip.id
-        cancelPendingPinTask(for: clipID)
-
-        pendingPinTasks[clipID] = Task { @MainActor in
-            try? await Task.sleep(nanoseconds: RowActionSettleTiming.safeSettleNanoseconds)
-
-            guard !Task.isCancelled else {
-                return
-            }
-
-            guard let targetClip = clips.first(where: { $0.id == clipID }) else {
-                pendingPinTasks[clipID] = nil
-                return
-            }
-
-            applyTogglePin(targetClip)
-            pendingPinTasks[clipID] = nil
-        }
-    }
-
-    private func cancelPendingPinTask(for clipID: UUID) {
-        pendingPinTasks[clipID]?.cancel()
-        pendingPinTasks[clipID] = nil
-    }
-
-    private func cancelPendingPinTasks() {
-        pendingPinTasks.values.forEach { $0.cancel() }
-        pendingPinTasks.removeAll()
+#if os(macOS)
+        pendingPinIntent = PendingPinIntent(clipID: clip.id, targetPinnedState: !clip.isPinned)
+        applyPendingPinIntentIfDismissed()
+#else
+        applyTogglePin(clip)
+#endif
     }
 
     private func applyTogglePin(_ clip: ClipItem) {
+        applyPinState(!clip.isPinned, to: clip)
+    }
+
+    private func applyPinState(_ targetPinnedState: Bool, to clip: ClipItem) {
+        guard clip.isPinned != targetPinnedState else {
+            return
+        }
+
         do {
             clip.togglePinned()
             try modelContext.save()
@@ -261,6 +267,47 @@ struct HomeView: View {
             modelContext.rollback()
         }
     }
+
+#if os(macOS)
+    private func observeRowActions(on tableView: NSTableView?) {
+        guard let tableView else {
+            return
+        }
+
+        let tableViewID = ObjectIdentifier(tableView)
+        guard observedRowActionsTableViewID != tableViewID else {
+            return
+        }
+
+        if let obs = rowActionsObservation as? NSKeyValueObservation {
+            obs.invalidate()
+        }
+
+        observedRowActionsTableViewID = tableViewID
+        areRowActionsVisible = tableView.rowActionsVisible
+        rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { _, change in
+            Task { @MainActor in
+                areRowActionsVisible = change.newValue ?? false
+                applyPendingPinIntentIfDismissed()
+            }
+        }
+    }
+
+    private func applyPendingPinIntentIfDismissed() {
+        guard areRowActionsVisible == false,
+              let pendingPinIntent else {
+            return
+        }
+
+        guard let targetClip = clips.first(where: { $0.id == pendingPinIntent.clipID }) else {
+            self.pendingPinIntent = nil
+            return
+        }
+
+        self.pendingPinIntent = nil
+        applyPinState(pendingPinIntent.targetPinnedState, to: targetClip)
+    }
+#endif
 
     private func clipRow(for clip: ClipItem) -> some View {
         ClipRowView(
@@ -415,14 +462,14 @@ struct HomeView: View {
 #endif
 }
 
-enum RowActionSettleTiming {
-    static let safeSettleDelay: TimeInterval = DesignTokens.Motion.pinToggle
-    static let safeSettleNanoseconds = UInt64(safeSettleDelay * 1_000_000_000)
-}
-
 #Preview {
     HomeView()
         .modelContainer(for: ClipItem.self, inMemory: true)
+}
+
+private struct PendingPinIntent: Equatable {
+    let clipID: UUID
+    let targetPinnedState: Bool
 }
 
 private enum HistoryMeasuredFrame: Hashable {
@@ -440,6 +487,51 @@ private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
 }
 
 #if os(macOS)
+private struct RowActionTableViewResolver: NSViewRepresentable {
+    let onResolve: (NSTableView?) -> Void
+
+    func makeNSView(context: Context) -> ResolverView {
+        let view = ResolverView()
+        view.onResolve = onResolve
+        return view
+    }
+
+    func updateNSView(_ nsView: ResolverView, context: Context) {
+        nsView.onResolve = onResolve
+        nsView.resolve()
+    }
+
+    final class ResolverView: NSView {
+        var onResolve: ((NSTableView?) -> Void)?
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            resolve()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            resolve()
+        }
+
+        func resolve() {
+            onResolve?(enclosingTableView)
+        }
+
+        private var enclosingTableView: NSTableView? {
+            var view: NSView? = self
+            while let currentView = view {
+                if let tableView = currentView as? NSTableView {
+                    return tableView
+                }
+                view = currentView.superview
+            }
+
+            return nil
+        }
+    }
+}
+
 private enum HistoryUITestWindowSize: String, CaseIterable, Identifiable {
     static let launchArgument = "-ui-test-window-size"
 

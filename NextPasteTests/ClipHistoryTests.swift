@@ -462,9 +462,4 @@ struct ClipHistoryTests {
         ])
     }
 
-    @Test("row action settle delay remains under safe deferral cap")
-    func rowActionSettleDelayRemainsUnderSafeDeferralCap() {
-        #expect(RowActionSettleTiming.safeSettleDelay <= 0.25)
-        #expect(RowActionSettleTiming.safeSettleNanoseconds <= 250_000_000)
-    }
 }
