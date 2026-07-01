@@ -1,9 +1,9 @@
-# Tasks: Governance Framework v2.6
+# Tasks: Governance Framework v2.7
 
 **Input**: Design documents from `/specs/012-governance-framework-v2-5/`
 
 **Prerequisites**: `plan.md` (required), `spec.md` (required), `research.md`, `data-model.md`,
-`contracts/validation-and-sonar-contract.md`, `quickstart.md`, and Constitution v2.6.0 in
+`contracts/validation-and-sonar-contract.md`, `quickstart.md`, and Constitution v2.7.0 in
 `.specify/memory/constitution.md`
 
 **Validation Contract**: Validation ownership, review sequencing, representative validation,
@@ -196,7 +196,7 @@ rule discovery follows specification-first evolution before downstream re-synchr
 - [ ] T044 [P] [US7] Propagate propagation-order and incremental-synchronization requirements into .specify/templates/spec-template.md, .specify/templates/plan-template.md, .specify/templates/tasks-template.md, and .specify/templates/checklist-template.md [FR-033, FR-034, FR-042; SC-010, SC-015]
 - [ ] T045 [P] [US7] Propagate chain-enforcement and governance-evolution expectations into .github/agents/speckit.constitution.agent.md, .github/agents/speckit.plan.agent.md, .github/agents/speckit.tasks.agent.md, .github/agents/speckit.analyze.agent.md, and .github/agents/speckit.implement.agent.md [FR-033, FR-034, FR-035, FR-039, FR-042; SC-010, SC-011, SC-015]
 - [ ] T046 [US7] Update .github/copilot-instructions.md to enforce the same propagation chain, prohibit downstream governance ownership before upstream ownership, and require specification-first evolution before downstream re-synchronization [FR-033, FR-034, FR-039, FR-042, FR-031, FR-032; SC-010, SC-015]
-- [ ] T047 [US7] Update specs/012-governance-framework-v2-5/quickstart.md and specs/012-governance-framework-v2-5/tasks.md (and patch specs/012-governance-framework-v2-5/plan.md only if residual drift remains) so generated artifacts reference inherited governance order and incremental synchronization checkpoints without redefining lifecycle ownership [FR-033, FR-034, FR-039, FR-042, FR-032; SC-010, SC-015]
+- [ ] T047 [US7] Update specs/012-governance-framework-v2-5/quickstart.md and specs/012-governance-framework-v2-5/tasks.md (and patch specs/012-governance-framework-v2-5/plan.md only if residual drift remains) so generated artifacts reference inherited governance order, incremental synchronization checkpoints, and distinct Governance Lifecycle Status / Propagation Progress / Verification Status ownership without redefining lifecycle ownership [FR-033, FR-034, FR-039, FR-042, FR-043, FR-044, FR-047, FR-032; SC-010, SC-015, SC-017]
 - [ ] T048 [US7] Add and execute targeted propagation-order and incremental-synchronization verification entry points in specs/012-governance-framework-v2-5/quickstart.md and record compliance evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-033, FR-034, FR-035, FR-042, FR-032; SC-010, SC-011, SC-015]
 
 **Checkpoint**: Governance propagation order is explicit, inherited, and evidenced.
@@ -228,33 +228,36 @@ drift detection evidenced for representative artifacts.
 ## Phase 12: User Story 9 - Representative + Analyze Propagation Assurance (Priority: P9)
 
 **Goal**: Strengthen representative validation and Analyze enforcement so propagation correctness,
-lifecycle ownership drift, governance-analysis accuracy, and readiness-gate semantics are detected
-before Sync Impact closure.
+lifecycle ownership drift, governance-analysis accuracy, governance-status modeling, and
+readiness-gate semantics are detected before Sync Impact closure.
 
 **Independent Test**: Existing and generated representative validation prove backward compatibility,
-forward-generation correctness, and propagation correctness; Analyze catches governance inversion,
-lifecycle ownership drift, downstream governance before upstream ownership, and enforces exact
-finding classification plus readiness blocking semantics.
+forward-generation correctness, propagation correctness, and distinct governance-status checkpoint
+ownership; Analyze catches governance inversion, lifecycle ownership drift, downstream governance
+before upstream ownership, identifies checkpoint categories before comparison, compares only
+equivalent checkpoints, and enforces exact finding classification plus readiness blocking semantics.
 
 ### Validation for User Story 9
 
-- [ ] T055 [P] [US9] Update .github/agents/speckit.analyze.agent.md to enforce Checkpoint A/B semantics: exact finding classification (Governance Defect, Implementation Pending, Verification Pending), governance inversion/lifecycle drift detection, and blocking/non-blocking readiness behavior [FR-035, FR-038, FR-040, FR-041, FR-042; SC-011, SC-013, SC-014, SC-015]
-- [ ] T056 [P] [US9] Add targeted Analyze verification entry points in specs/012-governance-framework-v2-5/quickstart.md and matching evidence fields in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md for Checkpoint A/B/C outcomes, classification ledger, and readiness-gate decisions [FR-035, FR-038, FR-040, FR-041, FR-042, FR-032; SC-011, SC-013, SC-014, SC-015]
-- [ ] T057 [US9] Re-run representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md to verify backward compatibility, governance propagation correctness, and analysis-accuracy compatibility; record outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-033, FR-040, FR-041, FR-032; SC-008, SC-010, SC-014]
-- [ ] T058 [US9] Re-run generated-feature representative validation under specs/013-governance-v25-representative/ when required to verify forward-generation correctness, propagation-chain inheritance, and incremental-synchronization behavior; record outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-033, FR-039, FR-042, FR-032; SC-008, SC-010, SC-015]
-- [ ] T059 [US9] Execute final readiness Analyze with Checkpoint A/B/C enforcement across specs/012-governance-framework-v2-5/ and representative artifacts, then record blocking vs non-blocking classifications in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-035, FR-038, FR-040, FR-041, FR-042, FR-032; SC-011, SC-013, SC-014, SC-015]
+- [ ] T055 [P] [US9] Update .github/agents/speckit.analyze.agent.md to enforce Checkpoint A/B semantics: exact finding classification (Governance Defect, Implementation Pending, Verification Pending), checkpoint-category identification before comparison, equivalent-checkpoint-only review, governance inversion/lifecycle drift detection, and Governance Defects only for equivalent-checkpoint contradictions, ownership violations, lifecycle violations, or propagation-order violations [FR-035, FR-038, FR-040, FR-041, FR-043, FR-044, FR-045, FR-046, FR-047; SC-011, SC-013, SC-014, SC-016, SC-017]
+- [ ] T056 [P] [US9] Add targeted Analyze verification entry points in specs/012-governance-framework-v2-5/quickstart.md and matching evidence fields in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md for Checkpoint A/B/C outcomes, governance-status category ledgers, equivalent-checkpoint comparison results, cross-category non-defect handling, and readiness-gate decisions [FR-035, FR-038, FR-040, FR-041, FR-043, FR-044, FR-045, FR-046, FR-047, FR-032; SC-011, SC-013, SC-014, SC-016, SC-017]
+- [ ] T057 [US9] Re-run representative existing-feature validation against specs/011-fix-clip-row-clipping/spec.md, specs/011-fix-clip-row-clipping/plan.md, and specs/011-fix-clip-row-clipping/tasks.md to verify backward compatibility, governance propagation correctness, analysis-accuracy compatibility, and distinct Governance Lifecycle Status / Propagation Progress / Verification Status handling; record equivalent-checkpoint and cross-category outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-033, FR-040, FR-041, FR-043, FR-044, FR-045, FR-046, FR-047, FR-032; SC-008, SC-010, SC-014, SC-016, SC-017]
+- [ ] T058 [US9] Re-run generated-feature representative validation under specs/013-governance-v25-representative/ when required to verify forward-generation correctness, propagation-chain inheritance, incremental-synchronization behavior, and distinct governance-status checkpoint preservation; record equivalent-checkpoint and cross-category outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-030, FR-033, FR-039, FR-042, FR-043, FR-044, FR-045, FR-046, FR-047, FR-032; SC-008, SC-010, SC-015, SC-016, SC-017]
+- [ ] T059 [US9] Execute final readiness Analyze with Checkpoint A/B/C enforcement across specs/012-governance-framework-v2-5/ and representative artifacts, then record blocking vs non-blocking classifications, checkpoint-category identification, equivalent-checkpoint comparison outcomes, and cross-category status-difference disposition in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-035, FR-038, FR-040, FR-041, FR-043, FR-044, FR-045, FR-046, FR-047, FR-032; SC-011, SC-013, SC-014, SC-016, SC-017]
 
-**Checkpoint**: Representative validation and Analyze checks prove propagation and ownership correctness.
+**Checkpoint**: Representative validation and Analyze checks prove propagation, ownership, and
+equivalent-checkpoint status consistency correctness.
 
 ---
 
 ## Phase 13: Polish & Cross-Cutting Extension Closeout
 
-**Purpose**: Close propagation-order and lifecycle-ownership extension evidence without product scope expansion.
+**Purpose**: Close propagation-order, lifecycle-ownership, and governance-status-modeling extension
+evidence without product scope expansion.
 
-- [ ] T060 Update Sync Impact closure evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md to include propagation-order/lifecycle-ownership gates, incremental synchronization lineage, and per-layer dependency status (`pending`, `in_progress`, `synchronized`, `approved_exception`) [FR-026, FR-027, FR-033, FR-034, FR-042, FR-032; SC-007, SC-010, SC-015]
+- [ ] T060 Update Sync Impact closure evidence in .specify/memory/constitution.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md to include propagation-order/lifecycle-ownership gates, incremental synchronization lineage, per-layer dependency status (`pending`, `in_progress`, `synchronized`, `approved_exception`), and distinct Governance Lifecycle Status / Propagation Progress / Verification Status checkpoints [FR-026, FR-027, FR-033, FR-034, FR-042, FR-043, FR-044, FR-047, FR-032; SC-007, SC-010, SC-015, SC-017]
 - [ ] T061 Verify and record governance-only extension scope (no product implementation tasks) in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md via repository diff review [FR-031; SC-007]
-- [ ] T062 Reconcile FR-040/FR-041/FR-042 and SC-014/SC-015 traceability references across specs/012-governance-framework-v2-5/tasks.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md so final closeout evidence explicitly maps governance-analysis accuracy and incremental-synchronization requirements [FR-040, FR-041, FR-042, FR-032; SC-014, SC-015]
+- [ ] T062 Reconcile FR-040/FR-041/FR-042/FR-043/FR-044/FR-045/FR-046/FR-047 and SC-014/SC-015/SC-016/SC-017 traceability references across specs/012-governance-framework-v2-5/tasks.md and specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md so final closeout evidence explicitly maps governance-analysis accuracy, status-modeling, equivalent-checkpoint comparison, and incremental-synchronization requirements [FR-040, FR-041, FR-042, FR-043, FR-044, FR-045, FR-046, FR-047, FR-032; SC-014, SC-015, SC-016, SC-017]
 
 ---
 
@@ -272,10 +275,10 @@ finding classification plus readiness blocking semantics.
 - **US6 -> Phase 9**: Baseline governance closeout and Sonar evidence happen after sync completion.
 - **Phase 9 -> US7**: Propagation-order extension starts after baseline closeout artifacts are stable.
 - **US7 -> US8**: Lifecycle ownership work starts after propagation-order rules are landed.
-- **US8 -> US9**: Representative/analyze extension validation runs after ownership updates and
-  propagation/evolution guidance is synchronized.
+- **US8 -> US9**: Representative/analyze extension validation runs after ownership updates,
+  governance-status modeling updates, and propagation/evolution guidance are synchronized.
 - **US9 -> Phase 13**: Extension Sync Impact closeout runs after propagation, lifecycle ownership,
-  analysis-accuracy, and incremental-synchronization evidence.
+  analysis-accuracy, governance-status-modeling, and incremental-synchronization evidence.
 
 ### User Story Dependencies
 
@@ -287,8 +290,8 @@ finding classification plus readiness blocking semantics.
 - **US6**: Starts after US5; finalizes Sync Impact, migration notes, versioning, and synchronization.
 - **US7**: Starts after Phase 9; enforces strict propagation-order governance.
 - **US8**: Starts after US7; centralizes lifecycle ownership in the Validation Contract.
-- **US9**: Starts after US8; verifies representative propagation correctness plus Analyze
-  classification/readiness enforcement coverage.
+- **US9**: Starts after US8; verifies representative propagation correctness, equivalent-checkpoint
+  status modeling, and Analyze classification/readiness enforcement coverage.
 
 ### Within-Story Execution Rules
 
@@ -300,6 +303,12 @@ finding classification plus readiness blocking semantics.
 - Analyze findings must be classified exactly once as Governance Defect, Implementation Pending, or
   Verification Pending.
 - Governance readiness blocking is limited to Governance Defects and Governance Inconsistencies.
+- Analyze must identify the checkpoint category before comparison and compare only equivalent
+  checkpoints: Governance Lifecycle Status ↔ Governance Lifecycle Status, Propagation Progress ↔
+  Propagation Progress, and Verification Status ↔ Verification Status.
+- Status consistency is evaluated only within matching checkpoint categories; cross-category status
+  differences are complementary and must not be reported as Governance Defects unless ownership,
+  lifecycle, or propagation-order rules are violated.
 - If a new governance rule is discovered mid-lifecycle, update `spec.md` first, then incrementally
   synchronize affected downstream layers in propagation order.
 - Keep `quickstart.md` execution-only and limit it to entry points, commands, and contract references.
@@ -363,12 +372,13 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 | Speckit Agents | `.github/agents/speckit.*.agent.md` | T020-T024 | FR-006~016, FR-017~025, FR-028~029, FR-031~032 |
 | Copilot Instructions | `.github/copilot-instructions.md` | T025 | FR-026~027, FR-029, FR-031~032 |
 | Governance Validation | `quickstart.md`, feature Validation Contract | T026, T030-T036 | FR-012~016, FR-022~029, FR-032 |
-| Representative Validation | `specs/011-fix-clip-row-clipping/`, `specs/013-governance-v25-representative/` | T027-T029, T057-T058 | FR-030~031, FR-033, FR-039~042 |
+| Representative Validation | `specs/011-fix-clip-row-clipping/`, `specs/013-governance-v25-representative/` | T027-T029, T057-T058 | FR-030~031, FR-033, FR-039~047 |
 | Sync Impact | Constitution + feature governance docs | T004, T037-T040 | FR-026~027, FR-029~030 |
 | Propagation Order | Constitution, templates, agents, Copilot, generated feature artifacts | T043-T048 | FR-033~035, FR-039, FR-042 |
 | Lifecycle Ownership | Validation Contract + plan/quickstart/tasks references | T049-T054 | FR-036~038, FR-032 |
-| Governance Analysis Accuracy + Analyze Enforcement | `.github/agents/speckit.analyze.agent.md`, `quickstart.md`, Validation Contract evidence | T055-T056, T059, T062 | FR-035, FR-038, FR-040~042, FR-032 |
-| Extension Sync Impact Closeout | Constitution + feature Validation Contract | T060-T062 | FR-026~027, FR-031~034, FR-040~042 |
+| Governance Analysis Accuracy + Analyze Enforcement | `.github/agents/speckit.analyze.agent.md`, `quickstart.md`, Validation Contract evidence | T055-T056, T059, T062 | FR-035, FR-038, FR-040~047, FR-032 |
+| Governance Status Modeling | `tasks.md`, `quickstart.md`, Validation Contract evidence, representative artifacts | T047, T055-T060, T062 | FR-043~047, FR-032 |
+| Extension Sync Impact Closeout | Constitution + feature Validation Contract | T060-T062 | FR-026~027, FR-031~034, FR-040~047 |
 
 ---
 
@@ -390,9 +400,10 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 - [ ] Propagation chain enforcement is explicit and evidenced in the mandatory order: Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact, with no downstream governance ownership before upstream ownership.
 - [ ] Validation, governance, release, and migration lifecycles each have one authoritative owner with no competing lifecycle definitions.
 - [ ] plan.md, quickstart.md, and tasks.md reference lifecycle definitions from `contracts/validation-and-sonar-contract.md` without duplicating execution sequence definitions or creating a parallel governance track.
-- [ ] Analyze validation enforces Checkpoint A/B/C behavior: exact finding classification, propagation/lifecycle drift detection, and readiness blocking only for Governance Defects or Governance Inconsistencies.
-- [ ] Representative validation evidence includes backward compatibility, forward-generation correctness (when required), governance propagation correctness, and incremental-synchronization proof.
-- [ ] Sync Impact evidence tracks per-layer dependency status, approved exceptions, and explicit FR-040/FR-041/FR-042 plus SC-014/SC-015 closeout mapping.
+- [ ] Analyze validation enforces Checkpoint A/B/C behavior: exact finding classification, checkpoint-category identification before comparison, equivalent-checkpoint-only status review, suppression of cross-category Governance Defects, and readiness blocking only for Governance Defects or Governance Inconsistencies.
+- [ ] Distinct Governance Lifecycle Status, Propagation Progress, and Verification Status remain separately identifiable across synchronized artifacts without being collapsed into one completion indicator.
+- [ ] Representative validation evidence includes backward compatibility, forward-generation correctness (when required), governance propagation correctness, equivalent-checkpoint review outcomes, and incremental-synchronization proof.
+- [ ] Sync Impact evidence tracks per-layer dependency status, approved exceptions, distinct Governance Lifecycle Status / Propagation Progress / Verification Status checkpoints, and explicit FR-040~047 plus SC-014~017 closeout mapping.
 
 ---
 
@@ -414,7 +425,8 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 6. **Propagation-order extension**: US7 (mandatory propagation chain enforcement).
 7. **Lifecycle-ownership extension**: US8 (single-owner lifecycle governance).
 8. **Analyze + representative assurance extension**: US9 (inversion/drift detection, classification
-   accuracy, readiness-gate enforcement, and propagation correctness validation).
+   accuracy, equivalent-checkpoint status-modeling, readiness-gate enforcement, and propagation
+   correctness validation).
 9. **Extension completion gate**: Phase 13 (updated Sync Impact closeout for order, ownership,
    analysis accuracy, and incremental-synchronization evidence).
 
@@ -424,7 +436,8 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 2. Run governance verification command sets in parallel (`T031`-`T034`) before baseline readiness Analyze.
 3. For the extension, run propagation updates in parallel (`T044`, `T045`) after `T043`.
 4. Run lifecycle-reference refactors in parallel (`T050`, `T051`) after `T049`.
-5. Run Analyze-rule and quickstart evidence updates in parallel (`T055`, `T056`) before representative reruns (`T057`, `T058`).
+5. Run Analyze-rule and governance-status evidence updates in parallel (`T055`, `T056`) before
+   representative reruns (`T057`, `T058`).
 6. Run extension closeout updates (`T060`, `T061`) in parallel before final traceability reconciliation (`T062`).
 
 ---
