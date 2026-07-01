@@ -1,22 +1,24 @@
 <!--
 Sync Impact Report
-Version change: 2.5.0 -> 2.6.0
+Version change: 2.6.0 -> 2.7.0
 Modified principles:
-- Added principle: XVII. Governance Evolution and Analysis Accuracy
-- Expanded section: Governance Workflow (classification accuracy, propagation order, and
-  governance-evolution flow)
-- Expanded section: Governance (single-owner lifecycle ownership and anti-duplication rules)
+- Added principle: XVIII. Governance Status Modeling
+- Expanded section: Governance Workflow (equivalent checkpoint comparisons, status consistency,
+  and Analyze checkpoint responsibilities)
+- Expanded section: Governance (governance lifecycle ownership, propagation-progress ownership,
+  and verification-status independence)
 Added sections:
-- Governance Workflow > Governance Propagation Order
-- Governance Workflow > Analyze Classification and Governance Readiness
+- Governance Workflow > Equivalent Governance Checkpoint Rule
+- Governance Workflow > Status Consistency
 Removed sections:
 - None
 Downstream artifacts requiring synchronization:
 - ⚠ pending .specify/templates/spec-template.md
 - ⚠ pending .specify/templates/plan-template.md
 - ⚠ pending .specify/templates/tasks-template.md
+- ⚠ pending .specify/templates/checklist-template.md
+- ⚠ pending .specify/templates/quickstart-template.md
 - ⚠ pending .specify/templates/contracts/validation-and-sonar-contract.md
-- ⚠ pending .specify/templates/commands/*.md
 - ⚠ pending .github/agents/speckit.constitution.agent.md
 - ⚠ pending .github/agents/speckit.specify.agent.md
 - ⚠ pending .github/agents/speckit.clarify.agent.md
@@ -24,10 +26,25 @@ Downstream artifacts requiring synchronization:
 - ⚠ pending .github/agents/speckit.tasks.agent.md
 - ⚠ pending .github/agents/speckit.analyze.agent.md
 - ⚠ pending .github/agents/speckit.implement.agent.md
-Representative validation:
-- Deferred — not yet executed.
-Sync Impact closure:
-- Deferred — not yet executed.
+- ⚠ pending .github/copilot-instructions.md
+- ⚠ pending specs/012-governance-framework-v2-5/spec.md
+- ⚠ pending specs/012-governance-framework-v2-5/plan.md
+- ⚠ pending specs/012-governance-framework-v2-5/tasks.md
+- ⚠ pending specs/012-governance-framework-v2-5/quickstart.md
+- ⚠ pending specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md
+- ⚠ pending specs/013-governance-v25-representative/spec.md
+- ⚠ pending specs/013-governance-v25-representative/plan.md
+- ⚠ pending specs/013-governance-v25-representative/tasks.md
+- ⚠ pending specs/013-governance-v25-representative/quickstart.md
+- ⚠ pending specs/013-governance-v25-representative/contracts/validation-and-sonar-contract.md
+Governance Lifecycle Status:
+- In Progress — constitution amended; downstream synchronization and verification remain pending.
+Propagation Progress:
+- In Progress — listed downstream artifacts are not yet synchronized to v2.7.0.
+Verification Status:
+- Representative Validation: Deferred — not yet executed.
+- Analyze checkpoints: Deferred — not yet executed against the v2.7.0 downstream set.
+- Sync Impact closure: In Progress — constitution updated; downstream synchronization pending.
 Follow-up TODOs:
 - None
 -->
@@ -267,6 +284,26 @@ failure.
 Rationale: Governance quality improves when classifications are precise and every improvement is
 absorbed into one authoritative governance lifecycle.
 
+### XVIII. Governance Status Modeling
+
+Governance status MUST be modeled as three distinct checkpoint categories. Governance Lifecycle
+Status represents the overall governance amendment lifecycle, including states such as Draft,
+Approved, In Progress, Deferred, and Completed. The Constitution owns Governance Lifecycle Status,
+and only the Constitution may determine overall governance readiness.
+
+Propagation Progress represents synchronization progress across downstream governance layers,
+including states such as Templates synchronized, Agents synchronized, Copilot Instructions
+synchronized, and Generated Feature Artifacts synchronized. The Validation Contract owns
+Propagation Progress. Propagation Progress MUST NOT be interpreted as governance completion.
+
+Verification Status represents executed governance evidence, including states such as
+Representative Validation executed, Analyze checkpoints executed, and Sync Impact closure
+executed. Verification Status MUST remain independent from implementation progress and from
+Governance Lifecycle Status.
+
+Rationale: Explicit checkpoint categories prevent false-positive governance inconsistencies when
+lifecycle ownership, propagation work, and verification evidence progress at different granularities.
+
 ## Technical Constraints
 
 NextPaste is an Apple-platform application whose default implementation stack is
@@ -297,6 +334,28 @@ Mandatory propagation order is
 No downstream governance artifact may introduce, enforce, redefine, or reorder governance before
 the upstream governing layer owns it. Governance inversion MUST be reported as a blocking issue.
 
+### Equivalent Governance Checkpoint Rule
+
+Analyze MUST compare only equivalent governance checkpoints. Valid comparisons are Governance
+Lifecycle Status to Governance Lifecycle Status, Propagation Progress to Propagation Progress, and
+Verification Status to Verification Status.
+
+Analyze MUST NOT compare Governance Lifecycle Status to Propagation Progress, Governance Lifecycle
+Status to Verification Status, or Propagation Progress to Verification Status. Different checkpoint
+granularities MUST NOT be reported as Governance Defects.
+
+### Status Consistency
+
+Status consistency MUST be evaluated only among artifacts that own or reference the same checkpoint
+category. Overall Governance Lifecycle consistency is evaluated between the Constitution and the
+governance specification. Propagation Progress consistency is evaluated between the Validation
+Contract and execution-guide references such as `quickstart.md`. Verification Status consistency is
+evaluated between the Validation Contract and recorded verification evidence.
+
+Different checkpoint owners are complementary rather than contradictory. A downstream artifact MAY
+report incomplete propagation or verification work without contradicting an overall governance
+lifecycle state owned by the Constitution.
+
 ### Analyze Classification and Governance Readiness
 
 Analyze agents MUST classify every finding into exactly one category: Governance Defect,
@@ -306,6 +365,15 @@ Only Governance Defects and Governance Inconsistencies may block governance read
 Implementation Pending findings represent unfinished implementation work. Verification Pending
 findings represent required validation not yet executed. Neither category may be classified as a
 governance failure.
+
+Before comparing governance status, Analyze MUST identify the checkpoint category being evaluated,
+compare only equivalent checkpoints, and avoid collapsing governance lifecycle, propagation
+progress, and verification evidence into a single status.
+
+Analyze MUST report Governance Defects only when equivalent checkpoints contradict each other,
+governance ownership is violated, lifecycle ownership is violated, or propagation order is
+violated. False-positive status differences across different checkpoint categories MUST NOT be
+reported as Governance Defects.
 
 Before a governance change is complete, maintainers MUST:
 
@@ -335,6 +403,15 @@ Lifecycle, Governance Lifecycle, Release Lifecycle, and Migration Lifecycle. Non
 MAY reference the owner lifecycle, but they MUST NOT redefine, partially restate, reorder, or
 create competing lifecycle definitions.
 
+The Constitution owns Governance Lifecycle Status and is the sole authority for overall governance
+readiness. The Validation Contract owns Propagation Progress for downstream governance layers.
+Verification Status MUST be recorded through governance evidence without being collapsed into either
+Governance Lifecycle Status or Propagation Progress.
+
+Equivalent-checkpoint consistency MAY be enforced across artifacts that share the same checkpoint
+category. Cross-category differences are complementary status signals and MUST NOT be treated as
+contradictions unless an ownership boundary or propagation-order rule is violated.
+
 Validation Lifecycle ownership remains in
 `specs/<feature>/contracts/validation-and-sonar-contract.md`. Related artifacts may reference that
 owner, but they MUST NOT duplicate or compete with its lifecycle definitions.
@@ -351,6 +428,7 @@ Every amendment MUST leave a Sync Impact Report at the top of this file. The rep
 version change, modified principles, added or removed sections, dependent artifacts that require
 synchronization, representative validation status, and any deferred follow-up items. A governance
 change is incomplete until every required downstream artifact is updated or an explicit exception is
-approved and documented.
+approved and documented. The report MUST distinguish Governance Lifecycle Status, Propagation
+Progress, and Verification Status instead of collapsing them into a single completion signal.
 
-**Version**: 2.6.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-01
+**Version**: 2.7.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-01
