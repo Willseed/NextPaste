@@ -1,6 +1,13 @@
 # Implementation Plan: Governance Framework v2.6
 
 **Branch**: `(current branch unavailable)` | **Date**: 2026-07-01 | **Spec**: [spec.md](spec.md)
+**Feature Line**: `012-governance-framework-v2-5`
+**Current Governance Target**: `Constitution v2.7.0`
+
+**Purpose**:
+- Feature Line identifies the original governance feature stream and remains stable throughout incremental governance evolution.
+- Current Governance Target identifies the Constitution version currently being synchronized by this feature.
+- Future Constitution amendments (v2.8, v2.9, ...) continue to evolve this same Feature Line unless a completely new governance capability requires a new feature.
 
 **Input**: Feature specification from `specs/012-governance-framework-v2-5/spec.md`
 

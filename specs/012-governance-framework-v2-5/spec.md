@@ -1,6 +1,15 @@
-# Feature Specification: Governance Framework v2.6
+# Feature Specification: Governance Framework v2.7
 
 **Feature Branch**: `012-governance-framework-v2-5`
+
+**Feature Line**: `012-governance-framework-v2-5`
+
+**Current Governance Target**: `Constitution v2.7.0`
+
+**Purpose**:
+- Feature Line identifies the original governance feature stream and remains stable throughout incremental governance evolution.
+- Current Governance Target identifies the Constitution version currently being synchronized by this feature.
+- Future Constitution amendments (v2.8, v2.9, ...) continue to evolve this same Feature Line unless a completely new governance capability requires a new feature.
 
 **Created**: 2026-06-30
 
@@ -20,6 +29,10 @@
 - Q: How is executable lifecycle ownership controlled? → A: Every executable lifecycle has exactly one authoritative owner (including Validation, Governance, Release, and Migration lifecycles). Other artifacts may reference that owner but must not redefine, reorder, partially restate, or create competing lifecycle definitions. Validation lifecycle ownership remains centralized in `contracts/validation-and-sonar-contract.md`. Analyze must report lifecycle ownership drift as a blocking issue.
 - Q: How should newly discovered governance rules be handled during an active governance feature? → A: If Analyze or implementation reveals a new governance rule during an active governance feature, treat it as incremental evolution of the current governance specification rather than as a new feature stream. Amend the current `spec.md` first, then incrementally re-synchronize every affected downstream layer in propagation order and keep Sync Impact status current until synchronization is complete.
 - Q: How must governance analysis accuracy classify findings and readiness? → A: Analyze MUST classify each finding into exactly one category (Governance Defect, Implementation Pending, or Verification Pending). Governance readiness may be blocked only by Governance Defects and Governance Inconsistencies; Implementation Pending and Verification Pending remain required follow-up work but are not governance failures.
+
+### Session 2026-07-01
+
+- Q: How must governance status modeling prevent false-positive inconsistencies? → A: Governance status MUST remain split across Governance Lifecycle Status, Propagation Progress, and Verification Status; the Constitution owns overall Governance Lifecycle Status, the Validation Contract owns Propagation Progress, Verification Status remains independent evidence, Analyze compares only equivalent checkpoints, and cross-category status differences are complementary rather than Governance Defects.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -68,6 +81,7 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 1. **Given** a governance change introduces or updates measurable performance expectations, **When** planning and validation artifacts are generated, **Then** they include measurable performance budgets and performance validation only where the feature requires them.
 2. **Given** a Constitution change affects templates, agent behavior, or Copilot instructions, **When** the governance update is prepared, **Then** its Sync Impact identifies every downstream governance artifact that must be updated to stay aligned.
 3. **Given** maintainers change governance rules, **When** the work progresses through specification, planning, analysis, and tasks, **Then** the change remains traceable through the full lifecycle rather than being applied informally.
+4. **Given** governance artifacts record lifecycle status, propagation progress, and executed verification at different times, **When** Analyze evaluates the change, **Then** it compares only equivalent checkpoints and does not report cross-category status differences as Governance Defects.
 
 ---
 
@@ -83,6 +97,8 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - A template, agent, validation artifact, or Sync Impact record attempts to enforce a governance rule before the Constitution (or otherwise required upstream owner in the propagation chain) owns it; governance must treat this as inversion and block progression until upstream ownership is established.
 - Two artifacts define different execution orders for the same lifecycle (for example Release or Migration) while both claim authority; governance must treat this as lifecycle ownership drift and block completion until exactly one authoritative owner remains.
 - Analyze or planning discovers a new governance rule after planning has started; governance must evolve the current specification first and re-sync downstream planning artifacts instead of splitting the rule into a separate feature mid-lifecycle.
+- The Constitution shows Governance Lifecycle Status as In Progress while a Validation Contract shows Propagation Progress as partially synchronized; governance must treat the states as complementary checkpoints rather than as a contradiction.
+- Verification evidence records executed Analyze checkpoints after propagation work has started but before Sync Impact closure is complete; governance must keep verification status independent instead of treating the timing difference as a Governance Defect.
 
 ## Requirements *(mandatory)*
 
@@ -130,6 +146,11 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **FR-040**: Analyze MUST classify every governance finding into exactly one category: Governance Defect, Implementation Pending, or Verification Pending.
 - **FR-041**: Governance readiness MUST be blocked only by Governance Defects and Governance Inconsistencies; Implementation Pending and Verification Pending findings MUST be tracked for follow-up without being treated as governance failures.
 - **FR-042**: After governance evolution updates the current specification, maintainers MUST incrementally re-synchronize every affected downstream artifact layer in propagation order and keep Sync Impact status explicit until all required synchronization work is complete.
+- **FR-043**: Governance status MUST be modeled as three distinct checkpoint categories: Governance Lifecycle Status, Propagation Progress, and Verification Status.
+- **FR-044**: The Constitution MUST remain the sole owner of Governance Lifecycle Status and overall governance readiness; the Validation Contract MUST remain the owner of Propagation Progress; and Verification Status MUST remain independent executed-governance evidence rather than being collapsed into implementation progress or governance completion.
+- **FR-045**: Analyze MUST identify the checkpoint category before comparing governance status and MUST compare only equivalent checkpoints: Governance Lifecycle Status to Governance Lifecycle Status, Propagation Progress to Propagation Progress, and Verification Status to Verification Status.
+- **FR-046**: Analyze MUST NOT compare Governance Lifecycle Status to Propagation Progress, Governance Lifecycle Status to Verification Status, or Propagation Progress to Verification Status, and cross-category status differences MUST NOT be reported as Governance Defects.
+- **FR-047**: Status consistency MUST be evaluated only among artifacts that own or reference the same checkpoint category, including Constitution-to-governance-specification lifecycle comparisons, Validation-Contract-to-quickstart propagation comparisons, and Validation-Contract-to-verification-evidence verification comparisons.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -141,6 +162,9 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **Governance Readiness**: The governance completion state that may be blocked only by Governance Defects or Governance Inconsistencies.
 - **Performance Budget**: A measurable expectation that defines acceptable performance outcomes for a governed feature when performance matters.
 - **Temporary Workaround**: A deliberately time-bounded corrective measure that is documented as incomplete until the underlying cause is addressed.
+- **Governance Lifecycle Status**: The Constitution-owned status for the overall governance amendment lifecycle, such as Draft, Approved, In Progress, Deferred, or Completed.
+- **Propagation Progress**: The Validation-Contract-owned status for downstream synchronization progress across templates, agents, Copilot instructions, and generated governance artifacts.
+- **Verification Status**: The independent record of executed governance evidence, such as representative validation, Analyze checkpoint execution, and Sync Impact closure evidence.
 
 ## Validation Contract Reference *(mandatory)*
 
@@ -150,7 +174,7 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 
 ## Dependencies
 
-- Constitution v2.6.0 is the governing baseline for this feature, including Governance Evolution and Analysis Accuracy, Governance Propagation Order, and single-owner lifecycle governance.
+- Constitution v2.7.0 is the governing baseline for this feature, including Governance Evolution and Analysis Accuracy, Governance Status Modeling, Governance Propagation Order, equivalent checkpoint comparison, and single-owner lifecycle governance.
 - Existing Validation Governance remains the single owner of validation structure, lifecycle authority, and evidence expectations.
 - Existing Template-First Governance remains the owner of shared documentation structure.
 - Existing Test Execution Efficiency governance remains in force and is strengthened, not weakened, by this feature.
@@ -164,6 +188,8 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - Repository instruction sources MUST synchronize Copilot governance instructions within the same propagation cycle as templates and agents.
 - Generated feature artifacts MUST be refreshed as representative synchronization evidence after upstream governance updates, including at least one existing feature and one newly generated feature when practical.
 - Sync Impact MUST track pending and completed status for each dependent downstream artifact and remain incomplete until all required updates, or approved exceptions, are explicitly recorded.
+- Downstream governance artifacts that report status MUST preserve distinct Governance Lifecycle Status, Propagation Progress, and Verification Status checkpoints instead of collapsing them into a single completion signal.
+- Analyze synchronization updates MUST enforce equivalent-checkpoint comparison rules and MUST suppress Governance Defects for cross-category status differences unless an ownership boundary or propagation-order rule is violated.
 
 ## Out of Scope
 
@@ -198,6 +224,8 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - **SC-013**: In 100% of seeded lifecycle ownership drift scenarios, Analyze reports the drift as a blocking issue before a governance change is treated as complete.
 - **SC-014**: In 100% of seeded governance-analysis scenarios after rollout, each Analyze finding is classified into exactly one category (Governance Defect, Implementation Pending, or Verification Pending), and only Governance Defects or Governance Inconsistencies block governance readiness.
 - **SC-015**: For each of the next three governance evolutions discovered mid-lifecycle after rollout, downstream synchronization is completed incrementally in propagation order within the same governance feature stream, with Sync Impact status explicitly updated at each required layer.
+- **SC-016**: In 100% of seeded governance-status review scenarios after rollout, Analyze compares only equivalent checkpoints and reports zero Governance Defects for differences that exist only between Governance Lifecycle Status, Propagation Progress, and Verification Status categories.
+- **SC-017**: For each of the next three governance amendments after rollout, Constitution-owned Governance Lifecycle Status, Validation-Contract-owned Propagation Progress, and recorded Verification Status remain separately identifiable in synchronized artifacts without being collapsed into one completion indicator.
 
 ## Assumptions
 
@@ -210,3 +238,4 @@ As a maintainer, I want governance updates themselves to follow the same specifi
 - The governance propagation layers (Constitution, Templates, Agents, Generated Feature Artifacts, Representative Validation, Sync Impact) remain present and addressable for each governance change governed by this feature.
 - Each executable lifecycle in governance scope has an identifiable authoritative owner artifact that can be referenced consistently by downstream artifacts.
 - Analyze classification semantics remain stable across governance tooling: Governance Defect, Implementation Pending, and Verification Pending are mutually exclusive, and only Governance Defect or Governance Inconsistency can block governance readiness.
+- Governance status checkpoints are not interchangeable: Governance Lifecycle Status, Propagation Progress, and Verification Status may advance at different times without creating a governance contradiction.
