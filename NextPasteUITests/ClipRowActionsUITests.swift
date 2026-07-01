@@ -239,6 +239,73 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let clips = [
+            UITestFixtures.RowActions.thirdPinOlder,
+            UITestFixtures.RowActions.thirdPinMiddle,
+            UITestFixtures.RowActions.thirdPinNewest
+        ]
+
+        try history.createTextClips(clips)
+        history.assertClipRowIdentifierExists()
+
+        for clip in clips {
+            let pinButton = row.revealPinActionWithRightSwipe(for: clip)
+            pinButton.tap()
+
+            XCTAssertEqual(app.state, .runningForeground)
+            let pinnedRow = assertTextRowIdentifier(for: clip, in: app)
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                pinnedRow,
+                "Pinned",
+                timeout: 0.75
+            )
+        }
+
+        UITestAssertions.assert(
+            app.staticTexts[UITestFixtures.RowActions.thirdPinNewest],
+            appearsAbove: app.staticTexts[UITestFixtures.RowActions.thirdPinMiddle]
+        )
+        UITestAssertions.assert(
+            app.staticTexts[UITestFixtures.RowActions.thirdPinMiddle],
+            appearsAbove: app.staticTexts[UITestFixtures.RowActions.thirdPinOlder]
+        )
+    }
+
+    @MainActor
+    func testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClips([
+            UITestFixtures.RowActions.recentlyActiveDismissed,
+            UITestFixtures.RowActions.thirdPinOlder,
+            UITestFixtures.RowActions.thirdPinMiddle,
+            UITestFixtures.RowActions.thirdPinNewest
+        ])
+        history.assertClipRowIdentifierExists()
+
+        _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.recentlyActiveDismissed)
+        row.dismissRevealedSwipeActions()
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.thirdPinOlder)
+        pinButton.tap()
+
+        XCTAssertEqual(app.state, .runningForeground)
+        let pinnedRow = assertTextRowIdentifier(for: UITestFixtures.RowActions.thirdPinOlder, in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            pinnedRow,
+            "Pinned",
+            timeout: 0.75
+        )
+        history.assertRowExists(withText: UITestFixtures.RowActions.recentlyActiveDismissed)
+    }
+
+    @MainActor
     func testFullSwipeOnlyRevealsTextRowActionWithoutAutoExecutingOrCopying() throws {
         let app = launchApp()
         let history = historyRobot(for: app)

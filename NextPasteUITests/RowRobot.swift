@@ -386,6 +386,13 @@ struct RowRobot {
     }
 
     @discardableResult
+    func dismissRevealedSwipeActions() -> Self {
+        app.typeKey(.escape, modifierFlags: [])
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        return self
+    }
+
+    @discardableResult
     func delete(
         _ clipText: String,
         file: StaticString = #filePath,

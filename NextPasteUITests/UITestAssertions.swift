@@ -61,6 +61,31 @@ enum UITestAssertions {
         )
     }
 
+    static func assertEventuallyAccessibleTextContains(
+        _ element: XCUIElement,
+        _ expectedText: String,
+        timeout: TimeInterval,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText) {
+                return
+            }
+
+            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        }
+
+        XCTAssertTrue(
+            combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText),
+            "Expected accessible text to contain \(expectedText) within \(timeout) seconds",
+            file: file,
+            line: line
+        )
+    }
+
     @discardableResult
     static func assertImageRow(
         for fixture: UITestFixtures.ImageClipboard.Fixture,

@@ -66,6 +66,10 @@ enum UITestFixtures {
         static let filteredPinTarget = "Filtered alpha pin target"
         static let filteredDeleteTarget = "Filtered alpha delete target"
         static let filteredCompanion = "Filtered alpha companion"
+        static let thirdPinOlder = "Third pin crash older clip"
+        static let thirdPinMiddle = "Third pin crash middle clip"
+        static let thirdPinNewest = "Third pin crash newest clip"
+        static let recentlyActiveDismissed = "Recently active dismissed action clip"
     }
 
     enum ImageClipboard {

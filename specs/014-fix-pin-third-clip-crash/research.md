@@ -119,3 +119,43 @@ invariants.
 - **Validation ownership**: `contracts/validation-and-sonar-contract.md`.
 
 No unresolved clarifications remain.
+
+## Root-Cause Confirmation Evidence
+
+**Date**: 2026-07-01
+
+**Confirmed implementation path before production code changes**:
+
+- `NextPaste/HomeView.swift` renders history rows with SwiftUI `List` and stable
+  `ForEach(visibleClips)` identity.
+- The leading native `.swipeActions(edge: .leading, allowsFullSwipe: false)` button calls
+  `togglePin(clip)` directly.
+- `togglePin(_:)` immediately calls `clip.togglePinned()` and `modelContext.save()`.
+- `ClipItem.togglePinned()` flips `isPinned` and updates `pinnedSortOrder`.
+- `ClipItem.historySortDescriptors` sorts by `pinnedSortOrder` descending and `createdAt`
+  descending, so pin/unpin immediately moves the row across the visible `@Query` ordering.
+
+**Observed exception evidence from the feature report**:
+
+- Exception: `NSInternalInconsistencyException`
+- Reason: `rowActionsGroupView should be populated`
+- AppKit stack includes `NSTableRowData _updateActionButtonPositionsForRowView`,
+  `_setSwipeAmount:fromSwipe:`, and `animationDidEnd:`
+
+**Root-cause decision**:
+
+The confirmed implementation path matches the reported AppKit failure signature: a native row
+action is active or settling while the same row is immediately moved by a sorted-list refresh.
+The fix therefore targets only the ordering-affecting Pin/Unpin mutation timing. It preserves
+native swipe actions and the final persisted `ClipItem` ordering.
+
+**Rejected alternate causes**:
+
+- Duplicate row identifiers: `ForEach(visibleClips)` uses `ClipItem.id`, and row accessibility
+  identifiers are derived from clip identity.
+- Search-only mutation: the same immediate sorted-list movement exists in unfiltered history.
+- Image-row-only behavior: text and image rows share the same `HomeView` native swipe action
+  handlers.
+- Delete-only behavior: Delete removes a row but does not move the same row into another sorted
+  group.
+- Full-swipe auto-execution: both native swipe actions use `allowsFullSwipe: false`.

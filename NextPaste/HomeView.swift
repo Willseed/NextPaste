@@ -22,6 +22,7 @@ struct HomeView: View {
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
+    @State private var pendingPinTasks: [UUID: Task<Void, Never>] = [:]
     @State private var headerFrame: CGRect = .null
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
@@ -81,6 +82,7 @@ struct HomeView: View {
 #endif
         .onDisappear {
             copyFeedbackTask?.cancel()
+            cancelPendingPinTasks()
         }
     }
 
@@ -216,10 +218,42 @@ struct HomeView: View {
 #endif
 
     private func deleteClip(_ clip: ClipItem) {
+        cancelPendingPinTask(for: clip.id)
         _ = ClipDeletionAction(modelContext: modelContext).delete(clip)
     }
 
-    private func togglePin(_ clip: ClipItem) {
+    private func scheduleTogglePin(_ clip: ClipItem) {
+        let clipID = clip.id
+        cancelPendingPinTask(for: clipID)
+
+        pendingPinTasks[clipID] = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: RowActionSettleTiming.safeSettleNanoseconds)
+
+            guard !Task.isCancelled else {
+                return
+            }
+
+            guard let targetClip = clips.first(where: { $0.id == clipID }) else {
+                pendingPinTasks[clipID] = nil
+                return
+            }
+
+            applyTogglePin(targetClip)
+            pendingPinTasks[clipID] = nil
+        }
+    }
+
+    private func cancelPendingPinTask(for clipID: UUID) {
+        pendingPinTasks[clipID]?.cancel()
+        pendingPinTasks[clipID] = nil
+    }
+
+    private func cancelPendingPinTasks() {
+        pendingPinTasks.values.forEach { $0.cancel() }
+        pendingPinTasks.removeAll()
+    }
+
+    private func applyTogglePin(_ clip: ClipItem) {
         do {
             clip.togglePinned()
             try modelContext.save()
@@ -239,7 +273,7 @@ struct HomeView: View {
                 deleteClip(clip)
             },
             onTogglePin: {
-                togglePin(clip)
+                scheduleTogglePin(clip)
             }
         )
         .contentShape(Rectangle())
@@ -264,7 +298,7 @@ struct HomeView: View {
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
-                togglePin(clip)
+                scheduleTogglePin(clip)
             } label: {
                 Label(
                     RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned),
@@ -379,6 +413,11 @@ struct HomeView: View {
         window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
     }
 #endif
+}
+
+enum RowActionSettleTiming {
+    static let safeSettleDelay: TimeInterval = DesignTokens.Motion.pinToggle
+    static let safeSettleNanoseconds = UInt64(safeSettleDelay * 1_000_000_000)
 }
 
 #Preview {
