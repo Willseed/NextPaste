@@ -8,6 +8,14 @@
 
 **Input**: User description: "Create a new investigation feature for the AppKit crash `NSInternalInconsistencyException: rowActionsGroupView should be populated`. Feature 014 attempted timing and deferred-mutation strategies, but new evidence suggests the reproducible failure is relocation of the active swipe-action row after its sort key changes. The feature must identify the true architectural root cause and define deterministic synchronization instead of another timing workaround. Preserve native macOS swipe actions, pin/unpin, pinned-first ordering, newest-first ordering, and current UI. Do not generate implementation code."
 
+**Scope Clarification**: Feature 015 addresses the investigated crash mechanism only: ordering
+mutations initiated by native Pin/Unpin row actions, and ordering changes from that path that
+relocate rows while native row actions are visible, active, or dismissing. This feature does not
+redesign the entire SwiftData `@Query` refresh pipeline and must not introduce a global
+synchronization layer for unrelated model updates. Broader synchronization architecture belongs in a
+future feature only if evidence demonstrates crashes outside the investigated Pin/Unpin ordering
+path.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Verify The Row-Relocation Crash Mechanism (Priority: P1)
@@ -21,7 +29,7 @@ management, and prior timing-oriented attempts did not eliminate it.
 
 **Independent Test**: Can be tested by reproducing the original crash scenario, recording the
 failure signature, and proving whether an active or dismissing native row-action row is relocated
-when the pinned state changes.
+when the pinned state changes through Pin/Unpin.
 
 **Acceptance Scenarios**:
 
@@ -94,7 +102,8 @@ CloudKit, and redesign work.
 - Repeatedly pinning after scrolling causes row reuse, visibility changes, or non-adjacent row
   movement.
 - Repeated relocation between pinned and unpinned groups occurs in rapid user-driven sequences.
-- Data-backed refresh occurs before the native row-action lifecycle has reached a safe point.
+- Pin/Unpin data-backed refresh occurs before the native row-action lifecycle has reached a safe
+  point.
 - A candidate workaround appears stable in a small sample but lacks lifecycle evidence.
 
 ## Interaction Methods & Platform Expectations *(mandatory when interaction changes)*
@@ -119,9 +128,11 @@ CloudKit, and redesign work.
 
 ### Functional Requirements
 
-- **FR-001**: The application MUST NOT crash while native row actions are active.
+- **FR-001**: The application MUST NOT crash when native Pin/Unpin row actions initiate ordering
+  mutations that relocate rows while native row actions are visible, active, or dismissing.
 - **FR-002**: Native swipe actions MUST remain the interaction model.
-- **FR-003**: The implementation MUST preserve AppKit row-action lifecycle integrity.
+- **FR-003**: The implementation MUST preserve AppKit row-action lifecycle integrity for the
+  investigated Pin/Unpin ordering path.
 - **FR-004**: The implementation MUST preserve pinned-first ordering.
 - **FR-005**: The implementation MUST preserve newest-first ordering.
 - **FR-006**: The implementation MUST identify and verify the architectural root cause before
@@ -131,7 +142,7 @@ CloudKit, and redesign work.
 - **FR-008**: The investigation MUST evaluate whether row relocation during swipe dismissal is the
   primary failure mechanism.
 - **FR-009**: The investigation MUST determine whether SwiftData @Query refresh timing contributes
-  to the crash.
+  to the investigated Pin/Unpin ordering crash path.
 - **FR-010**: The investigation MUST document rejected hypotheses with supporting evidence.
 - **FR-011**: Regression coverage MUST reproduce the original crash.
 - **FR-012**: Regression coverage MUST verify repeated pinning after scrolling.
@@ -155,9 +166,9 @@ CloudKit, and redesign work.
 
 - The investigation must reproduce or otherwise account for the original exception:
   `NSInternalInconsistencyException` with reason `rowActionsGroupView should be populated`.
-- Evidence must compare the current suspected sequence: user activates Pin, the pinned sort state
-  changes, persistence saves, the observed query refresh updates the visible list, the active row is
-  relocated, and the native row-action lifecycle has not safely completed.
+- Evidence must compare the current suspected sequence: user activates Pin or Unpin, the pinned sort
+  state changes, persistence saves, the observed query refresh updates the visible list, the active
+  row is relocated, and the native row-action lifecycle has not safely completed.
 - The investigation must review Apple documentation and known framework limitations relevant to
   native row actions, list bridging, data-backed refresh timing, and row movement during dismissal.
 - The investigation must reuse relevant Feature 014 evidence but must not inherit Feature 014's
@@ -166,8 +177,8 @@ CloudKit, and redesign work.
   dismissal, data-backed refresh timing, fixed sleep delay, run-loop-only deferral, deferred model
   mutation, row identity instability, full-swipe behavior, delete behavior, search filtering, and
   row reuse after scrolling.
-- The selected strategy must define confirmation criteria that can prove the crash is prevented
-  while native row actions and ordering behavior remain unchanged.
+- The selected strategy must define confirmation criteria that can prove the investigated Pin/Unpin
+  ordering crash is prevented while native row actions and ordering behavior remain unchanged.
 
 ## Governance And Traceability
 
@@ -186,6 +197,10 @@ CloudKit, and redesign work.
 - Replacing native macOS swipe actions.
 - Custom gestures.
 - Clipboard capture.
+- Global SwiftData `@Query` refresh-pipeline redesign.
+- A global synchronization layer for unrelated model updates.
+- Generalized protection for model changes outside the investigated Pin/Unpin ordering path unless
+  future evidence demonstrates the same crash mechanism there.
 - Search.
 - OCR.
 - AI.
@@ -219,6 +234,9 @@ CloudKit, and redesign work.
   implementation approach.
 - The crash path is macOS-specific and tied to native row actions; non-macOS behavior is preserved
   unless later evidence proves a shared ordering rule is required.
+- Feature 015 is scoped to native Pin/Unpin ordering mutations. If a future investigation proves the
+  same AppKit assertion can be triggered by unrelated model updates, that broader synchronization
+  architecture will be specified separately.
 - The current UI, row layout, action labels, and ordering rules are the baseline to preserve.
 - The investigation may mention platform frameworks and lifecycle concepts because the feature is
   explicitly an architectural root-cause investigation, but implementation code remains out of
