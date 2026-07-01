@@ -7,25 +7,11 @@ description: "Task list template for feature implementation"
 
 **Input**: Design documents from `/specs/[###-feature-name]/`
 
-**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md,
-contracts/, and `contracts/validation-and-sonar-contract.md`
+**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
-**Validation Contract**: `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`
-owns validation governance, including the automated validation matrix, manual validation matrix, regression validation matrix,
-offline/local-first validation, accessibility validation, platform-specific validation,
-performance validation, representative-feature validation, release-readiness validation, Sync Impact gating, and SonarQube evidence requirements.
-`quickstart.md` owns build/test/run commands and Validation Contract references only.
+**Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
-**FR/SC Authority**: This task list MUST reference Functional Requirement (FR-###) and Success Criteria (SC-###) identifiers from the feature specification (spec.md) only, which is the sole authoritative source of requirements. Downstream tasks MUST NOT renumber, redefine, extend, or invent identifiers.
-
-**Tests**: Generate automated test tasks when the specification or constitution requires them, and
-generate validation execution tasks that reference the Validation Contract instead of restating its
-matrices or ownership rules inside `tasks.md`. Prefer the smallest reliable scope first: targeted
-unit tests, then targeted integration tests, then targeted UI tests only where lower layers are not
-reliable. Full regression belongs only at defined gates and must include a documented reason.
-
-**Organization**: Tasks are grouped by user story to enable independent implementation and testing
-of each story.
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
 
@@ -40,37 +26,11 @@ of each story.
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`
 - Paths shown below assume single project - adjust based on plan.md structure
 
-## Tiered Validation Strategy
-
-1. Targeted unit tests for pure logic
-2. Targeted integration tests for cross-component behavior
-3. Targeted UI tests only for user-visible flows that lower layers cannot validate reliably
-4. Full regression only at feature completion, release readiness, or when shared infrastructure,
-   persistence, app launch, navigation, or cross-cutting interaction behavior is affected
-5. SonarQube evidence after implementation
-
-Validation tasks MUST list targeted commands or selectors before any full-suite command. If a full
-regression task is included, it MUST state why the gate applies.
-
-## Governance Execution Rules *(mandatory for governance features)*
-
-1. Execute governance implementation in propagation order:
-   `Templates -> Agents -> Copilot Instructions -> Generated Governance Artifacts`.
-2. Preserve incremental synchronization: update only impacted governance artifacts; avoid
-   regeneration of unaffected sections.
-3. Every Analyze finding MUST be classified as exactly one of:
-   `Governance Defect`, `Implementation Pending`, or `Verification Pending`.
-4. Only `Governance Defect` and `Governance Inconsistency` block governance readiness.
-   `Implementation Pending` and `Verification Pending` remain actionable but non-blocking.
-5. Validation lifecycle ownership remains in
-   `specs/[###-feature-name]/contracts/validation-and-sonar-contract.md`; tasks may reference it but
-   MUST NOT redefine lifecycle states.
-
 <!--
   ============================================================================
   IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
 
-  The /speckit.tasks command MUST replace these with actual tasks based on:
+  The /speckit-tasks command MUST replace these with actual tasks based on:
   - User stories from spec.md (with their priorities P1, P2, P3...)
   - Feature requirements from plan.md
   - Entities from data-model.md
@@ -103,12 +63,12 @@ regression task is included, it MUST state why the gate applies.
 
 Examples of foundational tasks (adjust based on your project):
 
-- [ ] T004 Create local persistence models and clipboard history schema
-- [ ] T005 [P] Implement clipboard monitoring pipeline
-- [ ] T006 [P] Define content-type identification and deduplication rules
+- [ ] T004 Setup database schema and migrations framework
+- [ ] T005 [P] Implement authentication/authorization framework
+- [ ] T006 [P] Setup API routing and middleware structure
 - [ ] T007 Create base models/entities that all stories depend on
-- [ ] T008 Configure explicit error reporting for local capture failures
-- [ ] T009 Setup feature flags or settings for optional sync/export flows
+- [ ] T008 Configure error handling and logging infrastructure
+- [ ] T009 Setup environment configuration management
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -120,29 +80,21 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 ⚠️
+### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
-- [ ] T010 [P] [US1] Run targeted unit test command for clipboard monitoring or deduplication
-  behavior in NextPasteTests/[Name]Tests.swift
-- [ ] T011 [P] [US1] Run targeted integration test command for [cross-component clipboard/history
-  journey] in NextPasteTests/[Name]IntegrationTests.swift
-- [ ] T012 [P] [US1] Run targeted UI test command for [critical user-visible flow that lower layers
-  cannot validate reliably] in NextPasteUITests/[Name]UITests.swift
-- [ ] T013 [US1] Reference and, if needed, extend feature-specific validation execution in
-  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md without duplicating its
-  template-owned matrices
+- [ ] T010 [P] [US1] Contract test for [endpoint] in tests/contract/test_[name].py
+- [ ] T011 [P] [US1] Integration test for [user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 1
 
-- [ ] T014 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
-- [ ] T015 [P] [US1] Create clipboard observation or capture service in
-  NextPaste/[ClipboardService].swift
-- [ ] T016 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
-- [ ] T017 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
-- [ ] T018 [US1] Add explicit consent handling for any optional user-content transmission
-- [ ] T019 [US1] Add type-identification handling for supported clipboard content
+- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
+- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
+- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
+- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T016 [US1] Add validation and error handling
+- [ ] T017 [US1] Add logging for user story 1 operations
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
@@ -154,23 +106,17 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 ⚠️
+### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T020 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
-- [ ] T021 [P] [US2] Targeted integration or UI test command for [critical user journey], using UI
-  coverage only if lower layers cannot validate it reliably, in NextPasteUITests/[Name]UITests.swift
-- [ ] T022 [P] [US2] Targeted offline/privacy behavior test command for [scenario] in
-  NextPasteTests/[Name]PrivacyTests.swift
-- [ ] T023 [US2] Reference the Validation Contract in
-  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md for any story-specific
-  execution additions instead of redefining local validation ownership
+- [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
+- [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 2
 
-- [ ] T024 [P] [US2] Create [Entity] model in NextPaste/[Entity].swift
-- [ ] T025 [US2] Implement [Service] in NextPaste/[Service].swift
-- [ ] T026 [US2] Implement [feature] in NextPaste/[Location].swift
-- [ ] T027 [US2] Integrate with User Story 1 components (if needed)
+- [ ] T020 [P] [US2] Create [Entity] model in src/models/[entity].py
+- [ ] T021 [US2] Implement [Service] in src/services/[service].py
+- [ ] T022 [US2] Implement [endpoint/feature] in src/[location]/[file].py
+- [ ] T023 [US2] Integrate with User Story 1 components (if needed)
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
 
@@ -182,21 +128,16 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 ⚠️
+### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
 
-- [ ] T028 [P] [US3] Targeted unit or integration test command for [requirement/schema] in
-  NextPasteTests/[Name]Tests.swift
-- [ ] T029 [P] [US3] Targeted UI test command for [critical user-visible journey not covered at
-  lower levels] in NextPasteUITests/[Name]UITests.swift
-- [ ] T030 [US3] Reference manual/platform/performance/release-readiness execution from
-  specs/[###-feature-name]/contracts/validation-and-sonar-contract.md instead of recreating that
-  checklist in tasks.md
+- [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
+- [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
 
 ### Implementation for User Story 3
 
-- [ ] T031 [P] [US3] Create [Entity] model in NextPaste/[Entity].swift
-- [ ] T032 [US3] Implement [Service] in NextPaste/[Service].swift
-- [ ] T033 [US3] Implement [feature] in NextPaste/[Location].swift
+- [ ] T026 [P] [US3] Create [Entity] model in src/models/[entity].py
+- [ ] T027 [US3] Implement [Service] in src/services/[service].py
+- [ ] T028 [US3] Implement [endpoint/feature] in src/[location]/[file].py
 
 **Checkpoint**: All user stories should now be independently functional
 
@@ -213,20 +154,9 @@ Examples of foundational tasks (adjust based on your project):
 - [ ] TXXX [P] Documentation updates in docs/
 - [ ] TXXX Code cleanup and refactoring
 - [ ] TXXX Performance optimization across all stories
-- [ ] TXXX [P] Additional regression tests in NextPasteTests/
-- [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
-- [ ] TXXX Offline support review for local-first clipboard behavior
-- [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
-  motion, and component styling in user-facing UI
-- [ ] TXXX **Governance Review**: Review the spec, plan, tasks, checklist, and validation contract for alignment and consistent inheritance
-- [ ] TXXX **Analyze Checkpoint A**: Execute `/speckit.analyze` after template propagation and classify each finding as Governance Defect, Implementation Pending, or Verification Pending
-- [ ] TXXX **Analyze Checkpoint B**: Execute `/speckit.analyze` after agent and Copilot-instruction propagation to verify governance inheritance and lifecycle ownership
-- [ ] TXXX **Analyze Checkpoint C**: Execute `/speckit.analyze` after generated-governance-artifact updates to verify propagation completeness before representative validation execution
-- [ ] TXXX **Representative Feature Validation**: Validate against at least one existing representative feature (e.g., `specs/011-fix-clip-row-clipping`) for backward compatibility, and, where practical, a newly generated feature for forward-generation correctness
-- [ ] TXXX **Final Governance Regression**: Run full regression checks across all shared artifacts
-- [ ] TXXX **Sync Impact Closure**: Close Sync Impact only after contract-owned representative validation is executed and no blocking Governance Defect/Governance Inconsistency remains
-- [ ] TXXX **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale
-- [ ] TXXX **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change
+- [ ] TXXX [P] Additional unit tests (if requested) in tests/unit/
+- [ ] TXXX Security hardening
+- [ ] TXXX Run quickstart.md validation
 
 ---
 
@@ -238,10 +168,8 @@ Examples of foundational tasks (adjust based on your project):
 - **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
 - **User Stories (Phase 3+)**: All depend on Foundational phase completion
   - User stories can then proceed in parallel (if staffed)
-  - Or sequentially in priority order (P1 -> P2 -> P3)
+  - Or sequentially in priority order (P1 → P2 → P3)
 - **Polish (Final Phase)**: Depends on all desired user stories being complete
-- **Governance closure (when applicable)**: Depends on Analyze Checkpoints A/B/C completion,
-  representative validation execution, and contract-owned Sync Impact closure conditions
 
 ### User Story Dependencies
 
@@ -251,17 +179,11 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Within Each User Story
 
-- Tests MUST be written and FAIL before implementation
+- Tests (if included) MUST be written and FAIL before implementation
 - Models before services
-- Clipboard monitoring and persistence before optional sync/export integrations
+- Services before endpoints
 - Core implementation before integration
-- Prefer targeted unit, then targeted integration, then targeted UI validation before any full
-  regression task
-- Shared validation execution belongs in the Validation Contract, not in task-local matrices
 - Story complete before moving to next priority
-- Governance readiness blocks only on Governance Defect or Governance Inconsistency findings; keep
-  Implementation Pending and Verification Pending visible as follow-up work without misclassifying
-  them as governance failure
 
 ### Parallel Opportunities
 
@@ -300,12 +222,11 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 
 ### Incremental Delivery
 
-1. Complete Setup + Foundational -> Foundation ready
-2. Add User Story 1 -> Test independently -> Deploy/Demo (MVP!)
-3. Add User Story 2 -> Test independently -> Deploy/Demo
-4. Add User Story 3 -> Test independently -> Deploy/Demo
-5. Execute the Validation Contract and record Sonar evidence before completion
-6. Each story adds value without breaking previous stories
+1. Complete Setup + Foundational → Foundation ready
+2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
+3. Add User Story 2 → Test independently → Deploy/Demo
+4. Add User Story 3 → Test independently → Deploy/Demo
+5. Each story adds value without breaking previous stories
 
 ### Parallel Team Strategy
 
@@ -326,11 +247,6 @@ With multiple developers:
 - [Story] label maps task to specific user story for traceability
 - Each user story should be independently completable and testable
 - Verify tests fail before implementing
-- Do not duplicate contract-owned validation matrices, regression definitions, risk tables,
-  rollback sections, or Sonar evidence rules inside `tasks.md`
-- Do not require full regression after every task; include it only at defined gates and document
-  the reason
-- Do not duplicate reliable unit or integration coverage with UI tests
 - Commit after each task or logical group
 - Stop at any checkpoint to validate story independently
 - Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence

@@ -1,8 +1,9 @@
 {
-  "ai": "copilot",
+  "ai": "codex",
+  "ai_skills": true,
   "feature_numbering": "sequential",
-  "here": false,
-  "integration": "copilot",
+  "here": true,
+  "integration": "codex",
   "script": "sh",
   "speckit_version": "0.11.6"
 }
