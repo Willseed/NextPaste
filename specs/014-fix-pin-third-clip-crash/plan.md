@@ -37,9 +37,9 @@ available.
 
 **Project Type**: Xcode SwiftUI desktop app with app, unit-test, and UI-test targets.
 
-**Performance Goals**: Pin/unpin remains visibly responsive; any safe-settle delay must be
-imperceptible in normal use and must not introduce repeated polling, network work, or extra
-persistence passes beyond the confirmed minimum.
+**Performance Goals**: Pin/unpin remains visibly responsive within the measurable budget below.
+Any safe-settle deferral must be tied to confirmed native row-action settling and must not become an
+arbitrary workaround delay, repeated polling loop, network operation, or duplicate persistence path.
 
 **Constraints**:
 
@@ -55,6 +55,44 @@ persistence passes beyond the confirmed minimum.
 **Scale/Scope**: One history list, one `ClipItem` sorted dataset, existing text/image row
 presentations, and targeted regression coverage for pinning at least three clips with native row
 actions recently active.
+
+## Performance Budget
+
+**Affected operations**:
+
+- Activating Pin or Unpin from the native leading swipe action.
+- Any deferred application of the pin/unpin mutation needed to avoid moving a row while native
+  row-action state is unsafe.
+- The resulting SwiftData save and sorted-list refresh that moves the row into its final
+  pinned-first/newest-first position.
+
+**Measurable budget**:
+
+- User activation acknowledgment begins within 100 ms of tapping the native Pin/Unpin action in
+  targeted validation.
+- The final pin/unpin state, persisted save, and visible ordered-list refresh complete within 500 ms
+  of activation in 95% of targeted validation attempts and within 750 ms in 100% of targeted
+  validation attempts.
+- Any deferred execution boundary used to avoid AppKit row-action inconsistency must be no longer
+  than 250 ms unless root-cause evidence in `research.md` proves a native row-action settling
+  boundary requires a different measured value.
+- Pin/unpin performs at most one persistence save per user activation and must not use repeated
+  polling to wait for row-action state.
+
+**Validation method**:
+
+- Use targeted UI validation around the third-pin and multi-pin flows to record activation-to-final
+  ordering completion timing.
+- Use implementation review or focused instrumentation output to confirm there is no polling loop
+  and no duplicate save for a single Pin/Unpin activation.
+- Record timing observations and any accepted measurement limitations in
+  `contracts/validation-and-sonar-contract.md`.
+
+**Regression expectations**:
+
+- No visible repeated jumps, double-reorders, or delayed stale row state after Pin/Unpin.
+- Search-active pin/unpin and normal history pin/unpin must satisfy the same responsiveness budget.
+- Copy and Delete responsiveness must not regress as a side effect of pin/unpin coordination.
 
 ## Constitution Check
 

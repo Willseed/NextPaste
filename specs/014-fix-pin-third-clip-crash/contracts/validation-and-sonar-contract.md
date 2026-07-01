@@ -105,11 +105,24 @@ proven through lower-level tests.
 
 ## 10. Performance Validation
 
-- Performance trigger: pin/unpin user-visible responsiveness.
-- Expected outcome: any safe-settle timing remains short enough that the action feels native and
-  does not create visible repeated jumps, polling, or duplicate persistence.
-- Evidence: targeted UI/manual validation notes and absence of repeated saves or repeated visible
-  reorder cycles.
+- Performance trigger: pin/unpin user-visible responsiveness, including any deferred execution
+  needed to avoid native row-action state inconsistency.
+- Affected operations:
+  - native Pin/Unpin action activation
+  - any safe-settle deferral before the ordering-affecting mutation
+  - SwiftData save and sorted-list refresh into final pinned-first/newest-first order
+- Required budget:
+  - activation acknowledgment begins within 100 ms of tapping Pin/Unpin
+  - final pin/unpin state, save, and visible ordered-list refresh complete within 500 ms in 95% of
+    targeted validation attempts and within 750 ms in 100% of targeted validation attempts
+  - any safe-settle deferral is no longer than 250 ms unless root-cause evidence in `research.md`
+    proves a different native settling boundary is required
+  - one Pin/Unpin activation performs at most one persistence save and uses no repeated polling loop
+- Validation method: targeted UI validation records activation-to-final-ordering timing for
+  third-pin, multi-pin, and search-active pin/unpin flows; implementation review or focused
+  instrumentation confirms no polling loop and no duplicate save.
+- Regression expectations: no visible repeated jumps, double-reorders, stale row state, or
+  copy/delete responsiveness regression after pin/unpin coordination.
 
 ## 11. Release Readiness Validation
 
