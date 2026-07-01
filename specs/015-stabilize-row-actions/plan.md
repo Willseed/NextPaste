@@ -7,7 +7,7 @@
 
 Feature 015 will stabilize macOS native `List` row actions for the investigated Pin/Unpin ordering path: a native Pin or Unpin action changes a row's sorted position while row actions are visible, active, or tearing down. Research supports a lifecycle-boundary model: the risky operation is not row relocation alone and not `NSTableRowView` reuse alone, but applying the Pin/Unpin data-backed SwiftUI list reordering while AppKit native row actions are still visible, active, or tearing down.
 
-The implementation strategy is to gate ordering-affecting Pin/Unpin mutation on an observable native row-action dismissal boundary. The primary candidate is a native SwiftUI row-action presentation lifecycle signal if available and reliable on the supported macOS deployment target; the fallback signal within the same strategy is AppKit coordinator/introspection evidence that the active table/list has completed row-action teardown. The plan explicitly rejects `Task.sleep`, fixed delays, and generic `RunLoop.main.perform` as primary synchronization mechanisms, and it does not introduce a global synchronization layer for unrelated SwiftData or `@Query` updates.
+The implementation strategy is to gate ordering-affecting Pin/Unpin mutation on an observable native row-action dismissal boundary. A Phase 2 compile capability check confirmed that SwiftUI `swipeActions(... onPresentationChanged:)` is unavailable in the current toolchain, so the current path uses a narrowly scoped AppKit visibility/introspection lifecycle signal instead. The plan explicitly rejects `Task.sleep`, fixed delays, and generic `RunLoop.main.perform` as primary synchronization mechanisms, and it does not introduce a global synchronization layer for unrelated SwiftData or `@Query` updates.
 
 ## Technical Context
 
@@ -75,7 +75,7 @@ This model treats relocation and row reuse as risk multipliers or transport deta
 |---|---:|---:|---:|---|---|
 | Fixed delay / `Task.sleep` | No | Yes | No | OS/device dependent and already disproved by research | Rejected |
 | Generic `RunLoop.main.perform` deferral | No | Yes | No | Does not prove AppKit row-action teardown completed | Rejected |
-| Native row-action lifecycle completion signal | Yes | Yes | Yes | Requires reliable signal on supported macOS target | Eligible |
+| Native row-action lifecycle completion signal | Yes | Yes | Yes | SwiftUI callback path unavailable on current toolchain; AppKit-backed signal must prove reliability in targeted validation | Eligible (AppKit path selected) |
 | Row-action dismissal boundary before ordering mutation | Yes | Yes | Yes | Must preserve perceived responsiveness and persistence semantics | Eligible |
 | AppKit coordinator / introspection for row-action state | Yes | Yes | Yes | More platform-specific, must remain narrowly scoped | Eligible |
 | Transaction/update batching boundary | Partial | Yes | Yes | Does not itself prove native row-action teardown completed | Needs evidence |
@@ -84,32 +84,47 @@ This model treats relocation and row reuse as risk multipliers or transport deta
 | Separate display ordering model | Partial | Yes | Yes | Larger architecture change than current evidence requires | Needs evidence |
 | Disable relocation for active row | Partial | Yes | Yes | May alter visible timing and needs product validation | Needs evidence |
 
-## Selected Strategy
+## Phase 2 Toolchain Blocker - 2026-07-02
 
-Proceed with one implementation strategy: **lifecycle-gated ordering mutation for Pin/Unpin row actions**.
+- A Phase 2 implementation attempt verified that SwiftUI
+  `swipeActions(... onPresentationChanged:)` does **not** compile on the current toolchain.
+- The compiler exposes only `swipeActions(edge:allowsFullSwipe:content:)` for this environment.
+- The SwiftUI presentation-callback path is therefore rejected for this toolchain.
+- No Phase 2 product-code changes were retained from the blocked attempt.
+
+## Re-opened Architecture Decision
+
+| Option | Evidence status | Scope risk | Decision |
+|---|---|---|---|
+| Narrow AppKit visibility/introspection signal | Supported by research as an eligible deterministic category for row-action visibility/teardown observation | Medium (platform-specific, must remain tightly scoped) | **Selected (evidence-supported fallback)** |
+| Separate display ordering model | Partial evidence only; not proven necessary in current scope | High (architecture expansion) | Not selected |
+| Temporary ordering isolation | Partial evidence only; reliability not yet proven | Medium-High (timing/ordering complexity) | Not selected |
+| Explicit native row-action state gate | Supported by data-model lifecycle states and research boundary requirements | Medium | **Selected together with AppKit visibility signal** |
+| Toolchain upgrade | No current delivery evidence or schedule guarantees | Medium (external dependency) | Not selected |
+
+## Selected Strategy (Updated)
+
+Proceed with **lifecycle-gated ordering mutation for Pin/Unpin row actions**, using an AppKit-backed native row-action state signal on the current toolchain.
 
 The planned behavior is:
 
 1. Keep native SwiftUI macOS swipe actions as the user-facing interaction.
 2. When Pin/Unpin is invoked from a native row action, record an in-memory pending intent for that row and action.
-3. Wait for an observable row-action dismissal/completion boundary before applying the Pin/Unpin ordering-affecting model mutation and `modelContext.save()`.
-4. Let the existing SwiftData-backed ordering continue to provide pinned-first and newest-first display order after the mutation is applied.
-5. Use a native SwiftUI presentation lifecycle callback if available and validated on the supported macOS target; otherwise use a narrowly scoped AppKit coordinator/introspection signal to observe row-action visibility/teardown.
+3. Use a narrowly scoped AppKit visibility/introspection signal plus explicit native row-action state transitions (`presented -> actionTapped -> dismissing -> dismissed`) to define the release boundary.
+4. Apply only the pending Pin/Unpin ordering-affecting model mutation and `modelContext.save()` after the dismissal/completion boundary is observed.
+5. Keep existing SwiftData-backed pinned-first/newest-first ordering semantics and avoid a global `@Query` synchronization layer.
 
-This strategy is supported by research because the eligible evidence-backed boundary is row-action lifecycle completion, and it does not depend on row relocation alone, row reuse alone, fixed elapsed time, or replacing native actions.
+This updated strategy remains root-cause-aligned, timing-workaround-free, and scoped to Pin/Unpin ordering mutations only.
 
-This strategy intentionally does not gate unrelated SwiftData `@Query` refreshes, clipboard capture updates, or non-Pin/Unpin model changes. If future evidence proves those paths can reproduce the same AppKit assertion, they require a separate feature with their own root-cause evidence and validation contract.
+## Fallbacks Not Selected
 
-## Fallback Strategy
+If the selected AppKit-backed lifecycle signal cannot be proven reliable in targeted validation:
 
-If lifecycle-gated mutation cannot be proven reliable during implementation validation:
-
-1. Prefer the alternate lifecycle signal inside the same architecture: if SwiftUI presentation lifecycle is insufficient, use AppKit coordinator/introspection; if AppKit observation is insufficient, do not substitute a fixed delay.
-2. Reopen Feature 015 research for a focused gate on Pin/Unpin display-order isolation before implementation proceeds.
-3. Only after additional evidence, consider temporary ordering isolation or a separate display ordering model for the Pin/Unpin ordering path that allows persisted state and visible reorder timing to be coordinated without replacing native row actions.
-4. If no deterministic lifecycle or ordering-isolation boundary can be proven, planning must not advance to implementation completion.
-
-Do not expand the fallback into a global refresh-pipeline synchronization layer inside Feature 015.
+1. Reopen Feature 015 research before implementation continues.
+2. Re-evaluate temporary ordering isolation and separate display ordering model with new evidence.
+3. Consider toolchain upgrade only with explicit delivery evidence and migration impact.
+4. Do not use fixed delay, `Task.sleep`, or `RunLoop.main.perform` as synchronization.
+5. Do not expand into a global refresh-pipeline synchronization layer in Feature 015.
 
 ## Validation Plan
 
@@ -193,3 +208,14 @@ Generated in this phase:
 ## Complexity Tracking
 
 No constitution violations require complexity justification. The selected strategy uses deterministic lifecycle synchronization and preserves the current native row-action model.
+
+## Tasks Impact After Decision Re-open
+
+`/speckit.tasks` regeneration is **not required** at this point. Existing Phase 4 tasks already cover:
+
+- AppKit visibility/introspection fallback (`T012`)
+- Pending Pin/Unpin intent (`T013`)
+- Scoped Pin/Unpin-only mutation/save gate (`T014`)
+- Native swipe-action preservation and ordering guardrails (`T015`, `T016`)
+
+Task regeneration is needed only if the implementation strategy expands to separate display-order models, temporary ordering isolation with new artifacts, or a toolchain-upgrade-only path.

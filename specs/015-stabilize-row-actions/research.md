@@ -614,6 +614,7 @@ row-view reuse as an observed transport/lifecycle factor, not as the root cause 
 
 - Fixed elapsed delay is not an acceptable synchronization strategy.
 - Generic `RunLoop.main.perform(inModes: [.default])` deferral is not an acceptable strategy after the new evidence request.
+- SwiftUI `swipeActions(... onPresentationChanged:)` is available in the current toolchain: rejected by implementation-time compile evidence on 2026-07-02.
 - Public Apple documentation does not currently prove that any fixed time or generic run-loop pass is a safe row-move boundary.
 - Source inspection alone does not prove whether SwiftUI emits a move, remove/insert, reload, or another AppKit update sequence.
 - Sequence evidence does not prove SwiftData refresh timing is causal.
@@ -632,7 +633,7 @@ row-view reuse as an observed transport/lifecycle factor, not as the root cause 
   a crash-positive dataset.
 - Whether `@Query` publication timing is causal or merely feeds the SwiftUI `List` diff.
 - Whether SwiftUI `List` diffing is causal or only transports a lower AppKit row-action invariant violation.
-- Whether SwiftUI `swipeActions(... onPresentationChanged:)` is available and reliable for this app's macOS deployment target.
+- Whether an AppKit visibility/introspection signal can be proven reliable as the deterministic release boundary across the targeted Pin/Unpin relocation scenarios.
 - Whether the original third-pin crash requires a specific AppKit row-action cleanup state or
   SwiftUI-to-NSTableView move/remove/insert sequence not reproduced by the seeded controls.
 
@@ -665,3 +666,20 @@ Implementation should not begin from this research alone. The plan must encode t
 hypothesis, reject arbitrary timing, preserve native row actions, and require targeted validation of
 Pin relocation, forced scroll/reuse after row-action reveal, Delete, and any adopted row-action
 dismissal or list-diff synchronization boundary.
+
+## Phase 2 Toolchain Capability Addendum - 2026-07-02
+
+### Executed check
+
+- Attempted to compile a Phase 2 implementation path using SwiftUI
+  `swipeActions(... onPresentationChanged:)`.
+- Build failed with compile-time API mismatch: the current toolchain exposes
+  `swipeActions(edge:allowsFullSwipe:content:)` and rejects the
+  `onPresentationChanged` callback form.
+
+### Decision impact
+
+- The SwiftUI presentation-callback path is rejected for the current toolchain.
+- Feature 015 architecture decision is reopened at plan level.
+- The evidence-backed fallback category remains AppKit visibility/introspection plus an explicit native row-action state gate, subject to targeted validation proving reliability.
+- No timing workaround (`Task.sleep`, fixed delay, or `RunLoop.main.perform`) is reintroduced.

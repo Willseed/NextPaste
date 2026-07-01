@@ -10,15 +10,20 @@ This contract owns validation execution, validation evidence, performance eviden
 
 ## Validation Lifecycle Status
 
-**Current status**: Planning complete, implementation pending.
+**Current status**: Planning complete; SwiftUI presentation-callback path rejected for the current toolchain; AppKit-backed lifecycle-gate fallback selected; implementation pending.
 
 Validation cannot be marked complete until implementation exists and the required targeted evidence below is recorded.
+
+Phase 2 blocker record: a compile capability check on 2026-07-02 confirmed that
+`swipeActions(... onPresentationChanged:)` is unavailable in the current toolchain. This does not
+weaken FR-011 or lifecycle requirements; it reopens architecture selection within Feature 015 scope.
 
 ## Required Evidence Matrix
 
 | Area | Evidence Required | Acceptance Criteria | Status |
 |---|---|---|---|
 | Build | Xcode build on macOS destination | Build succeeds with no Feature 015 diagnostic regressions | Pending |
+| Lifecycle callback capability | Compile capability check on current toolchain | SwiftUI `swipeActions(... onPresentationChanged:)` callback path is unavailable and rejected for this toolchain; selected implementation path must use scoped AppKit-backed lifecycle signal | Complete |
 | Repeated pinning after scrolling | Targeted UI test or equivalent recorded run | No crash/assertion across repeated Pin actions after scrolling enough to exercise row reuse | Pending |
 | Pin relocation | Targeted UI test | Pin moves item across pinned/unpinned groups, preserves order, no crash | Pending |
 | Unpin relocation | Targeted UI test | Unpin moves item across pinned/unpinned groups, preserves order, no crash | Pending |
@@ -111,4 +116,4 @@ Feature 015 is release-ready only when:
 
 ## Verification Status
 
-Planning verification is complete. Implementation verification is pending and must be recorded during Feature 015 implementation, not in this plan phase. If environment limitations block FR-011 crash reproduction, record that blocker as Verification Pending evidence here without weakening FR-011.
+Planning verification is complete. Implementation verification is pending and must be recorded during Feature 015 implementation, not in this plan phase. If environment limitations block FR-011 crash reproduction, record that blocker as Verification Pending evidence here without weakening FR-011. The SwiftUI presentation-callback capability blocker is already recorded above as completed verification evidence for architecture re-selection.
