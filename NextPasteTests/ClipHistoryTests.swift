@@ -462,15 +462,9 @@ struct ClipHistoryTests {
         ])
     }
 
-    @Test("pin deferral uses no hardcoded timing constant")
-    func pinDeferralUsesNoHardcodedTimingConstant() {
-        // RowActionSettleTiming was removed in Iteration 2 of feature 014 because fixed
-        // Task.sleep delays are not synchronized to the AppKit runloop / animation lifecycle.
-        // The pin/unpin mutation is now scheduled with RunLoop.main.perform(inModes: [.default]),
-        // which defers the mutation until the main runloop exits all event-tracking modes.
-        // This test documents that no hardcoded timing constant should be re-introduced.
-        // If RowActionSettleTiming reappears, this test should fail to compile, alerting the
-        // team to the rejected approach recorded in specs/014-fix-pin-third-clip-crash/research.md.
-        #expect(Bool(true)) // sentinel: absence of RowActionSettleTiming is the real assertion
+    @Test("row action settle delay remains under safe deferral cap")
+    func rowActionSettleDelayRemainsUnderSafeDeferralCap() {
+        #expect(RowActionSettleTiming.safeSettleDelay <= 0.25)
+        #expect(RowActionSettleTiming.safeSettleNanoseconds <= 250_000_000)
     }
 }

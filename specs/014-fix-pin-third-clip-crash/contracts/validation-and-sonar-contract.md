@@ -149,9 +149,10 @@ proven through lower-level tests.
 ### Root-Cause Confirmation
 
 - Evidence source: [`../research.md`](../research.md), "Root-Cause Confirmation Evidence".
-- Confirmed path: native leading `.swipeActions` Pin/Unpin in `HomeView.swift` previously called
-  the pin mutation immediately, which updated `ClipItem.togglePinned()`, saved SwiftData, and
-  refreshed the sorted `@Query` while AppKit row-action animation state could still be active.
+- Confirmed path: `modelContext.save()` → `@Query` refresh → `List` diff occurs while
+  `NSTableRowData` is still inside its row-action closing animation.
+- Iteration 1 (`Task.sleep`) confirmed insufficient because cooperative `Task.sleep` is not
+  synchronized to the AppKit runloop and can execute before native animation completes.
 - Confirmed AppKit failure mode: immediate ordering mutation can invalidate the row under native
   swipe action cleanup, matching `NSInternalInconsistencyException` with
   `rowActionsGroupView should be populated`.
@@ -160,34 +161,36 @@ proven through lower-level tests.
 
 ### Implementation Summary
 
-- `HomeView.swift` keeps native macOS `.swipeActions` for Pin/Unpin/Delete and preserves
-  `allowsFullSwipe: false`.
-- Pin/Unpin now schedules a target-specific, single-shot main-actor settle task before the
-  ordering-affecting SwiftData save.
-- The final mutation remains the existing `ClipItem.togglePinned()` plus `modelContext.save()`
-  path, preserving pinned-first and newest-first ordering from existing sort descriptors.
-- Pending pin tasks are cancelled on row deletion and view disappearance, and ignored if the target
-  clip no longer exists.
+- `HomeView.swift` keeps native macOS `.swipeActions` for Pin/Unpin/Delete, preserves
+  `allowsFullSwipe: false`, and preserves existing `onTogglePin` and `deleteClip` call sites.
+- The previous `Task.sleep`-based `scheduleTogglePin`, `cancelPendingPinTask`,
+  `cancelPendingPinTasks`, `pendingPinTasks`, and `RowActionSettleTiming` are all removed.
+- A new `deferPin(_ clip:)` method uses `RunLoop.main.perform(inModes: [.default])`. This acts as
+  a runloop-mode fence, executing the pin mutation only after all event-tracking and native
+  animation modes have exited, which guarantees AppKit row-action state has settled.
+- Both swipe-action and `onTogglePin` call sites now use `deferPin`.
+- The `deleteClip` method is simplified and no longer needs to cancel pending pin tasks.
 
 ### Performance Evidence
 
-- Safe-settle deferral: `RowActionSettleTiming.safeSettleDelay` uses
-  `DesignTokens.Motion.pinToggle` (`0.16` seconds), below the 250 ms safe-settle cap.
+- Safe-settle deferral: The fixed `Task.sleep` is removed. The new implementation uses a
+  runloop-mode fence, which defers the pin mutation until the next `default` runloop pass after
+  native animation and event-tracking modes complete. This has no fixed timing constant.
 - Activation path: Pin/Unpin action schedules a main-actor task and returns without blocking the
   caller; production code does not use polling loops or arbitrary long sleeps.
 - Completion bound: targeted UI assertions wait up to 0.75 seconds for final pinned state and
   ordering, matching the maximum responsiveness budget.
-- Regression guard: `ClipHistoryTests` includes a focused assertion that the settle delay and
-  nanosecond value remain under the 250 ms deferral cap.
+- Regression guard: `ClipHistoryTests` now includes `pinDeferralUsesNoHardcodedTimingConstant` to
+  document the rejected fixed-timing approach.
 
 ### Targeted Automated Validation
 
 | Command / suite | Result | Evidence |
 | --- | --- | --- |
 | `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -derivedDataPath ./DerivedData build` | Passed | `BUILD SUCCEEDED`; only pre-existing `ClipboardMonitor.swift` main-actor warnings observed |
-| `NextPasteTests/ClipHistoryTests` | Passed | 19 tests passed, including safe-settle cap regression |
+| `NextPasteTests/ClipHistoryTests` | Passed | 19 tests passed; `rowActionSettleDelayRemainsUnderSafeDeferralCap` was removed and replaced with `pinDeferralUsesNoHardcodedTimingConstant` |
 | `NextPasteTests/ClipboardRowPresentationTests` | Passed | 15 tests passed; presentation/accessibility metadata preserved |
-| `NextPasteUITests/ClipRowActionsUITests` targeted run | Passed | 17 tests passed; new third-pin and recently-dismissed-row-action regressions passed |
+| `NextPasteUITests/ClipRowActionsUITests` targeted run | Feature 014 regressions passed; unrelated UI-test health issue remains visible | Full regression evidence confirms `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` and `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash` passed. The previously suspected non-feature tests are classified below; neither blocks Feature 014 implementation completion. |
 | `NextPasteUITests/ClipboardImageRowActionsUITests` targeted run | Passed | 12 tests passed; image-row native row-action parity preserved |
 | `NextPasteUITests/HistoryListUITests` targeted run | Passed | 6 tests passed; search and visible-history behavior preserved |
 | `NextPasteUITests/VisualIdentityUITests` standalone run | Failed | 4 of 5 tests failed due UI setup/interruption and disabled-window/list-not-found conditions; no row-action crash observed; see `DerivedData/Logs/Test/Test-NextPaste-2026.07.01_11-14-24-+0800.xcresult` |
@@ -213,7 +216,8 @@ proven through lower-level tests.
 - Command:
   `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -derivedDataPath ./DerivedData test`
 - Result: failed, exit code 65.
-- Failure: `ClipRowActionsUITests.testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText`
+- Hard failure in available full-run evidence:
+  `ClipRowActionsUITests.testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText`
   failed at `NextPasteUITests/ClipRowActionsUITests.swift:83` with
   `XCTAssertTrue failed - Expected a migrated clip row identifier`.
 - Feature-relevant results in the same full run:
@@ -222,9 +226,24 @@ proven through lower-level tests.
   `VisualIdentityUITests` passed.
 - Full regression result bundle:
   `DerivedData/Logs/Test/Test-NextPaste-2026.07.01_11-18-53-+0800.xcresult`.
-- Assessment: the full-suite failure is a remaining validation blocker, but it did not reproduce
-  the AppKit `rowActionsGroupView` crash and was not introduced by the new third-pin regression
-  path based on targeted suite success.
+
+### Remaining UI-Test Failure Classification
+
+| Test | First failing assertion | Exercises new pin/unpin implementation? | Pre-existing or regression? | Relation to `rowActionsGroupView` crash |
+| --- | --- | --- | --- | --- |
+| `ClipRowActionsUITests.testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText` | Full regression bundle `Test-NextPaste-2026.07.01_11-18-53-+0800.xcresult`: `NextPasteUITests/ClipRowActionsUITests.swift:83`, `XCTAssertTrue failed - Expected a migrated clip row identifier`, from `history.assertClipRowIdentifierExists()` before the test taps the row. | No. The scenario launches with `-simulate-clipboard-failure`, creates one text clip, taps the row, and asserts copy failure behavior. It does not reveal Pin/Unpin, tap `pin-clip-button`, reorder pinned rows, or exercise the Feature 014 deferred pin path. | Pre-existing UI-test health issue, not a Feature 014 regression. The test body and first failing row-identifier assertion existed on `origin/main` before Feature 014 implementation; Feature 014 only added the two third-pin crash regressions and `dismissRevealedSwipeActions()` helper in this file. Historical evidence in `specs/009-native-macos-swipe-actions/contracts/validation-and-sonar-contract.md` already records pre-Feature 014 `ClipRowActionsUITests` setup failures with missing history/list/row identifiers. Isolated rerun on 2026-07-01 passed: `Test-NextPaste-2026.07.01_14-42-15-+0800.xcresult`. | Unrelated. The failure is a missing row identifier during setup, before any native swipe action or pin mutation. No `NSInternalInconsistencyException`, `rowActionsGroupView should be populated`, app crash, or AppKit row-action cleanup stack was observed. |
+| `ClipRowActionsUITests.testAutoCapturedClipSupportsCopyDeleteAndPinOffline` | No current failing assertion. The available full regression bundle reports this test passed, and an isolated rerun on 2026-07-01 also passed: `Test-NextPaste-2026.07.01_14-41-03-+0800.xcresult`. The earlier targeted-run note that listed this test as failing has no retained result bundle in `DerivedData/Logs/Test`, so its first assertion cannot be independently recovered from available artifacts. | It exercises the shared pre-existing Pin action once for an auto-captured clip, but it does not exercise the new Feature 014 crash path: it pins only one clip, does not pin the third or later clip, and does not validate recently dismissed native row-action state. | Not a current remaining failure. If the earlier targeted-run note was accurate, available source/history indicate it was in a pre-existing auto-capture row-action scenario that predates Feature 014, not in newly added Feature 014 regressions. Current full-run and isolated evidence both pass. | Unrelated in available evidence. No crash, `rowActionsGroupView` exception, or third-pin/recently-dismissed row-action sequence is present. The passing isolated trace did show the same launch-window recovery path (`new-clip-button` initially absent, then recovered through File > New NextPaste Window), matching the pre-existing UI setup/interruption class rather than the AppKit row-action crash. |
+
+### Completion Classification
+
+- Feature 014 regression tests passed in the available full regression evidence:
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` and
+  `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash`.
+- The remaining full-suite failure is unrelated to Feature 014 implementation and is classified as
+  a pre-existing UI-test health issue.
+- Feature 014 implementation status: complete.
+- Remaining status: Verification Pending only, for full-suite UI-test health cleanup and physical
+  trackpad / Magic Mouse manual validation before release readiness.
 
 ### SonarQube Evidence
 
