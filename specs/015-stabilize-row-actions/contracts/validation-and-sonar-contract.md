@@ -25,9 +25,13 @@ Validation cannot be marked complete until implementation exists and the require
 | Delete row action | Targeted UI test | Delete removes only selected row and does not use the Pin/Unpin relocation gate incorrectly | Pending |
 | Search/filter state | Targeted UI test | Row actions remain correct while filtering changes visible rows | Pending |
 | Native row actions | Targeted UI or manual assistive validation | Native macOS row actions remain available for Pin/Unpin/Delete | Pending |
-| Original failure scenario | Reproduction attempt and post-fix run | Original crash path is reproduced where possible before fix acceptance and passes after fix | Pending |
+| Original failure scenario | Reproduction attempt and post-fix run | Original crash path is reproduced before fix acceptance and passes after fix | Pending |
 | Ordering invariants | UI or integration assertions | Pinned-first and newest-first ordering remain unchanged | Pending |
 | Performance | Timed targeted run | p95 <= 500 ms and max <= 750 ms from action tap to final visible ordered state | Pending |
+
+If environment limitations block FR-011 crash reproduction in a given run, keep FR-011 unchanged
+and record the blocker as **Verification Pending** evidence in this contract until reproduction is
+completed.
 
 ## Targeted Validation Commands
 
@@ -103,8 +107,8 @@ Feature 015 is release-ready only when:
 | data-model.md | Complete |
 | quickstart.md | Complete |
 | validation-and-sonar-contract.md | Complete |
-| tasks.md | Not started by design |
+| tasks.md | Generated; implementation tasks pending execution |
 
 ## Verification Status
 
-Planning verification is complete. Implementation verification is pending and must be recorded during Feature 015 implementation, not in this plan phase.
+Planning verification is complete. Implementation verification is pending and must be recorded during Feature 015 implementation, not in this plan phase. If environment limitations block FR-011 crash reproduction, record that blocker as Verification Pending evidence here without weakening FR-011.
