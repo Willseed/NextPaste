@@ -45,7 +45,9 @@ source for automated, manual, regression, offline/local-first, accessibility, pl
 performance, release-readiness, migration follow-up gating, and SonarQube validation. This plan
 references that contract instead of redefining its matrices.
 
-**Tiered Test Strategy**: Follow the canonical governance execution lifecycle centralized in
+**Tiered Test Strategy**: Follow the Constitution-owned Governance Lifecycle Status model and the
+Validation-Contract-owned validation/release/migration execution lifecycles plus Propagation
+Progress references in
 [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
 Analyze contributes checkpoint evidence for classification accuracy, propagation/lifecycle integrity,
 and readiness gating before Sync Impact closeout; it does not redefine lifecycle ownership.
@@ -334,9 +336,10 @@ execution lifecycles.
    layer introduces governance before higher-layer ownership.
 3. Verify Analyze checkpoint definitions enforce exact finding classification, equivalent-checkpoint
    comparisons, and readiness blocking semantics without redefining lifecycle ownership.
-4. Confirm Validation Governance ownership remains centralized, Governance Lifecycle Status remains
-   Constitution-owned, Propagation Progress remains Validation-Contract-owned, Verification Status
-   remains evidence-owned, and no lifecycle sequence is duplicated in plan/tasks/quickstart/checklists.
+4. Confirm validation/release/migration executable lifecycle ownership remains centralized in the
+   Validation Contract, Governance Lifecycle Status remains Constitution-owned, Propagation
+   Progress remains Validation-Contract-owned, Verification Status remains evidence-owned, and no
+   lifecycle sequence is duplicated in plan/tasks/quickstart/checklists.
 5. Define a representative validation set that proves backward compatibility and forward-generation
    correctness without product-scope expansion.
 6. Record migration boundaries so only explicit follow-up deltas (if any) remain open in Sync Impact.
@@ -350,8 +353,8 @@ execution lifecycles.
 - Templates and agents inherit those rules without introducing competing ownership or sequence.
 - Generated Feature Artifacts remain downstream consumers of inherited governance rules and are
   synchronized incrementally by affected scope.
-- Validation Governance ownership remains centralized in the feature Validation Contract, including
-  Propagation Progress ownership.
+- Validation, release, and migration executable lifecycle ownership remains centralized in the
+  feature Validation Contract, alongside Propagation Progress ownership.
 - Verification evidence remains independently recorded rather than collapsed into lifecycle or
   propagation completion.
 - Analyze checkpoints classify each finding exactly once, compare only equivalent checkpoints, and
@@ -422,8 +425,8 @@ execution lifecycles.
 
 ## Governance Validation Strategy
 
-Validation ownership and executable lifecycle ownership for validation, release, and migration are
-centralized in the single source of truth:
+Validation ownership, Propagation Progress, and executable lifecycle ownership for validation,
+release, and migration are centralized in the single source of truth:
 [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
 The Constitution remains the owner of Governance Lifecycle Status and overall governance readiness,
 and `quickstart.md` remains execution-only.
@@ -446,7 +449,7 @@ Governance Lifecycle Status, Propagation Progress, and Verification Status into 
 
 | Principle | Integration in this plan update |
 | --- | --- |
-| Validation Governance | Contract remains sole owner for executable lifecycle and validation matrices; plan/quickstart reference only |
+| Validation Ownership | Contract remains sole owner for executable lifecycle and validation matrices; plan/quickstart reference only |
 | Template-First Governance | Repeated governance structure and lifecycle references propagate through templates before any generated artifact updates |
 | Test Execution Efficiency | Targeted governance checks and representative validation run before final full governance regression gate |
 | Continuous Quality Improvement | Recurring findings must promote upward (Constitution/templates/agents) instead of repeating lower-layer local fixes |

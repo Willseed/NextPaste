@@ -6,8 +6,8 @@
 `contracts/validation-and-sonar-contract.md`, `quickstart.md`, and Constitution v2.7.0 in
 `.specify/memory/constitution.md`
 
-**Validation Contract**: Validation ownership, review sequencing, representative validation,
-regression gates, and SonarQube evidence remain owned by
+**Validation Contract**: Propagation Progress, validation execution entry points, representative
+validation/regression execution, and verification evidence remain owned by
 `specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md`.
 `quickstart.md` remains execution-only and references this contract.
 
@@ -22,7 +22,7 @@ implementation work in `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/`.
 
 - [X] T001 Capture governance-only implementation boundary and explicit non-goals in specs/012-governance-framework-v2-5/plan.md [FR-031; SC-007]
 - [X] T002 [P] Add objective-to-FR/SC traceability seed mapping in specs/012-governance-framework-v2-5/research.md for Constitution, templates, agents, validation, and Sync Impact workstreams [FR-029, FR-032; SC-007]
-- [X] T003 [P] Update specs/012-governance-framework-v2-5/quickstart.md so execution entry points reference the Validation Contract for lifecycle ownership instead of restating local validation order [FR-027, FR-029, FR-032; SC-007, SC-008]
+- [X] T003 [P] Update specs/012-governance-framework-v2-5/quickstart.md so execution entry points reference the Validation Contract for validation execution and Propagation Progress ownership instead of restating local validation order [FR-027, FR-029, FR-032; SC-007, SC-008]
 
 ---
 
@@ -37,7 +37,7 @@ implementation work in `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/`.
 - [X] T006 [P] Add validation-ownership guardrails in specs/012-governance-framework-v2-5/quickstart.md so execution steps reference the contract instead of restating validation matrices [FR-032; SC-007]
 - [X] T007 Consolidate no-same-file parallel-edit governance guardrails in specs/012-governance-framework-v2-5/plan.md for downstream execution phases [FR-026, FR-029; SC-007]
 
-**Checkpoint**: Governance baseline, ownership boundaries, and contract-owned lifecycle references are defined.
+**Checkpoint**: Governance baseline, ownership boundaries, and contract-owned propagation/validation references are defined.
 
 ---
 
@@ -78,7 +78,7 @@ inherit from templates without local redefinition.
 - [X] T015 [P] [US2] Update planning governance requirements in .specify/templates/plan-template.md for root-cause-first planning, temporary workaround criteria, performance-budget triggers, and Sync Impact planning [FR-017, FR-019, FR-020, FR-021, FR-023, FR-024, FR-026, FR-027, FR-029; SC-007, SC-009]
 - [X] T016 [P] [US2] Update governance task-generation rules in .specify/templates/tasks-template.md for dependency-aware execution, traceability mapping, and ordered validation gates [FR-011, FR-012, FR-027, FR-028, FR-029, FR-032; SC-003, SC-007]
 - [X] T017 [P] [US2] Update .specify/templates/checklist-template.md with governance checks for platform consistency, validation ownership, template-first propagation, and performance-governance coverage [FR-006, FR-008, FR-009, FR-011, FR-022, FR-023, FR-028, FR-032; SC-004, SC-005, SC-009]
-- [X] T018 [P] [US2] Update .specify/templates/contracts/validation-and-sonar-contract.md so representative validation, governance regression, Sync Impact verification, SonarQube evidence, and Constitution Completion remain contract-owned while Analyze stays a supporting checkpoint [FR-022, FR-027, FR-030, FR-032; SC-007, SC-008, SC-009]
+- [X] T018 [P] [US2] Update .specify/templates/contracts/validation-and-sonar-contract.md so Propagation Progress, representative validation/governance regression execution, Sync Impact verification evidence, and SonarQube evidence remain contract-owned while Constitution Completion remains Constitution-owned and Analyze stays a supporting checkpoint [FR-022, FR-027, FR-030, FR-032; SC-007, SC-008, SC-009]
 - [X] T019 [US2] Normalize governance references in specs/012-governance-framework-v2-5/spec.md, specs/012-governance-framework-v2-5/plan.md, and specs/012-governance-framework-v2-5/quickstart.md to remove non-template-owned duplication [FR-028, FR-032; SC-001, SC-007]
 
 **Checkpoint**: Shared templates are the sole owner of repeated governance structure.
@@ -196,7 +196,7 @@ rule discovery follows specification-first evolution before downstream re-synchr
 - [ ] T044 [P] [US7] Propagate propagation-order and incremental-synchronization requirements into .specify/templates/spec-template.md, .specify/templates/plan-template.md, .specify/templates/tasks-template.md, and .specify/templates/checklist-template.md [FR-033, FR-034, FR-042; SC-010, SC-015]
 - [ ] T045 [P] [US7] Propagate chain-enforcement and governance-evolution expectations into .github/agents/speckit.constitution.agent.md, .github/agents/speckit.plan.agent.md, .github/agents/speckit.tasks.agent.md, .github/agents/speckit.analyze.agent.md, and .github/agents/speckit.implement.agent.md [FR-033, FR-034, FR-035, FR-039, FR-042; SC-010, SC-011, SC-015]
 - [ ] T046 [US7] Update .github/copilot-instructions.md to enforce the same propagation chain, prohibit downstream governance ownership before upstream ownership, and require specification-first evolution before downstream re-synchronization [FR-033, FR-034, FR-039, FR-042, FR-031, FR-032; SC-010, SC-015]
-- [ ] T047 [US7] Update specs/012-governance-framework-v2-5/quickstart.md and specs/012-governance-framework-v2-5/tasks.md (and patch specs/012-governance-framework-v2-5/plan.md only if residual drift remains) so generated artifacts reference inherited governance order, incremental synchronization checkpoints, and distinct Governance Lifecycle Status / Propagation Progress / Verification Status ownership without redefining lifecycle ownership [FR-033, FR-034, FR-039, FR-042, FR-043, FR-044, FR-047, FR-032; SC-010, SC-015, SC-017]
+- [ ] T047 [US7] Update specs/012-governance-framework-v2-5/quickstart.md and specs/012-governance-framework-v2-5/tasks.md (and patch specs/012-governance-framework-v2-5/plan.md only if residual drift remains) so generated artifacts reference inherited governance order, incremental synchronization checkpoints, and distinct Constitution-owned Governance Lifecycle Status / contract-owned Propagation Progress / contract-recorded Verification Status without redefining checkpoint ownership [FR-033, FR-034, FR-039, FR-042, FR-043, FR-044, FR-047, FR-032; SC-010, SC-015, SC-017]
 - [ ] T048 [US7] Add and execute targeted propagation-order and incremental-synchronization verification entry points in specs/012-governance-framework-v2-5/quickstart.md and record compliance evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-033, FR-034, FR-035, FR-042, FR-032; SC-010, SC-011, SC-015]
 
 **Checkpoint**: Governance propagation order is explicit, inherited, and evidenced.
@@ -206,18 +206,19 @@ rule discovery follows specification-first evolution before downstream re-synchr
 ## Phase 11: User Story 8 - Execution Lifecycle Ownership (Priority: P8)
 
 **Goal**: Ensure each executable lifecycle has exactly one authoritative owner, with Validation
-Lifecycle ownership remaining in `contracts/validation-and-sonar-contract.md`.
+Lifecycle ownership remaining in `contracts/validation-and-sonar-contract.md` and Governance
+Lifecycle Status ownership remaining in `.specify/memory/constitution.md`.
 
-**Independent Test**: Confirm plan.md, quickstart.md, and tasks.md reference lifecycle definitions
-from the Validation Contract and do not redefine lifecycle sequence or ownership, with lifecycle
-drift detection evidenced for representative artifacts.
+**Independent Test**: Confirm plan.md, quickstart.md, and tasks.md reference owner-defined lifecycle
+and checkpoint definitions without redefining sequence or ownership, with lifecycle/ownership drift
+detection evidenced for representative artifacts.
 
 ### Implementation for User Story 8
 
-- [ ] T049 [US8] Extend specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md with explicit single-owner lifecycle definitions for Validation, Governance, Release, and Migration lifecycles, including lifecycle-drift enforcement expectations [FR-036, FR-037, FR-038, FR-032; SC-012, SC-013]
-- [ ] T050 [P] [US8] Audit and patch any residual lifecycle-owner restatements in specs/012-governance-framework-v2-5/plan.md so lifecycle references remain declarative and contract-owned [FR-036, FR-037, FR-038, FR-032; SC-012]
-- [ ] T051 [P] [US8] Refactor lifecycle text in specs/012-governance-framework-v2-5/quickstart.md so command entry points reference contract-owned lifecycle definitions without redefining sequence [FR-036, FR-037, FR-038, FR-032; SC-012]
-- [ ] T052 [US8] Refactor lifecycle text in specs/012-governance-framework-v2-5/tasks.md to keep lifecycle references declarative and non-competing with contract ownership [FR-036, FR-037, FR-038, FR-032; SC-012]
+- [ ] T049 [US8] Extend specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md with explicit single-owner definitions for Validation Lifecycle, Propagation Progress, and verification evidence, while referencing Constitution-owned Governance Lifecycle Status plus release/migration owners without re-owning them, including lifecycle-drift enforcement expectations [FR-036, FR-037, FR-038, FR-032; SC-012, SC-013]
+- [ ] T050 [P] [US8] Audit and patch any residual lifecycle-owner restatements in specs/012-governance-framework-v2-5/plan.md so lifecycle and checkpoint references remain declarative and point to the correct owner artifact [FR-036, FR-037, FR-038, FR-032; SC-012]
+- [ ] T051 [P] [US8] Refactor lifecycle text in specs/012-governance-framework-v2-5/quickstart.md so command entry points reference owner-defined lifecycle/checkpoint definitions without redefining sequence [FR-036, FR-037, FR-038, FR-032; SC-012]
+- [ ] T052 [US8] Refactor lifecycle text in specs/012-governance-framework-v2-5/tasks.md to keep lifecycle and checkpoint references declarative and non-competing with Constitution/Validation-Contract ownership boundaries [FR-036, FR-037, FR-038, FR-032; SC-012]
 - [ ] T053 [US8] Execute targeted lifecycle-ownership verification checks across specs/012-governance-framework-v2-5/plan.md, specs/012-governance-framework-v2-5/quickstart.md, specs/012-governance-framework-v2-5/tasks.md, .specify/templates/, and .github/agents/ to prove no competing lifecycle definitions and no duplicated execution sequences; record evidence in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-036, FR-037, FR-038, FR-032; SC-012, SC-013]
 - [ ] T054 [US8] Execute lifecycle-ownership drift checks against specs/011-fix-clip-row-clipping/ and specs/013-governance-v25-representative/ (when required) and record drift/no-drift outcomes in specs/012-governance-framework-v2-5/contracts/validation-and-sonar-contract.md [FR-038, FR-030, FR-032; SC-012, SC-013]
 
@@ -289,7 +290,7 @@ evidence without product scope expansion.
 - **US5**: Starts after US4; runs regression, verification checks, and readiness Analyze.
 - **US6**: Starts after US5; finalizes Sync Impact, migration notes, versioning, and synchronization.
 - **US7**: Starts after Phase 9; enforces strict propagation-order governance.
-- **US8**: Starts after US7; centralizes lifecycle ownership in the Validation Contract.
+- **US8**: Starts after US7; centralizes Validation-Contract-owned execution/checkpoint definitions while preserving Constitution ownership of Governance Lifecycle Status.
 - **US9**: Starts after US8; verifies representative propagation correctness, equivalent-checkpoint
   status modeling, and Analyze classification/readiness enforcement coverage.
 
@@ -297,9 +298,9 @@ evidence without product scope expansion.
 
 - Do **not** run parallel tasks that edit the same file.
 - Keep validation ownership centralized in `contracts/validation-and-sonar-contract.md`.
-- Keep lifecycle ownership centralized in `contracts/validation-and-sonar-contract.md`.
+- Keep Propagation Progress, validation execution, and verification evidence ownership centralized in `contracts/validation-and-sonar-contract.md`.
 - Enforce governance propagation order: `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`.
-- Lower governance layers may reference inherited governance only; they must not redefine lifecycle ownership or execution sequence.
+- Lower governance layers may reference inherited governance only; they must not redefine checkpoint ownership, lifecycle ownership, or execution sequence.
 - Analyze findings must be classified exactly once as Governance Defect, Implementation Pending, or
   Verification Pending.
 - Governance readiness blocking is limited to Governance Defects and Governance Inconsistencies.
@@ -356,8 +357,8 @@ Task: "T034 Run performance-governance verification commands from quickstart.md"
 ## Parallel Example: User Story 8
 
 ```bash
-Task: "T050 Refactor lifecycle text in plan.md to reference contract-owned lifecycle definitions"
-Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned lifecycle definitions"
+Task: "T050 Refactor lifecycle text in plan.md to reference owner-defined lifecycle/checkpoint definitions"
+Task: "T051 Refactor lifecycle text in quickstart.md to reference owner-defined lifecycle/checkpoint definitions"
 ```
 
 ---
@@ -375,7 +376,7 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 | Representative Validation | `specs/011-fix-clip-row-clipping/`, `specs/013-governance-v25-representative/` | T027-T029, T057-T058 | FR-030~031, FR-033, FR-039~047 |
 | Sync Impact | Constitution + feature governance docs | T004, T037-T040 | FR-026~027, FR-029~030 |
 | Propagation Order | Constitution, templates, agents, Copilot, generated feature artifacts | T043-T048 | FR-033~035, FR-039, FR-042 |
-| Lifecycle Ownership | Validation Contract + plan/quickstart/tasks references | T049-T054 | FR-036~038, FR-032 |
+| Lifecycle Ownership | Constitution + Validation Contract + plan/quickstart/tasks references | T049-T054 | FR-036~038, FR-032 |
 | Governance Analysis Accuracy + Analyze Enforcement | `.github/agents/speckit.analyze.agent.md`, `quickstart.md`, Validation Contract evidence | T055-T056, T059, T062 | FR-035, FR-038, FR-040~047, FR-032 |
 | Governance Status Modeling | `tasks.md`, `quickstart.md`, Validation Contract evidence, representative artifacts | T047, T055-T060, T062 | FR-043~047, FR-032 |
 | Extension Sync Impact Closeout | Constitution + feature Validation Contract | T060-T062 | FR-026~027, FR-031~034, FR-040~047 |
@@ -391,7 +392,7 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 - [X] `/speckit.constitution`, `/speckit.specify`, `/speckit.clarify`, `/speckit.plan`,
       `/speckit.tasks`, `/speckit.analyze`, and `/speckit.implement` instructions inherit
       constitutional rules by default.
-- [X] Governance execution lifecycle remains owned only by `contracts/validation-and-sonar-contract.md`, with no local restatement.
+- [X] Propagation Progress, validation execution, and verification evidence remain owned only by `contracts/validation-and-sonar-contract.md`, while Governance Lifecycle Status remains Constitution-owned, with no local restatement.
 - [ ] Representative validation is deferred; backward compatibility and forward-generation correctness
       evidence remains pending.
 - [ ] Sync Impact closure is deferred; migration notes, governance version update, and documentation
@@ -399,7 +400,7 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 - [X] No production application/product implementation tasks were added or executed.
 - [ ] Propagation chain enforcement is explicit and evidenced in the mandatory order: Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact, with no downstream governance ownership before upstream ownership.
 - [ ] Validation, governance, release, and migration lifecycles each have one authoritative owner with no competing lifecycle definitions.
-- [ ] plan.md, quickstart.md, and tasks.md reference lifecycle definitions from `contracts/validation-and-sonar-contract.md` without duplicating execution sequence definitions or creating a parallel governance track.
+- [ ] plan.md, quickstart.md, and tasks.md reference Constitution-owned Governance Lifecycle Status plus Validation-Contract-owned Propagation Progress / validation execution / verification evidence without duplicating execution sequence definitions or creating a parallel governance track.
 - [ ] Analyze validation enforces Checkpoint A/B/C behavior: exact finding classification, checkpoint-category identification before comparison, equivalent-checkpoint-only status review, suppression of cross-category Governance Defects, and readiness blocking only for Governance Defects or Governance Inconsistencies.
 - [ ] Distinct Governance Lifecycle Status, Propagation Progress, and Verification Status remain separately identifiable across synchronized artifacts without being collapsed into one completion indicator.
 - [ ] Representative validation evidence includes backward compatibility, forward-generation correctness (when required), governance propagation correctness, equivalent-checkpoint review outcomes, and incremental-synchronization proof.
@@ -448,5 +449,7 @@ Task: "T051 Refactor lifecycle text in quickstart.md to reference contract-owned
 - `[US#]` labels preserve user-story ownership for dependency and traceability tracking.
 - Validation ownership is always referenced, not redefined, outside
   `contracts/validation-and-sonar-contract.md`.
-- Executable lifecycle ownership is always referenced, not redefined, outside
-  `contracts/validation-and-sonar-contract.md`.
+- Validation-Contract-owned Propagation Progress, validation execution, and verification evidence are
+  always referenced, not redefined, outside `contracts/validation-and-sonar-contract.md`, and
+  Constitution-owned Governance Lifecycle Status is always referenced, not redefined, outside
+  `.specify/memory/constitution.md`.
