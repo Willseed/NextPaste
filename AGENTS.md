@@ -120,3 +120,9 @@ Pending and Verification Pending remain visible follow-up work but are not gover
   checkpoints.
 - `.github/copilot-instructions.md`: Xcode build/test commands, current architecture notes, Apple
   platform conventions, SwiftData usage, and existing validation guidance.
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current specification
+at specs/014-fix-pin-third-clip-crash/spec.md
+<!-- SPECKIT END -->
