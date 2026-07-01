@@ -1,9 +1,11 @@
 # Quickstart: Governance Framework v2.6
 
-Use [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md) as
-the canonical source for validation ownership, representative validation, regression scope, Sync
-Impact completion, SonarQube applicability requirements, and the only authoritative governance
-execution lifecycle.
+Use [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) as the sole
+authority for Governance Lifecycle Status and overall governance readiness. Use
+[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md) as the
+sole authority for Propagation Progress, validation ownership, representative validation,
+regression scope, Sync Impact completion, and SonarQube applicability requirements. This quickstart
+provides execution guidance only.
 
 ## Review command entry points
 
@@ -47,13 +49,18 @@ Representative validation must prove governance inheritance through `speckit.con
 Use the generated artifacts plus the shared `speckit.implement` guardrails to confirm that
 implementation would remain governance-only without modifying product code during this validation.
 
-Current lifecycle status for this synchronization pass:
-- **Representative Validation**: **DEFERRED** (not executed in this pass)
-- **Sync Impact Closure**: **DEFERRED / OPEN** (do not mark PASS before required execution evidence)
+Current owner-referenced status checks for this synchronization pass:
+- **Governance Lifecycle Status (Constitution-owned)**: refer to
+  [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md) for the current
+  overall governance amendment state and readiness decision.
+- **Propagation Progress / Verification Status (Validation-Contract-owned)**:
+  - **Representative Validation**: **DEFERRED** (not executed in this pass)
+  - **Sync Impact Closure**: **DEFERRED / OPEN** (do not mark PASS before required execution
+    evidence)
 
 ## Regression command entry point
 
-Run this when the Validation Contract reaches the final governance regression stage.
+Run this when the Validation Contract indicates the final governance regression step is active.
 
 ```bash
 git --no-pager diff --stat -- .specify .github specs/012-governance-framework-v2-5
@@ -72,13 +79,14 @@ git --no-pager diff --stat -- .specify .github specs/012-governance-framework-v2
   to Governance Defects and Governance Inconsistencies; Implementation Pending and Verification
   Pending remain follow-up work and do not block readiness.
 
-Analyze timing is operational support only. The Validation Contract remains the sole lifecycle owner.
+Analyze timing is operational support only. Governance Lifecycle Status remains Constitution-owned,
+while Propagation Progress and validation execution checkpoints remain Validation-Contract-owned.
 
-## Contract-owned closeout entry points
+## Owner-referenced closeout entry points
 
 - **SonarQube evidence**: record evidence or Sonar scope applicability exactly as required by
   [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
 - **Sync Impact Closure**: verify downstream propagation and migration-item status exactly as
   required by [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
-- **Constitution Completion**: complete versioning and ratification closeout exactly as required by
-  [`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
+- **Constitution Completion**: complete versioning, ratification, and Governance Lifecycle Status
+  updates exactly as required by [`.specify/memory/constitution.md`](../../.specify/memory/constitution.md).

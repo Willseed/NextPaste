@@ -32,9 +32,11 @@ and references back to this contract, with targeted steps listed before any fina
 Run the review, verification, and execution steps listed in [`../quickstart.md`](../quickstart.md).
 List targeted steps first and reserve full governance regression for the final gate only.
 
-## 3. Canonical Governance Execution Lifecycle
+## 3. Canonical Governance Propagation Sequence
 
-The canonical governance execution lifecycle is:
+This contract records downstream governance propagation work using the following execution
+sequence. Governance Lifecycle Status and overall governance readiness remain Constitution-owned and
+are referenced here only through inherited validation requirements.
 1. **Governance Review**: Review the Constitution amendment, shared templates, shared agent instructions, and Copilot instructions to ensure alignment and consistent inheritance.
 2. **Representative Feature Validation**: Validate at least one existing feature (e.g., `specs/011-fix-clip-row-clipping`) to confirm backward compatibility and apply the newly generated feature requirement below to confirm forward-generation correctness.
 3. **Final Governance Regression**: Run full governance regression checks across all shared artifacts.
@@ -47,7 +49,7 @@ must not be skipped merely because the shared artifacts appear internally consis
 
 Representative validation of a newly generated feature is REQUIRED when it can be performed without modifying product code and remains within the governance feature scope. Otherwise, document why representative validation using existing features is sufficient.
 
-### Governance Analysis Accuracy (Constitution v2.6)
+### Governance Analysis Accuracy (Constitution v2.7)
 
 - Analyze findings MUST be classified as exactly one of: **Governance Defect**,
   **Implementation Pending**, or **Verification Pending**.
@@ -56,19 +58,19 @@ Representative validation of a newly generated feature is REQUIRED when it can b
   MUST NOT be treated as governance-readiness blockers.
 - Analyze checkpoint evidence is recorded as:
   1. **Checkpoint A — Classification Accuracy**
-  2. **Checkpoint B — Propagation/Lifecycle Integrity**
+  2. **Checkpoint B — Propagation/Ownership Integrity**
   3. **Checkpoint C — Readiness Gate**
 
 ## 4. Automated Validation Matrix
 
 | Validation area | Execution source | Required evidence | Status / Evidence |
 | --- | --- | --- | --- |
-| Constitution review | `quickstart.md` constitution review entry point | Evidence shows the Constitution amendment includes governance v2.6 rules, versioning, migration guidance, and Sync Impact coverage | **PASS** - Verified Constitution v2.6.0 includes governance evolution, analysis accuracy, propagation order, and lifecycle ownership rules. |
+| Constitution review | `quickstart.md` constitution review entry point | Evidence shows the Constitution amendment includes governance v2.7 rules, versioning, migration guidance, ownership separation, and Sync Impact coverage | **PASS** - Verified Constitution v2.7.0 includes governance evolution, analysis accuracy, propagation order, lifecycle ownership separation, and propagation-progress ownership rules. |
 | Template verification | `quickstart.md` template verification entry point | Evidence shows shared templates encode platform declarations, FR/SC authority, root-cause planning, performance-budget prompts, and centralized validation ownership consistently | **PENDING** - Synchronization updates are applied; verification evidence has not yet been executed/recorded for this pass. |
 | Agent verification | `quickstart.md` agent verification entry point | Evidence shows `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and `speckit.implement` plus Copilot instructions reflect the same governance rules and severities | **PENDING** - Synchronization updates are applied; verification evidence has not yet been executed/recorded for this pass. |
 | Existing-feature representative validation | `quickstart.md` representative existing-feature entry point | Evidence shows the selected existing feature remains compatible with the updated shared governance without requiring silent artifact rewrites | **DEFERRED** - Representative validation was not executed in this synchronization pass and remains deferred until execution evidence is recorded. |
 | Newly generated representative validation | `quickstart.md` representative generated-feature entry point | Evidence shows a disposable newly generated feature inherits the updated governance structure automatically when the representative generated-feature requirement applies, or documents why existing-feature validation is sufficient | **DEFERRED** - Representative validation was not executed in this synchronization pass and remains deferred until execution evidence is recorded. |
-| Analyze enforcement | `quickstart.md` Analyze and representative validation entry points | Evidence shows Checkpoint A/B/C outcomes enforce exact finding classification, propagation/lifecycle integrity, and readiness blocking semantics | **PENDING** - v2.6 Governance Analysis Accuracy checkpoint evidence is not yet executed/recorded for this synchronization pass. |
+| Analyze enforcement | `quickstart.md` Analyze and representative validation entry points | Evidence shows Checkpoint A/B/C outcomes enforce exact finding classification, propagation/ownership integrity, and readiness blocking semantics | **PENDING** - v2.7 Governance Analysis Accuracy checkpoint evidence is not yet executed/recorded for this synchronization pass. |
 | Performance-governance adoption | `quickstart.md` template and representative validation entry points | Evidence shows templates and representative features require measurable budgets only for user-visible or materially impactful internal operations | **PASS** - Verified performance budget constraints apply conditionally based on feature type. |
 | Sync Impact completion | `quickstart.md` full governance regression step | Evidence shows every dependent shared artifact was updated or explicitly deferred with a reason before closure | **DEFERRED** - Sync Impact closure remains deferred until representative validation and closeout evidence are recorded. |
 
@@ -99,7 +101,7 @@ Representative validation of a newly generated feature is REQUIRED when it can b
 
 | Validation area | Scenario reference | Required evidence | Status / Evidence |
 | --- | --- | --- | --- |
-| Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, and Sync Impact are coherent and governance-only | **PASS** - Confirmed Constitution v2.6.0 content is coherent, aligned, and strictly within scope. |
+| Constitution approval readiness | Governance amendment review | Reviewer confirms amendment text, rationale, migration guidance, ownership separation, and Sync Impact are coherent and governance-only | **PASS** - Confirmed Constitution v2.7.0 content is coherent, aligned, and strictly within scope. |
 | Backward compatibility review | Representative existing-feature review | Reviewer confirms the selected existing feature remains compatible without hidden migrations | **DEFERRED** - Representative existing-feature validation has not been executed in this synchronization pass. |
 | Forward-generation review | Representative newly generated feature review when the representative generated-feature requirement applies | Reviewer confirms the disposable feature inherits the new governance rules without manual patching, or records why existing-feature validation is sufficient | **DEFERRED** - Representative generated-feature validation has not been executed in this synchronization pass. |
 | Sync Impact closure | Final governance closeout review | Reviewer confirms every dependent shared artifact is updated or explicitly deferred | **DEFERRED** - Sync Impact closure has not been executed in this synchronization pass and remains deferred until representative validation and closeout evidence are recorded. |
@@ -141,15 +143,15 @@ validation or Sync Impact review.
   3. Any failed representative validation leaves Sync Impact open and creates explicit migration
      follow-up work.
 
-### Current Lifecycle Status (Constitution v2.6 Consistency)
+### Current Propagation Progress (Constitution v2.7 Consistency)
 
-- **Representative Validation**: **DEFERRED** — representative validation has not been executed in this synchronization pass.
-- **Sync Impact Closure**: **DEFERRED** — Sync Impact closeout has not been executed in this synchronization pass and remains lifecycle-owned until representative validation and closeout evidence are recorded.
+- **Representative Validation Dependency**: **DEFERRED** — representative validation evidence has not been executed in this synchronization pass, so downstream propagation closeout remains open.
+- **Sync Impact Propagation**: **DEFERRED** — Sync Impact closeout has not been executed in this synchronization pass; downstream propagation remains open until representative validation and closeout evidence are recorded.
 
 ## 12. Release Readiness Validation
 
 - Confirm the `quickstart.md` entry points were used only to support the canonical governance
-  execution lifecycle defined in this contract.
+  propagation sequence and inherited verification flow referenced by this contract.
 - Confirm targeted governance review, representative validation, full governance regression, and
   Sync Impact closeout are satisfied.
 - Confirm backward compatibility and forward-generation correctness are both recorded.
