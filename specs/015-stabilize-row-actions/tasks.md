@@ -23,9 +23,9 @@ renumber, or redefine FR/SC IDs in this artifact.
 
 **Purpose**: Prepare deterministic UI-test helpers for scoped Pin/Unpin row-action validation.
 
-- [ ] T001 [P] Add or extend native leading/trailing row-action reveal, Pin, Unpin, Delete, and action-availability helpers in `NextPasteUITests/RowRobot.swift` [FR-001, FR-002, FR-011, FR-012, FR-013; SC-003, SC-005, SC-006]
-- [ ] T002 [P] Add deterministic seeded clip fixtures for pinned/unpinned relocation groups, repeated scrolling, and search-filtered row-action scenarios in `NextPasteUITests/UITestFixtures.swift` [FR-001, FR-004, FR-005, FR-012, FR-013; SC-003, SC-004, SC-006]
-- [ ] T003 [P] Add reusable row-order, app-running/no-crash, native-action-present, and action-to-final-order timing assertions in `NextPasteUITests/UITestAssertions.swift` [FR-001, FR-002, FR-004, FR-005; SC-003, SC-004, SC-005]
+- [X] T001 [P] Add or extend native leading/trailing row-action reveal, Pin, Unpin, Delete, and action-availability helpers in `NextPasteUITests/RowRobot.swift` [FR-001, FR-002, FR-011, FR-012, FR-013; SC-003, SC-005, SC-006]
+- [X] T002 [P] Add deterministic seeded clip fixtures for pinned/unpinned relocation groups, repeated scrolling, and search-filtered row-action scenarios in `NextPasteUITests/UITestFixtures.swift` [FR-001, FR-004, FR-005, FR-012, FR-013; SC-003, SC-004, SC-006]
+- [X] T003 [P] Add reusable row-order, app-running/no-crash, native-action-present, and action-to-final-order timing assertions in `NextPasteUITests/UITestAssertions.swift` [FR-001, FR-002, FR-004, FR-005; SC-003, SC-004, SC-005]
 
 ---
 

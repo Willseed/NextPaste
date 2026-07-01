@@ -393,6 +393,104 @@ struct RowRobot {
     }
 
     @discardableResult
+    func assertPinActionAvailable(
+        for clipText: String,
+        expectedLabel: String = "Pin",
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = revealPinActionWithRightSwipe(
+            for: clipText,
+            expectedLabel: expectedLabel,
+            file: file,
+            line: line
+        )
+        assertActionAvailability(
+            button,
+            identifier: Accessibility.pinButtonIdentifier,
+            expectedLabel: expectedLabel,
+            file: file,
+            line: line
+        )
+        return button
+    }
+
+    @discardableResult
+    func assertUnpinActionAvailable(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        assertPinActionAvailable(
+            for: clipText,
+            expectedLabel: "Unpin",
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func assertDeleteActionAvailable(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = revealDeleteActionWithLeftSwipe(for: clipText, file: file, line: line)
+        assertActionAvailability(
+            button,
+            identifier: Accessibility.deleteButtonIdentifier,
+            expectedLabel: "Delete",
+            file: file,
+            line: line
+        )
+        return button
+    }
+
+    @discardableResult
+    func assertImagePinActionAvailable(
+        forThumbnailDescription thumbnailDescription: String,
+        expectedLabel: String = "Pin",
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: thumbnailDescription,
+            expectedLabel: expectedLabel,
+            file: file,
+            line: line
+        )
+        assertActionAvailability(
+            button,
+            identifier: Accessibility.pinButtonIdentifier,
+            expectedLabel: expectedLabel,
+            file: file,
+            line: line
+        )
+        return button
+    }
+
+    @discardableResult
+    func assertImageDeleteActionAvailable(
+        forThumbnailDescription thumbnailDescription: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: thumbnailDescription,
+            file: file,
+            line: line
+        )
+        assertActionAvailability(
+            button,
+            identifier: Accessibility.deleteButtonIdentifier,
+            expectedLabel: "Delete",
+            file: file,
+            line: line
+        )
+        return button
+    }
+
+    @discardableResult
     func delete(
         _ clipText: String,
         file: StaticString = #filePath,
@@ -595,5 +693,17 @@ struct RowRobot {
         let start = element.coordinate(withNormalizedOffset: startOffset)
         let end = element.coordinate(withNormalizedOffset: endOffset)
         start.press(forDuration: 0.05, thenDragTo: end)
+    }
+
+    private func assertActionAvailability(
+        _ button: XCUIElement,
+        identifier: String,
+        expectedLabel: String,
+        file: StaticString,
+        line: UInt
+    ) {
+        XCTAssertEqual(button.identifier, identifier, file: file, line: line)
+        XCTAssertTrue(button.isHittable, "Expected row action button to be hittable", file: file, line: line)
+        UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
     }
 }

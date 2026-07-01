@@ -464,6 +464,113 @@ enum UITestAssertions {
         )
     }
 
+    static func assertRowOrder(
+        _ leadingElement: XCUIElement,
+        appearsBefore trailingElement: XCUIElement,
+        timeout: TimeInterval = defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assert(leadingElement, appearsAbove: trailingElement, timeout: timeout, file: file, line: line)
+    }
+
+    static func assertAppRunningWithoutCrash(
+        _ app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(
+            app.state,
+            .runningForeground,
+            "Expected app to remain running in the foreground during row-action validation",
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    static func assertNativeRowActionPresent(
+        _ actionButton: XCUIElement,
+        identifier: String,
+        expectedLabel: String,
+        timeout: TimeInterval = defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let button = assertExists(
+            actionButton,
+            "Expected native row action button \(identifier)",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(button.identifier, identifier, file: file, line: line)
+        XCTAssertTrue(button.isHittable, "Expected native row action to be hittable", file: file, line: line)
+        assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
+        return button
+    }
+
+    @discardableResult
+    static func assertActionToFinalOrderLatency(
+        upperElement: XCUIElement,
+        appearsAbove lowerElement: XCUIElement,
+        startedAt startTime: Date,
+        budget: TimeInterval,
+        timeout: TimeInterval = defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> TimeInterval {
+        XCTAssertTrue(
+            waitFor(upperElement, toAppearAbove: lowerElement, timeout: timeout),
+            "Expected final row order to settle after action",
+            file: file,
+            line: line
+        )
+        let elapsed = Date().timeIntervalSince(startTime)
+        XCTAssertLessThanOrEqual(
+            elapsed,
+            budget,
+            "Expected action-to-final-order latency to be within \(budget)s, observed \(elapsed)s",
+            file: file,
+            line: line
+        )
+        return elapsed
+    }
+
+    static func assertActionToFinalOrderBudgetSamples(
+        _ samples: [TimeInterval],
+        p95Budget: TimeInterval,
+        maxBudget: TimeInterval,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertFalse(samples.isEmpty, "Expected at least one timing sample", file: file, line: line)
+        guard samples.isEmpty == false else {
+            return
+        }
+
+        let sorted = samples.sorted()
+        let p95Rank = (sorted.count * 95 + 99) / 100
+        let p95Index = max(0, min(sorted.count - 1, p95Rank - 1))
+        let p95 = sorted[p95Index]
+        let maxObserved = sorted.last ?? 0
+
+        XCTAssertLessThanOrEqual(
+            p95,
+            p95Budget,
+            "Expected p95 action-to-final-order latency <= \(p95Budget)s, observed \(p95)s",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThanOrEqual(
+            maxObserved,
+            maxBudget,
+            "Expected max action-to-final-order latency <= \(maxBudget)s, observed \(maxObserved)s",
+            file: file,
+            line: line
+        )
+    }
+
     static func waitFor(
         _ upperElement: XCUIElement,
         toAppearAbove lowerElement: XCUIElement,

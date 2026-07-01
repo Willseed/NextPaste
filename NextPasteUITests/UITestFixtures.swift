@@ -70,6 +70,29 @@ enum UITestFixtures {
         static let thirdPinMiddle = "Third pin crash middle clip"
         static let thirdPinNewest = "Third pin crash newest clip"
         static let recentlyActiveDismissed = "Recently active dismissed action clip"
+
+        // Deterministic seed groups for Feature 015 regression scaffolding.
+        static let relocationPinnedGroupSeed = [
+            olderPinTarget,
+            thirdPinMiddle
+        ]
+        static let relocationUnpinnedGroupSeed = [
+            newerUnpinned,
+            thirdPinOlder,
+            thirdPinNewest
+        ]
+        static let repeatedScrollingPinSeed = [
+            thirdPinOlder,
+            thirdPinMiddle,
+            thirdPinNewest,
+            recentlyActiveDismissed
+        ]
+        static let searchFilteredRowActionSeed = [
+            filteredCopyTarget,
+            filteredPinTarget,
+            filteredDeleteTarget,
+            filteredCompanion
+        ]
     }
 
     enum ImageClipboard {
