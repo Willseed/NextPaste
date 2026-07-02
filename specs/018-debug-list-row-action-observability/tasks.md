@@ -81,6 +81,20 @@
 
 ---
 
+## Phase 3A: Instrumentation Gate Expansion (Feature 017 Follow-up)
+
+**Purpose**: Extend the US1 debug trace with remaining public AppKit, row-view, row-action, and display-cycle observations needed by the Feature 017 Instrumentation Gate.
+
+- [X] T054 [US1] Expand public NSTableView discovery, stable table identity, lifecycle snapshots, and public-boundary availability markers in `NextPaste/Debug/RowActionAppKitObserver.swift` and `NextPaste/HomeView.swift`. [FR-004, FR-005, FR-007, FR-011, SC-001, SC-002]
+- [X] T055 [US1] Add NSTableRowView ObjectIdentifier correlation plus snapshot-diff creation, reuse, replacement, will-display, did-end-display, and not-observed markers in `NextPaste/Debug/RowActionAppKitObserver.swift`. [FR-004, FR-007, FR-011, SC-001, SC-002]
+- [X] T056 [US1] Add row-action reveal/dismissal availability and action-tap row identity correlation in `NextPaste/HomeView.swift` and `NextPaste/Debug/RowActionAppKitObserver.swift`. [FR-005, FR-007, FR-011, SC-001, SC-002]
+- [X] T057 [US1] Add CATransaction scheduling and display-cycle snapshot markers with row identity correlation in `NextPaste/Debug/RowActionTransactionObserver.swift` and `NextPaste/Debug/RowActionAppKitObserver.swift`. [FR-006, FR-007, FR-011, SC-001]
+- [X] T058 [US1] Extend targeted trace UI assertions for AppKit table, row-view, row-action availability, and transaction scheduling markers in `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/RowActionTraceLogParser.swift`. [FR-004, FR-005, FR-006, FR-007, FR-010, FR-011, SC-001, SC-002]
+
+**Checkpoint**: Feature 017 has expanded debug-only public-API observability without US2, US3, or release-validation scope.
+
+---
+
 ## Phase 4: User Story 2 - Prove Release Behavior Is Unchanged (Priority: P2)
 
 **Goal**: Prove tracing is debug-only, disabled or absent in release builds, privacy-preserving, lightweight, and non-behavioral.

@@ -137,7 +137,8 @@ enum RowActionTraceLogParser {
         category: String,
         event: String,
         action: String? = nil,
-        requiresClipID: Bool = false
+        requiresClipID: Bool = false,
+        requiresRowViewID: Bool = false
     ) -> Bool {
         records.contains { record in
             guard record.category == category,
@@ -146,6 +147,10 @@ enum RowActionTraceLogParser {
             }
 
             if requiresClipID, record.clip_id == nil {
+                return false
+            }
+
+            if requiresRowViewID, record.row_view_id == nil {
                 return false
             }
 

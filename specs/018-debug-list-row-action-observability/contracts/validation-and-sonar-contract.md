@@ -112,7 +112,8 @@ No user-facing performance budget is introduced because this is debug-only obser
 
 ## 11. Representative Validation
 
-Representative validation is pending until implementation evidence exists.
+Representative validation remains pending until all required implementation, release-disabled,
+Feature 017 consumption, and release-readiness evidence exists.
 
 Required representative checks:
 
@@ -120,6 +121,19 @@ Required representative checks:
 - One row-action UI workflow with tracing enabled.
 - One release-disabled check.
 - One Feature 017 trace-consumption check.
+
+### Interim Phase 3A Evidence
+
+This evidence records the debug-only instrumentation expansion completed after US1. It does not
+complete release-readiness validation, US2 validation, US3 trace-consumption validation, SonarQube
+evidence, or the final representative validation gate.
+
+| Date | Scope | Evidence |
+|---|---|---|
+| 2026-07-02 | Feature 017 Instrumentation Gate expansion | `xcodebuild build -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -quiet` passed with only pre-existing `ClipboardMonitor` actor-isolation warnings. |
+| 2026-07-02 | Targeted trace UI validation | `xcodebuild test -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests/ClipRowActionsUITests/testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt -quiet` passed. |
+| 2026-07-02 | Sample trace | `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-0EE955DB-06AD-4C31-8287-F0AE5C4A9752.jsonl` contained 220 ordered JSONL records with one table identity, two row-view identities, AppKit table snapshots, row-view reuse/replacement/end-display markers, row-count and visible-range changes, row-action taps with row-view IDs, row-action visibility snapshots/changes, SwiftData mutation/save boundaries, query/list snapshots, transaction scheduling/completion, and display-cycle snapshots. |
+| 2026-07-02 | Public API boundary | The trace records `reload-data.unavailable`, `note-number-of-rows-changed.unavailable`, `updates.begin.unavailable`, `updates.end.unavailable`, `delegate.callbacks.unavailable`, and `dismissal-start.unavailable` because direct observation of those boundaries would require delegate replacement, subclass control, swizzling, private selectors, or private AppKit API. |
 
 ## 12. Release Readiness Validation
 

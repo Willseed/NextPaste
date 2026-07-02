@@ -330,6 +330,71 @@ final class ClipRowActionsUITests: UITestCase {
             )
             && RowActionTraceLogParser.containsEvent(
                 records,
+                category: "appkit-table",
+                event: "table.located"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "table.snapshot"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "row-view.visible",
+                requiresClipID: true,
+                requiresRowViewID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "row-view.will-display",
+                requiresClipID: true,
+                requiresRowViewID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "reload-data.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "note-number-of-rows-changed.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "updates.begin.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "updates.end.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "appkit-table",
+                event: "delegate.callbacks.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "dismissal-start.unavailable"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "transaction",
+                event: "display-cycle.snapshot"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "transaction",
+                event: "completion.scheduled",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
                 category: "transaction",
                 event: "completion",
                 requiresClipID: true

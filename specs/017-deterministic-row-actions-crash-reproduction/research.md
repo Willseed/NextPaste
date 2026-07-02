@@ -26,6 +26,9 @@ necessary reproduction condition. Otherwise it remains `Unknown`.
 - `specs/015-stabilize-row-actions/spec.md`
 - `specs/016-investigate-list-row-recreation-crash/research.md`
 - `specs/017-deterministic-row-actions-crash-reproduction/spec.md`
+- `specs/018-debug-list-row-action-observability/spec.md`
+- `specs/018-debug-list-row-action-observability/research.md`
+- `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-F1AE0632-83B5-4504-A05A-DAB98A131D86.jsonl`
 
 ## Historical Evidence Summary
 
@@ -46,6 +49,89 @@ necessary reproduction condition. Otherwise it remains `Unknown`.
   without a crash. It rejects "Pin/Unpin/Delete action type alone always crashes" and rejects
   "`@Query` plus save-backed `List` update alone is sufficient" for those observed runs.
 - Feature 016 leaves planning blocked because no crash-positive current reproduction was captured.
+- Feature 018 trace `nextpaste-row-action-trace-F1AE0632-83B5-4504-A05A-DAB98A131D86.jsonl`
+  records one completed, non-crashing trace-enabled session with synchronized row-action,
+  SwiftData, inferred visible query/list, SwiftUI row, AppKit-unavailable, and transaction events.
+  It improves observability for a no-crash control but is not crash-positive evidence.
+
+## Feature 018 Trace Evidence Matrix
+
+Trace source:
+`/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-F1AE0632-83B5-4504-A05A-DAB98A131D86.jsonl`
+
+Trace summary:
+
+- Session: `03E76DC3-8E3A-432D-84B7-F8D71A9D65A4`
+- Records: 44 JSON Lines events
+- Outcome: `session.completed`; no crash or assertion event appears in the trace.
+- Categories present: `appkit-table`, `list`, `outcome`, `query`, `row-action`, `swiftdata`,
+  `swiftui-row`, and `transaction`.
+- Clip IDs observed:
+  - `80B6C68E-DB37-4D70-9FEB-65EFE09FD5C4`: Pin then Unpin target.
+  - `4DC1E230-49D6-4EFF-804E-20107620EB0F`: Delete target.
+
+Ordered event timeline:
+
+| Sequence range | Recorded events | Evidence class |
+|---|---|---|
+| 1 | `outcome.session.started` | Direct session start |
+| 2-13 | Initial `query.visible.snapshot`, `list.visible.snapshot`, `appkit-table.table.unavailable`, and `swiftui-row.row.appear` events while visible clips move from 0 to 2 | Inferred visible query/list publication; direct SwiftUI row appear; AppKit table unavailable |
+| 14-23 | Pin action on clip `80B6C68E-DB37-4D70-9FEB-65EFE09FD5C4`: `row-action.action.tap`, `row-action.dismissed.pending-pin-ready`, `pin.mutation.before`, `pin.mutation.after`, `pin.save.before`, `pin.save.after`, visible `query`/`list` snapshots, and two `transaction.completion` events | Direct row-action tap and SwiftData mutation/save; inferred dismissal, visible publication/list refresh, and transaction completion |
+| 24-33 | Unpin action on the same clip: `row-action.action.tap`, `row-action.dismissed.pending-pin-ready`, `unpin.mutation.before`, `unpin.mutation.after`, `unpin.save.before`, `unpin.save.after`, visible `query`/`list` snapshots, and two `transaction.completion` events | Direct row-action tap and SwiftData mutation/save; inferred dismissal, visible publication/list refresh, and transaction completion |
+| 34-43 | Delete action on clip `4DC1E230-49D6-4EFF-804E-20107620EB0F`: `row-action.action.tap`, `delete.mutation.before`, `delete.mutation.after`, `delete.save.before`, `delete.save.after`, visible `query`/`list` snapshots, `swiftui-row.row.disappear`, and two `transaction.completion` events | Direct row-action tap, SwiftData mutation/save, and SwiftUI row disappear; inferred visible publication/list refresh and transaction completion |
+| 44 | `outcome.session.completed` | Direct no-crash session completion |
+
+Observed ordering from the trace:
+
+- For Pin, the direct row-action tap (`seq` 14) precedes inferred dismissal readiness (`seq` 15),
+  SwiftData mutation (`seq` 16-17), save (`seq` 18-19), inferred visible query/list snapshots
+  (`seq` 20-21), and inferred transaction completions (`seq` 22-23).
+- For Unpin, the direct row-action tap (`seq` 24) precedes inferred dismissal readiness (`seq` 25),
+  SwiftData mutation (`seq` 26-27), save (`seq` 28-29), inferred visible query/list snapshots
+  (`seq` 30-31), and inferred transaction completions (`seq` 32-33).
+- For Delete, the direct row-action tap (`seq` 34) precedes SwiftData mutation (`seq` 35-36), save
+  (`seq` 37-38), inferred visible query/list snapshots (`seq` 39-40), direct SwiftUI row
+  disappearance (`seq` 41), and inferred transaction completions (`seq` 42-43).
+- The trace records visible list ordering changes by clip ID after Pin, Unpin, and Delete. It does
+  not record a direct `@Query` framework publication callback.
+
+Evidence matrix from this trace:
+
+| Evidence target | Trace evidence | Classification for this trace | Remaining limitation |
+|---|---|---|---|
+| Row-action tap | `row-action.action.tap` for Pin (`seq` 14), Unpin (`seq` 24), and Delete (`seq` 34), each with a clip ID | Directly observed in a non-crashing trace | Reveal progress, hardware gesture source, and native teardown state are not recorded |
+| SwiftData mutation | Pin, Unpin, and Delete mutation before/after events with clip IDs | Directly observed in a non-crashing trace | Pin/order sort-key values beyond `isPinned` are not recorded |
+| Save | Pin, Unpin, and Delete save before/after events with clip IDs | Directly observed in a non-crashing trace | No no-save comparator and no crash-positive save timeline |
+| `@Query` publication | `query.visible.snapshot` events with visible clip ID order | Inferred visible publication/order evidence in a non-crashing trace | No direct `@Query` callback; no crash-positive publication timeline |
+| SwiftUI `List` update | `list.visible.snapshot` events with visible clip ID order | Inferred visible list update evidence in a non-crashing trace | No native diff operation such as move, reload, replacement, or full diff |
+| SwiftUI row events | `swiftui-row.row.appear` for both clips and `swiftui-row.row.disappear` for the deleted clip | Directly observed in a non-crashing trace | No SwiftUI row disappearance for Pin/Unpin in this trace |
+| `NSTableView` row update | `appkit-table.table.unavailable` with reason `resolver.nil` | Explicitly unavailable in this trace | No native update classification, row index, or row-view identity |
+| `NSTableRowView` lifecycle | No `row-view.visible` or row-view identity event appears | Not observed in this trace | Public table resolver did not provide row-view evidence |
+| Native row-action lifecycle | Direct action taps and inferred `dismissed.pending-pin-ready` for Pin/Unpin | Partially observed in a non-crashing trace | Reveal, visibility, row action progress, and teardown completion are not directly recorded |
+| CATransaction/update completion | `transaction.completion` after action tap and save phases for Pin, Unpin, and Delete | Inferred completion markers in a non-crashing trace | Not aligned to an assertion stack and not direct AppKit private update-cycle evidence |
+
+Missing observability recorded from this trace:
+
+- No crash-positive assertion event is present; the session completed normally.
+- No direct `@Query` publication callback is present; only visible query-result snapshots are
+  available.
+- No native `NSTableView` row update classification is present; the trace records AppKit table
+  observation as unavailable.
+- No `NSTableRowView` identity or lifecycle event is present.
+- No native row-action reveal progress, hardware swipe source, or private teardown boundary is
+  present.
+- No animation completion event is present separate from inferred CATransaction completion.
+- No comparator trace without save, without visible update, or with a crash-positive assertion is
+  present.
+
+Deterministic reproduction status after consuming this trace:
+
+- Deterministic reproduction is closer only in the observability sense: one non-crashing row-action
+  attempt now has a synchronized ordered trace for several previously missing event classes.
+- Deterministic reproduction is not established: the trace is not crash-positive and does not
+  identify required or not-required reproduction conditions.
+- Feature 017 Planning Gate remains **BLOCKED** until a crash-positive trace or matched
+  crash/no-crash evidence resolves the required conditions.
 
 ## Status Vocabulary
 
@@ -199,21 +285,25 @@ it produces a repeatable crash and matched controls identify which candidate ele
 ## Instrumentation Gate
 
 Before planning, the observable events required to classify a crash-positive reproduction must be
-available. Current historical evidence does not satisfy this gate.
+available. Current evidence now includes one synchronized non-crashing trace from Feature 018, but
+the gate still requires crash-positive or matched crash/no-crash evidence before deterministic
+planning can proceed.
 
 | Observable event | Current availability | Required evidence before planning |
 |---|---|---|
-| SwiftData mutation | Partially available from source inspection only | Timestamped mutation event with row ID and before/after pin/order state in the reproduction timeline |
-| `@Query` publication | Not available in crash-positive evidence | Timestamped publication or visible query-result order change tied to the same row/action attempt |
-| SwiftUI `List` update | Partially inferable from visible UI changes only | Observable visible-row update with before/after row IDs, indexes, and update reason |
-| `NSTableView` row update | Not available | Native update classification such as move, remove/insert, reload, replacement, full diff, or private/unknown operation |
-| `NSTableRowView` lifecycle | Partially available in Feature 015 no-crash probes only | Row-view identity/lifecycle evidence for the crash-positive attempt and matched controls |
-| Native row-action lifecycle | Partially available through no-crash visibility observations only | Reveal, activation, dismissal, teardown, and action visibility state aligned to mutation and crash timing |
-| CATransaction completion | Not available | Transaction or update-cycle completion boundary aligned to the row-action lifecycle and assertion stack |
+| SwiftData mutation | Directly available in the Feature 018 non-crashing trace for Pin, Unpin, and Delete mutation/save boundaries with clip IDs | Crash-positive or matched crash/no-crash timestamped mutation event with row ID and before/after pin/order state in the reproduction timeline |
+| `@Query` publication | Inferred visible query-result snapshots are available in the Feature 018 non-crashing trace; no direct `@Query` callback is recorded | Crash-positive or matched crash/no-crash timestamped publication or visible query-result order change tied to the same row/action attempt |
+| SwiftUI `List` update | Inferred visible list snapshots with clip ID order are available in the Feature 018 non-crashing trace | Crash-positive or matched crash/no-crash observable visible-row update with before/after row IDs, indexes, and update reason |
+| `NSTableView` row update | Explicitly unavailable in the Feature 018 trace: `appkit-table.table.unavailable` with reason `resolver.nil`; no native update classification is recorded | Crash-positive or matched crash/no-crash native update classification such as move, remove/insert, reload, replacement, full diff, or explicitly documented unavailable operation |
+| `NSTableRowView` lifecycle | Not observed in the Feature 018 trace; no row-view identity event appears | Row-view identity/lifecycle evidence for the crash-positive attempt and matched controls, or explicit unavailable evidence from the same attempt |
+| Native row-action lifecycle | Direct action taps for Pin, Unpin, and Delete are available; Pin/Unpin dismissal readiness is inferred; reveal/progress/teardown state remains missing | Crash-positive or matched crash/no-crash reveal, activation, dismissal, teardown, and action visibility state aligned to mutation and crash timing |
+| CATransaction completion | Inferred transaction completions are available after action tap and save phases in the Feature 018 non-crashing trace | Crash-positive or matched crash/no-crash transaction or update-cycle completion boundary aligned to the row-action lifecycle and assertion stack |
 
-Instrumentation gate result: **Blocked**. The minimum reproduction research cannot move to
-planning until these events are observable in at least one crash-positive attempt or the lack of
-observability is documented as the reason deterministic planning remains blocked.
+Instrumentation gate result: **Partially improved but still blocked**. The supplied trace proves
+that several previously missing event classes can be synchronized in a non-crashing attempt. The
+gate remains blocked because the trace is not crash-positive and still lacks native AppKit row
+update classification, `NSTableRowView` lifecycle, direct `@Query` publication, native
+reveal/progress/teardown state, and assertion-aligned transaction evidence.
 
 ## Planning Gate
 
@@ -221,12 +311,12 @@ Planning remains blocked.
 
 | Gate | Status | Evidence |
 |---|---|---|
-| Observable classification events available | Blocked | The Instrumentation Gate is not satisfied: crash-positive evidence lacks synchronized SwiftData mutation, `@Query` publication, SwiftUI `List` update, `NSTableView` row update, `NSTableRowView` lifecycle, native row-action lifecycle, and CATransaction completion signals. |
-| Deterministic reproduction exists | Blocked | No crash-positive current reproduction is documented in Features 014-016 or this research phase. |
+| Observable classification events available | Blocked | The Feature 018 trace supplies synchronized non-crashing evidence for SwiftData mutation/save, inferred visible query/list snapshots, SwiftUI row events, row-action taps, and inferred transaction completions. It is not crash-positive and lacks native AppKit row update classification, `NSTableRowView` lifecycle, direct `@Query` publication, and teardown/assertion alignment. |
+| Deterministic reproduction exists | Blocked | No crash-positive current reproduction is documented in Features 014-016, Feature 017, or the supplied Feature 018 trace. |
 | Required conditions identified | Blocked | Every suspected required condition lacks a crash-positive reproduction plus matched absence control. |
 | Non-required conditions identified | Blocked | Some conditions are rejected as sufficient in observed controls, but no crash-positive case exists to prove they are not required. |
 | Smallest reproduction documented | Blocked | The "third Pin" path is a candidate only; it has not been reduced or confirmed. |
-| At least one automation path exists or is proven impossible | Blocked | Automation cannot be evaluated until a deterministic manual or instrumented baseline exists. |
+| At least one automation path exists or is proven impossible | Blocked | The trace shows an automated non-crashing trace capture path exists, but automation equivalence for a deterministic crash baseline cannot be evaluated until a crash-positive baseline exists. |
 
 ## Research Summary
 
@@ -235,11 +325,17 @@ actions" scenario, but it is not deterministic evidence. Feature 015 and Feature
 negative controls: row relocation alone, row reuse alone, filtering/removal alone, Delete as an
 equivalent hazard, and simple Pin/Unpin/Delete action type are all insufficient in observed runs.
 
+The supplied Feature 018 trace makes deterministic reproduction research closer only by improving
+the synchronized observability available for a no-crash control. It records ordered Pin, Unpin, and
+Delete row-action taps, SwiftData mutation/save boundaries, inferred visible query/list snapshots,
+SwiftUI row lifecycle events, and inferred transaction completions. It also records missing AppKit
+table observability explicitly.
+
 No condition can currently be marked `Required` or `Not Required` because there is no
-crash-positive current reproduction. The next research phase must first produce a crash-positive
-baseline, then reduce it through clip-count, pinned-count, input-device, scroll/reuse,
-row-relocation, action-type, search/filter, save/query/publication, List diff, and lifecycle
-controls.
+crash-positive current reproduction. The Feature 017 Planning Gate remains **BLOCKED**. The next
+research phase must first produce a crash-positive baseline, then reduce it through clip-count,
+pinned-count, input-device, scroll/reuse, row-relocation, action-type, search/filter,
+save/query/publication, List diff, and lifecycle controls.
 
 No implementation, architecture, workaround, fixed delay, or production AppKit introspection path
 is recommended by this research.
