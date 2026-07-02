@@ -21,7 +21,25 @@ state feedback loop identified by Feature 017: `RowActionTableViewResolver.updat
 `viewDidMove*` calls `resolve()`, `resolve()` calls `observeRowActions(on:)`, synchronous
 `HomeView` `@State` writes invalidate the body, and invalidation can trigger another resolver
 update. The fix is scoped to removing or isolating that unsafe state feedback from the resolver
-update path while preserving current native row-action behavior.
+update path while preserving current native row-action behavior. Current evidence requires
+removing or isolating the named resolver-originating `@State` writes that participate in the
+recursive update chain; it does not prove that every unrelated synchronous state write elsewhere is
+part of the row-action failure path.
+
+## Clarifications
+
+### Session 2026-07-02
+
+- Q: Does the evidence require eliminating every synchronous `@State` write originating from
+  `updateNSView`, or only the writes participating in the recursive update chain? → A: Only the
+  identified recursive-chain writes. Current evidence supports removing or isolating synchronous
+  resolver-originating `HomeView` `@State` writes that can invalidate the body and re-enter the
+  resolver path; it does not prove unrelated synchronous state writes are causal.
+- Q: After removing synchronous `@State` writes, where should debug observation ownership live? →
+  A: Non-State storage. Current evidence supports moving debug observation ownership out of
+  SwiftUI `@State`; it does not require a specific concrete owner such as an
+  `NSViewRepresentable` coordinator, and it does not support an `ObservableObject` publisher if it
+  would publish during view update.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -147,6 +165,12 @@ SwiftUI `@State` writes during `updateNSView` or `viewDidMove*`.
 - The risky state writes in scope are `areRowActionsVisible`, `rowActionsObservation`,
   `observedRowActionsTableViewID`, `hasEmittedUnavailableTableObservation`, and
   `appKitObservation`.
+- Current evidence does not require eliminating unrelated synchronous state writes outside the
+  identified resolver feedback chain. Any expansion beyond the named resolver-originating
+  `HomeView` state writes requires new evidence.
+- Debug observation ownership should use non-State storage so observation lifecycle, trace
+  correlation, and AppKit snapshots do not invalidate SwiftUI views while the resolver is updating
+  or moving.
 - This feature targets the resolver feedback loop only. It must not broaden into global
   `@Query` synchronization, global SwiftData publication coordination, timing delays, or list
   replacement.
@@ -157,15 +181,16 @@ SwiftUI `@State` writes during `updateNSView` or `viewDidMove*`.
 
 ### Functional Requirements
 
-- **FR-001**: The resolver path MUST NOT synchronously mutate `HomeView` `@State` during
-  `updateNSView` or `viewDidMove*`.
+- **FR-001**: The resolver path MUST NOT synchronously mutate the identified recursive-chain
+  `HomeView` `@State` values during `updateNSView` or `viewDidMove*`.
 - **FR-002**: Row-action visibility observation MUST remain available without causing SwiftUI state
   mutation during view update.
 - **FR-003**: Pin/Unpin MUST remain functional.
 - **FR-004**: Delete MUST remain functional.
 - **FR-005**: Native macOS swipeActions MUST remain available.
-- **FR-006**: Debug trace instrumentation MUST remain debug-only and must not introduce SwiftUI
-  state writes during view update.
+- **FR-006**: Debug trace instrumentation MUST remain debug-only, MUST keep resolver-adjacent
+  debug observation ownership in non-State storage, and MUST NOT introduce SwiftUI state writes
+  during view update.
 - **FR-007**: Existing ordering semantics MUST remain unchanged.
 - **FR-008**: The fix MUST remove or reduce `Modifying state during view update` warnings in the
   row-action scenario, with targeted validation recording the observed warning outcome.
@@ -191,6 +216,8 @@ SwiftUI `@State` writes during `updateNSView` or `viewDidMove*`.
   keeps each group newest-first.
 - **Debug Trace Session**: A debug-only, opt-in Feature 018 trace session that records row-action
   events and related observable state without changing release behavior.
+- **Debug Observation Ownership**: Non-State storage that owns debug observation lifecycle and
+  AppKit observation metadata without publishing SwiftUI view updates from the resolver path.
 - **Target Warning/Assertion Evidence**: The row-action scenario evidence consisting of
   `Modifying state during view update`, `layoutSubtreeIfNeeded` recursion, and
   `rowActionsGroupView should be populated` messages.
@@ -262,6 +289,9 @@ feature-specific validation scope must include:
 - "HomeView `@State`" in this feature refers to the risky state writes named in the user request:
   `areRowActionsVisible`, `rowActionsObservation`, `observedRowActionsTableViewID`,
   `hasEmittedUnavailableTableObservation`, and `appKitObservation`.
+- "Non-State storage" means ownership that does not itself publish SwiftUI view invalidation when
+  debug observation state changes. A later plan may choose a concrete owner, but this clarification
+  selects the ownership property, not a specific implementation type.
 - Feature 018 trace behavior should be preserved where it can be preserved without reintroducing
   the unsafe resolver-path state feedback loop.
 - No storage schema, data retention, clipboard capture, network, sync, or privacy behavior changes
