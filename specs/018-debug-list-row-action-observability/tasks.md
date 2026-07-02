@@ -38,13 +38,13 @@
 
 **Critical**: No user story work should begin until this phase is complete.
 
-- [ ] T008 Implement stable trace event encoding in `NextPaste/Debug/RowActionTraceEvent.swift` with required fields `schema`, `session`, `seq`, `t_mono_ns`, `category`, `event`, and `directness`. [FR-007, FR-010, SC-001]
-- [ ] T009 Implement monotonic timestamp and sequence generation in `NextPaste/Debug/RowActionTraceClock.swift`. [FR-007, SC-001]
-- [ ] T010 Implement debug-only runtime opt-in and release-disabled/no-op behavior in `NextPaste/Debug/RowActionTraceGate.swift`. [FR-008, FR-009, SC-003]
-- [ ] T011 Implement trace session lifecycle and event emission coordination in `NextPaste/Debug/RowActionTraceSession.swift`. [FR-007, FR-009, FR-010, SC-001]
-- [ ] T012 Implement JSON Lines sink output and partial-trace-safe flushing behavior in `NextPaste/Debug/RowActionTraceSink.swift`. [FR-010, SC-001]
-- [ ] T013 Implement clipboard payload exclusion checks in `NextPaste/Debug/RowActionTracePrivacy.swift`. [FR-007, FR-010, SC-003, SC-005]
-- [ ] T014 Register foundational unit test file references in `NextPaste.xcodeproj/project.pbxproj`. [FR-007, FR-008, FR-010, SC-001, SC-003]
+- [X] T008 Implement stable trace event encoding in `NextPaste/Debug/RowActionTraceEvent.swift` with required fields `schema`, `session`, `seq`, `t_mono_ns`, `category`, `event`, and `directness`. [FR-007, FR-010, SC-001]
+- [X] T009 Implement monotonic timestamp and sequence generation in `NextPaste/Debug/RowActionTraceClock.swift`. [FR-007, SC-001]
+- [X] T010 Implement debug-only runtime opt-in and release-disabled/no-op behavior in `NextPaste/Debug/RowActionTraceGate.swift`. [FR-008, FR-009, SC-003]
+- [X] T011 Implement trace session lifecycle and event emission coordination in `NextPaste/Debug/RowActionTraceSession.swift`. [FR-007, FR-009, FR-010, SC-001]
+- [X] T012 Implement JSON Lines sink output and partial-trace-safe flushing behavior in `NextPaste/Debug/RowActionTraceSink.swift`. [FR-010, SC-001]
+- [X] T013 Implement clipboard payload exclusion checks in `NextPaste/Debug/RowActionTracePrivacy.swift`. [FR-007, FR-010, SC-003, SC-005]
+- [X] T014 Register foundational unit test file references in `NextPaste.xcodeproj/project.pbxproj`. [FR-007, FR-008, FR-010, SC-001, SC-003]
 
 **Checkpoint**: Foundation ready; user story implementation can begin.
 

@@ -18,6 +18,8 @@ final class RowActionTraceSession {
     let enabledBy: RowActionTraceEnablementSource
     let schemaVersion: String
     let clock: RowActionTraceClock
+    private let sequence: RowActionTraceSequence
+    private let sink: any RowActionTraceSink
     private(set) var status: Status
 
     init(
@@ -25,12 +27,61 @@ final class RowActionTraceSession {
         enabledBy: RowActionTraceEnablementSource = .debug,
         schemaVersion: String = RowActionTraceSchema.current,
         clock: RowActionTraceClock = RowActionTraceClock(),
+        sequence: RowActionTraceSequence = RowActionTraceSequence(),
+        sink: any RowActionTraceSink = RowActionTraceNoopSink(),
         status: Status = .active
     ) {
         self.sessionID = sessionID
         self.enabledBy = enabledBy
         self.schemaVersion = schemaVersion
         self.clock = clock
+        self.sequence = sequence
+        self.sink = sink
+        self.status = status
+    }
+
+    @discardableResult
+    func emit(
+        category: RowActionTraceCategory,
+        event: String,
+        directness: RowActionTraceDirectness,
+        clipID: String? = nil,
+        rowIndex: Int? = nil,
+        rowViewID: String? = nil,
+        state: [String: RowActionTraceStateValue]? = nil,
+        note: String? = nil
+    ) -> RowActionTraceEvent? {
+        guard status == .active else {
+            return nil
+        }
+
+        let sanitizedState = RowActionTracePrivacy.sanitizedState(state)
+        let traceEvent = RowActionTraceEvent(
+            session: sessionID.uuidString,
+            sequence: sequence.next(),
+            monotonicNanoseconds: clock.elapsedNanoseconds(),
+            category: category,
+            event: event,
+            directness: directness,
+            clipID: clipID,
+            rowIndex: rowIndex,
+            rowViewID: rowViewID,
+            state: sanitizedState,
+            note: note,
+            schema: schemaVersion
+        )
+
+        guard RowActionTracePrivacy.validateEvent(traceEvent) == .accepted,
+              let line = try? traceEvent.encodedLine() else {
+            return nil
+        }
+
+        sink.writeLine(line)
+        sink.flush()
+        return traceEvent
+    }
+
+    func finish(status: Status = .completed) {
         self.status = status
     }
 }
