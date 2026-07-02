@@ -58,6 +58,13 @@ research vocabulary: `Proven`, `Rejected`, `Public API not observable`,
   row-view identity/lifecycle, row-action visibility, SwiftData, inferred visible query/list,
   SwiftUI row, transaction, and display-cycle events. It improves public observability but is not
   crash-positive evidence.
+- New crash-log evidence received on 2026-07-02 records this ordered warning/assertion sequence
+  before the target crash:
+  - `It's not legal to call -layoutSubtreeIfNeeded on a view which is already being laid out.`
+  - `Modifying state during view update, this will cause undefined behavior.`
+  - `NSInternalInconsistencyException: rowActionsGroupView should be populated`.
+  This is crash-positive signature evidence for the target assertion, but it is not yet a
+  deterministic locked reproduction and does not include a Feature 018 JSONL timeline.
 
 ## Feature 018 Trace Evidence Matrix
 
@@ -153,7 +160,141 @@ co-factor in a future crash-positive reproduction.
 | Public `rowActionsVisible=false` state | Every sampled visibility state is `false` while row-action taps still occur | Proven | Public visibility sampling cannot prove native reveal/progress state |
 | Direct NSTableView update method calls | Latest trace explicitly records update-method and delegate callback unavailable markers | Public API not observable | Further public Feature 018 instrumentation is not expected to expose these method calls |
 | Exact native row-action reveal/progress and `rowActionsGroupView` state | No public trace event exposes private row-action progress or group-view population | Requires private AppKit knowledge | Not actionable under the public-API constraint |
+| SwiftUI state mutation during view update/layout | New crash-log ordering records SwiftUI's state-mutation warning immediately before the AppKit assertion | Requires crash-positive reproduction | Stronger than row relocation alone as the next investigation focus, but still lacks deterministic trace alignment |
+| Layout recursion or layout re-entry | New crash-log ordering records AppKit's `layoutSubtreeIfNeeded` re-entry warning immediately before the state-mutation warning and target assertion | Requires crash-positive reproduction | Must be investigated with SwiftUI state writes and AppKit row-action teardown together |
+| Row relocation alone | Existing no-crash controls include relocation and the new log adds a state/layout warning before the assertion | Rejected | Rejected as the sole next focus; relocation remains only a possible co-factor |
 | Deterministic minimum sequence | Both traces are no-crash controls | Requires crash-positive reproduction | Planning remains blocked until a crash-positive sequence exists |
+
+## SwiftUI State Mutation During Layout Investigation - 2026-07-02
+
+### New Crash Evidence
+
+The new crash evidence changes the investigation priority. The target assertion is now preceded by
+two framework warnings:
+
+1. `It's not legal to call -layoutSubtreeIfNeeded on a view which is already being laid out.`
+2. `Modifying state during view update, this will cause undefined behavior.`
+3. `NSInternalInconsistencyException: rowActionsGroupView should be populated`.
+
+This ordering does not prove a root cause. It does prove that the next crash-positive reproduction
+must capture SwiftUI state mutation and AppKit layout re-entry evidence in addition to row-action
+relocation/reuse/recreation evidence.
+
+### HomeView @State Mutation Audit Evidence
+
+The 2026-07-02 `HomeView` `@State` mutation audit adds a focused hypothesis:
+
+"SwiftUI/AppKit layout re-entry caused by @State mutation during view update is the primary
+trigger, with rowActionsGroupView crash as a downstream AppKit assertion."
+
+This is a research hypothesis, not a root-cause conclusion. The audit found no direct `@State`
+assignment during plain body evaluation, but it identified layout-time and row-action-teardown
+mutation paths that can intersect with SwiftUI view updates and AppKit row-action cleanup.
+
+High-risk sources from the audit:
+
+| Source | Mutation path | Layout/update risk |
+|---|---|---|
+| `RowActionTableViewResolver.updateNSView/viewDidMove*` | `updateNSView`, `viewDidMoveToSuperview`, and `viewDidMoveToWindow` synchronously call `resolve()`, which calls `observeRowActions(on:)`. | Highest-risk bridge between SwiftUI view update/AppKit view movement and `HomeView` state writes. |
+| `areRowActionsVisible` | Assigned in `observeRowActions(on:)` from `tableView.rowActionsVisible` and again in KVO `Task { @MainActor ... }`. | Resolver assignment may occur during view update; KVO assignment is row-action-teardown adjacent. |
+| `rowActionsObservation` | Assigned when installing `NSTableView.rowActionsVisible` observation from the resolver path. | Synchronous resolver-driven `@State` write during `NSViewRepresentable` update/movement. |
+| `observedRowActionsTableViewID` | Assigned to the resolved table identity in `observeRowActions(on:)`. | Synchronous resolver-driven `@State` write used to gate repeat resolution. |
+| `appKitObservation` | Invalidated and assigned from the resolver path under debug tracing. | Debug-only `@State` write plus immediate AppKit snapshot capability in the same update path. |
+| `hasEmittedUnavailableTableObservation` | Assigned when resolver lookup returns no table. | Debug-only `@State` write that can occur during resolver execution before a table is available. |
+| `GeometryReader/onPreferenceChange` frame writes | `GeometryReader` emits header/settings/list viewport frames; `onPreferenceChange` assigns `headerFrame`, `settingsMessageFrame`, and `listViewportFrame`. | Direct layout preference feedback loop because these frames feed `historyTopInset` and `List.contentMargins`. |
+| `pendingPinIntent` during native row-action teardown | Set by native leading swipe Pin/Unpin callback; cleared by immediate dismissal check or KVO-driven `Task { @MainActor ... }`. | Row-action lifecycle adjacent; can precede SwiftData mutation/save and visible `List` refresh while AppKit teardown is still active. |
+
+### Possible "Modifying State During View Update" Sources
+
+This inventory is limited to code paths found in the current workspace. "SwiftUI state write" means
+an assignment to `@State`, `@Query`-backed model mutation visible to the view, or a SwiftUI-bound
+state holder. "Trace state" means debug-only class/static/session state that is not SwiftUI state
+unless it is stored in `@State`.
+
+| Rank | Candidate source | Evidence in current code | Feature 018 relation | Likelihood |
+|---:|---|---|---|---|
+| 1 | `RowActionTableViewResolver.updateNSView` and resolver movement callbacks synchronously call `observeRowActions(on:)` | `HomeView.swift:748-750` calls `nsView.resolve()` during `updateNSView`; `HomeView.swift:756-767` also resolves during `viewDidMoveToSuperview` and `viewDidMoveToWindow`. The resolver callback writes `@State` in `HomeView.swift:474-507`: `hasEmittedUnavailableTableObservation`, `observedRowActionsTableViewID`, `areRowActionsVisible`, and `appKitObservation`; it also assigns `rowActionsObservation` at `HomeView.swift:514`. | Partly product path and partly Feature 018. The production row-action visibility observer state exists outside `#if DEBUG`; Feature 018 adds debug-only `hasEmittedUnavailableTableObservation`, `appKitObservation`, and immediate AppKit snapshot recording in the same synchronous resolver path. | Highest |
+| 2 | Measured frame preference updates from `GeometryReader` write `@State` during layout measurement | `HomeView.swift:59`, `HomeView.swift:67`, and `HomeView.swift:231` attach `measuredFrameReader`; `HomeView.swift:653-658` emits global frames through `GeometryReader`; `HomeView.swift:76-79` assigns `headerFrame`, `settingsMessageFrame`, and `listViewportFrame` in `onPreferenceChange`. Those values feed `fixedHeaderBottom` and `historyTopInset`, which then changes `List.contentMargins` at `HomeView.swift:220`. | Existing product/layout path, not introduced by Feature 018. Feature 018 can amplify visibility of this path by adding more AppKit snapshots during the same update cycle, but the measured-frame writes are independent of tracing. | High |
+| 3 | Row-action KVO callback writes `@State` and can apply a pending Pin after native row-action visibility changes | `HomeView.swift:514-528` observes `NSTableView.rowActionsVisible` and runs a `Task { @MainActor ... }` that assigns `areRowActionsVisible`, records trace visibility, and calls `applyPendingPinIntentIfDismissed()`. `HomeView.swift:531-557` can clear `pendingPinIntent` and call `applyPinState`, which mutates SwiftData at `HomeView.swift:409` and saves at `HomeView.swift:431`. | Product path for row-action dismissal handling, with Feature 018 adding visibility trace recording and AppKit snapshots in the KVO path. The `Task` defers execution, so this is less direct than synchronous `updateNSView` writes, but it is tightly aligned with native row-action teardown. | High-medium |
+| 4 | Row-action button action writes pending state and may immediately mutate SwiftData if public row-action visibility is already false | `HomeView.swift:361-377` sets `pendingPinIntent` and immediately calls `applyPendingPinIntentIfDismissed`; `HomeView.swift:556-557` clears `pendingPinIntent` and applies Pin state. The model mutation and save occur at `HomeView.swift:409` and `HomeView.swift:431`. | Product path. Feature 018 adds trace calls before/after the mutation and extra row-identity lookups, but the SwiftData mutation itself is not a trace-only behavior. | Medium |
+| 5 | Debug visible-snapshot tracing called from `onAppear`/`onChange` reads view-derived state and records AppKit snapshots | `HomeView.swift:86-90` calls `traceVisibleClipSnapshot`; `HomeView.swift:265-289` emits query/list traces and calls `appKitObservation?.recordSnapshot`. That snapshot mutates debug observation caches in `RowActionAppKitObserver.swift:41-61` and static `stateByTableID` in `RowActionAppKitObserver.swift:322-330`, but it does not assign SwiftUI `@State` directly. | Introduced by Feature 018. It is unlikely to be the direct SwiftUI warning by itself because it writes trace/session/cache state rather than `@State`, but it can amplify timing and AppKit layout reads during view updates. | Medium |
+| 6 | Row appear/disappear trace instrumentation | `ClipRowView.swift:85-108` emits `row.appear` and `row.disappear` trace events from SwiftUI row lifecycle callbacks. `RowActionTraceRuntime.emit` writes JSONL via `RowActionTraceSession.emit` and does not assign SwiftUI state. | Introduced by Feature 018. It can add synchronous trace I/O during row lifecycle callbacks, but current code does not show a SwiftUI `@State` write from this path. | Low-medium |
+| 7 | RowActionAppKitObservation internal snapshot state | `RowActionAppKitObserver.swift:18-24`, `RowActionAppKitObserver.swift:95`, `RowActionAppKitObserver.swift:305-306`, and `RowActionAppKitObserver.swift:322-330` mutate class/static observer caches. The same snapshots read AppKit table and row views, including `rowView(atRow:makeIfNecessary:)` in `RowActionAppKitObserver.swift:273-302`. | Introduced by Feature 018. These are not SwiftUI state writes, but they may amplify AppKit layout/read pressure near row-action teardown. | Low-medium |
+| 8 | Trace session and sink writes | `RowActionTraceSession.swift:59-80` increments trace sequence and writes/flushed JSONL; `RowActionTraceSession.swift:113` and `RowActionTraceSession.swift:157-158` assign `currentSession`; `RowActionTraceSink.swift:53-65` writes and flushes the file handle. | Introduced by Feature 018. These writes do not update SwiftUI state. They may add timing overhead, but current code does not support them as the direct `Modifying state during view update` source. | Low |
+| 9 | CATransaction completion trace observer | `RowActionTransactionObserver.swift:32-49` schedules a CATransaction completion and emits a trace from a `Task { @MainActor ... }`. | Introduced by Feature 018. Trace-only; no SwiftUI `@State` assignment found. | Low |
+| 10 | HomeView teardown and unrelated user interaction state | `HomeView.swift:98-113` clears several `@State` values during `onDisappear`; `HomeView.swift:173-199` updates copy feedback state; `HomeView.swift:235-244` updates settings placeholder state; `SharedRowPresentation.swift:130-133` updates hover state. | Mostly existing UI behavior. These paths are not specifically tied to native row-action teardown or the target assertion. | Low |
+
+### Ranking Rationale
+
+The highest-ranked source is the `NSViewRepresentable` resolver path because SwiftUI explicitly
+calls `updateNSView` during view updates, and this path synchronously assigns `@State`. That is the
+closest code-level match to the SwiftUI warning. It is also adjacent to AppKit table discovery and
+row-action visibility observation, making it more relevant to the subsequent AppKit
+`rowActionsGroupView` assertion than generic UI state such as hover or copy feedback.
+
+The measured-frame preference path is also high priority because it is a layout-measurement loop:
+`GeometryReader` measures header/settings/list frames, `onPreferenceChange` writes `@State`, and
+those states feed back into `List.contentMargins`. The new AppKit
+`layoutSubtreeIfNeeded` re-entry warning makes this path a credible layout-recursion contributor
+even without Feature 018 enabled.
+
+The KVO/pending-Pin path is ranked below the resolver and measured-frame paths because the KVO
+callback uses `Task { @MainActor ... }`, which usually defers execution out of the immediate
+callback. It remains high-medium because it can run during native row-action dismissal, assigns
+`areRowActionsVisible`, clears `pendingPinIntent`, and may trigger SwiftData mutation/save while
+AppKit is still completing row-action teardown.
+
+### Feature 018 Instrumentation Assessment
+
+Feature 018 did not make JSONL trace writes into SwiftUI state. `RowActionTraceRuntime.emit`,
+`RowActionTraceSession.emit`, and `RowActionTraceFileSink` write trace/session/file state, not
+`@State`.
+
+Feature 018 did introduce or amplify warning-adjacent behavior in two ways:
+
+- It added debug-only `@State` in `HomeView` (`hasEmittedUnavailableTableObservation` and
+  `appKitObservation`) that can be assigned from the synchronous table resolver path.
+- It added AppKit table/row-view snapshot reads and internal cache writes during `onAppear`,
+  `onChange`, row-action tap, row-action visibility, transaction, and visible-list update
+  instrumentation.
+
+Therefore, Feature 018 instrumentation is a plausible amplifier and confounder for the warning, but
+the current code evidence does not support raw trace file writes as the direct SwiftUI state
+mutation source. A crash reproduced only with trace mode enabled would implicate the Feature 018
+resolver/snapshot side effects before the JSONL sink itself.
+
+### HomeView Measured Frame Preference Assessment
+
+HomeView's measured frame preference updates can trigger the SwiftUI warning. The risk is direct:
+layout measurement emits preferences from `GeometryReader`, `onPreferenceChange` synchronously
+assigns `headerFrame`, `settingsMessageFrame`, and `listViewportFrame`, and those values influence
+`historyTopInset`, which is applied back to the `List` through `.contentMargins(.top, ...)`.
+
+This does not prove that measured frames caused the target assertion. It does mean the next
+crash-positive reproduction must record whether the warning appears when these measured-frame
+updates occur, because the measured-frame loop can create layout feedback independently of row
+relocation.
+
+### Trace Write Assessment
+
+Trace writes do not update SwiftUI state during layout in the current code. The direct trace write
+path is:
+
+`RowActionTraceRuntime.emit -> RowActionTraceSession.emit -> RowActionTraceSink.writeLine/flush`.
+
+That path mutates trace sequence/session/file-handle state only. The warning-relevant Feature 018
+paths are the surrounding `HomeView` `@State` holders and AppKit observation snapshots, not the
+JSONL writes themselves.
+
+### Updated Investigation Conclusion
+
+The next investigation should focus on **SwiftUI state mutation during view update** and
+**layout recursion** as the primary candidates. Row relocation and row recreation remain possible
+co-factors because they can create visible `List` updates during native row-action teardown, but
+they are no longer the best standalone focus after the new warning sequence. Feature 018
+instrumentation side effects must be isolated as a separate confounder, especially the debug-only
+`appKitObservation` state and AppKit snapshot reads, but trace writes alone are not currently
+evidence of SwiftUI state mutation.
 
 ## Status Vocabulary
 
@@ -293,17 +434,22 @@ it produces a repeatable crash and matched controls identify which candidate ele
 This ranking is a reproduction-search priority only. It does not select a fix, workaround,
 architecture, or root cause. A higher rank means the hypothesis is the next best place to look for a
 deterministic crash-positive attempt using evidence already accumulated in Features 014 through 018.
+The 2026-07-02 crash-log warning sequence moves SwiftUI state mutation during layout and AppKit
+layout re-entry ahead of row relocation as the next investigation direction. Row relocation remains
+only a possible co-factor unless a crash-positive run proves it is required.
 
 | Rank | Crash-positive hypothesis | Evidence basis | Current limit |
 |---:|---|---|---|
-| 1 | Historical third-Pin native row-action sequence | Feature 014 is the only source that records the target assertion and names a user-facing third-clip Pin scenario. | Feature 015, Feature 016, and Feature 018 selected third-Pin or Pin controls completed without a current crash-positive artifact. |
-| 2 | Native row-action lifecycle plus visible `List` update/replacement timing | Feature 014 and Feature 016 stacks include AppKit row-action cleanup, animation, transaction, and update-cycle frames; Feature 018 now observes row-action taps, row-view identities, visible list snapshots, transactions, and public unavailable boundaries. | Feature 018 traces are no-crash controls; exact private teardown and `rowActionsGroupView` state are not public. |
-| 3 | Hardware or gesture path creates a native row-action state not reproduced by UI automation | Feature 017 and Feature 018 preserve trackpad, Magic Mouse, and mouse/pointer as affected interaction methods; physical trackpad and Magic Mouse validation was not executed in Feature 014 evidence. | No device-specific crash-positive evidence exists, and exact swipe progress is private AppKit state. |
-| 4 | Prior row-action history, rapid repetition, or overlapping pending action attempts is required | The original report references a third Pin after prior row-action activity; Feature 017 edge cases include prior interactions and repeated actions. | Existing automated third-pin and Pin/Unpin/Delete sessions passed; cadence and pending-action overlap were not isolated. |
-| 5 | Visible row geometry, visible row count, row position, or display environment is the missing discriminator | Feature 017 explicitly lists visible row position, visible row count, window size, display scaling, and environment as edge cases. | Existing no-crash controls do not form a one-variable geometry matrix. |
-| 6 | Scroll, offscreen rows, row reuse, or row-view replacement is required as a co-factor | Feature 015 and Feature 018 prove row-view reuse/replacement can occur, and Feature 016 keeps replacement/recreation open. | Row reuse/replacement alone was rejected as sufficient in no-crash controls. |
-| 7 | Search/filter state, dataset composition, pinned group size, or image/text row type is required | Feature 017 lists these as candidate variables; Feature 014 required preservation of search/image behavior. | Search/filter removal and selected text/image row-action controls did not crash; no crash-positive comparator exists. |
-| 8 | Save, `@Query`, `List` refresh, row relocation, row reuse, or Delete alone is sufficient | These were earlier candidate explanations from Features 014 through 016. | Existing evidence rejects each as sufficient in observed no-crash controls; they remain only possible co-factors until a crash-positive run exists. |
+| 1 | SwiftUI/AppKit layout re-entry caused by `@State` mutation during view update is the primary trigger, with `rowActionsGroupView` crash as a downstream AppKit assertion | New 2026-07-02 crash-log evidence orders `layoutSubtreeIfNeeded` re-entry, SwiftUI's "Modifying state during view update" warning, and then the target AppKit assertion. The `HomeView` audit identifies resolver-driven `@State`, frame-preference `@State`, and pending row-action state as high-risk sources. | The log is crash-positive signature evidence only; it lacks a deterministic locked scenario, Feature 018 JSONL timeline, and source attribution for the SwiftUI state write. |
+| 2 | Synchronous state writes or layout feedback in `HomeView` intersect with native row-action teardown | Current code has warning-adjacent candidates: the `NSViewRepresentable` table resolver writes `@State` during `updateNSView`, measured-frame preferences write `@State` from layout feedback, and row-action KVO/pending-Pin handling can mutate view/model state near teardown. | Code proximity does not prove causality. Each source needs crash-positive alignment and matched controls before it can be classified as required. |
+| 3 | Feature 018 resolver/snapshot instrumentation amplifies the warning-bearing path | Feature 018 adds debug-only `@State` assignments and AppKit table/row-view snapshot reads around the same row-action and visible-update lifecycle that the warning sequence implicates. | Trace JSONL writes are not SwiftUI state writes. A trace-enabled-only crash would need to isolate resolver/snapshot side effects from the product path. |
+| 4 | Historical third-Pin native row-action sequence is the trigger shell for the warning-bearing path | Feature 014 records the target assertion and names a user-facing third-clip Pin scenario; Feature 017 still needs a locked user sequence to reproduce the assertion. | Feature 015, Feature 016, Feature 017 execution, and Feature 018 selected third-Pin or Pin controls completed without a current deterministic crash-positive artifact. |
+| 5 | Hardware or gesture path creates a native row-action state not reproduced by UI automation | Feature 017 and Feature 018 preserve trackpad, Magic Mouse, and mouse/pointer as affected interaction methods; exact native reveal/progress state is private AppKit behavior. | No device-specific crash-positive evidence exists, physical input comparison was not executed, and exact swipe progress is not publicly observable. |
+| 6 | Native row-action lifecycle plus visible `List` update, row-view replacement, or row relocation is a co-factor | Feature 014 and Feature 016 stacks include AppKit row-action cleanup, animation, transaction, and update-cycle frames; Feature 018 observes row-action taps, visible list snapshots, row-view identities, reuse/replacement, transactions, and public unavailable boundaries. | Feature 018 traces are no-crash controls. Existing evidence rejects visible refresh, row-view replacement/reuse, and row relocation as sufficient standalone causes. |
+| 7 | Visible row geometry, visible row count, row position, or display environment is the missing discriminator | Feature 017 explicitly lists visible row position, visible row count, window size, display scaling, and environment as edge cases; the new layout warning makes geometry/layout more relevant than before. | Existing no-crash controls do not form a clean one-variable geometry or display matrix. |
+| 8 | Prior row-action history, rapid repetition, or overlapping pending action attempts is required | The original report references a third Pin after prior row-action activity; Feature 017 edge cases include prior interactions and repeated actions. | Existing automated third-pin and rapid Pin sessions passed; cadence and pending-action overlap were not isolated. |
+| 9 | Search/filter state, dataset composition, pinned group size, or image/text row type is required | Feature 017 lists these as candidate variables; Feature 014 required preservation of search/image behavior. | Search/filter removal and selected text/image row-action controls did not crash; no crash-positive comparator exists. |
+| 10 | Save, `@Query`, `List` refresh, row relocation, row reuse, or Delete alone is sufficient | These were earlier candidate explanations from Features 014 through 016. | Existing evidence rejects each as sufficient in observed no-crash controls; they remain only possible co-factors until a crash-positive run exists. |
 
 ## Minimal Reproduction Candidates
 
@@ -314,7 +460,7 @@ required trace/timeline evidence.
 
 | ID | Candidate | Locked starting state | Minimal action sequence | Evidence reason | Current status |
 |---|---|---|---|---|---|
-| MRC-A | Historical third-Pin replay | Clean local history, text rows, native macOS `List`, no search/filter, Feature 018 tracing enabled, same window/display/accessibility state for every attempt | Reveal leading native Pin and tap Pin until the third Pin operation has been attempted | Only historical path tied to the target assertion names third-clip Pin after native row actions | Highest-priority candidate; not yet crash-positive in current evidence |
+| MRC-A | Historical third-Pin replay | Clean local history, text rows, native macOS `List`, no search/filter, Feature 018 tracing enabled, same window/display/accessibility state for every attempt | Reveal leading native Pin and tap Pin until the third Pin operation has been attempted | Only historical path tied to the target assertion names third-clip Pin after native row actions; the next replay must also capture whether the state-mutation and layout re-entry warnings appear | Highest-priority trigger shell; not yet crash-positive in current evidence and not a row-relocation-focused candidate |
 | MRC-B | Third-Pin with pre-reveal offscreen/reuse pressure | Same as MRC-A, except the target row is brought into view from a larger dataset before revealing Pin; row-action reveal occurs after the row is visible | Reveal leading Pin on the now-visible target and tap Pin through the third Pin operation | Row reuse/reassignment is proven observable but insufficient alone; this candidate tests it only as a co-factor with the historical Pin path | Candidate only; forced scroll after reveal already dismissed actions and did not crash |
 | MRC-C | Third-Pin with physical gesture input | Same data and UI state as MRC-A | Use one physical input path for reveal/tap, starting with the path unavailable to prior automation evidence, then repeat the third-Pin sequence | Existing UI automation and pointer-like paths did not crash; physical trackpad/Magic Mouse coverage is absent from accumulated evidence | Candidate only; exact swipe progress remains private |
 | MRC-D | Rapid consecutive Pin attempts | Same as MRC-A, with ordinary cadence replaced by immediate consecutive reveal/tap attempts after each visible update becomes observable | Repeat native Pin attempts as rapidly as the UI permits without adding sleeps, delays, or synchronization changes | Original "third" history and Feature 017 edge cases keep prior row-action activity open; cadence was not isolated | Candidate only; not a timing workaround |
@@ -348,6 +494,20 @@ changed, classify the attempt as inconclusive rather than crash-negative.
 | EX-017-17 | Dataset size | Number of history rows changed while visible row count and target position stay fixed | Pinned group size, row type, action type, input device, search state | Target assertion appears only at a dataset size threshold | Dataset change also changes visible count, target row position, or row reuse state |
 | EX-017-18 | Pinned group size | Number of already pinned rows changed while dataset size and target row position stay fixed | Dataset size, visible row count, action type, input device, search state | Target assertion appears only at a pinned group size | Changing pinned group size changes relocation distance or action availability |
 | EX-017-19 | Image/text rows | Target row type changed between text and image with matched row geometry where possible | Dataset size, visible row count, target position, action type, input device, search state | Target assertion occurs only for one row type | Row height, visible row count, or action labels differ and cannot be matched |
+
+### Focused Layout-Time Mutation Control Experiments
+
+These experiments are research controls only. They do not authorize a fix, product-code change,
+`plan.md`, or `tasks.md`. Experiment A has been executed once with temporary code restored after
+the run. Experiment B has also been executed once with temporary code restored after the run.
+
+| ID | Control experiment | Temporary change used or proposed | Expected result | Falsification criteria |
+|---|---|---|---|---|
+| Experiment A | Resolver-driven `@State` writes disabled | Temporarily disable all `RowActionTableViewResolver`-driven `@State` writes while keeping native `.swipeActions` and Pin behavior unchanged. This targets `areRowActionsVisible`, `rowActionsObservation`, `observedRowActionsTableViewID`, `appKitObservation`, and `hasEmittedUnavailableTableObservation`. | If warnings disappear or the crash stops, resolver-path state mutation is implicated. | If warnings remain with resolver writes disabled, resolver path is not sufficient. |
+| Experiment B | Geometry preference `@State` writes disabled | Temporarily disable `GeometryReader`/`onPreferenceChange` frame writes while keeping native `.swipeActions` and Pin behavior unchanged. This targets `headerFrame`, `settingsMessageFrame`, and `listViewportFrame`. | If "Modifying state during view update" warnings disappear or crash frequency changes, layout preference feedback is implicated. | If warnings remain with frame preference writes disabled, frame measurement path is not sufficient. |
+
+Shared falsification rule: if the target crash occurs without any layout-time `@State` writes,
+return focus to AppKit row-action lifecycle as the primary investigation direction.
 
 ## Failure Classification
 
@@ -431,6 +591,12 @@ Execution scope:
 - The requested `/private/tmp/nextpaste-research017-*.jsonl` UI-test environment path was not
   honored by the standard `launchTraceApp` helper in these Xcode UI-test runs; Feature 018 traces
   were captured from the app container paths listed below where the app emitted them.
+- Experiment A used a temporary resolver-path code change and a temporary trace-enabled UI-test
+  harness. Both were restored after execution; no experimental product or test code remains in the
+  branch.
+- Experiment B used a temporary frame-preference code change and a temporary trace-enabled UI-test
+  harness. Both were restored after execution; no experimental product or test code remains in the
+  branch.
 
 Result vocabulary for this log:
 
@@ -445,6 +611,8 @@ Result vocabulary for this log:
 |---|---|---|---|---|
 | Reference control | Existing third-Pin UI replay without Feature 018 trace | `ClipRowActionsUITests/testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`; result bundle `/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.02_16-41-05-+0800.xcresult` | PASS | Existing automated third-Pin replay completed without the target assertion, but it is trace-negative because Feature 018 tracing was not enabled. |
 | EX-017-05 | Pin | MRC-A default environment, clean three text rows, no search/filter, default window, leading Pin repeated three times. Trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-24893839-62B3-4001-A656-2E2D2083DFEC.jsonl`: 299 records, three direct `action.tap` Pin events at row index 2, `session.completed`, no target assertion. Result bundle `Test-NextPaste-2026.07.02_16-48-33-+0800.xcresult`. | PASS | Crash-negative for the locked MRC-A Pin-only automation path. |
+| Experiment A | Resolver-driven `@State` writes disabled | Temporarily disabled only resolver-driven writes to `areRowActionsVisible`, `rowActionsObservation`, `observedRowActionsTableViewID`, `appKitObservation`, and `hasEmittedUnavailableTableObservation`; kept native `.swipeActions`, Pin/Unpin, SwiftData save, `@Query`, `List`, `GeometryReader`, and `onPreferenceChange` enabled. Scenario: same MRC-A default environment, clean three text rows, no search/filter, default window, Feature 018 tracing enabled, leading Pin repeated three times. Result bundle `/private/tmp/nextpaste-experiment-a-20260702-2.xcresult`; xcodebuild log `/private/tmp/nextpaste-experiment-a-20260702-2-xcodebuild.log`; trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-E722BCAC-4A53-4207-8680-1A8CC576BB63.jsonl`. Log search found no `layoutSubtreeIfNeeded`, no `Modifying state during view update`, no `rowActionsGroupView`, and no `NSInternalInconsistencyException`; xcodebuild checked for crash reports and the test passed. Trace has 225 records, `session.completed`, three direct Pin `action.tap` events at `seq` 90, 135, and 180, `pin.save.after` at `seq` 96, 141, and 186, and categories: appkit-table 142, list 7, outcome 2, query 7, row-action 18, swiftdata 12, swiftui-row 3, transaction 34. No crash stack trace was produced because no crash occurred. | PASS | Crash-negative and warning-negative for the automated MRC-A path with resolver-driven `@State` writes disabled. This does not prove resolver writes are required, because the unmodified automated MRC-A path was also crash-negative; it does show the target warnings did not appear in this control run. |
+| Experiment B | Geometry preference `@State` writes disabled | Temporarily disabled only `GeometryReader`/`onPreferenceChange` frame writes to `headerFrame`, `settingsMessageFrame`, and `listViewportFrame`; kept `RowActionTableViewResolver` state writes, native `.swipeActions`, Pin/Unpin, SwiftData save, `@Query`, `List`, and Feature 018 tracing enabled. Scenario: same MRC-A default environment, clean three text rows, no search/filter, default window, Feature 018 tracing enabled, leading Pin repeated three times. Result bundle `/private/tmp/nextpaste-experiment-b-20260702-1.xcresult`; xcodebuild log `/private/tmp/nextpaste-experiment-b-20260702-1-xcodebuild.log`; trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-2123CAA8-BC69-4E44-818E-BA6D22B405EC.jsonl`. Log search found no `layoutSubtreeIfNeeded`, no `Modifying state during view update`, no `rowActionsGroupView`, and no `NSInternalInconsistencyException`; xcodebuild checked for crash reports and the test passed. Trace has 298 records, `session.completed`, three direct Pin `action.tap` events at `seq` 127, 184, and 241, `pin.save.after` at `seq` 133, 190, and 247, and categories: appkit-table 188, list 7, outcome 2, query 7, row-action 31, swiftdata 12, swiftui-row 3, transaction 48. No crash stack trace was produced because no crash occurred. | PASS | Crash-negative and warning-negative for the automated MRC-A path with frame-preference `@State` writes disabled. This does not prove frame writes are required, because the unmodified automated MRC-A path was also crash-negative; it does show the target warnings did not appear in this control run. |
 | EX-017-08 | Rapid repeated actions | Same as EX-017-05, except pinned-state wait after each tap was removed. Trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-7CBBAC8B-57F0-40A9-AB81-A9A14600656D.jsonl`: 299 records, three direct `action.tap` Pin events at row index 2, `session.completed`, no target assertion. Result bundle `Test-NextPaste-2026.07.02_16-50-50-+0800.xcresult`. | PASS | Crash-negative for the automated rapid-cadence variant that public UI automation could produce. |
 | EX-017-10 | Search/filter state | Same as EX-017-05, except active search query `Third pin crash` kept all target text rows visible before Pin. Trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-749FCC35-FB71-40B2-99B6-805642641319.jsonl`: 571 records, three direct `action.tap` Pin events at row index 2, `session.completed`, no target assertion. Result bundle `Test-NextPaste-2026.07.02_16-52-19-+0800.xcresult`. | PASS | Crash-negative for active-search third-Pin automation where target rows remained visible and tappable. |
 | EX-017-11 | Window size | Same as EX-017-05, except UI-test small-window preset. Trace `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-63EA05A2-7B55-4AE3-9131-1FFA76ADCCE8.jsonl`: one `session.started` record only. Result bundle `Test-NextPaste-2026.07.02_16-54-16-+0800.xcresult` reports `XCTAssertTrue failed - Expected New Clip button`. | INCONCLUSIVE | The run failed before row-action setup; the named window-size variable could not be isolated because the main window was not reachable. |
@@ -466,9 +634,10 @@ Result vocabulary for this log:
 
 2026-07-02 execution result: **no deterministic crash-positive reproduction obtained**.
 Planning remains blocked by the Evidence Gate. The strongest new evidence is crash-negative for the
-trace-enabled MRC-A third-Pin automation path, rapid-cadence automation path, and active-search
-third-Pin automation path. The remaining executed comparators either could not preserve
-one-variable control or did not capture the required trace.
+trace-enabled MRC-A third-Pin automation path, Experiment A with resolver-driven `@State` writes
+disabled, Experiment B with frame-preference `@State` writes disabled, rapid-cadence automation
+path, and active-search third-Pin automation path. The remaining executed comparators either could
+not preserve one-variable control or did not capture the required trace.
 
 ## Classified Residual Evidence Gaps
 
@@ -485,19 +654,155 @@ one-variable control or did not capture the required trace.
 | Whether save, visible query/list refresh, or transaction/display-cycle markers are required co-factors | Requires crash-positive reproduction | Latest trace proves these can occur without a crash, rejecting sufficiency only | Actionable through crash-positive matched controls |
 | Expectation that additional public Feature 018 instrumentation will materially improve evidence | Rejected | Latest trace reaches public table, row-view, row-action visibility, transaction, and display-cycle markers and records explicit public-unavailable boundaries | Not expected to materially improve under public APIs |
 
+## State Dependency Graph
+
+This graph is an evidence model, not a root-cause conclusion. "Invalidates body" means the current
+implementation uses SwiftUI state or query publication in a way that can cause `HomeView` body
+reevaluation. "May trigger layout", "May trigger List diff", and "May trigger
+`NSViewRepresentable.updateNSView`" describe possible downstream effects of that invalidation or of
+the node's direct consumer in the current code.
+
+| State or update node | Owner | Mutation sources | Downstream consumers | Invalidates body | May trigger layout | May trigger `List` diff | May trigger `NSViewRepresentable.updateNSView` | May participate in AppKit row-action teardown |
+|---|---|---|---|---|---|---|---|---|
+| `pendingPinIntent` | `HomeView` `@State` | Native leading `.swipeActions` Pin/Unpin callback sets it in `scheduleTogglePin`; `applyPendingPinIntentIfDismissed` clears it; `deleteClip` clears it if the pending target is deleted; `onDisappear` clears it. | `applyPendingPinIntentIfDismissed`; Feature 018 row-action trace fields. | Yes, as `@State`, although it is not rendered directly. | Indirectly, through body invalidation and through subsequent SwiftData save when the intent is applied. | No direct diff; applying the intent can mutate SwiftData and then publish a `List` reorder. | Yes, indirectly through body invalidation while `RowActionTableViewResolver` remains in the `List` background. | Yes. It is set from the native row-action button path and cleared when public `rowActionsVisible` indicates dismissal. |
+| `areRowActionsVisible` | `HomeView` `@State` | Synchronous resolver path assigns `tableView.rowActionsVisible`; KVO `Task { @MainActor ... }` assigns visibility changes; `onDisappear` resets it. | Guard in `applyPendingPinIntentIfDismissed`; Feature 018 visibility trace. | Yes. | Indirectly, through body invalidation. | No direct diff. | Yes, indirectly through body invalidation. | Yes. It represents public AppKit row-action visibility and gates pending Pin application. |
+| `rowActionsObservation` | `HomeView` `@State` storing `NSKeyValueObservation` as `Any?` | Resolver path invalidates the old observation and assigns a new `tableView.observe`; `onDisappear` nils it. | KVO lifetime management; `onDisappear` invalidation. | Yes. | Indirectly, through body invalidation; no rendered consumer. | No direct diff. | Yes, indirectly through body invalidation. | Yes. It is the observation hook for native row-action visibility during teardown. |
+| `observedRowActionsTableViewID` | `HomeView` `@State` | Resolver path assigns `ObjectIdentifier(tableView)`; `onDisappear` nils it. | Resolver repeat guard in `observeRowActions(on:)`. | Yes. | Indirectly, through body invalidation; no rendered consumer. | No direct diff. | Yes, indirectly through body invalidation. | Indirectly. It controls whether the resolver reinstalls row-action observation for the current table. |
+| `appKitObservation` | `HomeView` debug-only `@State` | Resolver path invalidates and assigns `RowActionAppKitObservation`; `onDisappear` invalidates and nils it. | Feature 018 table snapshots, row identity lookup, row-action visibility records, visible-query/list snapshot alignment. | Yes in debug builds. | Indirectly through body invalidation; snapshot calls also read AppKit table/row views. | No direct diff. | Yes, indirectly through body invalidation. | Yes as a debug evidence participant. It snapshots AppKit row/table state around native row actions. |
+| `hasEmittedUnavailableTableObservation` | `HomeView` debug-only `@State` | Resolver nil-table path sets it once; `onDisappear` resets it. | Guard for duplicate `table.unavailable` trace emission. | Yes in debug builds. | Indirectly, through body invalidation; no rendered consumer. | No direct diff. | Yes, indirectly through body invalidation. | Indirectly. It can be written from resolver execution before an `NSTableView` is available. |
+| `headerFrame` | `HomeView` `@State` | `onPreferenceChange(HistoryMeasuredFramePreferenceKey.self)` writes the `.header` frame from `GeometryReader`. | `fixedHeaderBottom`; `historyTopInset`; `List.contentMargins(.top, ...)`. | Yes. | Yes. It feeds a measured-frame feedback path back into `List` layout. | No direct diff. | Yes, through body/layout invalidation of the `List` and its resolver background. | Indirectly if the layout write occurs while a native row-action teardown is active. |
+| `settingsMessageFrame` | `HomeView` `@State` | Same preference path writes the `.settingsMessage` frame. | `fixedHeaderBottom`; `historyTopInset`; `List.contentMargins(.top, ...)`. | Yes. | Yes, when the settings placeholder is present or changes. | No direct diff. | Yes, through body/layout invalidation of the `List` and its resolver background. | Indirectly if the layout write occurs during native row-action teardown. |
+| `listViewportFrame` | `HomeView` `@State` | Same preference path writes the `.viewport` frame. | `historyTopInset`; `List.contentMargins(.top, ...)`. | Yes. | Yes. It is the strongest frame node because it directly feeds the top inset calculation. | No direct diff. | Yes, through body/layout invalidation of the `List` and its resolver background. | Indirectly if the layout write occurs during native row-action teardown. |
+| `historyTopInset` | `HomeView` computed value | Not mutable state; recomputed from `listViewportFrame`, `headerFrame`, and `settingsMessageFrame`. | `List.contentMargins(.top, historyTopInset, for: .scrollContent)`. | No by itself. Its source states invalidate body. | Yes. A changed computed inset changes `List` layout. | No direct diff. | Yes, when source-state invalidation reevaluates the `List` background. | Indirectly as a layout contributor during row-action teardown. |
+| `copiedClipID` | `HomeView` `@State` | `showCopyFeedback` sets it inside `withAnimation`; delayed `Task` and `clearCopyFeedback` clear it; `onDisappear` cancels the task. | `clipRow(for:)` passes copy feedback into `ClipRowView`. | Yes. | Yes, locally in row presentation and animation. | No direct diff. | Possible through body invalidation, but not tied to `visibleClips` membership. | No current evidence ties it to native row-action teardown. |
+| `searchText` | `HomeView` `@State` through `.searchable` binding | User/search-field binding writes. | `visibleClips`; `EmptyStateView` selection; Feature 018 visible snapshot key and search-active trace state. | Yes. | Yes, because visible content and empty state can change. | Yes. Filtering changes `ForEach(visibleClips)` membership. | Yes, through `List` body changes and resolver background update. | Possible if search changes while native row actions are visible or dismissing; no crash-positive evidence proves this path. |
+| `@Query` publication (`clips`) | SwiftData/SwiftUI `@Query` in `HomeView` | SwiftData model changes and saves, including Pin/Unpin and Delete paths. | `visibleClips`; trace visible snapshots; `ForEach(visibleClips)`. | Yes when query results publish to the view. | Yes, because visible rows can reorder, appear, or disappear. | Yes. Query changes feed the `List` data set and sort order. | Yes, through `List` body changes and resolver background update. | Yes when publication follows a native row-action Pin/Unpin/Delete callback. |
+| SwiftData save | `ModelContext` and `ClipItem` model | `applyPinState` toggles `ClipItem.isPinned`/`pinnedSortOrder` and saves; `ClipDeletionAction.delete` deletes and saves. | SwiftData persistence; `@Query` publication; Feature 018 mutation/save trace. | Indirectly through `@Query` publication. | Indirectly through `@Query` and `List` refresh. | Yes, when saved changes alter `visibleClips` order or membership. | Yes, indirectly through `@Query`-driven body changes. | Yes when invoked from native row-action buttons or from pending Pin dismissal. |
+| `List` identity | SwiftUI `List`/`ForEach(visibleClips)` | Changes in `visibleClips` membership/order; stable `ClipItem.id` values. | SwiftUI row creation, reuse, removal, relocation; AppKit table row lifecycle. | No standalone mutable state. | Yes. `List` diff and row lifecycle update layout. | Yes. This is the diff surface. | Yes, because the resolver is a background of the same `List`. | Yes. Native row-action teardown belongs to the AppKit table backing this `List`. |
+| Row identity | `ClipItem.id` plus Feature 018/AppKit row-view identity observation | `ClipItem.id` is stable model identity; row-view identity changes are observed from AppKit snapshots and `List` lifecycle. | Feature 018 `traceRowIdentity`, row-action tap trace, SwiftData trace, transaction trace. | No by itself; `appKitObservation` state changes can invalidate body. | No direct layout trigger; it records layout/list effects. | It observes diff results rather than causing them. | No direct trigger except through debug observation state assignment. | Yes as evidence. It records which AppKit row view participates in row-action tap and teardown-adjacent updates. |
+
+## View Update Chain
+
+The ordered chains below describe meaningful state/update paths in the current implementation. They
+do not assert that any chain is the root cause.
+
+### Native Leading Pin or Unpin
+
+Native `.swipeActions(edge: .leading)` -> row-action `Button` callback -> `scheduleTogglePin` ->
+`pendingPinIntent` set -> `applyPendingPinIntentIfDismissed` checks `areRowActionsVisible` ->
+`pendingPinIntent` cleared if eligible -> `applyPinState` -> `ClipItem.togglePinned` ->
+`modelContext.save()` -> `@Query` publication -> `visibleClips` recomputed -> `ForEach`/`List`
+membership or order update -> `HomeView` body and `List` update -> `RowActionTableViewResolver`
+`updateNSView` may run -> `observeRowActions(on:)` may write resolver state -> AppKit table layout
+and native row-action teardown continue -> possible AppKit assertion only in crash-positive
+evidence, not in current trace-positive controls.
+
+### Row-Action Visibility KVO
+
+Native AppKit row-action visibility changes -> `NSTableView.rowActionsVisible` KVO -> `Task {
+@MainActor ... }` -> `areRowActionsVisible` write -> Feature 018 visibility trace ->
+`applyPendingPinIntentIfDismissed` -> possible `pendingPinIntent` clear -> possible SwiftData
+mutation/save -> `@Query` publication -> `List` update -> resolver background update ->
+additional table snapshots or visibility observations.
+
+### Resolver Reentry
+
+`HomeView` or `List` body invalidation -> `RowActionTableViewResolver.updateNSView` or
+`ResolverView.viewDidMoveToSuperview`/`viewDidMoveToWindow` -> `resolve()` ->
+`observeRowActions(on:)` -> possible `observedRowActionsTableViewID`, `areRowActionsVisible`,
+`appKitObservation`, `rowActionsObservation`, or `hasEmittedUnavailableTableObservation` write ->
+`HomeView` body invalidation -> `List` background update -> resolver may run again. The current
+repeat guard can stop this chain when the same table identity is already observed.
+
+### Measured Frame Preference Layout
+
+SwiftUI/AppKit layout -> `GeometryReader` emits header, settings-message, or viewport frame ->
+`HistoryMeasuredFramePreferenceKey` reduction -> `onPreferenceChange` writes `headerFrame`,
+`settingsMessageFrame`, and `listViewportFrame` -> `historyTopInset` recomputed ->
+`List.contentMargins(.top, ...)` changes or is reevaluated -> layout reevaluates the `List` ->
+resolver background may update -> AppKit table layout continues.
+
+### Trailing Delete
+
+Native `.swipeActions(edge: .trailing)` -> Delete button callback -> `deleteClip` ->
+`pendingPinIntent` cleared if it targets the deleted clip -> `ClipDeletionAction.delete` ->
+`modelContext.delete` -> `modelContext.save()` -> `@Query` publication -> `visibleClips`
+membership changes -> `ForEach`/`List` removal diff -> row disappearance and AppKit row lifecycle
+updates -> resolver background may update -> native row-action teardown continues.
+
+### Search Filtering
+
+Search field binding -> `searchText` write -> `visibleClips` recomputed from `clips` and query ->
+empty-state or `List` branch reevaluated -> `ForEach` membership may change -> `List` diff and
+layout -> resolver background may update -> AppKit table row lifecycle changes. Current evidence
+does not show this as a crash-positive path.
+
+### Copy Feedback
+
+Row tap or Copy callback -> `copyClip` -> `showCopyFeedback` -> `copiedClipID` write inside
+`withAnimation` -> body invalidation -> `ClipRowView` copy feedback changes -> row layout/animation
+-> delayed `Task` -> `MainActor.run` -> `copiedClipID` clear inside animation. This path has body
+and layout effects but no current evidence tying it to native row-action teardown.
+
+## Layout Feedback Loops
+
+Classification here is about whether the structural loop exists in current code. It is not a
+crash-causality classification.
+
+| Loop | Classification | Evidence | Why it matters |
+|---|---|---|---|
+| `GeometryReader` -> `PreferenceKey` -> `onPreferenceChange` -> frame `@State` -> body -> `List.contentMargins` -> layout -> `GeometryReader` | Proven | `measuredFrameReader` emits global frames; `onPreferenceChange` writes `headerFrame`, `settingsMessageFrame`, and `listViewportFrame`; those feed `historyTopInset` and `List.contentMargins`. Experiment B was warning-negative/crash-negative only for the automated MRC-A path. | This is the clearest product layout feedback loop. It is not proven sufficient or required for the target crash. |
+| Resolver -> `observeRowActions` -> resolver `@State` writes -> body -> `RowActionTableViewResolver.updateNSView` -> resolver | Proven | `updateNSView` and `viewDidMove*` call `resolve`; `observeRowActions` writes resolver state. Experiment A was warning-negative/crash-negative only for the automated MRC-A path. | This is the closest code-level match to "Modifying state during view update" because resolver writes can originate inside `NSViewRepresentable` update/movement. |
+| KVO -> `Task { @MainActor ... }` -> `areRowActionsVisible` -> body -> `List`/resolver update -> KVO surface remains installed | Possible | KVO writes `areRowActionsVisible` and can call `applyPendingPinIntentIfDismissed`; the `Task` boundary means the exact layout phase is not proven. | It is row-action-teardown adjacent, but current evidence does not align it with a warning-bearing crash. |
+| Native Pin -> `pendingPinIntent` -> pending dismissal check -> SwiftData save -> `@Query` -> `List` diff -> resolver state writes -> body | Possible | All links exist in code and no-crash traces record action taps, mutation/save, visible snapshots, row-view updates, and transaction completions. | It can combine row-action teardown with data publication and resolver writes, but current no-crash traces reject the observed variants as sufficient. |
+| Search -> `searchText` -> `visibleClips` -> `List` diff -> resolver update -> search | Rejected as a self-loop | There is no automatic write back to `searchText` from the resolver or `List` update. | Search can change `List` membership, but current code does not make it recursive without another user/input event. |
+| Copy feedback -> `copiedClipID` -> row body/layout -> delayed `Task` -> `copiedClipID` | Rejected for row-action crash path | The loop is self-limited by the delayed task and has no native row-action visibility, SwiftData save, or `@Query` publication link. | It can cause row layout updates but is not supported as a row-action teardown feedback loop. |
+
+## State Mutation Risk Ranking
+
+This ranking uses only current evidence: the warning-bearing crash-log sequence, the `HomeView`
+mutation audit, Feature 018 traces, and Experiments A/B. It does not recommend a fix.
+
+| Rank | Mutation source | Likelihood of producing "Modifying state during view update" | Evidence basis | Current limit |
+|---:|---|---|---|---|
+| 1 | Resolver-driven writes from `RowActionTableViewResolver.updateNSView` and `viewDidMove*` | Highest | Synchronous resolver execution can write multiple `@State` values during `NSViewRepresentable` update/movement. This is the closest implementation match to the SwiftUI warning. | Experiment A was warning-negative/crash-negative only in an automated path whose unmodified comparator was also warning-negative/crash-negative. |
+| 2 | `GeometryReader`/`onPreferenceChange` frame writes | High | Frame preferences are produced by layout and written into `@State`; those states feed back into `List.contentMargins`. | Experiment B was warning-negative/crash-negative only in the automated MRC-A path. It does not exclude this path in a crash-positive manual sequence. |
+| 3 | Row-action KVO `Task { @MainActor ... }` writing `areRowActionsVisible` and applying pending Pin | High-medium | The write and pending-intent application are native row-action-teardown adjacent and can lead to SwiftData save and `List` update. | The `Task` boundary makes exact layout-phase timing unproven. |
+| 4 | Swipe callback writes to `pendingPinIntent` followed by immediate pending-intent application | Medium | The write originates from the native row-action button path and can immediately clear state, save SwiftData, and publish `@Query` updates. | No current trace aligns this path with the SwiftUI warning. |
+| 5 | SwiftData save and resulting `@Query` publication | Medium-low | Save-backed Pin/Unpin/Delete paths can reorder or remove rows and trigger `List` diff. | SwiftData save is not itself a SwiftUI `@State` write, and existing controls reject save/list refresh as sufficient in observed runs. |
+| 6 | `searchText` binding | Low-medium | Search can invalidate body and change `List` membership. | Current evidence does not tie search mutation to native row-action teardown, and no automatic recursive search write exists. |
+| 7 | `copiedClipID` animation and delayed `Task` writes | Low | This is real `@State` mutation with layout/animation effects. | It is not row-action-teardown adjacent and does not feed `List` diff. |
+| 8 | `onDisappear` cleanup of resolver, AppKit observation, visibility, and pending Pin state | Low for the target flow | It writes several `@State` values. | Current crash evidence concerns active row-action/layout teardown, not `HomeView` disappearance. |
+
+## Candidate Recursive Update Chains
+
+| Chain | Why recursion could occur | Why recursion may stop | Current evidence |
+|---|---|---|---|
+| Resolver state recursion: body invalidation -> `updateNSView` -> resolver -> `observeRowActions` -> `@State` writes -> body invalidation | The resolver callback writes SwiftUI state from `updateNSView` and view movement callbacks, so a body update can schedule another resolver update. | `observedRowActionsTableViewID` returns early for the same table; no new observation is installed when the current table is already observed. | Supported as a structural loop. Not proven crash-positive. Experiment A did not produce warnings or crash on automated MRC-A, but that run was not a crash-positive baseline. |
+| Frame preference recursion: layout -> `GeometryReader` -> preference -> frame `@State` writes -> body -> `List.contentMargins` -> layout | The `List` top margin depends on frames measured during layout, so changed measurements can feed back into layout. | Frames and computed inset may converge; if measured values remain equal, no meaningful downstream change occurs. | Supported as a structural loop. Experiment B did not produce warnings or crash on automated MRC-A, but it does not rule out a crash-positive path. |
+| KVO pending-Pin recursion: native row-action visibility -> KVO `Task` -> `areRowActionsVisible` -> pending Pin apply -> SwiftData save -> `@Query` -> `List` update -> resolver/KVO state | KVO can run near native row-action dismissal and then trigger data mutation and visible list update while the AppKit table is changing. | `pendingPinIntent` is single-shot and cleared before applying the model mutation; `areRowActionsVisible == false` gates execution. | Possible. Feature 018 traces record pending readiness, mutation/save, visible snapshots, and row-view changes in no-crash runs. |
+| Save/publication/list recursion: row-action save -> `@Query` publication -> `visibleClips` reorder/removal -> `List` diff -> row-view lifecycle -> resolver state writes -> body | Data publication can update the same AppKit table that owns native row-action teardown. | Each save is discrete; `ClipItem.id` remains stable for Pin/Unpin; the `List` diff reaches a new ordered state. | Possible as a co-factor. Existing no-crash traces reject observed save/list refresh paths as sufficient. |
+| Search/list/resolver recursion: `searchText` -> `visibleClips` -> `List` diff -> resolver state -> body -> search | A search edit can change list membership and resolver updates. | No current code writes back to `searchText` from resolver or list updates. | Rejected as a self-recursive chain under current code. Search remains only a possible external variable. |
+| Copy feedback recursion: `copiedClipID` -> row body/layout -> delayed clear -> body/layout | Copy feedback intentionally writes state twice and can animate row presentation. | The delayed task is one-shot and does not write data, query, list identity, or row-action visibility. | Rejected as a candidate row-action recursive chain with current evidence. |
+
 ## Remaining Unknowns
 
-The following unknowns are still actionable because they can be pursued through crash-positive
-reproduction and matched controls using the public evidence now available:
+The dependency graph removes "which state nodes participate in the row-action update surface" as an
+unknown. The following unknowns remain because they require crash-positive evidence or matched
+controls beyond the current no-crash traces:
 
 | Actionable unknown | Required next evidence |
 |---|---|
 | Crash-positive baseline sequence | A run that records the target assertion with the same trace categories and preserves the ordered event timeline |
-| Minimum starting state | Clip count, pinned distribution, search/filter state, visible-row count, and offscreen-row state from a crash-positive run and matched controls |
+| Exact SwiftUI state-mutation warning source | A crash-positive run that aligns the warning with one specific state-writing path, such as resolver state, measured-frame preferences, KVO/pending Pin, or another recorded source |
+| Exact AppKit layout re-entry source | A crash-positive run that aligns the `layoutSubtreeIfNeeded` warning with row-action teardown, table/row-view snapshot reads, measured-frame feedback, or another recorded layout trigger |
+| Feature 018 instrumentation confounder | Matched evidence showing whether debug-only resolver state and AppKit snapshot reads are absent, present, required, or merely amplifying in a warning-bearing path |
+| Layout-time state-write necessity in the crash-positive path | A crash-positive baseline plus matched A/B-style controls that preserve the crash path while isolating resolver writes and measured-frame writes |
+| Minimum starting state | Clip count, pinned distribution, search/filter state, visible-row count, offscreen-row state, and window/display state from a crash-positive run and matched controls |
 | Input and trigger path | Trackpad, Magic Mouse, mouse/pointer, keyboard/non-swipe path, Pin, Unpin, Delete, and consecutive-operation comparisons after a crash-positive baseline exists |
 | Public row-lifecycle co-factors | Crash-positive and matched no-crash traces showing whether relocation, row-view reuse, replacement, did-end-display, row count, or visible-range changes are present or absent |
-| Data/update co-factors | Crash-positive and matched no-crash traces showing whether save, visible query/list refresh, and visible ordering changes are present or absent |
-| Public lifecycle alignment | Crash-positive trace alignment between row-action tap, public visibility samples, SwiftData mutation/save, query/list snapshots, row-view lifecycle, display-cycle snapshots, transaction completions, and assertion timing |
+| Data/update co-factors | Crash-positive and matched no-crash traces showing whether save, visible query/list refresh, visible ordering changes, and `List` diff effects are present or absent |
+| Public lifecycle alignment | Crash-positive trace alignment between row-action tap, public visibility samples, SwiftData mutation/save, query/list snapshots, row-view lifecycle, display-cycle snapshots, transaction completions, warnings, and assertion timing |
 | Automation equivalence | A comparison showing whether UI automation can reproduce the same crash-positive sequence as the manual baseline, or cannot produce the required public-observable state |
 
 ## Instrumentation Gate
@@ -524,28 +829,52 @@ cycle snapshots. It also explicitly records the public API boundaries that remai
 | `rowActionsGroupView` population state | Not exposed by public APIs | Requires private AppKit knowledge | Not actionable under public API constraints |
 
 Instrumentation gate result: **public-api observability is practically complete, but Feature 017
-planning remains blocked by missing crash-positive evidence**. Additional Feature 018
-instrumentation under public APIs is not expected to materially improve evidence; the next material
-step is to capture a crash-positive trace or matched crash/no-crash controls using the current
-trace surface.
+planning remains blocked by missing warning-bearing crash-positive evidence**. Additional Feature
+018 instrumentation under public APIs is not expected to materially improve evidence. The next
+material step is to capture a crash-positive trace or matched crash/no-crash controls using the
+current trace surface, with explicit attention to the SwiftUI state-mutation warning, AppKit layout
+re-entry warning, and Feature 018 resolver/snapshot confounders.
 
 ## Planning Gate
 
-Planning remains blocked for deterministic reproduction implementation. The block is no longer
-lack of public debug observability; it is lack of a crash-positive current reproduction.
+Planning remains blocked for deterministic reproduction implementation. The new dependency graph
+does not materially change planning readiness. It improves the evidence model by making the
+SwiftUI state, SwiftData publication, `List` diff, resolver, and AppKit row-action update paths
+explicit, but it does not add a crash-positive trace, identify a required condition, or prove a
+specific warning source.
 
 | Gate | Status | Evidence |
 |---|---|---|
+| Crash-log warning sequence incorporated | Passed as signature evidence | New 2026-07-02 crash-log evidence records `layoutSubtreeIfNeeded` re-entry, SwiftUI state-mutation warning, and the target AppKit assertion in that order. It is not yet a deterministic reproduction or trace-aligned timeline. |
+| HomeView `@State` mutation audit incorporated | Passed as research evidence | Audit identifies resolver-driven state writes, frame-preference state writes, and `pendingPinIntent` during native row-action teardown as high-risk layout/update paths. |
+| SwiftUI/AppKit state dependency graph incorporated | Passed as evidence model | The graph documents owners, mutation sources, downstream consumers, body invalidation, layout risk, `List` diff risk, resolver update risk, and row-action teardown participation for the current row-action update surface. |
 | Public observable classification events available | Passed for practical public API scope | Latest Feature 018 trace records row-action, SwiftData, visible query/list, SwiftUI row, NSTableView identity/snapshot, NSTableRowView lifecycle, row-action visibility, CATransaction, and display-cycle markers, plus public unavailable boundaries. |
 | Feature 018 practical public observability limit reached | Passed | Direct update-method/delegate observation, dismissal start, exact reveal/progress, and `rowActionsGroupView` state are either public-API not observable or require private AppKit knowledge. |
 | Additional Feature 018 instrumentation expected to materially improve evidence | Rejected | The latest trace already records available public AppKit/SwiftUI/SwiftData/transaction markers and explicit unavailable boundaries. |
-| Deterministic reproduction exists | Blocked | No crash-positive current reproduction is documented in Features 014-016, Feature 017, the previous Feature 018 trace, or the latest Feature 018 trace. |
-| Required conditions identified | Blocked | Every candidate requirement still requires a crash-positive reproduction plus matched controls. |
+| Warning source identified from crash-positive evidence | Blocked | Current code review ranks resolver state writes, measured-frame preferences, row-action KVO/pending Pin, and Feature 018 resolver/snapshot side effects, but none is tied to a trace-aligned crash-positive run. |
+| Deterministic reproduction exists | Blocked | No locked scenario has produced the target assertion in three consecutive fresh attempts. The new crash log is crash-positive signature evidence but not a deterministic reproduction artifact. |
+| Required conditions identified | Blocked | State mutation and layout re-entry are now the leading evidence targets, but every candidate requirement still requires crash-positive reproduction plus matched controls. Row relocation, row reuse, and row replacement remain possible co-factors only. |
 | Non-required conditions identified | Blocked | The latest trace rejects several conditions as sufficient, but no crash-positive case proves they are not required co-factors. |
-| Smallest reproduction documented | Blocked | The historical third-Pin path remains a candidate only; it has not been reduced or confirmed. |
-| Automation path exists or is proven impossible | Blocked | UI automation can produce a non-crashing trace, but automation equivalence cannot be judged until a crash-positive baseline exists. |
+| Smallest reproduction documented | Blocked | The historical third-Pin path remains a trigger shell only; the minimum warning-bearing sequence has not been reduced or confirmed. |
+| Automation path exists or is proven impossible | Blocked | UI automation can produce non-crashing traces, but automation equivalence cannot be judged until a manual or automated warning-bearing crash-positive baseline exists. |
 
 ## Research Summary
+
+The strongest current evidence is the new 2026-07-02 crash-log signature: AppKit layout re-entry,
+SwiftUI state mutation during view update, then
+`NSInternalInconsistencyException: rowActionsGroupView should be populated`. That evidence changes
+the next investigation direction. Feature 017 should now prioritize a warning-bearing
+crash-positive timeline that captures SwiftUI state writes and AppKit layout activity around native
+row-action teardown. Row relocation, row reuse, row replacement, visible `List` refresh, and
+SwiftData save remain possible co-factors, but they are not the dominant standalone direction.
+
+The `HomeView` `@State` audit sharpens that direction into a focused hypothesis: SwiftUI/AppKit
+layout re-entry caused by `@State` mutation during view update is the primary trigger, with the
+`rowActionsGroupView` crash as a downstream AppKit assertion. The highest-risk sources are
+resolver-driven state writes, `GeometryReader`/`onPreferenceChange` frame writes, and
+`pendingPinIntent` changes during native row-action teardown. Experiment A has now been executed
+once and was warning-negative/crash-negative on the automated MRC-A path. Experiment B has now also
+been executed once and was warning-negative/crash-negative on the automated MRC-A path.
 
 The latest Feature 018 trace makes Feature 017 closer in observability only. Compared with the
 previous 44-record trace, it adds stable public NSTableView identity, row-view identity, row-view
@@ -556,14 +885,14 @@ swizzling, private selectors, or private AppKit knowledge.
 
 The latest trace remains a completed no-crash control. It rejects Pin, Unpin, Delete, SwiftData
 mutation/save, visible query/list refresh, row-view reuse, row-view replacement, row-view
-did-end-display, row-count change, visible-range change, transaction completion, and display-cycle
-snapshots as sufficient standalone causes in that observed session. It does not prove any candidate
-condition required or not required for the target assertion.
+did-end-display, row-count change, visible-range change, transaction completion, display-cycle
+snapshots, and row relocation as sufficient standalone causes in the observed sessions. It does not
+prove any candidate condition required or not required for the target assertion.
 
 Feature 018 has reached the practical observability limit under public APIs. No additional Feature
 018 instrumentation is expected to materially improve evidence under the current constraints.
 Feature 017 Planning Gate remains **BLOCKED** until a crash-positive trace or matched
-crash/no-crash evidence resolves the actionable unknowns listed above.
+crash/no-crash evidence aligns the new warning sequence with the actionable unknowns listed above.
 
 No implementation, architecture, workaround, fixed delay, or production AppKit introspection path
 is recommended by this research.
