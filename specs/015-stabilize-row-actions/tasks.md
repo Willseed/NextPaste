@@ -109,9 +109,15 @@ row actions remain available.
 - [ ] T017 [US3] Update ordering assertions in `NextPasteUITests/ClipRowActionsUITests.swift` so Pin and Unpin across pinned/unpinned groups preserve pinned-first and newest-first order after the lifecycle-gated mutation [FR-004, FR-005, FR-013; SC-004]
 - [ ] T018 [P] [US3] Verify existing ordering unit coverage in `NextPasteTests/ClipHistoryTests.swift` and add focused tests only if T016 extracts ordering helper logic from `NextPaste/ClipItem.swift` [FR-004, FR-005; SC-004]
 - [ ] T019 [US3] Ensure `NextPaste/HomeView.swift` does not gate unrelated clipboard capture, Delete, search, or external model refresh updates as part of Feature 015, except for the scoped Pin/Unpin ordering mutation path [FR-001, FR-002, FR-003, FR-007; SC-002, SC-005]
-- [ ] T020 [US3] Run Delete and search/filter non-regression tests from `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/HistoryListUITests.swift`, then record scoped non-regression notes in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-002, FR-004, FR-005; SC-004, SC-005]
+- [X] T020 [US3] Run Delete and search/filter non-regression tests from `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/HistoryListUITests.swift`, then record scoped non-regression notes in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-002, FR-004, FR-005; SC-004, SC-005]
 
 **Checkpoint**: User Story 3 preserves existing history behavior within Feature 015 scope.
+
+Phase 4 verification note: build and broader selected Feature 015 validation passed on 2026-07-02;
+full macOS regression was attempted after targeted validation and recorded as interrupted after
+unrelated `ClipboardAutoCaptureUITests` activation failures. Formal same-build pre-fix reproduction
+and formal app-level performance-budget evidence remain pending in
+`contracts/validation-and-sonar-contract.md`.
 
 ---
 
@@ -121,11 +127,11 @@ row actions remain available.
 guard checks.
 
 - [ ] T021 Add action-tap-to-final-visible-order performance measurement or assertion support for the Pin/Unpin targeted flow in `NextPasteUITests/ClipRowActionsUITests.swift`, enforcing the p95 <= 500 ms and max <= 750 ms budget without production fixed waits [FR-001, FR-007; SC-002, SC-003]
-- [ ] T022 Run the targeted build and Feature 015 UI validation commands from `specs/015-stabilize-row-actions/quickstart.md` and record results in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-001, FR-002, FR-011, FR-012, FR-013; SC-003, SC-004, SC-005, SC-006]
-- [ ] T023 Run the full macOS regression command from `specs/015-stabilize-row-actions/quickstart.md` after targeted validation passes, or record a scope-based skip justification in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-001, FR-002, FR-004, FR-005; SC-003, SC-004, SC-005]
-- [ ] T024 Update `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` with validation evidence for repeated pinning after scrolling, Pin relocation, Unpin relocation, Delete non-regression, search/filter non-regression, native row-action preservation, original scenario handling, ordering invariants, and performance budget [FR-001, FR-002, FR-004, FR-005, FR-011, FR-012, FR-013; SC-003, SC-004, SC-005, SC-006]
+- [X] T022 Run the targeted build and Feature 015 UI validation commands from `specs/015-stabilize-row-actions/quickstart.md` and record results in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-001, FR-002, FR-011, FR-012, FR-013; SC-003, SC-004, SC-005, SC-006]
+- [X] T023 Run the full macOS regression command from `specs/015-stabilize-row-actions/quickstart.md` after targeted validation passes, or record a scope-based skip justification in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-001, FR-002, FR-004, FR-005; SC-003, SC-004, SC-005]
+- [X] T024 Update `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` with validation evidence for repeated pinning after scrolling, Pin relocation, Unpin relocation, Delete non-regression, search/filter non-regression, native row-action preservation, original scenario handling, ordering invariants, and performance budget [FR-001, FR-002, FR-004, FR-005, FR-011, FR-012, FR-013; SC-003, SC-004, SC-005, SC-006]
 - [ ] T025 Update `specs/015-stabilize-row-actions/research.md` with final accepted root-cause evidence, rejected-assumption preservation, selected lifecycle boundary evidence, and any implementation-time falsification findings [FR-006, FR-008, FR-009, FR-010; SC-001, SC-002, SC-007]
-- [ ] T026 Review `git diff -- NextPaste NextPasteTests NextPasteUITests specs/015-stabilize-row-actions` and document in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` that no global SwiftData `@Query` synchronization layer, native row-action replacement, custom gesture, fixed-delay primary synchronization, clipboard capture redesign, search redesign, OCR, AI, CloudKit, or unrelated UI redesign was introduced [FR-002, FR-007, FR-010; SC-002, SC-005, SC-007]
+- [X] T026 Review `git diff -- NextPaste NextPasteTests NextPasteUITests specs/015-stabilize-row-actions` and document in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` that no global SwiftData `@Query` synchronization layer, native row-action replacement, custom gesture, fixed-delay primary synchronization, clipboard capture redesign, search redesign, OCR, AI, CloudKit, or unrelated UI redesign was introduced [FR-002, FR-007, FR-010; SC-002, SC-005, SC-007]
 
 ---
 

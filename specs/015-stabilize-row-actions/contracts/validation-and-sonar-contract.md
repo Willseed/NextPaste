@@ -10,10 +10,11 @@ This contract owns validation execution, validation evidence, performance eviden
 
 ## Validation Lifecycle Status
 
-**Current status**: Phase 3 targeted validation evidence recorded for the AppKit-backed lifecycle
-gate across scoped Pin/Unpin flows; SwiftUI presentation-callback path rejected for the current
-toolchain; broader regression, formal original-crash reproduction, formal performance-budget
-instrumentation, and release readiness remain pending.
+**Current status**: Phase 4 verification evidence recorded for the AppKit-backed lifecycle gate
+across scoped Pin/Unpin flows. Build and broader selected Feature 015 validation passed; full macOS
+regression was attempted and interrupted after unrelated auto-capture activation failures. Formal
+same-build pre-fix reproduction, formal performance-budget instrumentation, and release readiness
+remain pending.
 
 Validation cannot be marked complete until all required targeted evidence below is recorded.
 
@@ -251,6 +252,133 @@ Formal performance-budget verification remains pending because these samples are
 observations rather than dedicated app-level action-to-final-order instrumentation, and they include
 test harness waiting overhead.
 
+## Phase 4 Verification Evidence
+
+Recorded on 2026-07-02.
+
+Build:
+
+```bash
+xcodebuild build \
+  -project NextPaste.xcodeproj \
+  -scheme NextPaste \
+  -destination 'platform=macOS'
+```
+
+Result: PASS on 2026-07-02. The app target built successfully.
+
+Broader selected Feature 015 validation:
+
+```bash
+xcodebuild test \
+  -project NextPaste.xcodeproj \
+  -scheme NextPaste \
+  -destination 'platform=macOS' \
+  -only-testing:NextPasteUITests/ClipRowActionsUITests \
+  -only-testing:NextPasteUITests/ClipboardImageRowActionsUITests \
+  -only-testing:NextPasteUITests/HistoryListUITests
+```
+
+Result: PASS on 2026-07-02. The selected run executed 35 UI tests with 0 failures in 1179.677
+seconds.
+
+Evidence artifact:
+
+```text
+/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.02_08-48-40-+0800.xcresult
+```
+
+Required Phase 4 coverage observed in the selected run:
+
+- Repeated pinning and row-action lifecycle activity:
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`,
+  `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash`, and
+  `testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection` passed.
+- Scrolling and visibility:
+  `testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection`,
+  `testPinnedFirstAndNewestFirstRowsStayFullyVisibleAfterInsertion`, and
+  `testFirstVisibleRowRemainsFullyVisibleAcrossWindowSizePresetsAndLiveResize` passed.
+- Pin relocation across pinned/unpinned groups:
+  `testRightSwipePinTogglesIconAndPinnedOrdering`,
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`, and
+  `testRightSwipePinTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering` passed.
+- Unpin relocation across pinned/unpinned groups:
+  `testRightSwipePinTogglesIconAndPinnedOrdering`,
+  `testRightSwipeRevealsUnpinActionForPinnedTextRow`, and
+  `testRightSwipePinTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering` passed.
+- Delete non-regression:
+  `testLeftSwipeDeleteRemovesOnlySelectedClip`,
+  `testLeftSwipeDeleteRemovesOnlySelectedImageClip`,
+  `testAutoCapturedClipSupportsCopyDeleteAndPinOffline`, and
+  `testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability` passed.
+- Search/filter non-regression:
+  `testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability`,
+  `testFilteredImageRowsPreserveMetadataSearchAndRowActions`,
+  `testNativeSearchFieldFiltersTextClipsImmediatelyWhileTyping`,
+  `testSearchPreservesNewestFirstOrderingWhileFiltering`, and
+  `testClearingSearchRestoresFullHistoryAfterEmptySearchState` passed.
+- Native macOS swipe actions:
+  right-swipe Pin/Unpin reveal tests, left-swipe Delete reveal tests, full-swipe/sub-threshold
+  gesture tests, vertical gesture tests, and keyboard/accessibility action checks passed for text
+  rows, with image-row parity passing where covered.
+- Ordering invariants:
+  text and image Pin/Unpin ordering tests plus HistoryList newest-first and pinned-first visibility
+  tests passed, preserving pinned-first and newest-first behavior.
+
+Full macOS regression attempt:
+
+```bash
+xcodebuild test \
+  -project NextPaste.xcodeproj \
+  -scheme NextPaste \
+  -destination 'platform=macOS'
+```
+
+Result: INTERRUPTED on 2026-07-02 after broader non-Feature-015 UI activation failures in
+`ClipboardAutoCaptureUITests`. Before interruption, the full run completed `ClipRowActionsUITests`
+with 17 tests, 0 failures in 682.326 seconds, then passed five `ClipboardAutoCaptureUITests` before
+failing to activate `pylot.NextPaste` while it was in `Running Background` state in:
+
+- `testAutoCaptureKeepsFirstVisibleRowFullyVisibleBelowFixedHeader`
+- `testAutoCaptureRefreshesHistoryWithoutManualSave`
+- `testDuplicateEmptyAndUnchangedClipboardStatesLeaveHistoryUnchanged`
+
+Full-run evidence artifact:
+
+```text
+/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.02_09-08-38-+0800.xcresult
+```
+
+Same-build reproduction evidence:
+
+- Same-build pre-fix reproduction was not possible non-destructively because the current build
+  already contains the AppKit-backed lifecycle gate and Phase 4 was constrained to verification
+  only.
+- Reverting or disabling the gate would have changed the selected architecture and product behavior,
+  so it was not attempted.
+- Post-fix crash-family probes passed in both the selected run and the full-run `ClipRowActionsUITests`
+  pass, including `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash` and
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`.
+- Formal same-build pre-fix reproduction for FR-011 remains Verification Pending.
+
+Performance evidence:
+
+- Existing app-level assertion helpers were present in `NextPasteUITests/UITestAssertions.swift`
+  (`assertActionToFinalOrderLatency` and `assertActionToFinalOrderBudgetSamples`).
+- Phase 4 did not collect new app-level p95/max samples because the verification-only scope did not
+  permit adding or wiring new instrumentation, and the executed tests did not emit those metrics.
+- Formal action-tap-to-final-visible-order p95/max performance evidence remains Verification
+  Pending; no performance result is fabricated.
+
+Scope guard:
+
+- Phase 4 made no product-code or test-code changes.
+- The only intended Phase 4 file updates are this validation contract and
+  `specs/015-stabilize-row-actions/tasks.md`.
+- No new global SwiftData `@Query` synchronization layer, native row-action replacement, custom
+  gesture, fixed-delay primary synchronization, clipboard capture redesign, search redesign, OCR,
+  AI, CloudKit, or unrelated UI redesign was introduced during Phase 4 verification.
+
 ## Release Readiness Gate
 
 Feature 015 is release-ready only when:
@@ -272,13 +400,15 @@ Feature 015 is release-ready only when:
 | data-model.md | Complete |
 | quickstart.md | Complete |
 | validation-and-sonar-contract.md | Complete |
-| tasks.md | Phase 3 tasks complete; later implementation tasks pending execution |
+| tasks.md | Phase 4 verification tasks complete where evidence exists; formal performance and FR-011 reproduction tasks remain pending |
 
 ## Verification Status
 
-Planning verification is complete. Phase 2 Revision 2 implementation verification and Phase 3
-targeted integration validation are recorded above for the scoped AppKit-backed Pin/Unpin lifecycle
-gate. Formal same-build pre-fix reproduction for FR-011 and formal app-instrumented performance
-budget evidence remain Verification Pending without weakening FR-011. The SwiftUI
-presentation-callback capability blocker is already recorded above as completed verification
-evidence for architecture re-selection.
+Planning verification is complete. Phase 2 Revision 2 implementation verification, Phase 3 targeted
+integration validation, and Phase 4 broader selected Feature 015 verification are recorded above for
+the scoped AppKit-backed Pin/Unpin lifecycle gate. Full macOS regression was attempted but did not
+pass due broader `ClipboardAutoCaptureUITests` activation failures outside the scoped Feature 015
+row-action validation. Formal same-build pre-fix reproduction for FR-011 and formal
+app-instrumented performance budget evidence remain Verification Pending without weakening FR-011.
+The SwiftUI presentation-callback capability blocker is already recorded above as completed
+verification evidence for architecture re-selection.
