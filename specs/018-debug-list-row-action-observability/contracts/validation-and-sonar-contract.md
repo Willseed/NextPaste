@@ -45,10 +45,10 @@ Targeted commands must run before broader regression.
 | Build health | `quickstart.md` build command | The app target builds after debug-only instrumentation is added. |
 | Trace schema and redaction | `quickstart.md` targeted unit command | Events include required fields and exclude clipboard payloads. |
 | Debug disabled by default | `quickstart.md` targeted unit or app-level command | No trace output appears without explicit enablement. |
-| Release-disabled behavior | `quickstart.md` release-disabled validation | Release-equivalent run emits no trace output even with debug enablement values present. |
+| Release-disabled behavior | `quickstart.md` release-equivalent execution | Release-equivalent run emits no trace output even with debug enablement values present. |
 | UI-test enablement | `quickstart.md` targeted UI command | UI-test launch can enable tracing for a row-action attempt. |
 | Row-action trace evidence | `quickstart.md` targeted UI command | Trace includes row-action markers, row lifecycle markers, and SwiftData mutation markers. |
-| Feature 017 consumption | `quickstart.md` Feature 017 consumption check | At least one previously blocked observable event is classified from trace evidence. |
+| Feature 017 consumption | `quickstart.md` Feature 017 trace consumption workflow | At least one previously blocked observable event is classified from trace evidence. |
 | Public API boundary | Code review plus targeted validation evidence | AppKit observations use public APIs only; no swizzling/private selectors are introduced. |
 | Offline/local-first behavior | `quickstart.md` targeted and regression commands | Trace stays local and does not require network or remote services. |
 | Accessibility/platform behavior | `quickstart.md` targeted UI command plus manual checks where needed | Native row actions remain available and unchanged for supported macOS interaction paths. |

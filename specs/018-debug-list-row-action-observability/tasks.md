@@ -20,13 +20,13 @@
 
 **Purpose**: Establish the debug-only trace source and test file structure without changing product behavior.
 
-- [ ] T001 Create the typed trace event schema shell in `NextPaste/Debug/RowActionTraceEvent.swift` with schema/category/directness definitions. [FR-007, FR-010, SC-001]
-- [ ] T002 [P] Create the monotonic clock and event sequence helper in `NextPaste/Debug/RowActionTraceClock.swift`. [FR-007, SC-001]
-- [ ] T003 [P] Create the compile-time and runtime trace enablement gate shell in `NextPaste/Debug/RowActionTraceGate.swift`. [FR-008, FR-009, SC-003]
-- [ ] T004 [P] Create the clipboard-content redaction and non-content state validation helper in `NextPaste/Debug/RowActionTracePrivacy.swift`. [FR-007, FR-010, SC-003, SC-005]
-- [ ] T005 Create the trace session coordinator shell in `NextPaste/Debug/RowActionTraceSession.swift` using session IDs and the monotonic clock. [FR-007, FR-009, FR-010, SC-001]
-- [ ] T006 Create the JSON Lines trace sink shell in `NextPaste/Debug/RowActionTraceSink.swift` with one-event-per-line output semantics. [FR-008, FR-010, SC-001, SC-003]
-- [ ] T007 Register the new debug trace source files in `NextPaste.xcodeproj/project.pbxproj` without changing release product behavior. [FR-008, FR-010, SC-003, SC-005]
+- [X] T001 Create the typed trace event schema shell in `NextPaste/Debug/RowActionTraceEvent.swift` with schema/category/directness definitions. [FR-007, FR-010, SC-001]
+- [X] T002 [P] Create the monotonic clock and event sequence helper in `NextPaste/Debug/RowActionTraceClock.swift`. [FR-007, SC-001]
+- [X] T003 [P] Create the compile-time and runtime trace enablement gate shell in `NextPaste/Debug/RowActionTraceGate.swift`. [FR-008, FR-009, SC-003]
+- [X] T004 [P] Create the clipboard-content redaction and non-content state validation helper in `NextPaste/Debug/RowActionTracePrivacy.swift`. [FR-007, FR-010, SC-003, SC-005]
+- [X] T005 Create the trace session coordinator shell in `NextPaste/Debug/RowActionTraceSession.swift` using session IDs and the monotonic clock. [FR-007, FR-009, FR-010, SC-001]
+- [X] T006 Create the JSON Lines trace sink shell in `NextPaste/Debug/RowActionTraceSink.swift` with one-event-per-line output semantics. [FR-008, FR-010, SC-001, SC-003]
+- [X] T007 Register the new debug trace source files in `NextPaste.xcodeproj/project.pbxproj` without changing release product behavior. [FR-008, FR-010, SC-003, SC-005]
 
 **Checkpoint**: Shared trace infrastructure exists and can be referenced by story work.
 
