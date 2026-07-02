@@ -38,14 +38,19 @@ gating.
 T009 are complete.
 
 - [ ] T004 Add a targeted original-scenario regression in `NextPasteUITests/ClipRowActionsUITests.swift` that performs native Pin through row actions on a relocating row and reproduces the original `rowActionsGroupView should be populated` crash outcome for FR-011 baseline evidence [FR-001, FR-006, FR-008, FR-011; SC-001, SC-006]
-- [ ] T005 [P] Add repeated pinning after scrolling regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` without replacing native row actions or relying on fixed sleeps as proof [FR-001, FR-002, FR-007, FR-012; SC-002, SC-003, SC-005]
-- [ ] T006 [P] Add Pin relocation and Unpin relocation coverage across pinned/unpinned groups in `NextPasteUITests/ClipRowActionsUITests.swift`, asserting pinned-first and newest-first order after each action [FR-001, FR-004, FR-005, FR-013; SC-003, SC-004]
-- [ ] T007 [P] Add Delete non-regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` proving Delete remains native, removes only the selected row, and does not use the Pin/Unpin relocation gate incorrectly [FR-002, FR-003; SC-005]
-- [ ] T008 [P] Add search/filter non-regression coverage in `NextPasteUITests/HistoryListUITests.swift` proving filtered visible rows keep correct native row actions without broadening Feature 015 into search synchronization [FR-002, FR-004, FR-005; SC-004, SC-005]
-- [ ] T009 [P] Add native row-action preservation checks for Pin, Unpin, and Delete availability in `NextPasteUITests/ClipRowActionsUITests.swift` and image-row parity only if existing image coverage is affected in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` [FR-002; SC-005]
+- [X] T005 [P] Add repeated pinning after scrolling regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` without replacing native row actions or relying on fixed sleeps as proof [FR-001, FR-002, FR-007, FR-012; SC-002, SC-003, SC-005]
+- [X] T006 [P] Add Pin relocation and Unpin relocation coverage across pinned/unpinned groups in `NextPasteUITests/ClipRowActionsUITests.swift`, asserting pinned-first and newest-first order after each action [FR-001, FR-004, FR-005, FR-013; SC-003, SC-004]
+- [X] T007 [P] Add Delete non-regression coverage in `NextPasteUITests/ClipRowActionsUITests.swift` proving Delete remains native, removes only the selected row, and does not use the Pin/Unpin relocation gate incorrectly [FR-002, FR-003; SC-005]
+- [X] T008 [P] Add search/filter non-regression coverage in `NextPasteUITests/HistoryListUITests.swift` proving filtered visible rows keep correct native row actions without broadening Feature 015 into search synchronization [FR-002, FR-004, FR-005; SC-004, SC-005]
+- [X] T009 [P] Add native row-action preservation checks for Pin, Unpin, and Delete availability in `NextPasteUITests/ClipRowActionsUITests.swift` and image-row parity only if existing image coverage is affected in `NextPasteUITests/ClipboardImageRowActionsUITests.swift` [FR-002; SC-005]
 
 **Checkpoint**: Red-phase scoped regression coverage exists for Pin/Unpin relocation, repeated
 scrolling, Delete non-regression, search/filter non-regression, and native row-action preservation.
+
+Closeout evidence note: T005-T009 are marked complete from existing Phase 2-4 evidence. The selected
+Feature 015 validation passed on 2026-07-02 with 35 UI tests, 0 failures, including
+`ClipRowActionsUITests` 17/17. T004 remains open because formal same-build pre-fix reproduction of
+the original AppKit assertion remains Verification Pending.
 
 ---
 
@@ -106,9 +111,9 @@ row actions remain available.
 
 ### Tests and Implementation for User Story 3
 
-- [ ] T017 [US3] Update ordering assertions in `NextPasteUITests/ClipRowActionsUITests.swift` so Pin and Unpin across pinned/unpinned groups preserve pinned-first and newest-first order after the lifecycle-gated mutation [FR-004, FR-005, FR-013; SC-004]
-- [ ] T018 [P] [US3] Verify existing ordering unit coverage in `NextPasteTests/ClipHistoryTests.swift` and add focused tests only if T016 extracts ordering helper logic from `NextPaste/ClipItem.swift` [FR-004, FR-005; SC-004]
-- [ ] T019 [US3] Ensure `NextPaste/HomeView.swift` does not gate unrelated clipboard capture, Delete, search, or external model refresh updates as part of Feature 015, except for the scoped Pin/Unpin ordering mutation path [FR-001, FR-002, FR-003, FR-007; SC-002, SC-005]
+- [X] T017 [US3] Update ordering assertions in `NextPasteUITests/ClipRowActionsUITests.swift` so Pin and Unpin across pinned/unpinned groups preserve pinned-first and newest-first order after the lifecycle-gated mutation [FR-004, FR-005, FR-013; SC-004]
+- [X] T018 [P] [US3] Verify existing ordering unit coverage in `NextPasteTests/ClipHistoryTests.swift` and add focused tests only if T016 extracts ordering helper logic from `NextPaste/ClipItem.swift` [FR-004, FR-005; SC-004]
+- [X] T019 [US3] Ensure `NextPaste/HomeView.swift` does not gate unrelated clipboard capture, Delete, search, or external model refresh updates as part of Feature 015, except for the scoped Pin/Unpin ordering mutation path [FR-001, FR-002, FR-003, FR-007; SC-002, SC-005]
 - [X] T020 [US3] Run Delete and search/filter non-regression tests from `NextPasteUITests/ClipRowActionsUITests.swift` and `NextPasteUITests/HistoryListUITests.swift`, then record scoped non-regression notes in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` [FR-002, FR-004, FR-005; SC-004, SC-005]
 
 **Checkpoint**: User Story 3 preserves existing history behavior within Feature 015 scope.
@@ -118,6 +123,12 @@ full macOS regression was attempted after targeted validation and recorded as in
 unrelated `ClipboardAutoCaptureUITests` activation failures. Formal same-build pre-fix reproduction
 and formal app-level performance-budget evidence remain pending in
 `contracts/validation-and-sonar-contract.md`.
+
+Final closeout note: T017-T019 are marked complete from existing Phase 2-4 evidence. Ordering
+assertions passed in the selected Feature 015 validation, T018 required no added ordering-helper
+tests because T016 left `ClipItem.historySortDescriptors` and `ClipItem.togglePinned()` unchanged,
+and the scope guard confirmed no unrelated Delete, search, clipboard capture, or global refresh gate
+changes.
 
 ---
 

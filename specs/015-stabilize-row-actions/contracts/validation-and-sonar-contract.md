@@ -10,11 +10,13 @@ This contract owns validation execution, validation evidence, performance eviden
 
 ## Validation Lifecycle Status
 
-**Current status**: Phase 4 verification evidence recorded for the AppKit-backed lifecycle gate
-across scoped Pin/Unpin flows. Build and broader selected Feature 015 validation passed; full macOS
-regression was attempted and interrupted after unrelated auto-capture activation failures. Formal
-same-build pre-fix reproduction, formal performance-budget instrumentation, and release readiness
-remain pending.
+**Current status**: Final implementation closeout recorded for the AppKit-backed lifecycle gate
+across scoped Pin/Unpin flows. Implementation is complete within the approved architecture and
+available evidence; release readiness is blocked by Verification Pending items, not Governance
+Defects. Build and broader selected Feature 015 validation passed; full macOS regression was
+attempted and interrupted after unrelated auto-capture activation failures. Formal same-build pre-fix
+reproduction, formal performance-budget instrumentation, and full macOS regression pass remain
+pending.
 
 Validation cannot be marked complete until all required targeted evidence below is recorded.
 
@@ -37,6 +39,7 @@ weaken FR-011 or lifecycle requirements; it reopens architecture selection withi
 | Original failure scenario | Reproduction attempt and post-fix run | Original crash path is reproduced before fix acceptance and passes after fix | Verification Pending |
 | Ordering invariants | UI or integration assertions | Pinned-first and newest-first ordering remain unchanged | Complete |
 | Performance | Timed targeted run | p95 <= 500 ms and max <= 750 ms from action tap to final visible ordered state | Verification Pending |
+| Full macOS regression | Full scheme test run after targeted validation | Full macOS regression passes, or a release-accepted skip is documented | Verification Pending |
 
 If environment limitations block FR-011 crash reproduction in a given run, keep FR-011 unchanged
 and record the blocker as **Verification Pending** evidence in this contract until reproduction is
@@ -379,6 +382,64 @@ Scope guard:
   gesture, fixed-delay primary synchronization, clipboard capture redesign, search redesign, OCR,
   AI, CloudKit, or unrelated UI redesign was introduced during Phase 4 verification.
 
+## Final Closeout Evidence
+
+Recorded on 2026-07-02 using existing Phase 1-4 evidence only. No product code, test code,
+instrumentation, or implementation rerun was performed for this closeout.
+
+Completed implementation status:
+
+- The selected architecture remains the AppKit-backed native row-action lifecycle gate.
+- Pin/Unpin ordering mutations are gated after the approved lifecycle boundary.
+- Native macOS SwiftUI `swipeActions` remain in use.
+- Delete, search/filter, clipboard capture, and unrelated refresh flows were not redesigned or
+  moved behind a global synchronization layer.
+- Pinned-first and newest-first ordering semantics remain preserved by the existing
+  `ClipItem.historySortDescriptors` and `ClipItem.togglePinned()` behavior.
+
+Selected Feature 015 validation status:
+
+- Result: PASS.
+- Scope: `ClipRowActionsUITests`, `ClipboardImageRowActionsUITests`, and `HistoryListUITests`.
+- Total selected UI tests: 35.
+- Failures: 0.
+- `ClipRowActionsUITests`: 17/17 passed.
+- Evidence artifact:
+
+```text
+/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.02_08-48-40-+0800.xcresult
+```
+
+Tasks completed at closeout from existing evidence:
+
+- T005-T009: repeated pinning after scrolling, Pin/Unpin relocation, Delete non-regression,
+  search/filter non-regression, and native row-action preservation coverage exist and passed in the
+  recorded selected Feature 015 validation.
+- T017-T020: ordering, conditional ordering-helper verification, scoped non-gating of unrelated
+  flows, and Delete/search non-regression evidence are recorded.
+- T022-T024 and T026: targeted build/validation, full-regression attempt evidence, validation
+  evidence update, and scope guard review are recorded.
+
+Verification Pending at closeout:
+
+- Same-build pre-fix reproduction remains pending. It was not performed during closeout because the
+  current build already contains the lifecycle gate and the closeout scope forbade implementation
+  changes or reruns that alter architecture.
+- Formal app-level action-to-final-order performance budget evidence remains pending. Existing
+  helper methods were identified, but no app-level p95/max samples were emitted by the recorded
+  validation runs and no instrumentation was added during closeout.
+- Full macOS regression pass remains pending. The full run was attempted after targeted validation
+  and interrupted by unrelated `ClipboardAutoCaptureUITests` activation failures after
+  `ClipRowActionsUITests` had passed 17/17 in that same run.
+
+Release readiness closeout:
+
+- Status: Blocked.
+- Blocking category: Verification Pending.
+- Governance Defects: none recorded for this closeout.
+- Reason: release readiness requires a full macOS regression pass plus required manual/performance
+  evidence; those required evidence items do not yet exist.
+
 ## Release Readiness Gate
 
 Feature 015 is release-ready only when:
@@ -400,15 +461,17 @@ Feature 015 is release-ready only when:
 | data-model.md | Complete |
 | quickstart.md | Complete |
 | validation-and-sonar-contract.md | Complete |
-| tasks.md | Phase 4 verification tasks complete where evidence exists; formal performance and FR-011 reproduction tasks remain pending |
+| tasks.md | Final closeout complete where evidence exists; release readiness blocked by Verification Pending items |
 
 ## Verification Status
 
 Planning verification is complete. Phase 2 Revision 2 implementation verification, Phase 3 targeted
-integration validation, and Phase 4 broader selected Feature 015 verification are recorded above for
-the scoped AppKit-backed Pin/Unpin lifecycle gate. Full macOS regression was attempted but did not
-pass due broader `ClipboardAutoCaptureUITests` activation failures outside the scoped Feature 015
-row-action validation. Formal same-build pre-fix reproduction for FR-011 and formal
-app-instrumented performance budget evidence remain Verification Pending without weakening FR-011.
-The SwiftUI presentation-callback capability blocker is already recorded above as completed
-verification evidence for architecture re-selection.
+integration validation, Phase 4 broader selected Feature 015 verification, and final closeout are
+recorded above for the scoped AppKit-backed Pin/Unpin lifecycle gate. Implementation status is
+complete within available evidence. Release readiness is blocked by Verification Pending items, not
+Governance Defects. Full macOS regression was attempted but did not pass due broader
+`ClipboardAutoCaptureUITests` activation failures outside the scoped Feature 015 row-action
+validation. Formal same-build pre-fix reproduction for FR-011 and formal app-instrumented
+performance budget evidence remain Verification Pending without weakening FR-011. The SwiftUI
+presentation-callback capability blocker is already recorded above as completed verification
+evidence for architecture re-selection.
