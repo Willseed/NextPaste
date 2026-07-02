@@ -20,9 +20,17 @@ enum UITestAppLauncher {
         }
     }
 
+    struct TraceLaunch {
+        let app: XCUIApplication
+        let traceURL: URL
+    }
+
     static let uiTestingArgument = "-ui-testing"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
+    static let rowActionTraceEnabledArgument = "-row-action-trace-enabled"
+    static let rowActionTraceFileEnvironmentKey = "NEXTPASTE_ROW_ACTION_TRACE_FILE"
+    static let uiTestRowActionTraceFileEnvironmentKey = "NEXTPASTE_UI_TEST_ROW_ACTION_TRACE_FILE"
     private static let windowSizePresetArgument = "-ui-test-window-size"
     private static let mainWindowReadyIdentifier = "new-clip-button"
 
@@ -42,6 +50,28 @@ enum UITestAppLauncher {
             app.launchArguments.append(clipboardMonitorDisabledArgument)
         }
         return app
+    }
+
+    static func makeTraceApp(
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> TraceLaunch {
+        let traceURL = makeTraceURL()
+        try? FileManager.default.removeItem(at: traceURL)
+
+        let app = makeApp(windowSizePreset: windowSizePreset)
+        app.launchArguments.append(rowActionTraceEnabledArgument)
+        app.launchEnvironment["NEXTPASTE_UI_TESTING"] = "1"
+        app.launchEnvironment[rowActionTraceFileEnvironmentKey] = traceURL.path
+        return TraceLaunch(app: app, traceURL: traceURL)
+    }
+
+    static func launchTraceApp(
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> TraceLaunch {
+        let launch = makeTraceApp(windowSizePreset: windowSizePreset)
+        launch.app.launch()
+        prepareMainWindow(in: launch.app)
+        return launch
     }
 
     static func launchApp(windowSizePreset: WindowSizePreset = .defaultSize) -> XCUIApplication {
@@ -160,5 +190,18 @@ enum UITestAppLauncher {
         if button.waitForExistence(timeout: timeout) {
             button.tap()
         }
+    }
+
+    private static func makeTraceURL() -> URL {
+        if let path = ProcessInfo.processInfo.environment[uiTestRowActionTraceFileEnvironmentKey],
+           path.isEmpty == false {
+            return URL(fileURLWithPath: path)
+        }
+
+        let userHomeURL = URL(fileURLWithPath: "/Users/\(NSUserName())", isDirectory: true)
+        let appContainerTemporaryDirectory = userHomeURL
+            .appendingPathComponent("Library/Containers/pylot.NextPaste/Data/tmp", isDirectory: true)
+        return appContainerTemporaryDirectory
+            .appendingPathComponent("nextpaste-row-action-trace-\(UUID().uuidString).jsonl")
     }
 }

@@ -30,6 +30,9 @@ struct HomeView: View {
     @State private var areRowActionsVisible = false
     @State private var rowActionsObservation: Any? = nil
     @State private var observedRowActionsTableViewID: ObjectIdentifier? = nil
+#if DEBUG
+    @State private var hasEmittedUnavailableTableObservation = false
+#endif
 
     var body: some View {
         ZStack {
@@ -78,6 +81,14 @@ struct HomeView: View {
             NewClipView()
         }
         .searchable(text: $searchText, prompt: "Search clips")
+#if DEBUG
+        .onAppear {
+            traceVisibleClipSnapshot(reason: "home.appear")
+        }
+        .onChange(of: traceVisibleClipSnapshotKey) { _, _ in
+            traceVisibleClipSnapshot(reason: "visible-clips.changed")
+        }
+#endif
 #if os(macOS)
         .task {
             await applyLaunchWindowSizeIfNeeded()
@@ -92,6 +103,9 @@ struct HomeView: View {
             rowActionsObservation = nil
             observedRowActionsTableViewID = nil
             areRowActionsVisible = false
+            #if DEBUG
+            hasEmittedUnavailableTableObservation = false
+            #endif
             #endif
             pendingPinIntent = nil
         }
@@ -235,7 +249,73 @@ struct HomeView: View {
     }
 #endif
 
+#if DEBUG
+    private var traceVisibleClipIDs: [UUID] {
+        visibleClips.map(\.id)
+    }
+
+    private var traceVisibleClipSnapshotKey: String {
+        let orderedIDs = traceVisibleClipIDs.map(\.uuidString).joined(separator: "|")
+        return "\(orderedIDs)#search:\(searchText.isEmpty == false)"
+    }
+
+    private func traceVisibleClipSnapshot(reason: String) {
+        let visibleIDs = traceVisibleClipIDs
+        let state: [String: RowActionTraceStateValue] = [
+            "reason": .string(reason),
+            "visibleClipIDs": .stringArray(visibleIDs.map(\.uuidString)),
+            "visibleCount": .int(visibleIDs.count),
+            "searchActive": .bool(searchText.isEmpty == false)
+        ]
+
+        RowActionTraceRuntime.emit(
+            category: .query,
+            event: "visible.snapshot",
+            directness: .inferred,
+            state: state
+        )
+        RowActionTraceRuntime.emit(
+            category: .list,
+            event: "visible.snapshot",
+            directness: .inferred,
+            state: state
+        )
+    }
+
+    private func traceVisibleIndex(for clip: ClipItem) -> Int? {
+        visibleClips.firstIndex { $0.id == clip.id }
+    }
+
+    private func traceRowActionTap(action: String, edge: String, clip: ClipItem) {
+        RowActionTraceRuntime.emit(
+            category: .rowAction,
+            event: "action.tap",
+            directness: .direct,
+            clipID: clip.id,
+            rowIndex: traceVisibleIndex(for: clip),
+            state: [
+                "action": .string(action),
+                "edge": .string(edge),
+                "isPinned": .bool(clip.isPinned),
+                "contentType": .string(clip.contentType)
+            ]
+        )
+    }
+
+    private func tracePinActionName(targetPinnedState: Bool) -> String {
+        targetPinnedState ? "pin" : "unpin"
+    }
+#endif
+
     private func deleteClip(_ clip: ClipItem) {
+#if DEBUG
+        traceRowActionTap(action: "delete", edge: "trailing", clip: clip)
+        RowActionTransactionObserver.observeCompletion(
+            action: "delete",
+            clipID: clip.id,
+            phase: "action.tap"
+        )
+#endif
         if pendingPinIntent?.clipID == clip.id {
             pendingPinIntent = nil
         }
@@ -243,8 +323,18 @@ struct HomeView: View {
     }
 
     private func scheduleTogglePin(_ clip: ClipItem) {
+        let targetPinnedState = !clip.isPinned
+#if DEBUG
+        let action = tracePinActionName(targetPinnedState: targetPinnedState)
+        traceRowActionTap(action: action, edge: "leading", clip: clip)
+        RowActionTransactionObserver.observeCompletion(
+            action: action,
+            clipID: clip.id,
+            phase: "action.tap"
+        )
+#endif
 #if os(macOS)
-        pendingPinIntent = PendingPinIntent(clipID: clip.id, targetPinnedState: !clip.isPinned)
+        pendingPinIntent = PendingPinIntent(clipID: clip.id, targetPinnedState: targetPinnedState)
         applyPendingPinIntentIfDismissed()
 #else
         applyTogglePin(clip)
@@ -260,17 +350,85 @@ struct HomeView: View {
             return
         }
 
+#if DEBUG
+        let action = tracePinActionName(targetPinnedState: targetPinnedState)
+        RowActionTraceRuntime.emit(
+            category: .swiftData,
+            event: "\(action).mutation.before",
+            directness: .direct,
+            clipID: clip.id,
+            rowIndex: traceVisibleIndex(for: clip),
+            state: [
+                "isPinned": .bool(clip.isPinned),
+                "targetPinnedState": .bool(targetPinnedState)
+            ]
+        )
+#endif
         do {
             clip.togglePinned()
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "\(action).mutation.after",
+                directness: .direct,
+                clipID: clip.id,
+                rowIndex: traceVisibleIndex(for: clip),
+                state: [
+                    "isPinned": .bool(clip.isPinned)
+                ]
+            )
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "\(action).save.before",
+                directness: .direct,
+                clipID: clip.id,
+                rowIndex: traceVisibleIndex(for: clip)
+            )
+#endif
             try modelContext.save()
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "\(action).save.after",
+                directness: .direct,
+                clipID: clip.id,
+                rowIndex: traceVisibleIndex(for: clip),
+                state: [
+                    "isPinned": .bool(clip.isPinned)
+                ]
+            )
+            RowActionTransactionObserver.observeCompletion(
+                action: action,
+                clipID: clip.id,
+                phase: "save.after"
+            )
+#endif
         } catch {
             modelContext.rollback()
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "\(action).save.failed",
+                directness: .direct,
+                clipID: clip.id,
+                rowIndex: traceVisibleIndex(for: clip),
+                state: [
+                    "errorType": .string(String(describing: type(of: error)))
+                ]
+            )
+#endif
         }
     }
 
 #if os(macOS)
     private func observeRowActions(on tableView: NSTableView?) {
         guard let tableView else {
+#if DEBUG
+            if hasEmittedUnavailableTableObservation == false {
+                hasEmittedUnavailableTableObservation = true
+                RowActionAppKitObserver.emitTableUnavailable(reason: "resolver.nil")
+            }
+#endif
             return
         }
 
@@ -285,9 +443,30 @@ struct HomeView: View {
 
         observedRowActionsTableViewID = tableViewID
         areRowActionsVisible = tableView.rowActionsVisible
-        rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { _, change in
+#if DEBUG
+        RowActionAppKitObserver.emitUnavailablePrivateBoundary(reason: "table.resolved")
+        RowActionAppKitObserver.emitTableSnapshot(
+            tableView,
+            reason: "table.resolved",
+            visibleClipIDs: traceVisibleClipIDs
+        )
+#endif
+        rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { observedTableView, change in
             Task { @MainActor in
-                areRowActionsVisible = change.newValue ?? false
+                let isVisible = change.newValue ?? false
+                areRowActionsVisible = isVisible
+#if DEBUG
+                RowActionAppKitObserver.emitRowActionVisibility(
+                    observedTableView,
+                    isVisible: isVisible,
+                    reason: "rowActionsVisible.kvo"
+                )
+                RowActionAppKitObserver.emitTableSnapshot(
+                    observedTableView,
+                    reason: "rowActionsVisible.kvo",
+                    visibleClipIDs: traceVisibleClipIDs
+                )
+#endif
                 applyPendingPinIntentIfDismissed()
             }
         }
@@ -304,6 +483,18 @@ struct HomeView: View {
             return
         }
 
+#if DEBUG
+        RowActionTraceRuntime.emit(
+            category: .rowAction,
+            event: "dismissed.pending-pin-ready",
+            directness: .inferred,
+            clipID: pendingPinIntent.clipID,
+            rowIndex: traceVisibleIndex(for: targetClip),
+            state: [
+                "targetPinnedState": .bool(pendingPinIntent.targetPinnedState)
+            ]
+        )
+#endif
         self.pendingPinIntent = nil
         applyPinState(pendingPinIntent.targetPinnedState, to: targetClip)
     }
@@ -580,12 +771,62 @@ struct ClipDeletionAction {
     @discardableResult
     func delete(_ clip: ClipItem) -> Bool {
         let imageAssetReference = ImageAssetReference(clip: clip)
+#if DEBUG
+        let clipID = clip.id
+        RowActionTraceRuntime.emit(
+            category: .swiftData,
+            event: "delete.mutation.before",
+            directness: .direct,
+            clipID: clipID,
+            state: [
+                "contentType": .string(clip.contentType)
+            ]
+        )
+#endif
 
         do {
             modelContext.delete(clip)
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "delete.mutation.after",
+                directness: .direct,
+                clipID: clipID
+            )
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "delete.save.before",
+                directness: .direct,
+                clipID: clipID
+            )
+#endif
             try modelContext.save()
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "delete.save.after",
+                directness: .direct,
+                clipID: clipID
+            )
+            RowActionTransactionObserver.observeCompletion(
+                action: "delete",
+                clipID: clipID,
+                phase: "save.after"
+            )
+#endif
         } catch {
             modelContext.rollback()
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .swiftData,
+                event: "delete.save.failed",
+                directness: .direct,
+                clipID: clipID,
+                state: [
+                    "errorType": .string(String(describing: type(of: error)))
+                ]
+            )
+#endif
             return false
         }
 

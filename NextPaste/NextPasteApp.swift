@@ -16,6 +16,9 @@ struct NextPasteApp: App {
     let sharedModelContainer: ModelContainer
 
     init() {
+#if DEBUG
+        RowActionTraceRuntime.startIfEnabled()
+#endif
         sharedModelContainer = Self.makeModelContainer(
             isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")
         )
@@ -62,6 +65,9 @@ private struct ClipboardMonitorHostView<Content: View>: View {
 #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 ClipboardMonitorLifecycleController.shared.stop()
+#if DEBUG
+                RowActionTraceRuntime.finish(status: .completed)
+#endif
             }
 #endif
     }

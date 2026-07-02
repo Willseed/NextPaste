@@ -58,24 +58,24 @@
 
 ### Tests For User Story 1
 
-- [ ] T015 [P] [US1] Add schema, timestamp, and JSON Lines unit coverage in `NextPasteTests/RowActionTraceEventTests.swift`. [FR-007, FR-010, SC-001]
-- [ ] T016 [P] [US1] Add UI-test trace parsing support in `NextPasteUITests/RowActionTraceLogParser.swift`. [FR-007, FR-010, SC-001, SC-002]
-- [ ] T017 [P] [US1] Add UI-test launch enablement support in `NextPasteUITests/UITestAppLauncher.swift`. [FR-009, SC-001]
+- [X] T015 [P] [US1] Add schema, timestamp, and JSON Lines unit coverage in `NextPasteTests/RowActionTraceEventTests.swift`. [FR-007, FR-010, SC-001]
+- [X] T016 [P] [US1] Add UI-test trace parsing support in `NextPasteUITests/RowActionTraceLogParser.swift`. [FR-007, FR-010, SC-001, SC-002]
+- [X] T017 [P] [US1] Add UI-test launch enablement support in `NextPasteUITests/UITestAppLauncher.swift`. [FR-009, SC-001]
 
 ### Implementation For User Story 1
 
-- [ ] T018 [US1] Add explicit debug trace session startup from launch arguments or environment in `NextPaste/NextPasteApp.swift`. [FR-008, FR-009, SC-001, SC-003]
-- [ ] T019 [US1] Emit native row-action presentation and action-tap markers for Pin, Unpin, and Delete in `NextPaste/HomeView.swift`. [FR-005, FR-007, SC-001, SC-002]
-- [ ] T020 [US1] Emit SwiftData Pin/Unpin mutation and `modelContext.save()` boundary markers in `NextPaste/HomeView.swift`. [FR-001, FR-007, SC-001, SC-002, SC-005]
-- [ ] T021 [US1] Emit SwiftData Delete mutation and save boundary markers in `NextPaste/HomeView.swift`. [FR-001, FR-007, SC-001, SC-002, SC-005]
-- [ ] T022 [US1] Emit visible `@Query` or list publication snapshots where observable in `NextPaste/HomeView.swift`. [FR-002, FR-007, SC-001]
-- [ ] T023 [US1] Emit SwiftUI row appear and disappear markers with clip IDs in `NextPaste/ClipRowView.swift`. [FR-003, FR-007, SC-002]
-- [ ] T024 [P] [US1] Create public AppKit table and row-view observation helper in `NextPaste/Debug/RowActionAppKitObserver.swift`. [FR-004, FR-005, FR-011, SC-001, SC-002]
-- [ ] T025 [US1] Integrate public AppKit table and row-view observations with existing table access points in `NextPaste/HomeView.swift`. [FR-004, FR-005, FR-011, SC-001, SC-002]
-- [ ] T026 [P] [US1] Create CATransaction or display-cycle observation helper in `NextPaste/Debug/RowActionTransactionObserver.swift`. [FR-006, FR-011, SC-001]
-- [ ] T027 [US1] Emit CATransaction or display/update-cycle completion markers around row-action attempts in `NextPaste/HomeView.swift`. [FR-006, FR-007, SC-001]
-- [ ] T028 [US1] Register AppKit observer, transaction observer, UI parser, and launcher test support files in `NextPaste.xcodeproj/project.pbxproj`. [FR-004, FR-006, FR-009, FR-010, SC-001]
-- [ ] T029 [US1] Add row-action trace assertions for Pin, Unpin, and Delete attempts in `NextPasteUITests/ClipRowActionsUITests.swift`. [FR-001, FR-003, FR-005, FR-007, FR-009, FR-010, SC-001, SC-002]
+- [X] T018 [US1] Add explicit debug trace session startup from launch arguments or environment in `NextPaste/NextPasteApp.swift`. [FR-008, FR-009, SC-001, SC-003]
+- [X] T019 [US1] Emit native row-action presentation and action-tap markers for Pin, Unpin, and Delete in `NextPaste/HomeView.swift`. [FR-005, FR-007, SC-001, SC-002]
+- [X] T020 [US1] Emit SwiftData Pin/Unpin mutation and `modelContext.save()` boundary markers in `NextPaste/HomeView.swift`. [FR-001, FR-007, SC-001, SC-002, SC-005]
+- [X] T021 [US1] Emit SwiftData Delete mutation and save boundary markers in `NextPaste/HomeView.swift`. [FR-001, FR-007, SC-001, SC-002, SC-005]
+- [X] T022 [US1] Emit visible `@Query` or list publication snapshots where observable in `NextPaste/HomeView.swift`. [FR-002, FR-007, SC-001]
+- [X] T023 [US1] Emit SwiftUI row appear and disappear markers with clip IDs in `NextPaste/ClipRowView.swift`. [FR-003, FR-007, SC-002]
+- [X] T024 [P] [US1] Create public AppKit table and row-view observation helper in `NextPaste/Debug/RowActionAppKitObserver.swift`. [FR-004, FR-005, FR-011, SC-001, SC-002]
+- [X] T025 [US1] Integrate public AppKit table and row-view observations with existing table access points in `NextPaste/HomeView.swift`. [FR-004, FR-005, FR-011, SC-001, SC-002]
+- [X] T026 [P] [US1] Create CATransaction or display-cycle observation helper in `NextPaste/Debug/RowActionTransactionObserver.swift`. [FR-006, FR-011, SC-001]
+- [X] T027 [US1] Emit CATransaction or display/update-cycle completion markers around row-action attempts in `NextPaste/HomeView.swift`. [FR-006, FR-007, SC-001]
+- [X] T028 [US1] Register AppKit observer, transaction observer, UI parser, and launcher test support files in `NextPaste.xcodeproj/project.pbxproj`. [FR-004, FR-006, FR-009, FR-010, SC-001]
+- [X] T029 [US1] Add row-action trace assertions for Pin, Unpin, and Delete attempts in `NextPasteUITests/ClipRowActionsUITests.swift`. [FR-001, FR-003, FR-005, FR-007, FR-009, FR-010, SC-001, SC-002]
 
 **Checkpoint**: User Story 1 produces an independently testable debug trace for row-action attempts.
 

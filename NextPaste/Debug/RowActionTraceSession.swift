@@ -85,4 +85,87 @@ final class RowActionTraceSession {
         self.status = status
     }
 }
+
+@MainActor
+enum RowActionTraceRuntime {
+    static let traceFileEnvironmentKey = "NEXTPASTE_ROW_ACTION_TRACE_FILE"
+
+    private static var currentSession: RowActionTraceSession?
+
+    static var isActive: Bool {
+        currentSession?.status == .active
+    }
+
+    static func startIfEnabled(processInfo: ProcessInfo = .processInfo) {
+        guard currentSession == nil else {
+            return
+        }
+
+        let resolution = RowActionTraceGate.resolve(processInfo: processInfo)
+        guard resolution.isEnabled, let source = resolution.source else {
+            return
+        }
+
+        let session = RowActionTraceSession(
+            enabledBy: source,
+            sink: makeSink(processInfo: processInfo)
+        )
+        currentSession = session
+        emit(
+            category: .outcome,
+            event: "session.started",
+            directness: .direct,
+            state: [
+                "enabledBy": .string(source.rawValue)
+            ]
+        )
+    }
+
+    @discardableResult
+    static func emit(
+        category: RowActionTraceCategory,
+        event: String,
+        directness: RowActionTraceDirectness,
+        clipID: UUID? = nil,
+        rowIndex: Int? = nil,
+        rowViewID: String? = nil,
+        state: [String: RowActionTraceStateValue]? = nil,
+        note: String? = nil
+    ) -> RowActionTraceEvent? {
+        currentSession?.emit(
+            category: category,
+            event: event,
+            directness: directness,
+            clipID: clipID?.uuidString,
+            rowIndex: rowIndex,
+            rowViewID: rowViewID,
+            state: state,
+            note: note
+        )
+    }
+
+    static func finish(status: RowActionTraceSession.Status = .completed) {
+        guard let session = currentSession else {
+            return
+        }
+
+        emit(
+            category: .outcome,
+            event: "session.\(status.rawValue)",
+            directness: .direct
+        )
+        session.finish(status: status)
+        currentSession = nil
+    }
+
+    private static func makeSink(processInfo: ProcessInfo) -> any RowActionTraceSink {
+        guard let traceFilePath = processInfo.environment[traceFileEnvironmentKey],
+              traceFilePath.isEmpty == false,
+              let fileSink = try? RowActionTraceFileSink(url: URL(fileURLWithPath: traceFilePath)) else {
+            return RowActionTraceStandardOutputSink()
+        }
+
+        return fileSink
+    }
+}
 #endif

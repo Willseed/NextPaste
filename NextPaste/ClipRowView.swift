@@ -37,29 +37,32 @@ struct ClipRowView: View {
     }
 
     var body: some View {
-        if Self.presentationKind(for: clip) == .image {
-            ImageClipboardRow(
-                presentation: ImageClipboardRowPresentation(
-                    content: ImageClipboardRowPresentation.Content(clip: clip),
-                    copyFeedback: copyFeedback,
-                    interactionState: interactionState
-                ),
-                onCopy: onCopy,
-                onDelete: onDelete,
-                onTogglePin: onTogglePin
-            )
-        } else {
-            ClipboardRow(
-                presentation: ClipboardRowPresentation(
-                    clip: clip,
-                    copyFeedback: copyFeedback,
-                    interactionState: interactionState
-                ),
-                onCopy: onCopy,
-                onDelete: onDelete,
-                onTogglePin: onTogglePin
-            )
+        Group {
+            if Self.presentationKind(for: clip) == .image {
+                ImageClipboardRow(
+                    presentation: ImageClipboardRowPresentation(
+                        content: ImageClipboardRowPresentation.Content(clip: clip),
+                        copyFeedback: copyFeedback,
+                        interactionState: interactionState
+                    ),
+                    onCopy: onCopy,
+                    onDelete: onDelete,
+                    onTogglePin: onTogglePin
+                )
+            } else {
+                ClipboardRow(
+                    presentation: ClipboardRowPresentation(
+                        clip: clip,
+                        copyFeedback: copyFeedback,
+                        interactionState: interactionState
+                    ),
+                    onCopy: onCopy,
+                    onDelete: onDelete,
+                    onTogglePin: onTogglePin
+                )
+            }
         }
+        .rowActionTraceLifecycle(for: clip)
     }
 
     static func previewText(for clip: ClipItem) -> String {
@@ -73,4 +76,38 @@ struct ClipRowView: View {
 
 #Preview {
     ClipRowView(clip: ClipItem(textContent: "Meeting notes: follow up with design on Friday"))
+}
+
+private extension View {
+    @ViewBuilder
+    func rowActionTraceLifecycle(for clip: ClipItem) -> some View {
+#if DEBUG
+        onAppear {
+            RowActionTraceRuntime.emit(
+                category: .swiftUIRow,
+                event: "row.appear",
+                directness: .direct,
+                clipID: clip.id,
+                state: [
+                    "isPinned": .bool(clip.isPinned),
+                    "contentType": .string(clip.contentType)
+                ]
+            )
+        }
+        .onDisappear {
+            RowActionTraceRuntime.emit(
+                category: .swiftUIRow,
+                event: "row.disappear",
+                directness: .direct,
+                clipID: clip.id,
+                state: [
+                    "isPinned": .bool(clip.isPinned),
+                    "contentType": .string(clip.contentType)
+                ]
+            )
+        }
+#else
+        self
+#endif
+    }
 }

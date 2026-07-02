@@ -239,6 +239,115 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt() throws {
+        let traceLaunch = UITestAppLauncher.launchTraceApp()
+        let app = traceLaunch.app
+        addTeardownBlock {
+            self.closeApp(app)
+        }
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
+        try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
+        history.assertClipRowIdentifierExists()
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.olderPinTarget)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app),
+            "Pinned",
+            timeout: 1
+        )
+
+        let unpinButton = row.revealPinActionWithRightSwipe(
+            for: UITestFixtures.RowActions.olderPinTarget,
+            expectedLabel: "Unpin"
+        )
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+        unpinButton.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app),
+            "Unpinned",
+            timeout: 1
+        )
+
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.deleteTarget)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[UITestFixtures.RowActions.deleteTarget],
+            "Expected selected clip to be deleted",
+            timeout: 2
+        )
+
+        let records = try RowActionTraceLogParser.records(at: traceLaunch.traceURL, timeout: 5) { records in
+            RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "action.tap",
+                action: "pin",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "action.tap",
+                action: "unpin",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "action.tap",
+                action: "delete",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "swiftdata",
+                event: "pin.save.after",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "swiftdata",
+                event: "unpin.save.after",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "swiftdata",
+                event: "delete.save.after",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "swiftui-row",
+                event: "row.appear",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "transaction",
+                event: "completion",
+                requiresClipID: true
+            )
+        }
+
+        RowActionTraceLogParser.assertMonotonic(records)
+        let categories = RowActionTraceLogParser.categories(in: records)
+        XCTAssertTrue(categories.contains("appkit-table"))
+        XCTAssertTrue(categories.contains("list"))
+        XCTAssertTrue(categories.contains("query"))
+        XCTAssertTrue(categories.contains("row-action"))
+        XCTAssertTrue(categories.contains("swiftdata"))
+        XCTAssertTrue(categories.contains("swiftui-row"))
+        XCTAssertTrue(categories.contains("transaction"))
+    }
+
+    @MainActor
     func testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash() throws {
         let app = launchApp()
         let history = historyRobot(for: app)

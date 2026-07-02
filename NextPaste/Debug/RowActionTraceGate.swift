@@ -27,7 +27,7 @@ enum RowActionTraceGate {
 
     static func resolve(processInfo: ProcessInfo = .processInfo) -> RowActionTraceGateResolution {
         if processInfo.arguments.contains(launchArgument) {
-            return RowActionTraceGateResolution(isEnabled: true, source: source(from: processInfo.environment))
+            return RowActionTraceGateResolution(isEnabled: true, source: source(from: processInfo))
         }
 
         guard let rawValue = processInfo.environment[environmentKey],
@@ -35,10 +35,15 @@ enum RowActionTraceGate {
             return RowActionTraceGateResolution(isEnabled: false, source: nil)
         }
 
-        return RowActionTraceGateResolution(isEnabled: true, source: source(from: processInfo.environment))
+        return RowActionTraceGateResolution(isEnabled: true, source: source(from: processInfo))
     }
 
-    private static func source(from environment: [String: String]) -> RowActionTraceEnablementSource {
+    private static func source(from processInfo: ProcessInfo) -> RowActionTraceEnablementSource {
+        let environment = processInfo.environment
+        if processInfo.arguments.contains("-ui-testing") {
+            return .uiTest
+        }
+
         if environment["UITEST_MODE"] == "1" || environment["NEXTPASTE_UI_TESTING"] == "1" {
             return .uiTest
         }
