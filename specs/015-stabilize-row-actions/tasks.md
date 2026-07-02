@@ -61,11 +61,16 @@ outcome.
 
 ### Implementation for User Story 1
 
-- [ ] T010 [US1] Add minimal accepted lifecycle observability in `NextPaste/HomeView.swift` needed to capture row-action opened/dismissed, Pin/Unpin action tapped, mutation/save, and visible row order during targeted tests without leaving temporary diagnostic-only code [FR-006, FR-008, FR-009, FR-010; SC-001, SC-002, SC-007]
-- [ ] T011 [US1] Run the targeted original-scenario and relocation tests from `NextPasteUITests/ClipRowActionsUITests.swift` and update `specs/015-stabilize-row-actions/research.md` with post-implementation root-cause evidence, including a linked Verification Pending blocker entry in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` if environment limitations block FR-011 crash reproduction [FR-006, FR-008, FR-010, FR-011; SC-001, SC-006, SC-007]
+- [X] T010 [US1] Add minimal accepted lifecycle observability in `NextPaste/HomeView.swift` needed to capture row-action opened/dismissed, Pin/Unpin action tapped, mutation/save, and visible row order during targeted tests without leaving temporary diagnostic-only code [FR-006, FR-008, FR-009, FR-010; SC-001, SC-002, SC-007]
+- [X] T011 [US1] Run the targeted original-scenario and relocation tests from `NextPasteUITests/ClipRowActionsUITests.swift` and update `specs/015-stabilize-row-actions/research.md` with post-implementation root-cause evidence, including a linked Verification Pending blocker entry in `specs/015-stabilize-row-actions/contracts/validation-and-sonar-contract.md` if environment limitations block FR-011 crash reproduction [FR-006, FR-008, FR-010, FR-011; SC-001, SC-006, SC-007]
 
 **Checkpoint**: User Story 1 has current root-cause evidence tied to the scoped Pin/Unpin ordering
 path.
+
+Phase 3 evidence note: targeted Feature 015 validation passed on 2026-07-02 with no change to
+root-cause confidence, so `research.md` was not changed; the remaining FR-011 same-build pre-fix
+reproduction and formal performance-budget blockers are recorded in
+`contracts/validation-and-sonar-contract.md`.
 
 ---
 

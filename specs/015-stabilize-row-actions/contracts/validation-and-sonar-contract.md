@@ -10,7 +10,10 @@ This contract owns validation execution, validation evidence, performance eviden
 
 ## Validation Lifecycle Status
 
-**Current status**: Phase 2 Revision 2 implementation evidence recorded; SwiftUI presentation-callback path rejected for the current toolchain; AppKit-backed lifecycle gate implemented for scoped Pin/Unpin ordering mutation; broader validation and release readiness remain pending.
+**Current status**: Phase 3 targeted validation evidence recorded for the AppKit-backed lifecycle
+gate across scoped Pin/Unpin flows; SwiftUI presentation-callback path rejected for the current
+toolchain; broader regression, formal original-crash reproduction, formal performance-budget
+instrumentation, and release readiness remain pending.
 
 Validation cannot be marked complete until all required targeted evidence below is recorded.
 
@@ -32,7 +35,7 @@ weaken FR-011 or lifecycle requirements; it reopens architecture selection withi
 | Native row actions | Targeted UI or manual assistive validation | Native macOS row actions remain available for Pin/Unpin/Delete | Complete |
 | Original failure scenario | Reproduction attempt and post-fix run | Original crash path is reproduced before fix acceptance and passes after fix | Verification Pending |
 | Ordering invariants | UI or integration assertions | Pinned-first and newest-first ordering remain unchanged | Complete |
-| Performance | Timed targeted run | p95 <= 500 ms and max <= 750 ms from action tap to final visible ordered state | Pending |
+| Performance | Timed targeted run | p95 <= 500 ms and max <= 750 ms from action tap to final visible ordered state | Verification Pending |
 
 If environment limitations block FR-011 crash reproduction in a given run, keep FR-011 unchanged
 and record the blocker as **Verification Pending** evidence in this contract until reproduction is
@@ -152,6 +155,102 @@ Verification pending:
   assertion remains pending; the post-implementation targeted run did not crash.
 - Formal action-tap-to-final-visible-order p95/max performance samples remain pending.
 
+## Phase 3 Integration Validation Evidence
+
+Recorded on 2026-07-02.
+
+Build:
+
+```bash
+xcodebuild build \
+  -project NextPaste.xcodeproj \
+  -scheme NextPaste \
+  -destination 'platform=macOS'
+```
+
+Result: PASS on 2026-07-02.
+
+Targeted Feature 015 validation:
+
+```bash
+xcodebuild test \
+  -project NextPaste.xcodeproj \
+  -scheme NextPaste \
+  -destination 'platform=macOS' \
+  -only-testing:NextPasteUITests/ClipRowActionsUITests
+```
+
+Result: PASS on 2026-07-02. `ClipRowActionsUITests` executed 17 selected tests with 0 failures in
+682.002 seconds.
+
+Evidence artifact:
+
+```text
+/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.02_08-32-16-+0800.xcresult
+```
+
+Required coverage observed in the targeted run:
+
+- Repeated pinning after row-action lifecycle activity:
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` and
+  `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash` passed without an AppKit assertion
+  or app crash.
+- Pin relocation across pinned/unpinned groups:
+  `testRightSwipePinTogglesIconAndPinnedOrdering`,
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`, and
+  `testRowActionsWorkWithLocalUITestingStore` passed.
+- Unpin relocation across pinned/unpinned groups:
+  `testRightSwipePinTogglesIconAndPinnedOrdering` passed; native Unpin action availability remained
+  covered by `testRightSwipeRevealsUnpinActionForPinnedTextRow`.
+- Delete non-regression:
+  `testLeftSwipeDeleteRemovesOnlySelectedClip`,
+  `testAutoCapturedClipSupportsCopyDeleteAndPinOffline`,
+  `testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels`, and
+  `testRowActionsWorkWithLocalUITestingStore` passed.
+- Search/filter non-regression:
+  `testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability` passed.
+- Native macOS swipe actions:
+  right-swipe Pin/Unpin reveal tests, left-swipe Delete reveal tests, full-swipe/sub-threshold
+  gesture tests, and keyboard/accessibility availability tests passed; native SwiftUI
+  `swipeActions` remained in use.
+- Ordering invariants:
+  `testRightSwipePinTogglesIconAndPinnedOrdering`,
+  `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`, and local-store row-action coverage
+  preserved pinned-first and newest-first visible order checks.
+
+Pre-fix reproduction evidence:
+
+- Historical Feature 014 evidence records the original crash as `NSInternalInconsistencyException`
+  with reason `rowActionsGroupView should be populated` in AppKit row-action cleanup after an
+  immediate SwiftData save/list refresh.
+- Historical Feature 014 validation confirmed the failure path as `modelContext.save()` causing
+  `@Query` refresh and `List` diffing while `NSTableRowData` was still closing native row actions.
+- Phase 3 did not run a destructive pre-fix reproduction because the current implementation already
+  contains the scoped lifecycle gate. Formal same-build pre-fix reproduction for FR-011 remains
+  Verification Pending.
+
+Performance samples:
+
+The following samples are coarse XCTest trace deltas from native Pin/Unpin action tap to the first
+subsequent trace point where the expected final visible state/order was asserted. They include
+automation and accessibility polling overhead and are not formal app-instrumented latency samples.
+
+| Test / action | Trace delta |
+|---|---:|
+| `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` / older Pin | 1.53 s |
+| `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` / middle Pin | 1.52 s |
+| `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` / newest Pin to final order checks | 2.40 s |
+| `testRightSwipePinTogglesIconAndPinnedOrdering` / Pin | 1.52 s |
+| `testRightSwipePinTogglesIconAndPinnedOrdering` / Unpin | 0.49 s |
+| `testRightSwipeRevealsUnpinActionForPinnedTextRow` / Pin setup | 2.63 s |
+| `testRowActionsWorkWithLocalUITestingStore` / Pin | 2.89 s |
+
+Observed coarse sample p95: 2.89 s. Observed coarse sample max: 2.89 s.
+
+Formal performance-budget verification remains pending because these samples are XCTest-trace
+observations rather than dedicated app-level action-to-final-order instrumentation, and they include
+test harness waiting overhead.
+
 ## Release Readiness Gate
 
 Feature 015 is release-ready only when:
@@ -173,12 +272,13 @@ Feature 015 is release-ready only when:
 | data-model.md | Complete |
 | quickstart.md | Complete |
 | validation-and-sonar-contract.md | Complete |
-| tasks.md | Generated; implementation tasks pending execution |
+| tasks.md | Phase 3 tasks complete; later implementation tasks pending execution |
 
 ## Verification Status
 
-Planning verification is complete. Phase 2 Revision 2 implementation verification is recorded above
-for the scoped AppKit-backed Pin/Unpin lifecycle gate. If environment limitations block FR-011 crash
-reproduction, record that blocker as Verification Pending evidence here without weakening FR-011.
-The SwiftUI presentation-callback capability blocker is already recorded above as completed
-verification evidence for architecture re-selection.
+Planning verification is complete. Phase 2 Revision 2 implementation verification and Phase 3
+targeted integration validation are recorded above for the scoped AppKit-backed Pin/Unpin lifecycle
+gate. Formal same-build pre-fix reproduction for FR-011 and formal app-instrumented performance
+budget evidence remain Verification Pending without weakening FR-011. The SwiftUI
+presentation-callback capability blocker is already recorded above as completed verification
+evidence for architecture re-selection.
