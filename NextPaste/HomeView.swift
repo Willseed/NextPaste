@@ -27,12 +27,8 @@ struct HomeView: View {
     @State private var listViewportFrame: CGRect = .null
     @State private var hasAppliedLaunchWindowSize = false
     @State private var pendingPinIntent: PendingPinIntent? = nil
-    @State private var areRowActionsVisible = false
-    @State private var rowActionsObservation: Any? = nil
-    @State private var observedRowActionsTableViewID: ObjectIdentifier? = nil
-#if DEBUG
-    @State private var hasEmittedUnavailableTableObservation = false
-    @State private var appKitObservation: RowActionAppKitObservation? = nil
+#if os(macOS)
+    @State private var rowActionResolverObservation = RowActionResolverObservationState()
 #endif
 
     var body: some View {
@@ -98,16 +94,9 @@ struct HomeView: View {
         .onDisappear {
             copyFeedbackTask?.cancel()
             #if os(macOS)
-            if let obs = rowActionsObservation as? NSKeyValueObservation {
-                obs.invalidate()
-            }
-            rowActionsObservation = nil
-            observedRowActionsTableViewID = nil
-            areRowActionsVisible = false
+            rowActionResolverObservation.reset()
             #if DEBUG
-            appKitObservation?.invalidate()
-            appKitObservation = nil
-            hasEmittedUnavailableTableObservation = false
+            RowActionAppKitObserver.resetObservationSession()
             #endif
             #endif
             pendingPinIntent = nil
@@ -283,7 +272,7 @@ struct HomeView: View {
             directness: .inferred,
             state: state
         )
-        appKitObservation?.recordSnapshot(
+        RowActionAppKitObserver.recordSnapshot(
             reason: "visible-clips.\(reason)",
             visibleClipIDs: visibleIDs
         )
@@ -294,11 +283,7 @@ struct HomeView: View {
     }
 
     private func traceRowIdentity(for clip: ClipItem) -> (rowIndex: Int?, rowViewID: String?) {
-        if let appKitIdentity = appKitObservation?.rowIdentity(for: clip.id) {
-            return (appKitIdentity.rowIndex, appKitIdentity.rowViewID)
-        }
-
-        if let appKitIdentity = RowActionAppKitObservation.rowIdentity(for: clip.id) {
+        if let appKitIdentity = RowActionAppKitObserver.rowIdentity(for: clip.id) {
             return (appKitIdentity.rowIndex, appKitIdentity.rowViewID)
         }
 
@@ -321,7 +306,7 @@ struct HomeView: View {
                 "contentType": .string(clip.contentType)
             ]
         )
-        appKitObservation?.recordSnapshot(
+        RowActionAppKitObserver.recordSnapshot(
             reason: "row-action.tap.\(action)",
             visibleClipIDs: traceVisibleClipIDs
         )
@@ -469,54 +454,41 @@ struct HomeView: View {
 
 #if os(macOS)
     private func observeRowActions(on tableView: NSTableView?) {
+        let observation = rowActionResolverObservation
         guard let tableView else {
 #if DEBUG
-            if hasEmittedUnavailableTableObservation == false {
-                hasEmittedUnavailableTableObservation = true
-                RowActionAppKitObserver.emitTableUnavailable(reason: "resolver.nil")
-            }
+            RowActionAppKitObserver.emitTableUnavailableOnce(reason: "resolver.nil")
 #endif
             return
         }
 
         let tableViewID = ObjectIdentifier(tableView)
-        guard observedRowActionsTableViewID != tableViewID else {
+        guard observation.observedRowActionsTableViewID != tableViewID else {
 #if DEBUG
-            if appKitObservation?.observes(tableView) == true {
-                appKitObservation?.recordSnapshot(
-                    reason: "table.resolved.repeat",
-                    visibleClipIDs: traceVisibleClipIDs
-                )
-            }
+            RowActionAppKitObserver.recordResolvedRepeatIfObserving(
+                tableView,
+                visibleClipIDs: traceVisibleClipIDs
+            )
 #endif
             return
         }
 
-        if let obs = rowActionsObservation as? NSKeyValueObservation {
-            obs.invalidate()
-        }
+        observation.rowActionsObservation?.invalidate()
 
-        observedRowActionsTableViewID = tableViewID
-        areRowActionsVisible = tableView.rowActionsVisible
+        observation.observedRowActionsTableViewID = tableViewID
+        observation.areRowActionsVisible = tableView.rowActionsVisible
 #if DEBUG
-        appKitObservation?.invalidate()
-        let appKitObservation = RowActionAppKitObservation(
-            tableView: tableView,
-            visibleClipIDs: traceVisibleClipIDs
-        )
-        self.appKitObservation = appKitObservation
-        appKitObservation.recordRowActionsVisible(
-            tableView.rowActionsVisible,
-            reason: "table.resolved",
+        RowActionAppKitObserver.replaceObservation(
+            for: tableView,
             visibleClipIDs: traceVisibleClipIDs
         )
 #endif
-        rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { observedTableView, change in
+        observation.rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { observedTableView, change in
             Task { @MainActor in
                 let isVisible = change.newValue ?? false
-                areRowActionsVisible = isVisible
+                observation.areRowActionsVisible = isVisible
 #if DEBUG
-                appKitObservation.recordRowActionsVisible(
+                RowActionAppKitObserver.recordRowActionsVisible(
                     isVisible,
                     reason: "rowActionsVisible.kvo",
                     visibleClipIDs: traceVisibleClipIDs
@@ -529,7 +501,7 @@ struct HomeView: View {
     }
 
     private func applyPendingPinIntentIfDismissed() {
-        guard areRowActionsVisible == false,
+        guard rowActionResolverObservation.areRowActionsVisible == false,
               let pendingPinIntent else {
             return
         }
@@ -736,6 +708,20 @@ private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
 }
 
 #if os(macOS)
+@MainActor
+private final class RowActionResolverObservationState {
+    var areRowActionsVisible = false
+    var rowActionsObservation: NSKeyValueObservation?
+    var observedRowActionsTableViewID: ObjectIdentifier?
+
+    func reset() {
+        rowActionsObservation?.invalidate()
+        rowActionsObservation = nil
+        observedRowActionsTableViewID = nil
+        areRowActionsVisible = false
+    }
+}
+
 private struct RowActionTableViewResolver: NSViewRepresentable {
     let onResolve: (NSTableView?) -> Void
 

@@ -214,6 +214,59 @@ struct ClipItemTests {
         #expect(savedImageMetadata.hasRequiredImageMetadata())
     }
 
+    @Test("row action mutations preserve pinned-first newest-first history ordering")
+    func rowActionMutationsPreservePinnedFirstNewestFirstHistoryOrdering() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let olderPinned = ClipItem(
+            textContent: "Older pinned baseline",
+            createdAt: Date(timeIntervalSince1970: 100),
+            isPinned: true
+        )
+        let olderUnpinned = ClipItem(
+            textContent: "Older unpinned baseline",
+            createdAt: Date(timeIntervalSince1970: 200)
+        )
+        let newerPinTarget = ClipItem(
+            textContent: "Newer pin target",
+            createdAt: Date(timeIntervalSince1970: 300)
+        )
+        let newestUnpinTarget = ClipItem(
+            textContent: "Newest unpin target",
+            createdAt: Date(timeIntervalSince1970: 400),
+            isPinned: true
+        )
+        let deleteTarget = ClipItem(
+            textContent: "Delete target should disappear",
+            createdAt: Date(timeIntervalSince1970: 500),
+            isPinned: true
+        )
+
+        [
+            olderPinned,
+            olderUnpinned,
+            newerPinTarget,
+            newestUnpinTarget,
+            deleteTarget
+        ].forEach(context.insert)
+        try context.save()
+
+        newerPinTarget.togglePinned()
+        newestUnpinTarget.togglePinned()
+        context.delete(deleteTarget)
+        try context.save()
+
+        let history = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(history.map(\.textContent) == [
+            "Newer pin target",
+            "Older pinned baseline",
+            "Newest unpin target",
+            "Older unpinned baseline"
+        ])
+        #expect(history.map(\.isPinned) == [true, true, false, false])
+        #expect(history.map(\.pinnedSortOrder) == [1, 1, 0, 0])
+        #expect(history.contains { $0.id == deleteTarget.id } == false)
+    }
+
     @Test("matches text clips with case-insensitive substring search")
     func matchesTextClipsWithCaseInsensitiveSubstringSearch() {
         let clip = ClipItem(textContent: "Project Alpha launch notes")

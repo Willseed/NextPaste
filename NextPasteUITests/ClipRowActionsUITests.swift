@@ -480,6 +480,61 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
+    func testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture() throws {
+        let app = launchApp(windowSizePreset: .tall)
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let toggleTargets = (1...3).map { "Feature 019 toggle target \($0)" }
+        let deleteTargets = (1...4).map { "Feature 019 delete target \($0)" }
+        var actionOutcomes: [String] = []
+
+        try history.createTextClips(toggleTargets + deleteTargets)
+        history.assertClipRowIdentifierExists()
+
+        for toggleTarget in toggleTargets {
+            let pinButton = row.revealPinActionWithRightSwipe(for: toggleTarget)
+            UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+            pinButton.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: toggleTarget, in: app),
+                "Pinned",
+                timeout: 1
+            )
+            XCTAssertEqual(app.state, .runningForeground)
+            actionOutcomes.append("pin-\(toggleTarget): \(app.state)")
+        }
+
+        for toggleTarget in toggleTargets {
+            let unpinButton = row.revealPinActionWithRightSwipe(for: toggleTarget, expectedLabel: "Unpin")
+            UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+            unpinButton.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: toggleTarget, in: app),
+                "Unpinned",
+                timeout: 1
+            )
+            XCTAssertEqual(app.state, .runningForeground)
+            actionOutcomes.append("unpin-\(toggleTarget): \(app.state)")
+        }
+
+        for deleteTarget in deleteTargets {
+            let deleteButton = row.revealDeleteActionWithLeftSwipe(for: deleteTarget)
+            UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+            deleteButton.tap()
+            UITestAssertions.assertDoesNotExist(
+                app.staticTexts[deleteTarget],
+                "Expected repeated-flow delete target to be removed",
+                timeout: 2
+            )
+            XCTAssertEqual(app.state, .runningForeground)
+            actionOutcomes.append("delete-\(deleteTarget): \(app.state)")
+        }
+
+        XCTAssertEqual(actionOutcomes.count, 10)
+        attachRowActionWarningAssertionOutcome(actionOutcomes, app: app)
+    }
+
+    @MainActor
     func testFullSwipeOnlyRevealsTextRowActionWithoutAutoExecutingOrCopying() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
@@ -673,6 +728,28 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(row, "Clipboard clip", file: file, line: line)
         UITestAssertions.assertAccessibleTextContains(row, text, file: file, line: line)
         return row
+    }
+
+    @MainActor
+    private func attachRowActionWarningAssertionOutcome(_ actionOutcomes: [String], app: XCUIApplication) {
+        let targetedSignals = [
+            "Modifying state during view update",
+            "layoutSubtreeIfNeeded",
+            "rowActionsGroupView should be populated",
+            "NSInternalInconsistencyException"
+        ]
+        let attachment = XCTAttachment(string: """
+        Feature 019 targeted row-action run completed \(actionOutcomes.count) native actions.
+        Final app state: \(app.state)
+        Per-action outcomes:
+        \(actionOutcomes.joined(separator: "\n"))
+
+        Review the xcodebuild output for these targeted SwiftUI/AppKit signals:
+        \(targetedSignals.joined(separator: "\n"))
+        """)
+        attachment.name = "Feature 019 row-action warning/assertion outcome"
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 
     @MainActor

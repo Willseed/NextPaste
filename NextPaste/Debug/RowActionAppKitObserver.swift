@@ -512,6 +512,72 @@ final class RowActionAppKitObservation {
 }
 
 enum RowActionAppKitObserver {
+    private static var currentObservation: RowActionAppKitObservation?
+    private static var hasEmittedUnavailableTableObservation = false
+
+    static func resetObservationSession() {
+        currentObservation?.invalidate()
+        currentObservation = nil
+        hasEmittedUnavailableTableObservation = false
+    }
+
+    static func emitTableUnavailableOnce(reason: String) {
+        guard hasEmittedUnavailableTableObservation == false else {
+            return
+        }
+
+        hasEmittedUnavailableTableObservation = true
+        emitTableUnavailable(reason: reason)
+    }
+
+    static func replaceObservation(for tableView: NSTableView, visibleClipIDs: [UUID]) {
+        currentObservation?.invalidate()
+        let appKitObservation = RowActionAppKitObservation(
+            tableView: tableView,
+            visibleClipIDs: visibleClipIDs
+        )
+        currentObservation = appKitObservation
+        appKitObservation.recordRowActionsVisible(
+            tableView.rowActionsVisible,
+            reason: "table.resolved",
+            visibleClipIDs: visibleClipIDs
+        )
+    }
+
+    static func recordResolvedRepeatIfObserving(_ tableView: NSTableView, visibleClipIDs: [UUID]) {
+        guard currentObservation?.observes(tableView) == true else {
+            return
+        }
+
+        currentObservation?.recordSnapshot(
+            reason: "table.resolved.repeat",
+            visibleClipIDs: visibleClipIDs
+        )
+    }
+
+    static func recordRowActionsVisible(_ isVisible: Bool, reason: String, visibleClipIDs: [UUID]) {
+        currentObservation?.recordRowActionsVisible(
+            isVisible,
+            reason: reason,
+            visibleClipIDs: visibleClipIDs
+        )
+    }
+
+    static func recordSnapshot(reason: String, visibleClipIDs: [UUID]) {
+        currentObservation?.recordSnapshot(
+            reason: reason,
+            visibleClipIDs: visibleClipIDs
+        )
+    }
+
+    static func rowIdentity(for clipID: UUID) -> (rowIndex: Int, rowViewID: String)? {
+        if let identity = currentObservation?.rowIdentity(for: clipID) {
+            return identity
+        }
+
+        return RowActionAppKitObservation.rowIdentity(for: clipID)
+    }
+
     static func emitTableUnavailable(reason: String) {
         RowActionTraceRuntime.emit(
             category: .appKitTable,
