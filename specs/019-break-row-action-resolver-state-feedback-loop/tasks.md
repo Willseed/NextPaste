@@ -81,14 +81,14 @@
 
 **Purpose**: Execute targeted validation first, then broader regression and required evidence capture.
 
-- [ ] T023 Run the build command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record the result in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-006)
-- [ ] T024 Run targeted resolver feedback validation from `NextPasteTests/RowActionResolverFeedbackTests.swift`, or record why lower-level validation is not applicable in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-001, FR-010; SC-001, SC-006)
-- [ ] T025 Run the targeted row-action UI command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record Pin/Unpin/Delete behavior plus warning and assertion outcomes in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-008, FR-009, FR-010; SC-001, SC-002, SC-003, SC-004)
-- [ ] T026 Run the Feature 018 trace regression workflow from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record required row-action trace event evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-006, FR-011; SC-005)
-- [ ] T027 Run the release-equivalent check from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record default behavior evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-006; SC-006)
-- [ ] T028 Validate swipe responsiveness, row-action responsiveness, scrolling, and list rendering against the pre-fix baseline and record evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010, FR-012; SC-006)
-- [ ] T029 Run the full macOS regression command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` after targeted checks pass and record the result in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-004, SC-006)
-- [ ] T030 Record SonarQube Project Health evidence for the final branch or PR in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-006)
+- [X] T023 Run the build command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record the result in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-006)
+- [X] T024 Run targeted resolver feedback validation from `NextPasteTests/RowActionResolverFeedbackTests.swift`, or record why lower-level validation is not applicable in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-001, FR-010; SC-001, SC-006)
+- [X] T025 Run the targeted row-action UI command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record Pin/Unpin/Delete behavior plus warning and assertion outcomes in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-008, FR-009, FR-010; SC-001, SC-002, SC-003, SC-004)
+- [X] T026 Run the Feature 018 trace regression workflow from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record required row-action trace event evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-006, FR-011; SC-005)
+- [X] T027 Run the release-equivalent check from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` and record default behavior evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-006; SC-006)
+- [X] T028 Validate swipe responsiveness, row-action responsiveness, scrolling, and list rendering against the pre-fix baseline and record evidence in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010, FR-012; SC-006)
+- [X] T029 Run the full macOS regression command from `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` after targeted checks pass and record the result in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-004, SC-006)
+- [X] T030 Record SonarQube Project Health evidence for the final branch or PR in `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` (FR-010; SC-006)
 
 **Checkpoint**: Targeted row-action validation, trace validation, release/default validation, performance validation, broader regression, and Sonar evidence are recorded under the validation contract.
 
@@ -98,9 +98,9 @@
 
 **Purpose**: Remove temporary work and verify scope stayed within Feature 019.
 
-- [ ] T031 Remove temporary diagnostics or broad changes outside the resolver feedback scope from `NextPaste/HomeView.swift`, `NextPaste/Debug/RowActionAppKitObserver.swift`, and `NextPasteUITests/ClipRowActionsUITests.swift` (FR-006, FR-012; SC-006)
-- [ ] T032 [P] Reconcile final FR/SC traceability in `specs/019-break-row-action-resolver-state-feedback-loop/tasks.md` and `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` without redefining requirement or success-criterion IDs (FR-010, FR-012; SC-006)
-- [ ] T033 [P] Verify `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` remains execution-only and `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` remains the validation owner after evidence is recorded (FR-010, FR-012; SC-006)
+- [X] T031 Remove temporary diagnostics or broad changes outside the resolver feedback scope from `NextPaste/HomeView.swift`, `NextPaste/Debug/RowActionAppKitObserver.swift`, and `NextPasteUITests/ClipRowActionsUITests.swift` (FR-006, FR-012; SC-006)
+- [X] T032 [P] Reconcile final FR/SC traceability in `specs/019-break-row-action-resolver-state-feedback-loop/tasks.md` and `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` without redefining requirement or success-criterion IDs (FR-010, FR-012; SC-006)
+- [X] T033 [P] Verify `specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md` remains execution-only and `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md` remains the validation owner after evidence is recorded (FR-010, FR-012; SC-006)
 
 ---
 

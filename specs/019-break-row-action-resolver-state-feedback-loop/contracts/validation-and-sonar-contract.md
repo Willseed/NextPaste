@@ -156,3 +156,235 @@ Before release readiness:
    gate.
 4. Any local evidence file or linked artifact records only evidence location and justification; it
    does not weaken this contract's ownership of SonarQube requirements.
+
+## 14. Execution Evidence Log
+
+### T023 Build Health (FR-010, SC-006)
+
+- **Date/Time**: 2026-07-03T09:18:23+08:00
+- **Command**:
+  ```bash
+  xcodebuild build \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS'
+  ```
+- **Outcome**: Passed (`** BUILD SUCCEEDED **`, exit code 0).
+- **Observed notes/warnings**:
+  - `IDERunDestination: Supported platforms for the buildables in the current scheme is empty.`
+  - `Using the first of multiple matching destinations` (arm64/x86_64 My Mac).
+
+### T024 Resolver Feedback Targeted Validation (FR-001, FR-010; SC-001, SC-006)
+
+- **Date/Time**: 2026-07-03T09:18:29+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteTests/RowActionResolverFeedbackTests
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Result bundle**:
+  `/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-18-29-+0800.xcresult`
+- **Executed test evidence**:
+  - `resolverUpdateAndMovementPathDoesNotSynchronouslyMutateHomeViewRecursiveChainState()` passed.
+  - The guard covers resolver update and movement paths against synchronous mutation of the named
+    recursive-chain `HomeView` state values.
+
+### T025 Targeted Row-Action UI Warning/Assertion Validation (FR-008, FR-009, FR-010; SC-001, SC-002, SC-003, SC-004)
+
+- **Date/Time**: 2026-07-03T09:18:38+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteUITests/ClipRowActionsUITests/testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0; test duration 146.796 seconds).
+- **Result bundle**:
+  `/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-18-38-+0800.xcresult`
+- **Pin/Unpin/Delete behavior evidence**:
+  - The targeted test completed ten consecutive native row-action flows across Pin, Unpin, and
+    Delete without app termination.
+  - The broader `ClipRowActionsUITests` suite in the full regression also passed all 19 text
+    row-action tests, including targeted Pin, Unpin, Delete, accessibility, threshold gesture, and
+    native swipe reveal scenarios.
+- **Warning/assertion string review**:
+  ```bash
+  rg -n "Modifying state during view update|layoutSubtreeIfNeeded|rowActionsGroupView should be populated|NSInternalInconsistencyException" \
+    /Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-18-38-+0800.xcresult
+  ```
+  - Outcome: no matches (`rg` exit code 1).
+
+### T026 Feature 018 Trace Regression Workflow (FR-006, FR-011, SC-005)
+
+- **Date/Time**: 2026-07-03T09:21:37+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteUITests/ClipRowActionsUITests/testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0; test duration 49.864 seconds).
+- **Result bundle**:
+  `/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-21-37-+0800.xcresult`
+- **Trace evidence**:
+  - Trace file:
+    `/Users/pony/Library/Containers/pylot.NextPaste/Data/tmp/nextpaste-row-action-trace-E097EA73-08D3-4A4C-85B3-4AF3E80F48A5.jsonl`
+  - Trace file contained 164 JSONL events.
+  - Event review confirmed required row-action/AppKit/SwiftData/query/list/transaction/SwiftUI row
+    event categories, including action tap, pending-delete dismissal readiness, and save-after
+    events.
+  - Privacy review found no clipboard fixture text in the trace file when scanning for the trace
+    test's human-readable clip strings.
+- **Warning/assertion string review**:
+  ```bash
+  rg -n "Modifying state during view update|layoutSubtreeIfNeeded|rowActionsGroupView should be populated|NSInternalInconsistencyException" \
+    /Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-21-37-+0800.xcresult
+  ```
+  - Outcome: no matches (`rg` exit code 1).
+
+### T027 Release-Equivalent Check (FR-006, SC-006)
+
+- **Date/Time**: 2026-07-03T09:55:52+08:00
+- **Command**:
+  ```bash
+  xcodebuild build \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -configuration Release \
+    -destination 'platform=macOS'
+  ```
+- **Outcome**: Passed (`** BUILD SUCCEEDED **`, exit code 0).
+- **Default/Release behavior evidence**:
+  - Current Release build passed after the row-action resolver changes and UI-test stabilization.
+  - `xcodebuild -showBuildSettings` review showed `SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG`
+    for Debug and no `SWIFT_ACTIVE_COMPILATION_CONDITIONS` entry in Release.
+  - `rg -n "^#if DEBUG"` confirmed row-action trace runtime sources remain debug-gated:
+    `RowActionTraceSession.swift`, `RowActionTraceGate.swift`, `RowActionTraceEvent.swift`, and
+    `RowActionAppKitObserver.swift`.
+- **Observed notes/warnings**:
+  - `IDERunDestination: Supported platforms for the buildables in the current scheme is empty.`
+  - `Using the first of multiple matching destinations` (arm64/x86_64 My Mac).
+  - `removing value "remote-notification" for "UIBackgroundModes" - not supported on macOS`.
+
+### T028 Responsiveness, Scrolling, and List Rendering Validation (FR-010, FR-012; SC-006)
+
+- **Date/Time**: 2026-07-03T09:18:38+08:00 through 2026-07-03T09:54:42+08:00
+- **Evidence sources**:
+  - Targeted ten-flow row-action UI test passed in 146.796 seconds.
+  - Full macOS regression passed 172 tests, including:
+    - 19 `ClipRowActionsUITests` text row-action tests.
+    - 12 `ClipboardImageRowActionsUITests` image row-action tests.
+    - 8 `ClipboardAutoCaptureUITests`.
+    - 6 `HistoryListUITests` covering search, ordering, first-visible-row, and live resize.
+  - Static scope review found no introduced `Task.sleep`, run-loop delay workaround, arbitrary
+    fixed timing delay, private AppKit API, swizzling, private selectors, `List` replacement,
+    `swipeActions` replacement, or global `@Query` synchronization.
+- **Outcome**: Passed for automated responsiveness/regression evidence. Hardware-specific
+  trackpad/Magic Mouse feel remains outside automated coverage, per Section 7.
+
+### T029 Full macOS Regression (FR-010; SC-004, SC-006)
+
+- **Date/Time**: 2026-07-03T09:23:35+08:00 through 2026-07-03T09:54:49+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS'
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Result bundle**:
+  `/Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-23-35-+0800.xcresult`
+- **Summary extraction**:
+  ```bash
+  xcrun xcresulttool get test-results summary \
+    --path /Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-23-35-+0800.xcresult
+  ```
+  - Result: `Passed`.
+  - Total tests: 172.
+  - Failed tests: 0.
+  - Skipped tests: 0.
+- **Warning/assertion string review**:
+  ```bash
+  rg -n "Modifying state during view update|layoutSubtreeIfNeeded|rowActionsGroupView should be populated|NSInternalInconsistencyException" \
+    /Users/pony/Library/Developer/Xcode/DerivedData/NextPaste-avudmcvlobvqtieejopptfaohuev/Logs/Test/Test-NextPaste-2026.07.03_09-23-35-+0800.xcresult
+  ```
+  - Outcome: no matches (`rg` exit code 1).
+
+### T030 SonarQube Project Health Evidence (FR-010; SC-006)
+
+- **Date/Time**: 2026-07-03T09:55:52+08:00 through 2026-07-03T09:58:00+08:00
+- **Configured helper probe**:
+  ```bash
+  SONAR_OPEN_ISSUES_TIMEOUT_SECONDS=1 node scripts/check-sonar-open-issues.mjs
+  ```
+  - Outcome: failed because `scripts/check-sonar-open-issues.mjs` is not present in this checkout.
+- **Accepted-source availability probes**:
+  - `command -v sonar-scanner`: no executable on `PATH`.
+  - Repository search for `sonar-project.properties`, `.sonarcloud.properties`,
+    `sonar*.properties`, `*sonar*.mjs`, `*sonar*.js`, `*sonar*.yml`, and `*sonar*.yaml`: no local
+    Sonar configuration or runner found.
+  - `git ls-files` search: no tracked `scripts/` Sonar helper and no tracked GitHub workflow.
+  - GitHub connector reads for `scripts/check-sonar-open-issues.mjs`,
+    `.github/workflows/sonar.yml`, and `.github/workflows/ci.yml`: all returned 404.
+  - `env | rg -i 'sonar|sonarqube|sonarcloud'`: no Sonar environment values.
+- **Evidence status**:
+  - Accepted SonarQube/SonarCloud source is unavailable in the local and connected GitHub context.
+  - No SonarQube Project Health pass result was fabricated.
+  - No reported feature-introduced Sonar issue source was available to inspect or resolve here.
+
+## 15. Phase 7 Scope and Ownership Evidence
+
+### T031 Final Scope Cleanup (FR-006, FR-012; SC-006)
+
+- **Date/Time**: 2026-07-03T10:07:57+08:00
+- **Changed-file scope**:
+  - `NextPaste/HomeView.swift`
+  - `NextPasteUITests/ClipRowActionsUITests.swift`
+  - `specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md`
+  - `specs/019-break-row-action-resolver-state-feedback-loop/tasks.md`
+- **Diff review command**:
+  ```bash
+  git diff -U0 -- NextPaste/HomeView.swift NextPasteUITests/ClipRowActionsUITests.swift | \
+    rg -n "Task\\.sleep|RunLoop|asyncAfter|NSSelectorFromString|Selector\\(|method_exchange|swizzle|class_replaceMethod|objc_getClass|@Query|List\\(|\\.swipeActions|rowActionsGroupView|layoutSubtreeIfNeeded|Modifying state during view update|NSInternalInconsistencyException"
+  ```
+- **Outcome**: Passed. No introduced prohibited timing workaround, private AppKit API, swizzling,
+  private selector usage, global `@Query` synchronization, `List` replacement, `swipeActions`
+  replacement, temporary warning string, or row-action recursion assertion string was present in
+  the product/UI-test diff.
+
+### T032 Final FR/SC Traceability Reconciliation (FR-010, FR-012; SC-006)
+
+- **Date/Time**: 2026-07-03T10:07:57+08:00
+- **Command**:
+  ```bash
+  rg -o "FR-[0-9]{3}|SC-[0-9]{3}" \
+    specs/019-break-row-action-resolver-state-feedback-loop/spec.md \
+    specs/019-break-row-action-resolver-state-feedback-loop/tasks.md \
+    specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md \
+    specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md | sort -u
+  ```
+- **Outcome**: Passed. Downstream artifacts reference only Feature 019 spec-owned identifiers:
+  `FR-001` through `FR-012` and `SC-001` through `SC-006`; no downstream artifact redefined,
+  renumbered, extended, or invented an FR/SC identifier.
+
+### T033 Quickstart and Contract Ownership Check (FR-010, FR-012; SC-006)
+
+- **Date/Time**: 2026-07-03T10:07:57+08:00
+- **Review command**:
+  ```bash
+  rg -n "validation matrix|Validation Matrix|lifecycle|Lifecycle|Propagation Progress|Evidence Requirements|owned by|owns|owner|Release Readiness|Project Health|SonarQube|SonarCloud" \
+    specs/019-break-row-action-resolver-state-feedback-loop/quickstart.md \
+    specs/019-break-row-action-resolver-state-feedback-loop/contracts/validation-and-sonar-contract.md
+  ```
+- **Outcome**: Passed. `quickstart.md` remains execution-only and delegates validation ownership,
+  evidence requirements, result interpretation, release readiness, and SonarQube requirements to
+  this contract. This contract remains the validation owner after evidence recording.

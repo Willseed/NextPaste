@@ -78,13 +78,15 @@ final class ClipRowActionsUITests: UITestCase {
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
 
-        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyFailure)
         history.assertClipRowIdentifierExists()
         let textRowIdentifier = assertTextRowIdentifier(
             for: UITestFixtures.RowActions.copyFailure,
             in: app
         ).identifier
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
         row.tapRow(withText: UITestFixtures.RowActions.copyFailure)
 
         UITestAssertions.assertNoCopiedFeedback(in: app)

@@ -26,8 +26,9 @@ struct HomeView: View {
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
     @State private var hasAppliedLaunchWindowSize = false
-    @State private var pendingPinIntent: PendingPinIntent? = nil
+    @State private var pendingPinIntents: [PendingPinIntent] = []
 #if os(macOS)
+    @State private var pendingDeleteIntent: PendingDeleteIntent? = nil
     @State private var rowActionResolverObservation = RowActionResolverObservationState()
 #endif
 
@@ -98,8 +99,9 @@ struct HomeView: View {
             #if DEBUG
             RowActionAppKitObserver.resetObservationSession()
             #endif
+            pendingDeleteIntent = nil
             #endif
-            pendingPinIntent = nil
+            pendingPinIntents.removeAll()
         }
     }
 
@@ -320,23 +322,43 @@ struct HomeView: View {
     private func deleteClip(_ clip: ClipItem) {
 #if DEBUG
         let rowIdentity = traceRowIdentity(for: clip)
+        let traceRowIndex = rowIdentity.rowIndex
+        let traceRowViewID = rowIdentity.rowViewID
         traceRowActionTap(action: "delete", edge: "trailing", clip: clip)
         RowActionTransactionObserver.observeCompletion(
             action: "delete",
             clipID: clip.id,
-            rowIndex: rowIdentity.rowIndex,
-            rowViewID: rowIdentity.rowViewID,
+            rowIndex: traceRowIndex,
+            rowViewID: traceRowViewID,
             phase: "action.tap"
         )
+#else
+        let traceRowIndex: Int? = nil
+        let traceRowViewID: String? = nil
 #endif
-        if pendingPinIntent?.clipID == clip.id {
-            pendingPinIntent = nil
-        }
+        pendingPinIntents.removeAll { $0.clipID == clip.id }
+#if os(macOS)
+        pendingDeleteIntent = PendingDeleteIntent(
+            clipID: clip.id,
+            traceRowIndex: traceRowIndex,
+            traceRowViewID: traceRowViewID
+        )
+        applyPendingDeleteIntentIfDismissed()
+#else
+        applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
+#endif
+    }
+
+    private func applyDeleteClip(
+        _ clip: ClipItem,
+        traceRowIndex: Int? = nil,
+        traceRowViewID: String? = nil
+    ) {
         #if DEBUG
         _ = ClipDeletionAction(modelContext: modelContext).delete(
             clip,
-            traceRowIndex: rowIdentity.rowIndex,
-            traceRowViewID: rowIdentity.rowViewID
+            traceRowIndex: traceRowIndex,
+            traceRowViewID: traceRowViewID
         )
         #else
         _ = ClipDeletionAction(modelContext: modelContext).delete(clip)
@@ -358,7 +380,8 @@ struct HomeView: View {
         )
 #endif
 #if os(macOS)
-        pendingPinIntent = PendingPinIntent(clipID: clip.id, targetPinnedState: targetPinnedState)
+        pendingPinIntents.removeAll { $0.clipID == clip.id }
+        pendingPinIntents.append(PendingPinIntent(clipID: clip.id, targetPinnedState: targetPinnedState))
         applyPendingPinIntentIfDismissed()
 #else
         applyTogglePin(clip)
@@ -475,6 +498,7 @@ struct HomeView: View {
 
         observation.rowActionsObservation?.invalidate()
 
+        observation.observedRowActionsTableView = tableView
         observation.observedRowActionsTableViewID = tableViewID
         observation.areRowActionsVisible = tableView.rowActionsVisible
 #if DEBUG
@@ -496,37 +520,72 @@ struct HomeView: View {
                 _ = observedTableView
 #endif
                 applyPendingPinIntentIfDismissed()
+                applyPendingDeleteIntentIfDismissed()
             }
         }
     }
 
     private func applyPendingPinIntentIfDismissed() {
-        guard rowActionResolverObservation.areRowActionsVisible == false,
-              let pendingPinIntent else {
+        guard rowActionResolverObservation.currentRowActionsVisible == false,
+              pendingPinIntents.isEmpty == false else {
             return
         }
 
-        guard let targetClip = clips.first(where: { $0.id == pendingPinIntent.clipID }) else {
-            self.pendingPinIntent = nil
+        let intentsToApply = pendingPinIntents
+        pendingPinIntents.removeAll()
+
+        for pendingPinIntent in intentsToApply {
+            guard let targetClip = clips.first(where: { $0.id == pendingPinIntent.clipID }) else {
+                continue
+            }
+#if DEBUG
+            let rowIdentity = traceRowIdentity(for: targetClip)
+            RowActionTraceRuntime.emit(
+                category: .rowAction,
+                event: "dismissed.pending-pin-ready",
+                directness: .inferred,
+                clipID: pendingPinIntent.clipID,
+                rowIndex: rowIdentity.rowIndex,
+                rowViewID: rowIdentity.rowViewID,
+                state: [
+                    "targetPinnedState": .bool(pendingPinIntent.targetPinnedState)
+                ]
+            )
+#endif
+            applyPinState(pendingPinIntent.targetPinnedState, to: targetClip)
+        }
+    }
+
+    private func applyPendingDeleteIntentIfDismissed() {
+        guard rowActionResolverObservation.currentRowActionsVisible == false,
+              let pendingDeleteIntent else {
+            return
+        }
+
+        guard let targetClip = clips.first(where: { $0.id == pendingDeleteIntent.clipID }) else {
+            self.pendingDeleteIntent = nil
             return
         }
 
 #if DEBUG
-        let rowIdentity = traceRowIdentity(for: targetClip)
         RowActionTraceRuntime.emit(
             category: .rowAction,
-            event: "dismissed.pending-pin-ready",
+            event: "dismissed.pending-delete-ready",
             directness: .inferred,
-            clipID: pendingPinIntent.clipID,
-            rowIndex: rowIdentity.rowIndex,
-            rowViewID: rowIdentity.rowViewID,
+            clipID: pendingDeleteIntent.clipID,
+            rowIndex: pendingDeleteIntent.traceRowIndex,
+            rowViewID: pendingDeleteIntent.traceRowViewID,
             state: [
-                "targetPinnedState": .bool(pendingPinIntent.targetPinnedState)
+                "contentType": .string(targetClip.contentType)
             ]
         )
 #endif
-        self.pendingPinIntent = nil
-        applyPinState(pendingPinIntent.targetPinnedState, to: targetClip)
+        self.pendingDeleteIntent = nil
+        applyDeleteClip(
+            targetClip,
+            traceRowIndex: pendingDeleteIntent.traceRowIndex,
+            traceRowViewID: pendingDeleteIntent.traceRowViewID
+        )
     }
 #endif
 
@@ -693,6 +752,12 @@ private struct PendingPinIntent: Equatable {
     let targetPinnedState: Bool
 }
 
+private struct PendingDeleteIntent: Equatable {
+    let clipID: UUID
+    let traceRowIndex: Int?
+    let traceRowViewID: String?
+}
+
 private enum HistoryMeasuredFrame: Hashable {
     case header
     case settingsMessage
@@ -712,11 +777,17 @@ private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
 private final class RowActionResolverObservationState {
     var areRowActionsVisible = false
     var rowActionsObservation: NSKeyValueObservation?
+    weak var observedRowActionsTableView: NSTableView?
     var observedRowActionsTableViewID: ObjectIdentifier?
+
+    var currentRowActionsVisible: Bool {
+        observedRowActionsTableView?.rowActionsVisible ?? areRowActionsVisible
+    }
 
     func reset() {
         rowActionsObservation?.invalidate()
         rowActionsObservation = nil
+        observedRowActionsTableView = nil
         observedRowActionsTableViewID = nil
         areRowActionsVisible = false
     }
