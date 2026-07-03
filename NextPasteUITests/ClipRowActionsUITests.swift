@@ -213,7 +213,20 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
 
+        // Feature 020 (US1): Pin/Unpin pinned-state icon feedback is immediate; row-position
+        // relocation is deferred until the next explicit user input event.
         UITestAssertions.assertPinnedIconExists(in: app)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
+            olderPinTargetIdentifier
+        )
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.newerUnpinned, in: app).identifier,
+            newerUnpinnedIdentifier
+        )
+
+        // Reconcile on the next explicit user input event, then assert pinned-first ordering.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(olderPinTarget, appearsAbove: newerUnpinned)
         XCTAssertEqual(
             assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
@@ -228,7 +241,20 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
         unpinButton.tap()
 
+        // Feature 020 (US1): Unpin pinned-state icon feedback is immediate; row-position
+        // relocation is deferred until the next explicit user input event.
         UITestAssertions.assertPinnedIconDisappears(in: app)
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
+            olderPinTargetIdentifier
+        )
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.newerUnpinned, in: app).identifier,
+            newerUnpinnedIdentifier
+        )
+
+        // Reconcile on the next explicit user input event, then assert newest-first ordering.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
         XCTAssertEqual(
             assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
@@ -441,6 +467,9 @@ final class ClipRowActionsUITests: UITestCase {
             )
         }
 
+        // Feature 020 (US1): Pin pinned-state feedback is immediate (asserted above), but
+        // row-position relocation is deferred until the next explicit user input event.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(
             app.staticTexts[UITestFixtures.RowActions.thirdPinNewest],
             appearsAbove: app.staticTexts[UITestFixtures.RowActions.thirdPinMiddle]
@@ -635,6 +664,9 @@ final class ClipRowActionsUITests: UITestCase {
             assertTextRowIdentifier(for: UITestFixtures.RowActions.localOnlyPinnedCopy, in: app).identifier,
             localOnlyPinnedCopyIdentifier
         )
+        // Feature 020 (US1): Pin pinned-state icon feedback is immediate; row-position
+        // relocation is deferred until the next explicit user input event.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(
             app.staticTexts[UITestFixtures.RowActions.localOnlyPinnedCopy],
             appearsAbove: app.staticTexts[UITestFixtures.RowActions.localOnlyDelete]
@@ -830,7 +862,10 @@ final class ClipRowActionsUITests: UITestCase {
             )
         }
 
-        // All pinned, newest-first: newest above middle above older.
+        // All pinned, newest-first: newest above middle above older. Feature 020 (US1):
+        // row-position relocation is deferred until the next explicit user input event, so
+        // reconcile before asserting the post-Pin pinned-first/newest-first ordering.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(app.staticTexts[clips[2]], appearsAbove: app.staticTexts[clips[1]])
         UITestAssertions.assert(app.staticTexts[clips[1]], appearsAbove: app.staticTexts[clips[0]])
 
@@ -846,6 +881,10 @@ final class ClipRowActionsUITests: UITestCase {
             timeout: 1
         )
 
+        // Feature 020 (US1): Unpin pinned-state feedback is immediate (asserted above), but
+        // row-position relocation is deferred until the next explicit user input event, so
+        // reconcile before asserting the final pinned-first/newest-first ordering.
+        triggerDisplayOrderReconciliation(in: app)
         // Pinned-first: the two remaining pinned clips stay above the unpinned middle.
         UITestAssertions.assert(app.staticTexts[clips[2]], appearsAbove: app.staticTexts[clips[1]])
         UITestAssertions.assert(app.staticTexts[clips[0]], appearsAbove: app.staticTexts[clips[1]])
@@ -959,6 +998,17 @@ final class ClipRowActionsUITests: UITestCase {
         )
 
         attachRowActionWarningAssertionOutcome(["pin-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    /// Feature 020: deliver an explicit user input event so the deferred Pin/Unpin
+    /// display-order snapshot reconciles back to the @Query-sorted pinned-first/newest-first
+    /// ordering. The reconciliation boundary is a real explicit input event (key), not a
+    /// fixed delay, run-loop hop, render-cycle callback, or timing assumption. After this
+    /// returns, `UITestAssertions.assert(...appearsAbove:)` (which waits for ordering to
+    /// settle) observes the reconciled order.
+    @MainActor
+    private func triggerDisplayOrderReconciliation(in app: XCUIApplication) {
+        app.typeKey(.escape, modifierFlags: [])
     }
 
     @MainActor

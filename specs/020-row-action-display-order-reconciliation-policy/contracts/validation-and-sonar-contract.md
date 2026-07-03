@@ -252,3 +252,64 @@ Before release readiness:
    gate.
 4. Any local evidence file or linked artifact records only evidence location and justification; it
    does not weaken this contract's ownership of SonarQube requirements.
+
+## 15. MVP (US1) Validation Evidence — 2026-07-03
+
+MVP scope: US1 only — Pin/Unpin immediate pinned-state feedback with deferred row-position
+relocation via an ID/order-only snapshot, reconciled on the next explicit user input event.
+Delete immediate-removal behavior was not separately implemented; the ID/order-only snapshot
+reconciled against live `@Query` `clips` causes deleted rows to drop out of `visibleClips`
+naturally, so Delete visible removal remains immediate as a consequence of the ADR-020 snapshot
+representation. No UI test migration (Phase 3) or full regression (Phase 4) was executed in this
+MVP pass.
+
+| Evidence | Result |
+| --- | --- |
+| App target build (`xcodebuild build ... platform=macOS`) | BUILD SUCCEEDED |
+| Targeted unit tests (`-only-testing:NextPasteTests`) | TEST SUCCEEDED — all unit tests pass, including new `RowActionDisplayOrderPolicyTests` (8 cases) and the pre-existing `ClipboardImagePrivacyTests` source-policy scan. |
+| `RowActionDisplayOrderPolicyTests` (new, T004/T005) | 8/8 passed — snapshot is `[UUID]?` (ID/order-only), activation stores `map(\.id)`, reconciliation reconciles against live `clips` via `compactMap`, no `Task.sleep`/fixed-delay/run-loop/`CATransaction` in reconciliation section, no private AppKit selectors/swizzling/`_updateActionButtonPositions`/`animationDidEnd`, native `List` and `.swipeActions` preserved, monitor cleared on reconciliation and `onDisappear`. |
+| Crash-prevention stress: `testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture` | PASSED (138.8s). |
+| Scroll-reconciliation stress: `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` | PASSED (117.8s) — validates explicit-input (scroll) reconciliation restores pinned-first/newest-first ordering with the ID-only snapshot. |
+| Warning scan (`rg "rowActionsGroupView should be populated\|NSInternalInconsistencyException\|layoutSubtreeIfNeeded\|Modifying state during view update"` over stress-test logs) | NO WARNINGS FOUND. |
+| Pre-existing obsolete immediate-reorder assertion status | `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` fails on the immediate `appearsAbove` ordering assertion on `main` baseline as well as with MVP changes — the app remains `.runningForeground` (no crash). This is the obsolete immediate Pin/Unpin row-position assumption scheduled for Phase 3 migration (T015/T016/T020), not an MVP regression. |
+
+MVP does not claim Feature 020 completion. Phase 2 US2/US3 product-code tasks (T009-T014 where
+not already satisfied), Phase 3 UI test migration (T015-T025), and Phase 4 full regression +
+SonarQube evidence (T026-T033 minus the targeted runs above) remain.
+
+## 16. Phase 2 / Phase 3 Validation Evidence — 2026-07-04
+
+Phase 2 (US2 Delete immediate removal, US3 reconciliation) required no product-code change:
+the MVP ID/order-only snapshot reconciled against live `@Query` `clips` via `compactMap` already
+causes deleted rows to drop out of `visibleClips` immediately (US2), and the existing
+`NSEvent.addLocalMonitorForEvents` monitor for `leftMouseDown`/`rightMouseDown`/`otherMouseDown`/
+`keyDown`/`scrollWheel` already reconciles on the next explicit click/scroll/key input (US3).
+No fixed delay, run-loop hop, render-cycle callback, private AppKit API, swizzling, or private
+selector was added or needed.
+
+Phase 3 migrated the obsolete immediate Pin/Unpin row-position reorder assertions in
+`NextPasteUITests/ClipRowActionsUITests.swift` to the Feature 020 policy. A private helper
+`triggerDisplayOrderReconciliation(in:)` delivers an explicit key event (`app.typeKey(.escape,
+modifierFlags: [])`) that fires the local NSEvent monitor and clears the deferred snapshot; the
+existing wait-based `UITestAssertions.assert(...appearsAbove:)` then observes the reconciled
+pinned-first/newest-first ordering. No Delete, crash-prevention, accessibility, copy, or
+post-reconciliation ordering assertion was weakened.
+
+| Evidence | Result |
+| --- | --- |
+| Build for testing (`build-for-testing`) | TEST BUILD SUCCEEDED |
+| Full unit suite (`-only-testing:NextPasteTests`) | TEST EXECUTE SUCCEEDED — 116 passed, 0 failed (incl. `RowActionDisplayOrderPolicyTests` 8/8 and `ClipboardImagePrivacyTests`). |
+| `testRightSwipePinTogglesIconAndPinnedOrdering` (migrated) | PASSED — immediate pinned/unpinned icon feedback, then reconciled ordering after explicit input. |
+| `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash` (migrated) | PASSED — crash-prevention (`app.state == .runningForeground`) and immediate Pinned state feedback preserved; final ordering asserted after explicit input. |
+| `testRowActionsWorkWithLocalUITestingStore` (migrated) | PASSED — copy/local-store/pin-icon/Delete checks preserved; post-Pin ordering asserted after explicit input. |
+| `testUnpinOneOfThreePinnedClipsDoesNotCrash` (Scenario A, migrated) | PASSED — crash-prevention and immediate Unpinned state feedback preserved; final pinned-first/newest-first ordering asserted after explicit input. |
+| `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` (Scenario B) | PASSED (117.5s) — scroll-based explicit-input reconciliation restores pinned-first/newest-first. |
+| `testLeftSwipeDeleteRemovesOnlySelectedClip` (US2 Delete) | PASSED — deleted row removed immediately, companion preserved. |
+| `testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture` | PASSED (138.1s) — 10 consecutive native row-action flows, app stays `.runningForeground`. |
+| Full `ClipRowActionsUITests` suite | All tests passed except `testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt`, which also fails on `main` baseline (same "found 51 records" trace-completeness error), confirming it is a pre-existing Feature 018 trace flake, not a Phase 2/3 regression. |
+| Warning scan (`rg "rowActionsGroupView should be populated\|NSInternalInconsistencyException\|layoutSubtreeIfNeeded\|Modifying state during view update"` over full UI + unit logs) | NO WARNINGS FOUND. |
+
+Phase 2/3 does not claim Feature 020 completion. Phase 3 new regression tests T021/T022/T023
+(multiple accumulated Pin/Unpin reconciliation, Delete during pending snapshot, stale-position
+acceptance) and T024/T025 (trace/privacy + source-policy regression coverage) and Phase 4
+(full regression gate, manual native checks, SonarQube evidence) remain.

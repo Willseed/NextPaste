@@ -28,17 +28,24 @@ struct HomeView: View {
     @State private var hasAppliedLaunchWindowSize = false
 #if os(macOS)
     @State private var rowActionResolverObservation = RowActionResolverObservationState()
-    // Feature 019: transient display-order snapshot held while a native row-action
-    // mutation is in flight. While set, `visibleClips` returns this frozen ordering instead
-    // of the @Query-sorted `clips`, so the @Query reorder (from Pin/Unpin/Delete save) does
-    // NOT relocate or recycle the acted-on row during AppKit's row-action teardown. The
-    // crash stack (NSTableRowData animationDidEnd: -> _updateActionButtonPositionsForRowView:
-    // -> "rowActionsGroupView should be populated") is triggered by SwiftUI row.disappear
-    // recycling the row view before AppKit finishes the dismiss animation; freezing the
-    // display order prevents that recycling. The snapshot is reconciled (cleared) on the
-    // next intentional user interaction, which is guaranteed to occur after the teardown
-    // animation completes. This is event-driven, not a timing delay, KVO signal, or sleep.
-    @State private var rowActionDisplayOrderSnapshot: [ClipItem]? = nil
+    // Feature 019/020: transient display-order snapshot held while a native row-action
+    // mutation is in flight. While set, `visibleClips` returns ordering derived from this
+    // frozen identity/order metadata instead of the @Query-sorted `clips`, so the @Query
+    // reorder (from Pin/Unpin/Delete save) does NOT relocate or recycle the acted-on row
+    // during AppKit's row-action teardown. The crash stack (NSTableRowData animationDidEnd:
+    // -> _updateActionButtonPositionsForRowView: -> "rowActionsGroupView should be
+    // populated") is triggered by SwiftUI row.disappear recycling the row view before AppKit
+    // finishes the dismiss animation; freezing the display order prevents that recycling.
+    //
+    // Feature 020 (ADR-020): the snapshot is ID/order-only. It stores only transient
+    // in-memory clip identity/order metadata so it never retains ClipItem content, row
+    // previews, image data, trace payloads, or interaction history. Deleted rows drop out
+    // of `visibleClips` naturally because the snapshot is reconciled against the live @Query
+    // `clips`, so Delete remains immediate visible removal. The snapshot is reconciled
+    // (cleared) on the next explicit user input event (click, scroll, or key), which is
+    // guaranteed to occur after the teardown animation completes. This is event-driven, not
+    // a timing delay, KVO signal, or sleep.
+    @State private var rowActionDisplayOrderSnapshot: [UUID]? = nil
     @State private var rowActionReconciliationMonitor: Any? = nil
 #endif
 
@@ -131,8 +138,14 @@ struct HomeView: View {
 
     private var visibleClips: [ClipItem] {
         #if os(macOS)
-        if let snapshot = rowActionDisplayOrderSnapshot {
-            return ClipItem.filteredHistory(snapshot, matching: searchText)
+        if let snapshotIDs = rowActionDisplayOrderSnapshot {
+            // Feature 020 (ADR-020): the snapshot is ID/order-only. Reconcile it against
+            // the live @Query `clips` so deleted rows drop out immediately (Delete visible
+            // removal remains immediate) and no clip content, previews, or trace payloads
+            // are retained by the snapshot itself.
+            let clipsByID = Dictionary(uniqueKeysWithValues: clips.map { ($0.id, $0) })
+            let ordered = snapshotIDs.compactMap { clipsByID[$0] }
+            return ClipItem.filteredHistory(ordered, matching: searchText)
         }
         #endif
         return ClipItem.filteredHistory(clips, matching: searchText)
@@ -537,11 +550,12 @@ struct HomeView: View {
         }
     }
 
-    // Feature 019: freeze the visible display ordering so the @Query reorder caused by
+    // Feature 019/020: freeze the visible display ordering so the @Query reorder caused by
     // the imminent Pin/Unpin/Delete save does not relocate or recycle the acted-on row
     // during AppKit's native row-action teardown. See `rowActionDisplayOrderSnapshot`.
+    // Feature 020 (ADR-020): the snapshot stores ID/order-only metadata, not [ClipItem].
     private func beginRowActionDisplayOrderSnapshot() {
-        rowActionDisplayOrderSnapshot = visibleClips
+        rowActionDisplayOrderSnapshot = visibleClips.map(\.id)
     }
 
     // Reconcile the frozen display order back to the @Query-sorted order on the next
