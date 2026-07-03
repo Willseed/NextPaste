@@ -71,6 +71,14 @@ enum UITestFixtures {
         static let thirdPinNewest = "Third pin crash newest clip"
         static let recentlyActiveDismissed = "Recently active dismissed action clip"
 
+        // Feature 019 follow-up: pinned row-action mutation stability scenarios.
+        static let unpinThreeOlder = "Unpin three pinned older clip"
+        static let unpinThreeMiddle = "Unpin three pinned middle clip"
+        static let unpinThreeNewest = "Unpin three pinned newest clip"
+        static let scrollPinPinnedOlder = "Scroll pin pinned older clip"
+        static let scrollPinPinnedNewer = "Scroll pin pinned newer clip"
+        static let scrollPinTarget = "Scroll pin target unpinned clip"
+
         // Deterministic seed groups for Feature 015 regression scaffolding.
         static let relocationPinnedGroupSeed = [
             olderPinTarget,

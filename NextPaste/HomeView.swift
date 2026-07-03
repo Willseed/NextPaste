@@ -534,6 +534,18 @@ struct HomeView: View {
         let intentsToApply = pendingPinIntents
         pendingPinIntents.removeAll()
 
+        // Defer the SwiftData mutation to the next runloop turn. The rowActionsVisible
+        // KVO dismissal fires before AppKit finishes tearing down the native row-action
+        // group view. Applying the mutation synchronously drives the @Query/List diff to
+        // relocate rows while that group view is mid-teardown, which AppKit rejects with
+        // an internal inconsistency assertion on its row-action group view. A single
+        // main-queue hop lets the teardown complete first; it is not a sleep or timed delay.
+        DispatchQueue.main.async {
+            self.applyPendingPinIntents(intentsToApply)
+        }
+    }
+
+    private func applyPendingPinIntents(_ intentsToApply: [PendingPinIntent]) {
         for pendingPinIntent in intentsToApply {
             guard let targetClip = clips.first(where: { $0.id == pendingPinIntent.clipID }) else {
                 continue
@@ -567,25 +579,31 @@ struct HomeView: View {
             return
         }
 
+        self.pendingDeleteIntent = nil
+        let traceRowIndex = pendingDeleteIntent.traceRowIndex
+        let traceRowViewID = pendingDeleteIntent.traceRowViewID
 #if DEBUG
         RowActionTraceRuntime.emit(
             category: .rowAction,
             event: "dismissed.pending-delete-ready",
             directness: .inferred,
             clipID: pendingDeleteIntent.clipID,
-            rowIndex: pendingDeleteIntent.traceRowIndex,
-            rowViewID: pendingDeleteIntent.traceRowViewID,
+            rowIndex: traceRowIndex,
+            rowViewID: traceRowViewID,
             state: [
                 "contentType": .string(targetClip.contentType)
             ]
         )
 #endif
-        self.pendingDeleteIntent = nil
-        applyDeleteClip(
-            targetClip,
-            traceRowIndex: pendingDeleteIntent.traceRowIndex,
-            traceRowViewID: pendingDeleteIntent.traceRowViewID
-        )
+        // Defer to the next runloop turn for the same row-action teardown reason as
+        // pending pin intents.
+        DispatchQueue.main.async {
+            self.applyDeleteClip(
+                targetClip,
+                traceRowIndex: traceRowIndex,
+                traceRowViewID: traceRowViewID
+            )
+        }
     }
 #endif
 

@@ -388,3 +388,167 @@ Before release readiness:
 - **Outcome**: Passed. `quickstart.md` remains execution-only and delegates validation ownership,
   evidence requirements, result interpretation, release readiness, and SonarQube requirements to
   this contract. This contract remains the validation owner after evidence recording.
+
+## 16. Follow-up Stabilization Evidence (Pinned Row-Action Mutation Crash)
+
+This section records the follow-up fix that closes the two remaining native row-action crash
+scenarios left open by the original Feature 019 resolver-feedback fix.
+
+### Root Cause
+
+`applyPendingPinIntentIfDismissed` and `applyPendingDeleteIntentIfDismissed` released the SwiftData
+Pin/Unpin/Delete mutation as soon as the `rowActionsVisible` KVO dismissal fired. That KVO signal
+arrives before AppKit finishes tearing down the native `rowActionsGroupView`. Releasing the mutation
+synchronously drove the `@Query`/`List` diff to relocate rows while the row-action group view was
+still mid-teardown, which AppKit rejected with
+`rowActionsGroupView should be populated` (`NSInternalInconsistencyException`). The crash was
+reproduced deterministically by:
+
+- Scenario A: three pinned clips, unpinning one pinned clip through native row action (relocation
+  out of the pinned group during teardown).
+- Scenario B: two pinned clips, scrolling ~5 rows away so rows recycle, then pinning another
+  unpinned clip through native row action (relocation into the pinned group from a recycled row).
+
+### Fix
+
+`NextPaste/HomeView.swift` now defers the pending Pin/Unpin and Delete SwiftData mutation to the
+next main-queue runloop turn (`DispatchQueue.main.async`) after `rowActionsVisible` dismissal is
+observed. The single main-queue hop lets AppKit complete the row-action group teardown before the
+`@Query`-driven `List` diff relocates rows. This is not a sleep, run-loop delay, or timed wait; no
+private AppKit API, swizzling, private selectors, `List` replacement, `swipeActions` replacement, or
+`@Query` synchronization is introduced. Pending intent capture, ordering, SwiftData save semantics,
+and `@Query` publication are unchanged.
+
+### T034 Scenario A Targeted UI Validation (FR-008, FR-009; SC-001, SC-003, SC-004)
+
+- **Date/Time**: 2026-07-03T12:23:00+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteUITests/ClipRowActionsUITests/testUnpinOneOfThreePinnedClipsDoesNotCrash
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0; test duration 88.118 seconds).
+- **Evidence**:
+  - The test seeds three deterministic pinned clips, unpins the middle pinned clip through the
+    native leading row action, and verifies the app remains `.runningForeground` with no
+    `rowActionsGroupView should be populated` assertion.
+  - Ordering assertions confirm pinned-first ordering (the two remaining pinned clips stay above
+    the unpinned clip) and newest-first ordering within the pinned group.
+  - The unpinned clip is verified to reach the `Unpinned` accessibility state.
+
+### T035 Scenario B Targeted UI Validation (FR-008, FR-009; SC-001, SC-003, SC-004)
+
+- **Date/Time**: 2026-07-03T12:36:00+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteUITests/ClipRowActionsUITests/testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0; test duration 128.395 seconds).
+- **Evidence**:
+  - The test seeds two pinned clips plus fillers, scrolls ~5 rows away so rows recycle, then pins
+    the recycled unpinned target clip through the native leading row action.
+  - The app remains `.runningForeground` with no `rowActionsGroupView should be populated`
+    assertion after the scroll-then-pin relocation.
+  - Scrolling back to the top verifies pinned-first ordering and newest-first ordering within the
+    pinned group (the newly pinned, oldest clip sits below the other two pinned clips and above the
+    unpinned fillers).
+
+### T036 Targeted ClipRowActionsUITests Suite Re-Run (FR-008, FR-010; SC-003, SC-004, SC-006)
+
+- **Date/Time**: 2026-07-03T12:40:00+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteUITests/ClipRowActionsUITests
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Executed test evidence**: 21 `ClipRowActionsUITests` cases passed, 0 failed, including the two
+  new scenario tests and the existing ten-consecutive-flow warning/assertion capture test.
+- **Warning/assertion string review**:
+  ```bash
+  grep -nE "rowActionsGroupView should be populated|NSInternalInconsistencyException|Modifying state during view update|layoutSubtreeIfNeeded" /tmp/clip_row_actions_full.log
+  ```
+  - Outcome: no matches (exit code 1).
+
+### T037 Resolver Feedback and Trace Unit Re-Run (FR-001, FR-006; SC-001, SC-005, SC-006)
+
+- **Date/Time**: 2026-07-03T12:22:00+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteTests/RowActionResolverFeedbackTests \
+    -only-testing:NextPasteTests/RowActionTraceEventTests
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Evidence**: The resolver no-state-write guard and the required Feature 018 trace event/privacy
+  suites still pass after the deferred-mutation follow-up fix; the fix touches only the pending
+  intent application timing, not the resolver update/movement state-write surface.
+
+### T038 Full NextPasteTests Unit Regression (FR-010; SC-006)
+
+- **Date/Time**: 2026-07-03T12:40:00+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS' \
+    -only-testing:NextPasteTests
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Executed test evidence**: 107 unit test cases passed, 0 failed.
+- **Warning/assertion string review**:
+  ```bash
+  grep -nE "rowActionsGroupView|NSInternalInconsistency|Modifying state during view update|layoutSubtreeIfNeeded" /tmp/unit_full.log
+  ```
+  - Outcome: no matches (exit code 1).
+
+### T039 Prohibited Mechanism Static Review for Follow-up Fix (FR-012; SC-006)
+
+- **Diff review command**:
+  ```bash
+  git diff -U0 -- NextPaste/HomeView.swift NextPasteUITests/ClipRowActionsUITests.swift NextPasteUITests/UITestFixtures.swift | \
+    grep -nE "Task\.sleep|RunLoop|asyncAfter|NSSelectorFromString|Selector\(|method_exchange|swizzle|class_replaceMethod|objc_getClass|rowActionsGroupView|layoutSubtreeIfNeeded|Modifying state during view update|NSInternalInconsistencyException"
+  ```
+- **Outcome**: Passed. No prohibited timing workaround, private AppKit API, swizzling, private
+  selector, `List`/`swipeActions` replacement, or recursion/assertion string was introduced. The
+  single `DispatchQueue.main.async` deferral is a runloop turn hop, not a timed delay, and does not
+  match the prohibited `asyncAfter`/`Task.sleep`/`RunLoop` patterns.
+
+### T040 Full macOS Regression After Follow-up Fix (FR-010; SC-004, SC-006)
+
+- **Date/Time**: 2026-07-03T13:02:45+08:00 through 2026-07-03T13:37:23+08:00
+- **Command**:
+  ```bash
+  xcodebuild test \
+    -project NextPaste.xcodeproj \
+    -scheme NextPaste \
+    -destination 'platform=macOS'
+  ```
+- **Outcome**: Passed (`** TEST SUCCEEDED **`, exit code 0).
+- **Executed test evidence**: The scheme Test action ran the full `NextPasteUITests` UI target:
+  67 tests, 0 failures, 0 unexpected, across `ClipRowActionsUITests` (21), `ClipboardAutoCaptureUITests`
+  (8), `ClipboardImageAutoCaptureUITests` (3), `ClipboardImageRowActionsUITests` (12),
+  `CreateTextClipUITests` (5), `EmptyTextClipUITests` (3), `HistoryListUITests` (6), `NextPasteUITests`
+  (2), `NextPasteUITestsLaunchTests` (2), and `VisualIdentityUITests` (5).
+- **Unit target evidence**: The `NextPasteTests` Swift Testing unit target was executed separately
+  (T038) with 107 tests, 0 failures. Combined coverage equals the prior Feature 019 full-regression
+  baseline plus the two new scenario tests.
+- **Warning/assertion string review**:
+  ```bash
+  grep -nE "rowActionsGroupView should be populated|NSInternalInconsistencyException|Modifying state during view update|layoutSubtreeIfNeeded" /tmp/full_regression.log
+  ```
+  - Outcome: no matches (exit code 1).

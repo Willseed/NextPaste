@@ -104,6 +104,22 @@
 
 ---
 
+## Phase 8: Pinned Row-Action Mutation Stabilization (Follow-up)
+
+**Purpose**: Close the two remaining native row-action crash scenarios left open by the original
+resolver-feedback fix (unpin one of three pinned clips; pin after two pinned clips and ~5-row scroll).
+
+- [X] T034 [US1] Add `testUnpinOneOfThreePinnedClipsDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift` covering Scenario A (FR-008, FR-009; SC-001, SC-003, SC-004)
+- [X] T035 [US1] Add `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift` covering Scenario B (FR-008, FR-009; SC-001, SC-003, SC-004)
+- [X] T036 [US1] Defer pending Pin/Unpin and Delete SwiftData mutation to the next main-queue runloop turn in `NextPaste/HomeView.swift` so AppKit completes native row-action group teardown before the `@Query`/`List` diff relocates rows (FR-001, FR-008; SC-001, SC-003)
+- [X] T037 [US1] Re-run resolver feedback and trace unit guards plus full `ClipRowActionsUITests`, unit, and full macOS UI regression, recording evidence in `contracts/validation-and-sonar-contract.md` Section 16 (FR-010; SC-006)
+
+**Checkpoint**: Both pinned row-action mutation scenarios complete without
+`rowActionsGroupView` assertion, native swipe actions and ordering are preserved, and validation
+evidence is recorded under the validation contract.
+
+---
+
 ## Dependencies & Execution Order
 
 ### Phase Dependencies
