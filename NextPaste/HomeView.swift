@@ -26,10 +26,20 @@ struct HomeView: View {
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
     @State private var hasAppliedLaunchWindowSize = false
-    @State private var pendingPinIntents: [PendingPinIntent] = []
 #if os(macOS)
-    @State private var pendingDeleteIntent: PendingDeleteIntent? = nil
     @State private var rowActionResolverObservation = RowActionResolverObservationState()
+    // Feature 019: transient display-order snapshot held while a native row-action
+    // mutation is in flight. While set, `visibleClips` returns this frozen ordering instead
+    // of the @Query-sorted `clips`, so the @Query reorder (from Pin/Unpin/Delete save) does
+    // NOT relocate or recycle the acted-on row during AppKit's row-action teardown. The
+    // crash stack (NSTableRowData animationDidEnd: -> _updateActionButtonPositionsForRowView:
+    // -> "rowActionsGroupView should be populated") is triggered by SwiftUI row.disappear
+    // recycling the row view before AppKit finishes the dismiss animation; freezing the
+    // display order prevents that recycling. The snapshot is reconciled (cleared) on the
+    // next intentional user interaction, which is guaranteed to occur after the teardown
+    // animation completes. This is event-driven, not a timing delay, KVO signal, or sleep.
+    @State private var rowActionDisplayOrderSnapshot: [ClipItem]? = nil
+    @State private var rowActionReconciliationMonitor: Any? = nil
 #endif
 
     var body: some View {
@@ -99,9 +109,8 @@ struct HomeView: View {
             #if DEBUG
             RowActionAppKitObserver.resetObservationSession()
             #endif
-            pendingDeleteIntent = nil
+            clearRowActionDisplayOrderSnapshot()
             #endif
-            pendingPinIntents.removeAll()
         }
     }
 
@@ -121,7 +130,12 @@ struct HomeView: View {
     }
 
     private var visibleClips: [ClipItem] {
-        ClipItem.filteredHistory(clips, matching: searchText)
+        #if os(macOS)
+        if let snapshot = rowActionDisplayOrderSnapshot {
+            return ClipItem.filteredHistory(snapshot, matching: searchText)
+        }
+        #endif
+        return ClipItem.filteredHistory(clips, matching: searchText)
     }
 
     private var fixedHeaderBottom: CGFloat {
@@ -336,14 +350,12 @@ struct HomeView: View {
         let traceRowIndex: Int? = nil
         let traceRowViewID: String? = nil
 #endif
-        pendingPinIntents.removeAll { $0.clipID == clip.id }
 #if os(macOS)
-        pendingDeleteIntent = PendingDeleteIntent(
-            clipID: clip.id,
-            traceRowIndex: traceRowIndex,
-            traceRowViewID: traceRowViewID
-        )
-        applyPendingDeleteIntentIfDismissed()
+        // Freeze the visible display order before the SwiftData mutation so the @Query
+        // reorder does not recycle the acted-on row during AppKit row-action teardown.
+        beginRowActionDisplayOrderSnapshot()
+        applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
+        scheduleRowActionDisplayOrderReconciliation()
 #else
         applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
 #endif
@@ -380,9 +392,11 @@ struct HomeView: View {
         )
 #endif
 #if os(macOS)
-        pendingPinIntents.removeAll { $0.clipID == clip.id }
-        pendingPinIntents.append(PendingPinIntent(clipID: clip.id, targetPinnedState: targetPinnedState))
-        applyPendingPinIntentIfDismissed()
+        // Freeze the visible display order before the SwiftData mutation so the @Query
+        // reorder does not recycle the acted-on row during AppKit row-action teardown.
+        beginRowActionDisplayOrderSnapshot()
+        applyPinState(targetPinnedState, to: clip)
+        scheduleRowActionDisplayOrderReconciliation()
 #else
         applyTogglePin(clip)
 #endif
@@ -519,91 +533,43 @@ struct HomeView: View {
                 )
                 _ = observedTableView
 #endif
-                applyPendingPinIntentIfDismissed()
-                applyPendingDeleteIntentIfDismissed()
             }
         }
     }
 
-    private func applyPendingPinIntentIfDismissed() {
-        guard rowActionResolverObservation.currentRowActionsVisible == false,
-              pendingPinIntents.isEmpty == false else {
-            return
-        }
-
-        let intentsToApply = pendingPinIntents
-        pendingPinIntents.removeAll()
-
-        // Defer the SwiftData mutation to the next runloop turn. The rowActionsVisible
-        // KVO dismissal fires before AppKit finishes tearing down the native row-action
-        // group view. Applying the mutation synchronously drives the @Query/List diff to
-        // relocate rows while that group view is mid-teardown, which AppKit rejects with
-        // an internal inconsistency assertion on its row-action group view. A single
-        // main-queue hop lets the teardown complete first; it is not a sleep or timed delay.
-        DispatchQueue.main.async {
-            self.applyPendingPinIntents(intentsToApply)
-        }
+    // Feature 019: freeze the visible display ordering so the @Query reorder caused by
+    // the imminent Pin/Unpin/Delete save does not relocate or recycle the acted-on row
+    // during AppKit's native row-action teardown. See `rowActionDisplayOrderSnapshot`.
+    private func beginRowActionDisplayOrderSnapshot() {
+        rowActionDisplayOrderSnapshot = visibleClips
     }
 
-    private func applyPendingPinIntents(_ intentsToApply: [PendingPinIntent]) {
-        for pendingPinIntent in intentsToApply {
-            guard let targetClip = clips.first(where: { $0.id == pendingPinIntent.clipID }) else {
-                continue
-            }
-#if DEBUG
-            let rowIdentity = traceRowIdentity(for: targetClip)
-            RowActionTraceRuntime.emit(
-                category: .rowAction,
-                event: "dismissed.pending-pin-ready",
-                directness: .inferred,
-                clipID: pendingPinIntent.clipID,
-                rowIndex: rowIdentity.rowIndex,
-                rowViewID: rowIdentity.rowViewID,
-                state: [
-                    "targetPinnedState": .bool(pendingPinIntent.targetPinnedState)
-                ]
-            )
-#endif
-            applyPinState(pendingPinIntent.targetPinnedState, to: targetClip)
+    // Reconcile the frozen display order back to the @Query-sorted order on the next
+    // intentional user interaction. A user-driven event is guaranteed to occur after the
+    // native row-action dismiss animation finishes (the user must release the current
+    // swipe and act again before another intentional event is delivered), so the
+    // subsequent @Query reorder happens after the teardown hazard window. This is
+    // event-driven, not a fixed delay, KVO signal, or sleep.
+    private func scheduleRowActionDisplayOrderReconciliation() {
+        guard rowActionReconciliationMonitor == nil else {
+            return
         }
+
+        let eventMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel]
+        let monitor = NSEvent.addLocalMonitorForEvents(matching: eventMask) { [self] event in
+            clearRowActionDisplayOrderSnapshot()
+            return event
+        }
+
+        rowActionReconciliationMonitor = monitor
     }
 
-    private func applyPendingDeleteIntentIfDismissed() {
-        guard rowActionResolverObservation.currentRowActionsVisible == false,
-              let pendingDeleteIntent else {
-            return
+    private func clearRowActionDisplayOrderSnapshot() {
+        if let monitor = rowActionReconciliationMonitor {
+            NSEvent.removeMonitor(monitor)
+            rowActionReconciliationMonitor = nil
         }
-
-        guard let targetClip = clips.first(where: { $0.id == pendingDeleteIntent.clipID }) else {
-            self.pendingDeleteIntent = nil
-            return
-        }
-
-        self.pendingDeleteIntent = nil
-        let traceRowIndex = pendingDeleteIntent.traceRowIndex
-        let traceRowViewID = pendingDeleteIntent.traceRowViewID
-#if DEBUG
-        RowActionTraceRuntime.emit(
-            category: .rowAction,
-            event: "dismissed.pending-delete-ready",
-            directness: .inferred,
-            clipID: pendingDeleteIntent.clipID,
-            rowIndex: traceRowIndex,
-            rowViewID: traceRowViewID,
-            state: [
-                "contentType": .string(targetClip.contentType)
-            ]
-        )
-#endif
-        // Defer to the next runloop turn for the same row-action teardown reason as
-        // pending pin intents.
-        DispatchQueue.main.async {
-            self.applyDeleteClip(
-                targetClip,
-                traceRowIndex: traceRowIndex,
-                traceRowViewID: traceRowViewID
-            )
-        }
+        rowActionDisplayOrderSnapshot = nil
     }
 #endif
 
@@ -763,17 +729,6 @@ struct HomeView: View {
 #Preview {
     HomeView()
         .modelContainer(for: ClipItem.self, inMemory: true)
-}
-
-private struct PendingPinIntent: Equatable {
-    let clipID: UUID
-    let targetPinnedState: Bool
-}
-
-private struct PendingDeleteIntent: Equatable {
-    let clipID: UUID
-    let traceRowIndex: Int?
-    let traceRowViewID: String?
 }
 
 private enum HistoryMeasuredFrame: Hashable {

@@ -38,6 +38,18 @@ final class RowActionAppKitObservation {
         tableView === candidate
     }
 
+    // Experiment 1 (Feature 019): NSTableView geometry reads (visibleRect,
+    // rows(in:), rowView(atRow:)) inside recordSnapshot can force layout
+    // recursion ("It's not legal to call -layoutSubtreeIfNeeded on a view
+    // which is already being laid out") when the snapshot is taken during a
+    // SwiftUI List layout pass (e.g. via traceVisibleClipSnapshot after a
+    // @Query re-sort). That recursion disrupts the native row-action group
+    // view mid-dismiss-animation and matches the observed crash stack
+    // (animationDidEnd: -> _updateActionButtonPositionsForRowView: ->
+    // "rowActionsGroupView should be populated"). Disable the geometry-reading
+    // snapshot emits while keeping row-count, selection, and visibility events.
+    private static let geometrySnapshotReadsEnabled = false
+
     func recordSnapshot(reason: String, visibleClipIDs: [UUID]) {
         guard let tableView else {
             RowActionTraceRuntime.emit(
@@ -52,12 +64,14 @@ final class RowActionAppKitObservation {
             return
         }
 
-        emitTableSnapshot(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
+        if Self.geometrySnapshotReadsEnabled {
+            emitTableSnapshot(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
+            emitVisibleRangeChangeIfNeeded(tableView, reason: reason)
+            emitDisplaySnapshot(tableView, reason: reason)
+            emitRowViewDiffs(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
+        }
         emitRowCountChangeIfNeeded(tableView, reason: reason)
-        emitVisibleRangeChangeIfNeeded(tableView, reason: reason)
         emitSelectionChangeIfNeeded(tableView, reason: reason)
-        emitDisplaySnapshot(tableView, reason: reason)
-        emitRowViewDiffs(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
         saveState()
     }
 

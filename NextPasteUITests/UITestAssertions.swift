@@ -589,6 +589,28 @@ enum UITestAssertions {
         return false
     }
 
+    static func elementFrameDescription(_ element: XCUIElement) -> String {
+        let frame = element.exists ? element.frame : .zero
+        return """
+        exists=\(element.exists) hittable=\(element.exists ? element.isHittable : false) \
+        frame=(x: \(frame.minX), y: \(frame.minY), width: \(frame.width), height: \(frame.height)) \
+        label='\(element.label)' value='\(element.value as? String ?? "")' identifier='\(element.identifier)'
+        """
+    }
+
+    static func visibleClipRowsDescription(in app: XCUIApplication) -> String {
+        let rows = visibleClipRows(in: app)
+        guard rows.isEmpty == false else {
+            return "No visible clip rows found."
+        }
+
+        return rows.enumerated()
+            .map { index, row in
+                "\(index): \(elementFrameDescription(row))"
+            }
+            .joined(separator: "\n")
+    }
+
     static func assertPinnedIconExists(
         in app: XCUIApplication,
         timeout: TimeInterval = defaultTimeout,

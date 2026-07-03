@@ -895,8 +895,18 @@ final class ClipRowActionsUITests: UITestCase {
         }
 
         // Pinned-first: both pinned clips sit above the unpinned fillers, newest-first.
-        UITestAssertions.assert(app.staticTexts[pinnedNewer], appearsAbove: app.staticTexts[pinnedOlder])
-        UITestAssertions.assert(app.staticTexts[pinnedOlder], appearsAbove: app.staticTexts[fillers[0]])
+        assertScenarioBOrder(
+            app.staticTexts[pinnedNewer],
+            appearsAbove: app.staticTexts[pinnedOlder],
+            app: app,
+            context: "initial pinned newest above older"
+        )
+        assertScenarioBOrder(
+            app.staticTexts[pinnedOlder],
+            appearsAbove: app.staticTexts[fillers[0]],
+            app: app,
+            context: "initial pinned older above first filler"
+        )
 
         // Scroll about five rows away so the pinned rows leave the viewport and rows
         // recycle, then reveal the pin action on the brought-back target.
@@ -929,11 +939,65 @@ final class ClipRowActionsUITests: UITestCase {
         // pinTarget was the oldest clip, so after pinning it it is the oldest pinned
         // clip and sits below the other two pinned clips (newest-first within pinned),
         // and the pinned group stays above the unpinned fillers.
-        UITestAssertions.assert(app.staticTexts[pinnedNewer], appearsAbove: app.staticTexts[pinnedOlder])
-        UITestAssertions.assert(app.staticTexts[pinnedOlder], appearsAbove: app.staticTexts[pinTarget])
-        UITestAssertions.assert(app.staticTexts[pinTarget], appearsAbove: app.staticTexts[fillers[0]])
+        assertScenarioBOrder(
+            app.staticTexts[pinnedNewer],
+            appearsAbove: app.staticTexts[pinnedOlder],
+            app: app,
+            context: "final pinned newer above older"
+        )
+        assertScenarioBOrder(
+            app.staticTexts[pinnedOlder],
+            appearsAbove: app.staticTexts[pinTarget],
+            app: app,
+            context: "final pinned older above pin target"
+        )
+        assertScenarioBOrder(
+            app.staticTexts[pinTarget],
+            appearsAbove: app.staticTexts[fillers[0]],
+            app: app,
+            context: "final pin target above first filler"
+        )
 
         attachRowActionWarningAssertionOutcome(["pin-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    @MainActor
+    private func assertScenarioBOrder(
+        _ upperElement: XCUIElement,
+        appearsAbove lowerElement: XCUIElement,
+        app: XCUIApplication,
+        context: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        guard UITestAssertions.waitFor(upperElement, toAppearAbove: lowerElement, timeout: timeout) == false else {
+            return
+        }
+
+        let attachment = XCTAttachment(string: """
+        Scenario B row-order failure: \(context)
+
+        Upper:
+        \(UITestAssertions.elementFrameDescription(upperElement))
+
+        Lower:
+        \(UITestAssertions.elementFrameDescription(lowerElement))
+
+        Visible clip rows:
+        \(UITestAssertions.visibleClipRowsDescription(in: app))
+
+        App state: \(app.state)
+        """)
+        attachment.name = "Scenario B row-order diagnostic - \(context)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        XCTFail(
+            "Expected upper element to appear above lower element for Scenario B: \(context)",
+            file: file,
+            line: line
+        )
     }
 
     @MainActor

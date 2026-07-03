@@ -19,7 +19,7 @@ struct RowActionResolverFeedbackTests {
         let observeSource = try fragment(
             in: source,
             from: "private func observeRowActions(on tableView: NSTableView?)",
-            to: "private func applyPendingPinIntentIfDismissed()"
+            to: "private func beginRowActionDisplayOrderSnapshot()"
         )
         let synchronousObserveSource = synchronousResolverObservationSection(from: observeSource)
         let resolverCanReachObservation = resolverSource.contains("func updateNSView")
