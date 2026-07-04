@@ -10,15 +10,25 @@ struct RowActionTraceRecord: Decodable, Equatable {
     let schema: String
     let session: String
     let seq: UInt64
-    let t_mono_ns: UInt64
+    let monotonicNanoseconds: UInt64
     let category: String
     let event: String
     let directness: String
-    let clip_id: String?
-    let row_index: Int?
-    let row_view_id: String?
+    let clipID: String?
+    let rowIndex: Int?
+    let rowViewID: String?
     let state: [String: RowActionTraceValue]?
     let note: String?
+
+    enum CodingKeys: String, CodingKey {
+        case schema, session, seq
+        case monotonicNanoseconds = "t_mono_ns"
+        case category, event, directness
+        case clipID = "clip_id"
+        case rowIndex = "row_index"
+        case rowViewID = "row_view_id"
+        case state, note
+    }
 }
 
 enum RowActionTraceValue: Decodable, Equatable {
@@ -100,9 +110,9 @@ enum RowActionTraceLogParser {
             XCTAssertEqual(record.schema, "row-action-trace-v1", file: file, line: line)
             XCTAssertEqual(record.session, firstSession, file: file, line: line)
             XCTAssertGreaterThan(record.seq, previousSequence, file: file, line: line)
-            XCTAssertGreaterThanOrEqual(record.t_mono_ns, previousTimestamp, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(record.monotonicNanoseconds, previousTimestamp, file: file, line: line)
             previousSequence = record.seq
-            previousTimestamp = record.t_mono_ns
+            previousTimestamp = record.monotonicNanoseconds
         }
     }
 
@@ -146,11 +156,11 @@ enum RowActionTraceLogParser {
                 return false
             }
 
-            if requiresClipID, record.clip_id == nil {
+            if requiresClipID, record.clipID == nil {
                 return false
             }
 
-            if requiresRowViewID, record.row_view_id == nil {
+            if requiresRowViewID, record.rowViewID == nil {
                 return false
             }
 

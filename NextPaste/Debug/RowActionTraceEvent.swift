@@ -104,36 +104,73 @@ struct RowActionTraceEvent: Equatable, Codable, Sendable {
     }
 
     init(
-        session: String,
-        sequence: UInt64,
-        monotonicNanoseconds: UInt64,
+        origin: RowActionTraceEventOrigin,
         category: RowActionTraceCategory,
         event: String,
         directness: RowActionTraceDirectness,
         clipID: String? = nil,
-        rowIndex: Int? = nil,
-        rowViewID: String? = nil,
-        state: [String: RowActionTraceStateValue]? = nil,
-        note: String? = nil,
-        schema: String = RowActionTraceSchema.current
+        payload: RowActionTraceEventPayload = .init()
     ) {
-        self.schema = schema
-        self.session = session
-        self.sequence = sequence
-        self.monotonicNanoseconds = monotonicNanoseconds
+        self.schema = origin.schema
+        self.session = origin.session
+        self.sequence = origin.sequence
+        self.monotonicNanoseconds = origin.monotonicNanoseconds
         self.category = category
         self.event = event
         self.clipID = clipID
-        self.rowIndex = rowIndex
-        self.rowViewID = rowViewID
+        self.rowIndex = payload.rowIndex
+        self.rowViewID = payload.rowViewID
         self.directness = directness
-        self.state = state
-        self.note = note
+        self.state = payload.state
+        self.note = payload.note
     }
 
     func encodedLine(using encoder: JSONEncoder = RowActionTraceJSON.makeEncoder()) throws -> String {
         let data = try encoder.encode(self)
         return String(decoding: data, as: UTF8.self)
+    }
+}
+
+/// Bundles the event identity fields that the session owns (session id, sequence,
+/// monotonic timestamp, and schema version) so the event initializer stays under the
+/// parameter-count limit.
+struct RowActionTraceEventOrigin {
+    let session: String
+    let sequence: UInt64
+    let monotonicNanoseconds: UInt64
+    let schema: String
+
+    init(
+        session: String,
+        sequence: UInt64,
+        monotonicNanoseconds: UInt64,
+        schema: String = RowActionTraceSchema.current
+    ) {
+        self.session = session
+        self.sequence = sequence
+        self.monotonicNanoseconds = monotonicNanoseconds
+        self.schema = schema
+    }
+}
+
+/// Bundles the optional row-context fields (row index, row view id, state, note) so the
+/// event initializer and emit helpers stay under the parameter-count limit.
+struct RowActionTraceEventPayload {
+    let rowIndex: Int?
+    let rowViewID: String?
+    let state: [String: RowActionTraceStateValue]?
+    let note: String?
+
+    init(
+        rowIndex: Int? = nil,
+        rowViewID: String? = nil,
+        state: [String: RowActionTraceStateValue]? = nil,
+        note: String? = nil
+    ) {
+        self.rowIndex = rowIndex
+        self.rowViewID = rowViewID
+        self.state = state
+        self.note = note
     }
 }
 

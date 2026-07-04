@@ -32,7 +32,12 @@ final class RowActionAppKitObservation {
         recordSnapshot(reason: "table.observation.started", visibleClipIDs: visibleClipIDs)
     }
 
-    func invalidate() {}
+    func invalidate() {
+        // Intentionally empty: this observation owns no external resources (no KVO
+        // observers, timers, or delegate swaps) that require explicit teardown. Cross-
+        // replacement state is persisted via `saveState()`/`restoreStateIfAvailable()` on
+        // `stateByTableID`, so invalidation only needs the caller to drop its reference.
+    }
 
     func observes(_ candidate: NSTableView) -> Bool {
         tableView === candidate
@@ -59,10 +64,10 @@ final class RowActionAppKitObservation {
                 category: .appKitTable,
                 event: "table.lost",
                 directness: .notObserved,
-                state: [
+                payload: .init(state: [
                     "reason": .string(reason),
                     "tableViewID": .string(tableViewID)
-                ]
+                ])
             )
             return
         }
@@ -82,10 +87,10 @@ final class RowActionAppKitObservation {
                 category: .rowAction,
                 event: "visibility.unavailable",
                 directness: .unavailable,
-                state: [
+                payload: .init(state: [
                     "reason": .string(reason),
                     "tableViewID": .string(tableViewID)
-                ]
+                ])
             )
             return
         }
@@ -112,12 +117,12 @@ final class RowActionAppKitObservation {
             category: .rowAction,
             event: eventName,
             directness: directness,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "rowActionsVisible": .bool(isVisible),
                 "numberOfRows": .int(tableView.numberOfRows)
-            ]
+            ])
         )
         recordSnapshot(reason: "row-action.\(eventName)", visibleClipIDs: visibleClipIDs)
     }
@@ -147,11 +152,11 @@ final class RowActionAppKitObservation {
             category: .appKitTable,
             event: "table.located",
             directness: .direct,
-            state: [
+            payload: .init(state: [
                 "tableViewID": .string(tableViewID),
                 "numberOfRows": .int(tableView.numberOfRows),
                 "visibleClipIDs": .stringArray(visibleClipIDs.map(\.uuidString))
-            ]
+            ])
         )
     }
 
@@ -175,7 +180,7 @@ final class RowActionAppKitObservation {
             category: .appKitTable,
             event: "table.snapshot",
             directness: .direct,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "numberOfRows": .int(tableView.numberOfRows),
@@ -184,7 +189,7 @@ final class RowActionAppKitObservation {
                 "rowActionsVisible": .bool(tableView.rowActionsVisible),
                 "selectedRows": .intArray(tableView.selectedRowIndexes.map { $0 }),
                 "visibleClipIDs": .stringArray(visibleClipIDs.map(\.uuidString))
-            ]
+            ])
         )
     }
 
@@ -196,13 +201,13 @@ final class RowActionAppKitObservation {
             category: .transaction,
             event: "display-cycle.snapshot",
             directness: .direct,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "needsDisplay": .bool(tableView.needsDisplay),
                 "visibleRectWidth": .double(bounds.width),
                 "visibleRectHeight": .double(bounds.height)
-            ]
+            ])
         )
     }
 
@@ -220,12 +225,12 @@ final class RowActionAppKitObservation {
             category: .appKitTable,
             event: "row-count.changed",
             directness: .inferred,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "previousNumberOfRows": .int(previousNumberOfRows),
                 "numberOfRows": .int(tableView.numberOfRows)
-            ]
+            ])
         )
     }
 
@@ -254,14 +259,14 @@ final class RowActionAppKitObservation {
             category: .appKitTable,
             event: "visible-range.changed",
             directness: .inferred,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "previousVisibleRowStart": .int(previousVisibleRange.location),
                 "previousVisibleRowCount": .int(previousVisibleRange.length),
                 "visibleRowStart": .int(visibleRows.location),
                 "visibleRowCount": .int(visibleRows.length)
-            ]
+            ])
         )
     }
 
@@ -280,13 +285,13 @@ final class RowActionAppKitObservation {
             category: .appKitTable,
             event: "selection.changed",
             directness: .inferred,
-            state: [
+            payload: .init(state: [
                 "reason": .string(reason),
                 "source": .string("table-snapshot-diff"),
                 "tableViewID": .string(tableViewID),
                 "previousSelectedRows": .intArray(previousSelectedRows),
                 "selectedRows": .intArray(selectedRows)
-            ]
+            ])
         )
     }
 
@@ -365,13 +370,15 @@ final class RowActionAppKitObservation {
             event: "row-view.visible",
             directness: .direct,
             clipID: snapshot.clipID,
-            rowIndex: snapshot.rowIndex,
-            rowViewID: snapshot.rowViewID,
-            state: [
-                "reason": .string(reason),
-                "tableViewID": .string(tableViewID),
-                "isHidden": .bool(snapshot.isHidden)
-            ]
+            payload: .init(
+                rowIndex: snapshot.rowIndex,
+                rowViewID: snapshot.rowViewID,
+                state: [
+                    "reason": .string(reason),
+                    "tableViewID": .string(tableViewID),
+                    "isHidden": .bool(snapshot.isHidden)
+                ]
+            )
         )
     }
 
@@ -385,12 +392,14 @@ final class RowActionAppKitObservation {
             event: "row-view.first-observed",
             directness: .direct,
             clipID: snapshot.clipID,
-            rowIndex: snapshot.rowIndex,
-            rowViewID: snapshot.rowViewID,
-            state: [
-                "reason": .string(reason),
-                "tableViewID": .string(tableViewID)
-            ]
+            payload: .init(
+                rowIndex: snapshot.rowIndex,
+                rowViewID: snapshot.rowViewID,
+                state: [
+                    "reason": .string(reason),
+                    "tableViewID": .string(tableViewID)
+                ]
+            )
         )
     }
 
@@ -404,13 +413,15 @@ final class RowActionAppKitObservation {
             event: "row-view.will-display",
             directness: .inferred,
             clipID: snapshot.clipID,
-            rowIndex: snapshot.rowIndex,
-            rowViewID: snapshot.rowViewID,
-            state: [
-                "reason": .string(reason),
-                "source": .string("visible-row-snapshot-diff"),
-                "tableViewID": .string(tableViewID)
-            ]
+            payload: .init(
+                rowIndex: snapshot.rowIndex,
+                rowViewID: snapshot.rowViewID,
+                state: [
+                    "reason": .string(reason),
+                    "source": .string("visible-row-snapshot-diff"),
+                    "tableViewID": .string(tableViewID)
+                ]
+            )
         )
     }
 
@@ -425,13 +436,15 @@ final class RowActionAppKitObservation {
             event: "row-view.replaced",
             directness: .inferred,
             clipID: snapshot.clipID,
-            rowIndex: snapshot.rowIndex,
-            rowViewID: snapshot.rowViewID,
-            state: [
-                "reason": .string(reason),
-                "tableViewID": .string(tableViewID),
-                "previousRowViewID": .string(previous.rowViewID)
-            ]
+            payload: .init(
+                rowIndex: snapshot.rowIndex,
+                rowViewID: snapshot.rowViewID,
+                state: [
+                    "reason": .string(reason),
+                    "tableViewID": .string(tableViewID),
+                    "previousRowViewID": .string(previous.rowViewID)
+                ]
+            )
         )
     }
 
@@ -448,14 +461,16 @@ final class RowActionAppKitObservation {
             event: "row-view.reused",
             directness: .inferred,
             clipID: snapshot.clipID,
-            rowIndex: snapshot.rowIndex,
-            rowViewID: snapshot.rowViewID,
-            state: [
-                "reason": .string(reason),
-                "tableViewID": .string(tableViewID),
-                "previousClipID": .string(previous.clipID?.uuidString ?? ""),
-                "previousRowIndex": .int(previous.rowIndex)
-            ]
+            payload: .init(
+                rowIndex: snapshot.rowIndex,
+                rowViewID: snapshot.rowViewID,
+                state: [
+                    "reason": .string(reason),
+                    "tableViewID": .string(tableViewID),
+                    "previousClipID": .string(previous.clipID?.uuidString ?? ""),
+                    "previousRowIndex": .int(previous.rowIndex)
+                ]
+            )
         )
     }
 
@@ -466,13 +481,15 @@ final class RowActionAppKitObservation {
                 event: "row-view.did-end-display",
                 directness: .inferred,
                 clipID: previous.clipID,
-                rowIndex: previous.rowIndex,
-                rowViewID: previous.rowViewID,
-                state: [
-                    "reason": .string(reason),
-                    "source": .string("visible-row-snapshot-diff"),
-                    "tableViewID": .string(tableViewID)
-                ]
+                payload: .init(
+                    rowIndex: previous.rowIndex,
+                    rowViewID: previous.rowViewID,
+                    state: [
+                        "reason": .string(reason),
+                        "source": .string("visible-row-snapshot-diff"),
+                        "tableViewID": .string(tableViewID)
+                    ]
+                )
             )
         }
     }
@@ -497,11 +514,13 @@ final class RowActionAppKitObservation {
                 category: category,
                 event: event,
                 directness: .unavailable,
-                state: [
-                    "tableViewID": .string(tableViewID),
-                    "reason": .string("method-call-observation-requires-delegate-or-subclass-control")
-                ],
-                note: "Direct observation is unavailable without replacing delegates, subclassing SwiftUI-owned views, swizzling, or using private API."
+                payload: .init(
+                    state: [
+                        "tableViewID": .string(tableViewID),
+                        "reason": .string("method-call-observation-requires-delegate-or-subclass-control")
+                    ],
+                    note: "Direct observation is unavailable without replacing delegates, subclassing SwiftUI-owned views, swizzling, or using private API."
+                )
             )
         }
     }
@@ -511,11 +530,13 @@ final class RowActionAppKitObservation {
             category: .rowAction,
             event: "dismissal.start.unavailable",
             directness: .unavailable,
-            state: [
-                "reason": .string(reason),
-                "tableViewID": .string(tableViewID)
-            ],
-            note: "Public rowActionsVisible changes expose visible state but not private dismissal start."
+            payload: .init(
+                state: [
+                    "reason": .string(reason),
+                    "tableViewID": .string(tableViewID)
+                ],
+                note: "Public rowActionsVisible changes expose visible state but not private dismissal start."
+            )
         )
     }
 
@@ -612,10 +633,12 @@ enum RowActionAppKitObserver {
             category: .appKitTable,
             event: "table.unavailable",
             directness: .unavailable,
-            state: [
-                "reason": .string(reason)
-            ],
-            note: "No public NSTableView was available from the SwiftUI list resolver."
+            payload: .init(
+                state: [
+                    "reason": .string(reason)
+                ],
+                note: "No public NSTableView was available from the SwiftUI list resolver."
+            )
         )
     }
 }

@@ -12,7 +12,10 @@ protocol RowActionTraceSink: Sendable {
 }
 
 extension RowActionTraceSink {
-    func flush() {}
+    func flush() {
+        // Default no-op: sinks without buffered output (stdout, in-memory) require no
+        // flushing. File-backed sinks override this to synchronize their file handle.
+    }
 }
 
 enum RowActionTraceLineFormat {
@@ -20,7 +23,10 @@ enum RowActionTraceLineFormat {
 }
 
 struct RowActionTraceNoopSink: RowActionTraceSink {
-    func writeLine(_ line: String) {}
+    func writeLine(_: String) {
+        // Intentionally no-op: placeholder sink used when tracing is disabled or when tests
+        // do not need to capture emitted lines.
+    }
 }
 
 struct RowActionTraceStandardOutputSink: RowActionTraceSink {

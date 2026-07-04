@@ -46,29 +46,30 @@ final class RowActionTraceSession {
         event: String,
         directness: RowActionTraceDirectness,
         clipID: String? = nil,
-        rowIndex: Int? = nil,
-        rowViewID: String? = nil,
-        state: [String: RowActionTraceStateValue]? = nil,
-        note: String? = nil
+        payload: RowActionTraceEventPayload = .init()
     ) -> RowActionTraceEvent? {
         guard status == .active else {
             return nil
         }
 
-        let sanitizedState = RowActionTracePrivacy.sanitizedState(state)
+        let sanitizedPayload = RowActionTraceEventPayload(
+            rowIndex: payload.rowIndex,
+            rowViewID: payload.rowViewID,
+            state: RowActionTracePrivacy.sanitizedState(payload.state),
+            note: payload.note
+        )
         let traceEvent = RowActionTraceEvent(
-            session: sessionID.uuidString,
-            sequence: sequence.next(),
-            monotonicNanoseconds: clock.elapsedNanoseconds(),
+            origin: .init(
+                session: sessionID.uuidString,
+                sequence: sequence.next(),
+                monotonicNanoseconds: clock.elapsedNanoseconds(),
+                schema: schemaVersion
+            ),
             category: category,
             event: event,
             directness: directness,
             clipID: clipID,
-            rowIndex: rowIndex,
-            rowViewID: rowViewID,
-            state: sanitizedState,
-            note: note,
-            schema: schemaVersion
+            payload: sanitizedPayload
         )
 
         guard RowActionTracePrivacy.validateEvent(traceEvent) == .accepted,
@@ -115,9 +116,9 @@ enum RowActionTraceRuntime {
             category: .outcome,
             event: "session.started",
             directness: .direct,
-            state: [
+            payload: .init(state: [
                 "enabledBy": .string(source.rawValue)
-            ]
+            ])
         )
     }
 
@@ -127,20 +128,14 @@ enum RowActionTraceRuntime {
         event: String,
         directness: RowActionTraceDirectness,
         clipID: UUID? = nil,
-        rowIndex: Int? = nil,
-        rowViewID: String? = nil,
-        state: [String: RowActionTraceStateValue]? = nil,
-        note: String? = nil
+        payload: RowActionTraceEventPayload = .init()
     ) -> RowActionTraceEvent? {
         currentSession?.emit(
             category: category,
             event: event,
             directness: directness,
             clipID: clipID?.uuidString,
-            rowIndex: rowIndex,
-            rowViewID: rowViewID,
-            state: state,
-            note: note
+            payload: payload
         )
     }
 

@@ -13,18 +13,22 @@ struct RowActionTraceEventTests {
     @Test("encodes required JSON Lines fields")
     func encodesRequiredJSONLinesFields() throws {
         let event = RowActionTraceEvent(
-            session: "session-1",
-            sequence: 7,
-            monotonicNanoseconds: 12_345,
+            origin: .init(
+                session: "session-1",
+                sequence: 7,
+                monotonicNanoseconds: 12_345
+            ),
             category: .rowAction,
             event: "action.tap",
             directness: .direct,
             clipID: "7CF45F5D-65B0-4B23-A3B4-5A6244C4E3F4",
-            rowIndex: 2,
-            state: [
-                "action": .string("pin"),
-                "rowActionsVisible": .bool(true)
-            ]
+            payload: .init(
+                rowIndex: 2,
+                state: [
+                    "action": .string("pin"),
+                    "rowActionsVisible": .bool(true)
+                ]
+            )
         )
 
         let line = try event.encodedLine()
@@ -121,9 +125,11 @@ struct RowActionTraceEventTests {
                 event: requiredEvent.1,
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: 1,
-                rowViewID: "row-view-1",
-                state: requiredEvent.2
+                payload: .init(
+                    rowIndex: 1,
+                    rowViewID: "row-view-1",
+                    state: requiredEvent.2
+                )
             ))
         }
 
@@ -237,9 +243,11 @@ struct RowActionTraceEventTests {
                 event: event.1,
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: 0,
-                rowViewID: "row-view-0",
-                state: event.2
+                payload: .init(
+                    rowIndex: 0,
+                    rowViewID: "row-view-0",
+                    state: event.2
+                )
             ))
         }
 

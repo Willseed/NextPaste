@@ -293,13 +293,13 @@ struct HomeView: View {
             category: .query,
             event: "visible.snapshot",
             directness: .inferred,
-            state: state
+            payload: .init(state: state)
         )
         RowActionTraceRuntime.emit(
             category: .list,
             event: "visible.snapshot",
             directness: .inferred,
-            state: state
+            payload: .init(state: state)
         )
         RowActionAppKitObserver.recordSnapshot(
             reason: "visible-clips.\(reason)",
@@ -326,14 +326,16 @@ struct HomeView: View {
             event: "action.tap",
             directness: .direct,
             clipID: clip.id,
-            rowIndex: rowIdentity.rowIndex,
-            rowViewID: rowIdentity.rowViewID,
-            state: [
-                "action": .string(action),
-                "edge": .string(edge),
-                "isPinned": .bool(clip.isPinned),
-                "contentType": .string(clip.contentType)
-            ]
+            payload: .init(
+                rowIndex: rowIdentity.rowIndex,
+                rowViewID: rowIdentity.rowViewID,
+                state: [
+                    "action": .string(action),
+                    "edge": .string(edge),
+                    "isPinned": .bool(clip.isPinned),
+                    "contentType": .string(clip.contentType)
+                ]
+            )
         )
         RowActionAppKitObserver.recordSnapshot(
             reason: "row-action.tap.\(action)",
@@ -432,12 +434,14 @@ struct HomeView: View {
             event: "\(action).mutation.before",
             directness: .direct,
             clipID: clip.id,
-            rowIndex: rowIdentity.rowIndex,
-            rowViewID: rowIdentity.rowViewID,
-            state: [
-                "isPinned": .bool(clip.isPinned),
-                "targetPinnedState": .bool(targetPinnedState)
-            ]
+            payload: .init(
+                rowIndex: rowIdentity.rowIndex,
+                rowViewID: rowIdentity.rowViewID,
+                state: [
+                    "isPinned": .bool(clip.isPinned),
+                    "targetPinnedState": .bool(targetPinnedState)
+                ]
+            )
         )
 #endif
         do {
@@ -448,19 +452,23 @@ struct HomeView: View {
                 event: "\(action).mutation.after",
                 directness: .direct,
                 clipID: clip.id,
-                rowIndex: traceRowIdentity(for: clip).rowIndex,
-                rowViewID: traceRowIdentity(for: clip).rowViewID,
-                state: [
-                    "isPinned": .bool(clip.isPinned)
-                ]
+                payload: .init(
+                    rowIndex: traceRowIdentity(for: clip).rowIndex,
+                    rowViewID: traceRowIdentity(for: clip).rowViewID,
+                    state: [
+                        "isPinned": .bool(clip.isPinned)
+                    ]
+                )
             )
             RowActionTraceRuntime.emit(
                 category: .swiftData,
                 event: "\(action).save.before",
                 directness: .direct,
                 clipID: clip.id,
-                rowIndex: traceRowIdentity(for: clip).rowIndex,
-                rowViewID: traceRowIdentity(for: clip).rowViewID
+                payload: .init(
+                    rowIndex: traceRowIdentity(for: clip).rowIndex,
+                    rowViewID: traceRowIdentity(for: clip).rowViewID
+                )
             )
 #endif
             try modelContext.save()
@@ -470,11 +478,13 @@ struct HomeView: View {
                 event: "\(action).save.after",
                 directness: .direct,
                 clipID: clip.id,
-                rowIndex: traceRowIdentity(for: clip).rowIndex,
-                rowViewID: traceRowIdentity(for: clip).rowViewID,
-                state: [
-                    "isPinned": .bool(clip.isPinned)
-                ]
+                payload: .init(
+                    rowIndex: traceRowIdentity(for: clip).rowIndex,
+                    rowViewID: traceRowIdentity(for: clip).rowViewID,
+                    state: [
+                        "isPinned": .bool(clip.isPinned)
+                    ]
+                )
             )
             RowActionTransactionObserver.observeCompletion(
                 action: action,
@@ -492,11 +502,13 @@ struct HomeView: View {
                 event: "\(action).save.failed",
                 directness: .direct,
                 clipID: clip.id,
-                rowIndex: traceRowIdentity(for: clip).rowIndex,
-                rowViewID: traceRowIdentity(for: clip).rowViewID,
-                state: [
-                    "errorType": .string(String(describing: type(of: error)))
-                ]
+                payload: .init(
+                    rowIndex: traceRowIdentity(for: clip).rowIndex,
+                    rowViewID: traceRowIdentity(for: clip).rowViewID,
+                    state: [
+                        "errorType": .string(String(describing: type(of: error)))
+                    ]
+                )
             )
 #endif
         }
@@ -802,13 +814,13 @@ private final class RowActionResolverObservationState {
 private struct RowActionTableViewResolver: NSViewRepresentable {
     let onResolve: (NSTableView?) -> Void
 
-    func makeNSView(context: Context) -> ResolverView {
+    func makeNSView(context _: Context) -> ResolverView {
         let view = ResolverView()
         view.onResolve = onResolve
         return view
     }
 
-    func updateNSView(_ nsView: ResolverView, context: Context) {
+    func updateNSView(_ nsView: ResolverView, context _: Context) {
         nsView.onResolve = onResolve
         nsView.resolve()
     }
@@ -923,11 +935,13 @@ struct ClipDeletionAction {
             event: "delete.mutation.before",
             directness: .direct,
             clipID: clipID,
-            rowIndex: traceRowIndex,
-            rowViewID: traceRowViewID,
-            state: [
-                "contentType": .string(clip.contentType)
-            ]
+            payload: .init(
+                rowIndex: traceRowIndex,
+                rowViewID: traceRowViewID,
+                state: [
+                    "contentType": .string(clip.contentType)
+                ]
+            )
         )
 #endif
 
@@ -939,16 +953,20 @@ struct ClipDeletionAction {
                 event: "delete.mutation.after",
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: traceRowIndex,
-                rowViewID: traceRowViewID
+                payload: .init(
+                    rowIndex: traceRowIndex,
+                    rowViewID: traceRowViewID
+                )
             )
             RowActionTraceRuntime.emit(
                 category: .swiftData,
                 event: "delete.save.before",
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: traceRowIndex,
-                rowViewID: traceRowViewID
+                payload: .init(
+                    rowIndex: traceRowIndex,
+                    rowViewID: traceRowViewID
+                )
             )
 #endif
             try modelContext.save()
@@ -958,8 +976,10 @@ struct ClipDeletionAction {
                 event: "delete.save.after",
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: traceRowIndex,
-                rowViewID: traceRowViewID
+                payload: .init(
+                    rowIndex: traceRowIndex,
+                    rowViewID: traceRowViewID
+                )
             )
             RowActionTransactionObserver.observeCompletion(
                 action: "delete",
@@ -977,11 +997,13 @@ struct ClipDeletionAction {
                 event: "delete.save.failed",
                 directness: .direct,
                 clipID: clipID,
-                rowIndex: traceRowIndex,
-                rowViewID: traceRowViewID,
-                state: [
-                    "errorType": .string(String(describing: type(of: error)))
-                ]
+                payload: .init(
+                    rowIndex: traceRowIndex,
+                    rowViewID: traceRowViewID,
+                    state: [
+                        "errorType": .string(String(describing: type(of: error)))
+                    ]
+                )
             )
 #endif
             return false

@@ -22,12 +22,14 @@ enum RowActionTransactionObserver {
             event: "completion.scheduled",
             directness: .direct,
             clipID: clipID,
-            rowIndex: rowIndex,
-            rowViewID: rowViewID,
-            state: [
-                "action": .string(action),
-                "phase": .string(phase)
-            ]
+            payload: .init(
+                rowIndex: rowIndex,
+                rowViewID: rowViewID,
+                state: [
+                    "action": .string(action),
+                    "phase": .string(phase)
+                ]
+            )
         )
         CATransaction.begin()
         CATransaction.setCompletionBlock {
@@ -37,12 +39,14 @@ enum RowActionTransactionObserver {
                     event: "completion",
                     directness: .inferred,
                     clipID: clipID,
-                    rowIndex: rowIndex,
-                    rowViewID: rowViewID,
-                    state: [
-                        "action": .string(action),
-                        "phase": .string(phase)
-                    ]
+                    payload: .init(
+                        rowIndex: rowIndex,
+                        rowViewID: rowViewID,
+                        state: [
+                            "action": .string(action),
+                            "phase": .string(phase)
+                        ]
+                    )
                 )
             }
         }

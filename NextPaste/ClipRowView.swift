@@ -88,10 +88,10 @@ private extension View {
                 event: "row.appear",
                 directness: .direct,
                 clipID: clip.id,
-                state: [
+                payload: .init(state: [
                     "isPinned": .bool(clip.isPinned),
                     "contentType": .string(clip.contentType)
-                ]
+                ])
             )
         }
         .onDisappear {
@@ -100,10 +100,10 @@ private extension View {
                 event: "row.disappear",
                 directness: .direct,
                 clipID: clip.id,
-                state: [
+                payload: .init(state: [
                     "isPinned": .bool(clip.isPinned),
                     "contentType": .string(clip.contentType)
-                ]
+                ])
             )
         }
 #else
