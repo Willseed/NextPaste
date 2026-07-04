@@ -19,6 +19,12 @@ struct HomeView: View {
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @State private var isPresentingNewClip = false
     @State private var searchText = ""
+    // T002: single search presentation authority. `isSearchPresented` drives the
+    // native `.searchable` field visibility; `isSearchFieldFocused` requests focus
+    // on that same field. There is exactly one search field and one search-text
+    // state (`searchText`) — `focusSearch()` does not create a second search entry.
+    @State private var isSearchPresented = true
+    @FocusState private var isSearchFieldFocused: Bool
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
@@ -67,12 +73,43 @@ struct HomeView: View {
                     title: "Clips",
                     onSettings: openSettingsOrShowPlaceholder
                 ) {
-                    Button {
-                        isPresentingNewClip = true
-                    } label: {
-                        Label("New Clip", systemImage: "plus")
+                    HStack(spacing: DesignTokens.Spacing.small) {
+                        // T004: visible, non-keyboard search entry. Calls the same
+                        // `focusSearch()` action as `Command-F` (T002/T003) so there is
+                        // exactly one search entry path. Native `Button` works with mouse
+                        // and trackpad; no hover/gesture dependency.
+                        Button {
+                            focusSearch()
+                        } label: {
+                            Label("Search", systemImage: DesignTokens.Icons.search)
+                        }
+                        .buttonStyle(.borderless)
+                        .accessibilityIdentifier("search-button")
+                        .accessibilityLabel("Search Clipboard History")
+                        .accessibilityHint("Focus the clipboard search field")
+
+                        // T004: explicit Clear Search entry with a stable identifier.
+                        // Only shown while a search query is active so the empty toolbar
+                        // is not cluttered. Native `Button` — no hover/gesture dependency.
+                        if searchText.isEmpty == false {
+                            Button {
+                                clearSearchText()
+                            } label: {
+                                Label("Clear Search", systemImage: "xmark.circle.fill")
+                            }
+                            .buttonStyle(.borderless)
+                            .accessibilityIdentifier("clear-search-button")
+                            .accessibilityLabel("Clear Search")
+                            .accessibilityHint("Clear the active search query")
+                        }
+
+                        Button {
+                            isPresentingNewClip = true
+                        } label: {
+                            Label("New Clip", systemImage: "plus")
+                        }
+                        .accessibilityIdentifier("new-clip-button")
                     }
-                    .accessibilityIdentifier("new-clip-button")
                 }
                 .background(measuredFrameReader(for: .header))
 
@@ -99,7 +136,12 @@ struct HomeView: View {
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
-        .searchable(text: $searchText, prompt: "Search clips")
+        .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search clips")
+        .focused($isSearchFieldFocused)
+        // T003: publish the shared `focusSearch()` action to the focused window so
+        // the app-level `SearchCommands` (`Command-F`) can invoke it without owning
+        // any search state.
+        .focusedValue(\.searchFocusAction, focusSearch)
 #if DEBUG
         .onAppear {
             traceVisibleClipSnapshot(reason: "home.appear")
@@ -230,6 +272,22 @@ struct HomeView: View {
     private func clearCopyFeedback() {
         copyFeedbackTask?.cancel()
         copiedClipID = nil
+    }
+
+    /// T002: the single shared search-focus action. It reveals the existing native
+    /// `.searchable` search field and requests focus on it. It does not create a
+    /// second search field, does not clear `searchText`, and does not install any
+    /// keyboard event monitor. T003 (Command-F) and T004 (Search Button) both call
+    /// this action so there is exactly one search entry path.
+    private func focusSearch() {
+        isSearchPresented = true
+        isSearchFieldFocused = true
+    }
+
+    /// T004: clears the active search query. Invoked by the explicit Clear Search
+    /// button so there is a non-keyboard, accessibility-identifiable clear entry.
+    private func clearSearchText() {
+        searchText = ""
     }
 
     private var historyContent: some View {
@@ -618,6 +676,17 @@ struct HomeView: View {
             accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
             accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
             accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
+            // T004: announce the search result count for VoiceOver when a search is
+            // active so the no-results / result-count state is readable.
+            if searchText.isEmpty == false {
+                accessibilityMarker(
+                    identifier: "search-result-count",
+                    value: "\(visibleClips.count)",
+                    label: visibleClips.isEmpty
+                        ? "No search results"
+                        : "\(visibleClips.count) search result\(visibleClips.count == 1 ? "" : "s")"
+                )
+            }
         }
         .allowsHitTesting(false)
     }

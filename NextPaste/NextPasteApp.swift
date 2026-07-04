@@ -48,6 +48,9 @@ struct NextPasteApp: App {
         .defaultSize(width: 640, height: 480)
 #endif
         .modelContainer(sharedModelContainer)
+        .commands {
+            SearchCommands()
+        }
     }
 }
 

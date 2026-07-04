@@ -39,9 +39,9 @@
 
 - [x] T000：讀取 Skills 與建立現況報告
 - [x] T001：建立修改前 baseline
-- [ ] T002：建立單一搜尋 Focus Action
-- [ ] T003：加入 Command-F 搜尋命令
-- [ ] T004：加入非鍵盤搜尋入口
+- [x] T002：建立單一搜尋 Focus Action
+- [x] T003：加入 Command-F 搜尋命令
+- [x] T004：加入非鍵盤搜尋入口
 - [ ] T005：建立歷史統計 Query
 - [ ] T006：建立清除未釘選資料層
 - [ ] T007：加入清除未釘選確認 UI
@@ -155,81 +155,81 @@
 
 # Phase 1：搜尋快捷鍵與 Accessibility
 
-## [ ] T002：建立單一搜尋 Focus Action
+## [x] T002：建立單一搜尋 Focus Action
 
 ### 實作
 
-- [ ] 找出現有搜尋狀態。
-- [ ] 建立單一 `focusSearch()` 或符合現有命名的 action。
-- [ ] 不建立第二套搜尋 state。
-- [ ] 不建立第二個搜尋欄。
-- [ ] action 能顯示搜尋介面。
-- [ ] action 能聚焦現有搜尋欄。
-- [ ] action 保留既有搜尋文字。
+- [x] 找出現有搜尋狀態。
+- [x] 建立單一 `focusSearch()` 或符合現有命名的 action。
+- [x] 不建立第二套搜尋 state。
+- [x] 不建立第二個搜尋欄。
+- [x] action 能顯示搜尋介面。
+- [x] action 能聚焦現有搜尋欄。
+- [x] action 保留既有搜尋文字。
 - [ ] 若現有架構可安全支援，聚焦後選取現有搜尋文字。
-- [ ] 避免 SwiftUI focus loop。
-- [ ] 不使用 `NSEvent` monitor。
-- [ ] 不加入 menu command。
+- [x] 避免 SwiftUI focus loop。
+- [x] 不使用 `NSEvent` monitor。
+- [x] 不加入 menu command。
 
 ### 測試
 
-- [ ] action 會要求搜尋欄取得 focus。
-- [ ] 既有搜尋文字不會被清除。
-- [ ] 重複呼叫不會建立重複 state。
-- [ ] NextPaste target build 通過。
+- [x] action 會要求搜尋欄取得 focus。
+- [x] 既有搜尋文字不會被清除。
+- [x] 重複呼叫不會建立重複 state。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T003：加入 Command-F 搜尋命令
+## [x] T003：加入 Command-F 搜尋命令
 
 ### 實作
 
-- [ ] 使用 SwiftUI `Commands`、`CommandGroup` 或現有 command architecture。
-- [ ] `Command-F` 呼叫 T002 的共用搜尋 action。
-- [ ] menu bar 提供標準 `Find…` 命令。
-- [ ] 優先放在 `Edit > Find`。
-- [ ] 不使用 `Command-S`。
-- [ ] 不將 `Command-F` 註冊為全域快捷鍵。
-- [ ] 不使用 raw keyboard event monitor。
+- [x] 使用 SwiftUI `Commands`、`CommandGroup` 或現有 command architecture。
+- [x] `Command-F` 呼叫 T002 的共用搜尋 action。
+- [x] menu bar 提供標準 `Find…` 命令。
+- [x] 優先放在 `Edit > Find`。
+- [x] 不使用 `Command-S`。
+- [x] 不將 `Command-F` 註冊為全域快捷鍵。
+- [x] 不使用 raw keyboard event monitor。
 
 ### 測試
 
-- [ ] `Command-F` 執行共用搜尋 action。
-- [ ] 重複按 `Command-F` 不破壞搜尋狀態。
-- [ ] menu item 顯示正確快捷鍵。
-- [ ] NextPaste target build 通過。
+- [x] `Command-F` 執行共用搜尋 action。
+- [x] 重複按 `Command-F` 不破壞搜尋狀態。
+- [x] menu item 顯示正確快捷鍵。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T004：加入非鍵盤搜尋入口
+## [x] T004：加入非鍵盤搜尋入口
 
 ### 實作
 
-- [ ] 提供可見的原生 Search Button。
-- [ ] Search Button 呼叫 T002 的同一個 action。
-- [ ] 不複製搜尋行為。
-- [ ] 唯一入口不依賴 hover。
-- [ ] 唯一入口不依賴 gesture。
-- [ ] 使用原生 `Button`。
-- [ ] 支援滑鼠。
-- [ ] 支援觸控板。
-- [ ] 為 Search Button 新增 accessibility identifier。
-- [ ] 為 Search Field 新增 accessibility identifier。
-- [ ] 為 Clear Search Button 新增 accessibility identifier。
-- [ ] 新增適當的 `accessibilityLabel`。
-- [ ] 新增適當的 `accessibilityHint`。
-- [ ] VoiceOver 可辨識 Search Button。
-- [ ] VoiceOver 可辨識 Search Field。
-- [ ] VoiceOver 可辨識 Clear Search Button。
-- [ ] VoiceOver 可辨識無搜尋結果狀態。
-- [ ] 若架構適合，VoiceOver 可讀取搜尋結果數量。
+- [x] 提供可見的原生 Search Button。
+- [x] Search Button 呼叫 T002 的同一個 action。
+- [x] 不複製搜尋行為。
+- [x] 唯一入口不依賴 hover。
+- [x] 唯一入口不依賴 gesture。
+- [x] 使用原生 `Button`。
+- [x] 支援滑鼠。
+- [x] 支援觸控板。
+- [x] 為 Search Button 新增 accessibility identifier。
+- [x] 為 Search Field 新增 accessibility identifier。
+- [x] 為 Clear Search Button 新增 accessibility identifier。
+- [x] 新增適當的 `accessibilityLabel`。
+- [x] 新增適當的 `accessibilityHint`。
+- [x] VoiceOver 可辨識 Search Button。
+- [x] VoiceOver 可辨識 Search Field。
+- [x] VoiceOver 可辨識 Clear Search Button。
+- [x] VoiceOver 可辨識無搜尋結果狀態。
+- [x] 若架構適合，VoiceOver 可讀取搜尋結果數量。
 
 ### 測試
 
-- [ ] 點擊 Search Button 會聚焦搜尋欄。
-- [ ] accessibility identifiers 存在。
-- [ ] 不使用鍵盤也能完成搜尋。
-- [ ] NextPaste target build 通過。
+- [x] 點擊 Search Button 會聚焦搜尋欄。
+- [x] accessibility identifiers 存在。
+- [x] 不使用鍵盤也能完成搜尋。
+- [x] NextPaste target build 通過。
 
 ---
 
