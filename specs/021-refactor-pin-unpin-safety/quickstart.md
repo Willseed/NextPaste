@@ -15,7 +15,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 ### Targeted Unit / Pure Logic
 
 ```bash
-xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/PinStateMutationStoreTests test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/PinStateMutationStoreUS1Tests -only-testing:NextPasteTests/PinStateMutationStoreUS2Tests -only-testing:NextPasteTests/PinStateMutationStoreUS3Tests test
 ```
 
 ```bash
@@ -39,7 +39,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 ### Sanitizer Validation
 
 ```bash
-xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/PinStateMutationStoreTests -enableThreadSanitizer YES test
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteTests/PinStateMutationStoreUS1Tests -only-testing:NextPasteTests/PinStateMutationStoreUS2Tests -only-testing:NextPasteTests/PinStateMutationStoreUS3Tests -enableThreadSanitizer YES test
 ```
 
 ```bash

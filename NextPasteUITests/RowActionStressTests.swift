@@ -189,6 +189,67 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    // MARK: - Scenario C stress (Feature 021 T032): multi-item interleaved Pin/Unpin
+
+    @MainActor
+    func testScenarioCStressInterleavedMultiItemPinUnpinRepeatedly() throws {
+        let trace = UITestAppLauncher.makeTraceApp()
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let clips = [
+            UITestFixtures.RowActions.unpinThreeOlder,
+            UITestFixtures.RowActions.unpinThreeMiddle,
+            UITestFixtures.RowActions.unpinThreeNewest
+        ]
+
+        try history.createTextClips(clips)
+        history.assertClipRowIdentifierExists()
+
+        // Stress loop: interleave Pin/Unpin across the three clips so multiple
+        // distinct items are mutated in rapid succession (FR-011, US2). The app
+        // must stay foreground with no crash, duplicate, or lost row. Odd iterations
+        // pin all three (label "Pin", currently unpinned); even iterations unpin all
+        // three (label "Unpin", currently pinned).
+        var actionOutcomes: [String] = []
+        for iteration in 1...Self.stressRepeatCount {
+            let desiredPinned = (iteration % 2) == 1
+            let expectedLabel = desiredPinned ? "Pin" : "Unpin"
+            for (index, clip) in clips.enumerated() {
+                let button = row.revealPinActionWithRightSwipe(for: clip, expectedLabel: expectedLabel)
+                button.tap()
+                XCTAssertEqual(
+                    app.state,
+                    .runningForeground,
+                    "App crashed on Scenario C \(expectedLabel) clip\(index) iteration \(iteration)"
+                )
+                actionOutcomes.append("\(expectedLabel)-\(index)-\(iteration): \(app.state)")
+                triggerDisplayOrderReconciliation(in: app)
+            }
+        }
+
+        // Final state: all three clips reflect the last iteration's desired state.
+        // stressRepeatCount is even, so the last iteration was an unpin → unpinned.
+        let finalDesired = (Self.stressRepeatCount % 2) == 1
+        for clip in clips {
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: clip, in: app),
+                finalDesired ? "Pinned" : "Unpinned",
+                timeout: 2
+            )
+        }
+
+        attachStressOutcome(
+            scenario: "C",
+            actionOutcomes: actionOutcomes,
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
     // MARK: - Helpers
 
     /// Triggers the display-order reconciliation by delivering a user interaction

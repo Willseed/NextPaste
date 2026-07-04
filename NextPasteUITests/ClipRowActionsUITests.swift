@@ -253,9 +253,11 @@ final class ClipRowActionsUITests: UITestCase {
             newerUnpinnedIdentifier
         )
 
-        // Reconcile on the next explicit user input event, then assert newest-first ordering.
+        // Feature 021 (FR-010 part 3): after Unpin, the most recently unpinned item
+        // appears at the top of the unpinned section. olderPinTarget was just unpinned,
+        // so it appears above newerUnpinned (Unpin-to-top), NOT newest-first by createdAt.
         triggerDisplayOrderReconciliation(in: app)
-        UITestAssertions.assert(newerUnpinned, appearsAbove: olderPinTarget)
+        UITestAssertions.assert(olderPinTarget, appearsAbove: newerUnpinned)
         XCTAssertEqual(
             assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app).identifier,
             olderPinTargetIdentifier
@@ -1162,11 +1164,14 @@ final class ClipRowActionsUITests: UITestCase {
         )
 
         // Single explicit reconciliation input. Final state: only c is pinned.
-        // Canonical pinned-first/newest-first: c, then d (newest unpinned), b, a.
+        // Feature 021 (FR-010 part 3): `a` was pinned then unpinned, so it is the most
+        // recently unpinned item and appears at the top of the unpinned section. The
+        // remaining unpinned items (d, b) follow newest-first by createdAt. Final
+        // order: c (pinned), a (Unpin-to-top), d, b.
         triggerDisplayOrderReconciliation(in: app)
-        UITestAssertions.assert(app.staticTexts[c], appearsAbove: app.staticTexts[d])
+        UITestAssertions.assert(app.staticTexts[c], appearsAbove: app.staticTexts[a])
+        UITestAssertions.assert(app.staticTexts[a], appearsAbove: app.staticTexts[d])
         UITestAssertions.assert(app.staticTexts[d], appearsAbove: app.staticTexts[b])
-        UITestAssertions.assert(app.staticTexts[b], appearsAbove: app.staticTexts[a])
 
         // Confirm c remains the only pinned clip after reconciliation.
         UITestAssertions.assertEventuallyAccessibleTextContains(

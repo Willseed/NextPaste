@@ -51,6 +51,12 @@ final class ClipItem {
     var updatedAt: Date
     var isPinned: Bool = false
     var pinnedSortOrder: Int = 0
+    // Feature 021: optional persisted section-order metadata. Defaults to nil for
+    // existing rows; ordering falls back to `createdAt` (see
+    // `effectiveSectionSortDate`). Pin sets it to `createdAt`; Unpin sets it to the
+    // operation time so the most recently unpinned item appears at the top of the
+    // unpinned section (FR-010 part 3). Non-destructive migration (data-model.md).
+    var sectionSortDate: Date? = nil
     var imageHash: String? = nil
     var imageWidth: Int? = nil
     var imageHeight: Int? = nil
@@ -100,6 +106,29 @@ final class ClipItem {
     func togglePinned() {
         isPinned.toggle()
         pinnedSortOrder = Self.sortOrder(for: isPinned)
+    }
+
+    /// Feature 021 — deterministic desired-state setter. Sets `isPinned`,
+    /// `pinnedSortOrder`, and `sectionSortDate` to satisfy FR-010 ordering without
+    /// changing clipboard `createdAt`. Pin sets `sectionSortDate = createdAt` so the
+    /// pinned section stays newest-first by history time. Unpin sets
+    /// `sectionSortDate = operationTime` so the most recently unpinned item appears at
+    /// the top of the unpinned section. Idempotent when the desired state already
+    /// holds and `sectionSortDate` is already consistent. Non-destructive: existing
+    /// rows with `sectionSortDate == nil` continue to fall back to `createdAt`.
+    func setPinned(_ desired: Bool, operationTime: Date = Date()) {
+        let alreadyInDesiredState = isPinned == desired
+        isPinned = desired
+        pinnedSortOrder = Self.sortOrder(for: isPinned)
+        if desired {
+            // Pinned section orders by history time (createdAt).
+            sectionSortDate = createdAt
+        } else if !alreadyInDesiredState || sectionSortDate == nil {
+            // Unpin advances section order to the operation time so the item appears at
+            // the top of the unpinned section. Re-unpinning the same already-unpinned
+            // item keeps the prior sectionSortDate (idempotent).
+            sectionSortDate = operationTime
+        }
     }
 
     private static func sortOrder(for isPinned: Bool) -> Int {

@@ -462,4 +462,140 @@ struct ClipHistoryTests {
         ])
     }
 
+    // MARK: - Feature 021 ordering (T015)
+
+    @MainActor
+    @Test("pinned items stay newest-first inside the pinned section")
+    func pinnedItemsStayNewestFirstInsidePinnedSection() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let older = ClipItem(textContent: "older pinned", createdAt: Date(timeIntervalSince1970: 100), isPinned: true)
+        let newer = ClipItem(textContent: "newer pinned", createdAt: Date(timeIntervalSince1970: 300), isPinned: true)
+        context.insert(older)
+        context.insert(newer)
+        try context.save()
+
+        let snapshot = PinStateSnapshotProjector().project(
+            clips: try SwiftDataTestSupport.fetchHistory(in: context),
+            searchQuery: "",
+            reason: .mutationApplied
+        ).snapshot
+        #expect(snapshot.orderedItemIDs == [newer.id, older.id])
+    }
+
+    @MainActor
+    @Test("unpin places the item at the top of the unpinned section even when older than other unpinned items")
+    func unpinPlacesItemAtTopOfUnpinnedSection() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        // An older pinned item (createdAt 50) and a newer unpinned item (createdAt 200).
+        let olderPinned = ClipItem(textContent: "older pinned", createdAt: Date(timeIntervalSince1970: 50), isPinned: true)
+        let newerUnpinned = ClipItem(textContent: "newer unpinned", createdAt: Date(timeIntervalSince1970: 200))
+        context.insert(olderPinned)
+        context.insert(newerUnpinned)
+        try context.save()
+
+        // Unpin the older pinned item at operation time 500. It must appear at the top
+        // of the unpinned section, above the newer unpinned item, because it was most
+        // recently unpinned (FR-010 part 3).
+        olderPinned.setPinned(false, operationTime: Date(timeIntervalSince1970: 500))
+        try context.save()
+
+        let snapshot = PinStateSnapshotProjector().project(
+            clips: try SwiftDataTestSupport.fetchHistory(in: context),
+            searchQuery: "",
+            reason: .mutationApplied
+        ).snapshot
+        #expect(snapshot.orderedItemIDs == [olderPinned.id, newerUnpinned.id])
+    }
+
+    @MainActor
+    @Test("remaining unpinned items stay newest-first after an unpin")
+    func remainingUnpinnedItemsStayNewestFirstAfterUnpin() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let a = ClipItem(textContent: "a", createdAt: Date(timeIntervalSince1970: 100))
+        let b = ClipItem(textContent: "b", createdAt: Date(timeIntervalSince1970: 200))
+        let c = ClipItem(textContent: "c", createdAt: Date(timeIntervalSince1970: 300), isPinned: true)
+        context.insert(a)
+        context.insert(b)
+        context.insert(c)
+        try context.save()
+
+        // Unpin c at operation time 400 → top of unpinned. Remaining unpinned: b (200), a (100).
+        c.setPinned(false, operationTime: Date(timeIntervalSince1970: 400))
+        try context.save()
+
+        let snapshot = PinStateSnapshotProjector().project(
+            clips: try SwiftDataTestSupport.fetchHistory(in: context),
+            searchQuery: "",
+            reason: .mutationApplied
+        ).snapshot
+        #expect(snapshot.orderedItemIDs == [c.id, b.id, a.id])
+    }
+
+    @MainActor
+    @Test("stable item id resolves ordering ties")
+    func stableItemIDResolvesOrderingTies() throws {
+        // Two clips with identical sectionSortDate/createdAt and same Pin state must
+        // be ordered deterministically by stable id (FR-010 part 5).
+        let tieDate = Date(timeIntervalSince1970: 1000)
+        let id1 = UUID(uuidString: "11111111-1111-1111-1111-111111111111")!
+        let id2 = UUID(uuidString: "22222222-2222-2222-2222-222222222222")!
+        let clip1 = ClipItem(id: id1, textContent: "one", createdAt: tieDate)
+        let clip2 = ClipItem(id: id2, textContent: "two", createdAt: tieDate)
+        let clips = [clip1, clip2]
+
+        let snapshot = PinStateSnapshotProjector().project(
+            clips: clips,
+            searchQuery: "",
+            reason: .mutationApplied
+        ).snapshot
+        // Both unpinned, same createdAt → tie broken by id descending (deterministic).
+        #expect(snapshot.orderedItemIDs == [id2, id1])
+    }
+
+    // MARK: - Feature 021 restart-equivalent persistence (T045)
+
+    @MainActor
+    @Test("pin state and unpin-to-top ordering survive reload from a local SwiftData store")
+    func pinStateAndUnpinToTopOrderingSurviveReloadFromLocalStore() throws {
+        // Use an on-disk SwiftData container in an isolated temporary directory so a
+        // new ModelContext(container) reflects the persisted state (restart-equivalent).
+        let storeURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
+        defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: storeURL) }
+
+        let container = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let context = ModelContext(container)
+        // Older pinned item (createdAt 50) and a newer unpinned item (createdAt 200).
+        let olderPinned = ClipItem(textContent: "older pinned", createdAt: Date(timeIntervalSince1970: 50), isPinned: true)
+        let newerUnpinned = ClipItem(textContent: "newer unpinned", createdAt: Date(timeIntervalSince1970: 200))
+        context.insert(olderPinned)
+        context.insert(newerUnpinned)
+        try context.save()
+
+        // Unpin the older pinned item at operation time 500 so it should appear at the
+        // top of the unpinned section via sectionSortDate (FR-010 part 3).
+        olderPinned.setPinned(false, operationTime: Date(timeIntervalSince1970: 500))
+        try context.save()
+
+        // Reload from the same on-disk store (restart-equivalent).
+        let reloadedContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let reloadedContext = ModelContext(reloadedContainer)
+        let reloadedClips = try SwiftDataTestSupport.fetchHistory(in: reloadedContext)
+        let reloadedOlder = try #require(reloadedClips.first { $0.id == olderPinned.id })
+        let reloadedNewer = try #require(reloadedClips.first { $0.id == newerUnpinned.id })
+
+        // Pin state survives reload (US3 acceptance scenario 1).
+        #expect(reloadedOlder.isPinned == false)
+        #expect(reloadedNewer.isPinned == false)
+        #expect(reloadedOlder.sectionSortDate == Date(timeIntervalSince1970: 500))
+
+        // Ordering survives reload: the most recently unpinned item appears at the top
+        // of the unpinned section (FR-010 part 3, US3).
+        let snapshot = PinStateSnapshotProjector().project(
+            clips: reloadedClips,
+            searchQuery: "",
+            reason: .queryRefreshed
+        ).snapshot
+        #expect(snapshot.orderedItemIDs == [reloadedOlder.id, reloadedNewer.id])
+    }
+
 }

@@ -171,10 +171,12 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         unpinButton.tap()
 
         UITestAssertions.assertImagePinnedIconDisappears(in: app)
-        // Feature 020 (US1): Unpin pinned-state feedback is immediate (asserted above), but
-        // row-position relocation is deferred until the next explicit user input event.
+        // Feature 021 (FR-010 part 3): Unpin places the item at the top of the
+        // unpinned section. The older pin target was most recently unpinned, so it
+        // appears above the newer unpinned clip (Unpin-to-top), NOT newest-first by
+        // createdAt. This is the spec-defined deviation from the pre-feature behavior.
         triggerDisplayOrderReconciliation(in: app)
-        UITestAssertions.assert(newerRow, appearsAbove: olderRow)
+        UITestAssertions.assert(olderRow, appearsAbove: newerRow)
     }
 
     @MainActor

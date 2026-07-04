@@ -174,6 +174,27 @@ enum SwiftDataTestSupport {
         ModelContext(try makeInMemoryContainer(for: schema))
     }
 
+    /// Feature 021 (T041): on-disk SwiftData container in an isolated temporary
+    /// directory so restart-equivalent tests can reload Pin state and ordering from
+    /// the persisted store. The URL is unique per call (UUID) and never uses a shared
+    /// temporary root. Callers must `removeTemporaryOnDiskContainer(at:)` when done.
+    static func makeOnDiskContainerURL() throws -> URL {
+        let base = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("NextPaste-021-on-disk-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+        return base
+    }
+
+    static func makeOnDiskContainer(for schema: Schema = Schema([ClipItem.self]), at url: URL) throws -> ModelContainer {
+        let storeURL = url.appendingPathComponent("NextPaste.store")
+        let configuration = ModelConfiguration(schema: schema, url: storeURL)
+        return try ModelContainer(for: schema, configurations: [configuration])
+    }
+
+    static func removeTemporaryOnDiskContainer(at url: URL) {
+        try? FileManager.default.removeItem(at: url)
+    }
+
     @discardableResult
     static func seedClips(
         _ texts: [String],

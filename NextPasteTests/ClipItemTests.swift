@@ -329,6 +329,79 @@ struct ClipItemTests {
         #expect(ClipItem.filteredHistory(clips, matching: "").map(\.textContent) == ["First", "Second"])
     }
 
+    // MARK: - Feature 021 model migration (T016)
+
+    @Test("section sort metadata defaults to nil for existing rows and falls back to createdAt")
+    func sectionSortMetadataDefaultsNilAndFallsBackToCreatedAt() throws {
+        let createdAt = Date(timeIntervalSince1970: 1_780_000_010)
+        let clip = ClipItem(textContent: "legacy row", createdAt: createdAt)
+        #expect(clip.sectionSortDate == nil)
+        #expect(clip.effectiveSectionSortDate == createdAt)
+    }
+
+    @Test("existing rows reload with nil section sort metadata and unchanged createdAt")
+    func existingRowsReloadWithNilSectionSortMetadataAndUnchangedCreatedAt() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let createdAt = Date(timeIntervalSince1970: 1_780_000_020)
+        let clip = ClipItem(textContent: "existing row", createdAt: createdAt)
+        context.insert(clip)
+        try context.save()
+
+        let reloaded = ModelContext(container)
+        let saved = try #require(try reloaded.fetch(FetchDescriptor<ClipItem>()).first)
+        #expect(saved.sectionSortDate == nil)
+        #expect(saved.createdAt == createdAt)
+        #expect(saved.effectiveSectionSortDate == createdAt)
+    }
+
+    @Test("pin sets pinned ordering and section sort date to createdAt without changing clipboard createdAt")
+    func pinSetsPinnedOrderingAndSectionSortDateToCreatedAt() throws {
+        let createdAt = Date(timeIntervalSince1970: 1_780_000_030)
+        let clip = ClipItem(textContent: "pin target", createdAt: createdAt)
+        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 1_780_000_999))
+        #expect(clip.isPinned == true)
+        #expect(clip.pinnedSortOrder == 1)
+        #expect(clip.sectionSortDate == createdAt)
+        #expect(clip.createdAt == createdAt)
+    }
+
+    @Test("unpin advances section sort date to operation time while preserving clipboard createdAt")
+    func unpinAdvancesSectionSortDateToOperationTime() throws {
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let clip = ClipItem(textContent: "unpin target", createdAt: createdAt, isPinned: true)
+        let operationTime = Date(timeIntervalSince1970: 500)
+        clip.setPinned(false, operationTime: operationTime)
+        #expect(clip.isPinned == false)
+        #expect(clip.pinnedSortOrder == 0)
+        #expect(clip.sectionSortDate == operationTime)
+        #expect(clip.createdAt == createdAt)
+        #expect(clip.effectiveSectionSortDate == operationTime)
+    }
+
+    @Test("pin after unpin resets section sort date to createdAt so pinned section stays newest-first")
+    func pinAfterUnpinResetsSectionSortDateToCreatedAt() throws {
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let clip = ClipItem(textContent: "re-pin target", createdAt: createdAt, isPinned: true)
+        clip.setPinned(false, operationTime: Date(timeIntervalSince1970: 500))
+        #expect(clip.sectionSortDate == Date(timeIntervalSince1970: 500))
+        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 900))
+        #expect(clip.isPinned == true)
+        #expect(clip.pinnedSortOrder == 1)
+        #expect(clip.sectionSortDate == createdAt)
+    }
+
+    @Test("setPinned with same desired state is idempotent on ordering metadata")
+    func setPinnedSameDesiredStateIsIdempotentOnOrderingMetadata() {
+        let createdAt = Date(timeIntervalSince1970: 100)
+        let clip = ClipItem(textContent: "idempotent", createdAt: createdAt)
+        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 200))
+        let firstSortDate = clip.sectionSortDate
+        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 300))
+        #expect(clip.isPinned == true)
+        #expect(clip.sectionSortDate == firstSortDate)
+    }
+
     private func assertNilImageMetadata(on clip: ClipItem) {
         #expect(clip.imageHash == nil)
         #expect(clip.imageWidth == nil)

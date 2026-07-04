@@ -47,6 +47,10 @@ struct HomeView: View {
     // a timing delay, KVO signal, or sleep.
     @State private var rowActionDisplayOrderSnapshot: [UUID]? = nil
     @State private var rowActionReconciliationMonitor: Any? = nil
+    // Feature 021: ID-first Pin/Unpin mutation store. Created lazily on first action
+    // so it captures `modelContext` from the environment. The store is `@MainActor`
+    // and serializes mutations on the MainActor (FR-005, FR-006).
+    @State private var pinStore: PinStateMutationStore? = nil
 #endif
 
     var body: some View {
@@ -148,6 +152,17 @@ struct HomeView: View {
             return ClipItem.filteredHistory(ordered, matching: searchText)
         }
         #endif
+        // Feature 021 (T037): consume the store-generated visible ID snapshot so the
+        // FR-010 ordering — including Unpin-to-top via `sectionSortDate` — is visible.
+        // The store projects from the same authoritative SwiftData state as `@Query`,
+        // so the visible order matches the store's authoritative section/ordering
+        // (FR-003, FR-010, SC-004). Falls back to the @Query-filtered order before the
+        // store is created (first interaction).
+        if let pinStore {
+            let snapshot = pinStore.projectVisible(clips: clips, searchQuery: searchText)
+            let clipsByID = Dictionary(uniqueKeysWithValues: clips.map { ($0.id, $0) })
+            return snapshot.orderedItemIDs.compactMap { clipsByID[$0] }
+        }
         return ClipItem.filteredHistory(clips, matching: searchText)
     }
 
@@ -406,112 +421,43 @@ struct HomeView: View {
             phase: "action.tap"
         )
 #endif
+        // Feature 021: route through the ID-first mutation store. The store resolves
+        // the live item by `clip.id` at mutation time, serializes the mutation on the
+        // MainActor, persists through SwiftData, rolls back on failure, and
+        // regenerates the visible snapshot synchronously (FR-004, FR-006, FR-007,
+        // SC-003). The production mutation call passes item identity (`clip.id`) and
+        // the explicit desired state — never a row index (SC-002).
 #if os(macOS)
         // Freeze the visible display order before the SwiftData mutation so the @Query
         // reorder does not recycle the acted-on row during AppKit row-action teardown.
         beginRowActionDisplayOrderSnapshot()
-        applyPinState(targetPinnedState, to: clip)
+        ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
         scheduleRowActionDisplayOrderReconciliation()
 #else
-        applyTogglePin(clip)
+        ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
 #endif
     }
 
-    private func applyTogglePin(_ clip: ClipItem) {
-        applyPinState(!clip.isPinned, to: clip)
-    }
-
-    private func applyPinState(_ targetPinnedState: Bool, to clip: ClipItem) {
-        guard clip.isPinned != targetPinnedState else {
-            return
+    /// Lazily creates the ID-first Pin/Unpin mutation store, bridging content-free
+    /// diagnostics into the existing row-action trace when DEBUG tracing is enabled
+    /// (T021). The store instance persists for the lifetime of the view so mutation
+    /// sequencing and snapshot state are continuous.
+    private func ensurePinStore() -> PinStateMutationStore {
+        if let pinStore {
+            return pinStore
         }
-
+        let diagnostics: PinStateMutationDiagnostics
 #if DEBUG
-        let action = tracePinActionName(targetPinnedState: targetPinnedState)
-        let rowIdentity = traceRowIdentity(for: clip)
-        RowActionTraceRuntime.emit(
-            category: .swiftData,
-            event: "\(action).mutation.before",
-            directness: .direct,
-            clipID: clip.id,
-            payload: .init(
-                rowIndex: rowIdentity.rowIndex,
-                rowViewID: rowIdentity.rowViewID,
-                state: [
-                    "isPinned": .bool(clip.isPinned),
-                    "targetPinnedState": .bool(targetPinnedState)
-                ]
-            )
+        diagnostics = PinStateMutationDiagnostics(sink: RowActionTraceBridgePinStateDiagnosticsSink())
+#else
+        diagnostics = PinStateMutationDiagnostics()
+#endif
+        let store = PinStateMutationStore(
+            modelContext: modelContext,
+            diagnostics: diagnostics
         )
-#endif
-        do {
-            clip.togglePinned()
-#if DEBUG
-            RowActionTraceRuntime.emit(
-                category: .swiftData,
-                event: "\(action).mutation.after",
-                directness: .direct,
-                clipID: clip.id,
-                payload: .init(
-                    rowIndex: traceRowIdentity(for: clip).rowIndex,
-                    rowViewID: traceRowIdentity(for: clip).rowViewID,
-                    state: [
-                        "isPinned": .bool(clip.isPinned)
-                    ]
-                )
-            )
-            RowActionTraceRuntime.emit(
-                category: .swiftData,
-                event: "\(action).save.before",
-                directness: .direct,
-                clipID: clip.id,
-                payload: .init(
-                    rowIndex: traceRowIdentity(for: clip).rowIndex,
-                    rowViewID: traceRowIdentity(for: clip).rowViewID
-                )
-            )
-#endif
-            try modelContext.save()
-#if DEBUG
-            RowActionTraceRuntime.emit(
-                category: .swiftData,
-                event: "\(action).save.after",
-                directness: .direct,
-                clipID: clip.id,
-                payload: .init(
-                    rowIndex: traceRowIdentity(for: clip).rowIndex,
-                    rowViewID: traceRowIdentity(for: clip).rowViewID,
-                    state: [
-                        "isPinned": .bool(clip.isPinned)
-                    ]
-                )
-            )
-            RowActionTransactionObserver.observeCompletion(
-                action: action,
-                clipID: clip.id,
-                rowIndex: traceRowIdentity(for: clip).rowIndex,
-                rowViewID: traceRowIdentity(for: clip).rowViewID,
-                phase: "save.after"
-            )
-#endif
-        } catch {
-            modelContext.rollback()
-#if DEBUG
-            RowActionTraceRuntime.emit(
-                category: .swiftData,
-                event: "\(action).save.failed",
-                directness: .direct,
-                clipID: clip.id,
-                payload: .init(
-                    rowIndex: traceRowIdentity(for: clip).rowIndex,
-                    rowViewID: traceRowIdentity(for: clip).rowViewID,
-                    state: [
-                        "errorType": .string(String(describing: type(of: error)))
-                    ]
-                )
-            )
-#endif
-        }
+        pinStore = store
+        return store
     }
 
 #if os(macOS)

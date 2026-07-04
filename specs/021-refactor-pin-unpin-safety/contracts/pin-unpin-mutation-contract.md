@@ -156,3 +156,26 @@ Diffable data source rule:
   `NSTableViewDiffableDataSource` first because the current deployment target supports it.
 - `beginUpdates`/`endUpdates` is a fallback only if a future owned AppKit table must support a
   deployment target below macOS 11.0 or an API blocker is documented.
+
+## 7. Final Swift Symbol Names (T053)
+
+The implementation uses the following final Swift symbols (descriptive contract names
+above map to these). No FR/SC definition in `../spec.md` was changed.
+
+| Contract concept | Final Swift symbol | File |
+| --- | --- | --- |
+| Mutation request | `PinStateMutationRequest` | `PinStateMutationTypes.swift` |
+| Mutation result | `PinStateMutationResult` (enum cases: `applied`, `noOp`, `ignoredMissingTarget`, `rolledBack`, `rejectedInvalidState`) | `PinStateMutationTypes.swift` |
+| Mutation source | `PinMutationSource` | `PinStateMutationTypes.swift` |
+| Mutation stage | `PinStateMutationStage` | `PinStateMutationTypes.swift` |
+| Error classification | `PinStateMutationErrorType` | `PinStateMutationTypes.swift` |
+| Recovery action | `PinStateMutationRecoveryAction` | `PinStateMutationTypes.swift` |
+| Visible snapshot | `VisibleListSnapshot` | `PinStateMutationTypes.swift` |
+| Snapshot projector | `PinStateSnapshotProjector` (struct) | `PinStateSnapshotProjector.swift` |
+| Invariant diagnostic | `PinStateSnapshotInvariantDiagnostic` | `PinStateSnapshotProjector.swift` |
+| Persistence gateway | `PinStatePersistenceGateway` (protocol), `SwiftDataPinStatePersistenceGateway` (default) | `PinStatePersistenceGateway.swift` |
+| Diagnostics | `PinStateMutationDiagnostics`, `PinStateMutationDiagnosticRecord`, `PinStateMutationDiagnosticsSink`, `NullPinStateMutationDiagnosticsSink`, `RowActionTraceBridgePinStateDiagnosticsSink` (DEBUG) | `PinStateMutationDiagnostics.swift` |
+| Mutation store | `PinStateMutationStore` (`@MainActor final class`) | `PinStateMutationStore.swift` |
+| Target-state API | `setPinned(_:for:source:)` / `process(_:)` | `PinStateMutationStore.swift` |
+| Model desired-state setter | `ClipItem.setPinned(_:operationTime:)` | `ClipItem.swift` |
+| Section-order metadata | `ClipItem.sectionSortDate: Date?` (optional, `createdAt` fallback) | `ClipItem.swift` |
