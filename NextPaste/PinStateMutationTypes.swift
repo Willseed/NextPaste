@@ -45,7 +45,7 @@ public enum PinStateMutationErrorType: String, Sendable, Equatable, CaseIterable
     case missingIdentity = "missing-identity"
     case unknown = "unknown"
 
-    public init(_ error: Error) {
+    public init(_ _: Error) {
         // Default classification. The store may override with a more specific case
         // (e.g. `.persistenceSaveFailed`) when it knows the failure came from save().
         self = .unknown

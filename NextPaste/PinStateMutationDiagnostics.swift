@@ -17,6 +17,28 @@
 
 import Foundation
 
+/// Content-free outcome of one mutation attempt: the pipeline result plus its
+/// content-free error/recovery classification. Grouping these three related
+/// optional fields keeps the diagnostic record's initializer within the
+/// parameter budget without changing the observable fields exposed by the
+/// record (constitution: governance/quality, behavior-preserving). All fields
+/// remain content-free.
+public struct PinStateMutationOutcome: Sendable, Equatable {
+    public let result: PinStateMutationResult?
+    public let errorType: PinStateMutationErrorType?
+    public let recoveryAction: PinStateMutationRecoveryAction?
+
+    public init(
+        result: PinStateMutationResult? = nil,
+        errorType: PinStateMutationErrorType? = nil,
+        recoveryAction: PinStateMutationRecoveryAction? = nil
+    ) {
+        self.result = result
+        self.errorType = errorType
+        self.recoveryAction = recoveryAction
+    }
+}
+
 /// Content-free diagnostic record for one Pin/Unpin mutation event. Carries only
 /// identity, state, result, error/recovery classification, source, sequence, and
 /// stage — never clipboard content, previews, image data, or search query text.
@@ -24,20 +46,23 @@ public struct PinStateMutationDiagnosticRecord: Sendable, Equatable {
     public let itemID: UUID
     public let desiredPinnedState: Bool
     public let previousPinnedState: Bool?
-    public let result: PinStateMutationResult?
-    public let errorType: PinStateMutationErrorType?
-    public let recoveryAction: PinStateMutationRecoveryAction?
+    public let outcome: PinStateMutationOutcome?
     public let source: PinMutationSource
     public let sequence: UInt64
     public let stage: PinStateMutationStage
+
+    /// Convenience accessors preserving the previous field surface so callers
+    /// and tests can keep reading `result`, `errorType`, and `recoveryAction`
+    /// directly after the grouping refactor.
+    public var result: PinStateMutationResult? { outcome?.result }
+    public var errorType: PinStateMutationErrorType? { outcome?.errorType }
+    public var recoveryAction: PinStateMutationRecoveryAction? { outcome?.recoveryAction }
 
     public init(
         itemID: UUID,
         desiredPinnedState: Bool,
         previousPinnedState: Bool? = nil,
-        result: PinStateMutationResult? = nil,
-        errorType: PinStateMutationErrorType? = nil,
-        recoveryAction: PinStateMutationRecoveryAction? = nil,
+        outcome: PinStateMutationOutcome? = nil,
         source: PinMutationSource,
         sequence: UInt64,
         stage: PinStateMutationStage
@@ -45,9 +70,7 @@ public struct PinStateMutationDiagnosticRecord: Sendable, Equatable {
         self.itemID = itemID
         self.desiredPinnedState = desiredPinnedState
         self.previousPinnedState = previousPinnedState
-        self.result = result
-        self.errorType = errorType
-        self.recoveryAction = recoveryAction
+        self.outcome = outcome
         self.source = source
         self.sequence = sequence
         self.stage = stage
@@ -64,8 +87,14 @@ public protocol PinStateMutationDiagnosticsSink: Sendable {
 
 /// No-op sink used when diagnostics are not being collected.
 public struct NullPinStateMutationDiagnosticsSink: PinStateMutationDiagnosticsSink {
+    // No stored state is required for the no-op sink; the initializer exists only
+    // to satisfy the protocol's concrete-type construction contract.
     public init() {}
-    public func emit(_ record: PinStateMutationDiagnosticRecord) {}
+    // Intentional no-op: this sink discards every diagnostic record so production
+    // release builds pay no capture/retention cost. Tests inject a capturing sink.
+    public func emit(_: PinStateMutationDiagnosticRecord) {
+        // Discards the supplied content-free record without retaining it.
+    }
 }
 
 /// Content-free diagnostics helper. The store constructs records and emits them

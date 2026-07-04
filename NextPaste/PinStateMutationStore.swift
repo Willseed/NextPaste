@@ -121,7 +121,7 @@ final class PinStateMutationStore {
             itemID: request.itemID,
             desiredPinnedState: request.desiredPinnedState,
             previousPinnedState: previousPinnedState,
-            result: .applied(itemID: request.itemID, desiredPinnedState: request.desiredPinnedState),
+            outcome: .init(result: .applied(itemID: request.itemID, desiredPinnedState: request.desiredPinnedState)),
             source: request.source,
             sequence: sequence,
             stage: .mutationAfter
@@ -140,7 +140,7 @@ final class PinStateMutationStore {
                 itemID: request.itemID,
                 desiredPinnedState: request.desiredPinnedState,
                 previousPinnedState: previousPinnedState,
-                result: .applied(itemID: request.itemID, desiredPinnedState: request.desiredPinnedState),
+                outcome: .init(result: .applied(itemID: request.itemID, desiredPinnedState: request.desiredPinnedState)),
                 source: request.source,
                 sequence: sequence,
                 stage: .saveAfter
@@ -157,8 +157,7 @@ final class PinStateMutationStore {
                 itemID: request.itemID,
                 desiredPinnedState: request.desiredPinnedState,
                 previousPinnedState: previousPinnedState,
-                errorType: errorType,
-                recoveryAction: recovery,
+                outcome: .init(errorType: errorType, recoveryAction: recovery),
                 source: request.source,
                 sequence: sequence,
                 stage: .saveFailed
@@ -172,8 +171,7 @@ final class PinStateMutationStore {
                 itemID: request.itemID,
                 desiredPinnedState: request.desiredPinnedState,
                 previousPinnedState: previousPinnedState,
-                errorType: errorType,
-                recoveryAction: recovery,
+                outcome: .init(errorType: errorType, recoveryAction: recovery),
                 source: request.source,
                 sequence: sequence,
                 stage: .rollbackCompleted

@@ -73,9 +73,10 @@ final class PinStateMutationDiagnosticsTests: XCTestCase {
             itemID: UUID(),
             desiredPinnedState: true,
             previousPinnedState: false,
-            result: .applied(itemID: UUID(), desiredPinnedState: true),
-            errorType: nil,
-            recoveryAction: .none,
+            outcome: .init(
+                result: .applied(itemID: UUID(), desiredPinnedState: true),
+                recoveryAction: .none
+            ),
             source: .rowAction,
             sequence: 1,
             stage: .mutationAfter

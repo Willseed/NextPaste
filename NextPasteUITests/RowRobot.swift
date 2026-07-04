@@ -625,9 +625,7 @@ struct RowRobot {
                 horizontalGesture(on: candidate, direction: .right, magnitude: magnitude, file: file, line: line)
                 if let button = hittableActionButton(
                     identifier: Accessibility.pinButtonIdentifier,
-                    alignedTo: rowScope,
-                    file: file,
-                    line: line
+                    alignedTo: rowScope
                 ) {
                     UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
                     return button
@@ -654,9 +652,7 @@ struct RowRobot {
                 horizontalGesture(on: candidate, direction: .left, magnitude: magnitude, file: file, line: line)
                 if let button = hittableActionButton(
                     identifier: Accessibility.deleteButtonIdentifier,
-                    alignedTo: rowScope,
-                    file: file,
-                    line: line
+                    alignedTo: rowScope
                 ) {
                     UITestAssertions.assertAccessibleTextContains(button, "Delete", file: file, line: line)
                     return button
@@ -677,9 +673,7 @@ struct RowRobot {
     /// row's realized/stale swipe action.
     private func hittableActionButton(
         identifier: String,
-        alignedTo row: XCUIElement,
-        file: StaticString,
-        line: UInt
+        alignedTo row: XCUIElement
     ) -> XCUIElement? {
         guard row.exists else { return nil }
         let rowFrame = row.frame
