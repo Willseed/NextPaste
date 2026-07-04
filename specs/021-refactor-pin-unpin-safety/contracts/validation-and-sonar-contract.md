@@ -443,31 +443,110 @@ stress path are memory-safe under ASan.
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' test
 ```
 
-The full regression was run twice. Results:
+The full regression was run after the Feature 021 flaky-UI root-cause fix (see
+section 14). Results:
 
-- **All `NextPasteTests` unit tests pass** (US1/US2/US3 store, source-policy, diagnostics,
-  ClipHistory, ClipItem, RowActionDisplayOrderPolicy, RowActionTraceEvent, and all
-  pre-existing regression suites).
-- **The majority of `NextPasteUITests` pass**, including the Feature 021-updated
-  `testMultipleAccumulatedPinUnpinActionsReconcileOnOneExplicitInput`,
-  `testRightSwipePinTogglesIconAndPinnedOrdering`, the image pin/unpin test, the trace
-  test, and all row-action reveal/copy/delete tests.
-- Two UI tests fail **under combined-suite load** but **pass in isolation**:
-  1. `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` — Feature 019/020 scroll-stress
-     test; fails on the "initial pinned newest above older" ordering assertion (timing
-     drift during the scroll-back under load). Passes in isolation (131 s, shellId 36).
-  2. `ClipboardImageRowActionsUITests/testLeftSwipeDeleteRemovesOnlySelectedImageClip` —
-     image delete test (no Pin/Unpin path); flaky image-capture/delete-visible timing.
-     Passes in isolation (20 s, shellId 85 / 95).
+- **All `NextPasteTests` unit tests pass** (162 cases, 0 failures): US1/US2/US3 store,
+  source-policy, diagnostics, ClipHistory, ClipItem, RowActionDisplayOrderPolicy,
+  RowActionTraceEvent, ClipboardWriter, ClipboardImagePayload, and all pre-existing
+  regression suites. The 1,000-mutation randomized stress
+  (`PinStateMutationStoreUS2Tests/testRandomizedThousandMutationsConvergeWithDeterministicSeed`)
+  passes.
+- **All `NextPasteUITests` pass** (73 cases, 0 failures in 3,600 s combined
+  execution), including the two previously flaky tests
+  (`testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` and
+  `ClipboardImageRowActionsUITests/testLeftSwipeDeleteRemovesOnlySelectedImageClip`)
+  and all three `RowActionStressTests` scenarios (A/B/C, ~25 min combined).
 
-Both failures are pre-existing UI timing flakiness under the ~50-minute combined runner
-session, not Feature 021 regressions: the delete test does not exercise the Pin/Unpin
-store, and the scroll-stress test's mutation semantics (`setPinned(true)` + `save()`)
-are unchanged from the pre-feature path. The Feature 021 ordering change
-(`sectionSortDate = createdAt` on pin) keeps the pinned-first/newest-first pinned order
-identical to pre-feature behavior, so the scroll test's pinned ordering assertion is
-unaffected by the refactor; its failure is the scroll-back/reconciliation timing.
+### T060.a — Full UI regression (combined-suite evidence)
 
-Classification: **Implementation correct; UI full-regression flakiness is a pre-existing
-environmental timing issue, not a code defect.** Isolated per-test evidence is recorded
-above (T026, T040, T057). No HIGH or CRITICAL implementation issue remains.
+```
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' -only-testing:NextPasteUITests test
+```
+
+Result: `** TEST SUCCEEDED **` — Executed 73 tests, with 0 failures (0 unexpected) in
+3,600.456 seconds. This is the combined full-UI-suite condition under which the two
+tests previously failed intermittently. Both now pass reliably in combined execution.
+
+## 14. Flaky-UI Root-Cause Investigation and Fix (T060 rework)
+
+The earlier T060 evidence classified the two intermittent UI failures as "pre-existing
+environmental timing flakiness." A re-investigation under the Feature 021 completion
+criteria found a concrete, reproducible root cause and a code-level fix. The earlier
+classification was incorrect.
+
+### 14.1 Root cause
+
+`NextPasteUITests/RowRobot.swift` resolved the revealed Pin/Delete swipe-action button
+with a global subscript: `app.buttons["pin-clip-button"]` / `app.buttons["delete-clip-button"]`.
+On macOS, SwiftUI `List`/`NSTableView` realizes swipe-action buttons as **separate overlay
+elements that are not descendants of the row cell**. The global subscript returns the
+**first** matching button in the accessibility tree, which is not guaranteed to be the
+button belonging to the just-swiped row:
+
+- A still-revealed swipe action from a previous row (dismiss animation in flight) is
+  matched, so the tap mutates the **wrong item**.
+- For the scroll-stress test, debug tracing (`scheduleTogglePin` item IDs) proved the
+  first Pin tap targeted `pinnedOlder` instead of `pinnedNewer`, and the second tap
+  toggled `pinnedOlder` back to unpinned (`currentIsPinned=true desired=false`) because
+  it matched the still-revealed "Unpin" button — leaving both clips unpinned and the
+  ordering assertion to fail.
+- For the image delete test, the global query matched the companion row's delete button,
+  deleting the companion and leaving the target row in place.
+
+The test-side `assertAccessibleTextContains(button, "Pin")` masked the wrong-direction
+case because `"Pin"` is a substring of `"Unpin"`, so the wrong-direction button was not
+detected. Production Pin/Unpin mutation is ID-first (`ensurePinStore().setPinned(state,
+for: clip.id, source: .rowAction)`) and was NOT the defect; the defect was the UI-test
+robot tapping the wrong row's button.
+
+### 14.2 Fix
+
+`NextPasteUITests/RowRobot.swift` only. `revealPinAction` / `revealDeleteAction` now take
+a `scopedTo rowScope` parameter and, after each swipe, enumerate all realized buttons
+with the identifier via `app.buttons.matching(identifier:).allElementsBoundByIndex` and
+select the one that is **hittable AND vertically centered on the targeted row** (button
+center Y within ± half the row height of the row center). Adjacent rows' centers are a
+full row height away, so they are rejected. This guarantees the revealed button belongs
+to the swiped row regardless of stale/realized overlay buttons. No sleep, retry, test
+reordering, assertion weakening, or test disabling was used.
+
+### 14.3 Repetition evidence (formerly flaky tests)
+
+After the fix, repeated isolated runs:
+
+- `ClipRowActionsUITests/testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` — **10/10
+  consecutive isolated passes** (5 with the loose tolerance, 5 with the final tight
+  tolerance), plus a pass in the combined full UI suite and a pass in the
+  `RowActionStressTests/testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly`
+  stress variant (806 s, repeats the scroll scenario many times).
+- `ClipboardImageRowActionsUITests/testLeftSwipeDeleteRemovesOnlySelectedImageClip` —
+  **8/8 consecutive isolated passes** with the target (PNG) deleted in every run (0
+  companion deletions via debug tracing), plus a pass in the combined full UI suite.
+
+### 14.4 Sanitizer revalidation
+
+- Thread Sanitizer (`PinStateMutationStoreUS1/US2/US3Tests`, `-enableThreadSanitizer YES`):
+  14/14 pass, no ThreadSanitizer race reports.
+- Address Sanitizer (`RowActionStressTests`, `-enableAddressSanitizer YES`): 3/3 pass
+  (1,688 s), no AddressSanitizer errors.
+
+### 14.5 Source-policy re-audit (T062)
+
+- No `rowIndex`/`IndexPath` in the HomeView Pin/Unpin production path.
+- No `Task.sleep`, `asyncAfter`, `Timer`, `RunLoop.run`, or `usleep` in
+  `PinStateMutationStore`, `PinStateSnapshotProjector`, `PinStatePersistenceGateway`,
+  or `PinStateMutationDiagnostics`.
+- No `togglePinned()` / `applyPinState` call sites in HomeView production.
+- No `NSTableViewDiffableDataSource`.
+- Production Pin/Unpin call is ID-first: `ensurePinStore().setPinned(state, for: clip.id, ...)`.
+
+### 14.6 Final diff
+
+Only `NextPasteUITests/RowRobot.swift` changed (+103 / −24). `git diff --check` clean.
+No production code changed. No debug code, arbitrary delays, weakened assertions, or
+formatting churn remain.
+
+Classification: **Implementation correct; the two formerly flaky UI tests now have a
+code-level root-cause fix and pass reliably in isolation and in the combined full UI
+regression suite.**

@@ -116,11 +116,15 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealDeleteAction(
+        // Feature 021: scope the delete-button query to the targeted row (see
+        // revealPinActionWithRightSwipe rationale).
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealDeleteAction(
             on: [
-                textRow(containing: clipText, file: file, line: line),
+                row,
                 textSwipeElement(containing: clipText, file: file, line: line)
             ],
+            scopedTo: row,
             rowDescription: clipText,
             file: file,
             line: line
@@ -142,11 +146,21 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealPinAction(
+        // Feature 021: scope the action-button query to the targeted row so the
+        // revealed button is guaranteed to belong to `clipText`'s row. A global
+        // `app.buttons["pin-clip-button"]` subscript returns the first matching
+        // button, which may belong to a different row (a still-revealed action from
+        // a prior swipe, or a realized-but-not-hittable overlay button), causing the
+        // tap to mutate the wrong item. `hittableActionButton` enumerates the
+        // realized buttons and selects the one that is hittable AND vertically
+        // centered on the targeted row, so the tap always acts on the intended row.
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealPinAction(
             on: [
-                textRow(containing: clipText, file: file, line: line),
+                row,
                 textSwipeElement(containing: clipText, file: file, line: line)
             ],
+            scopedTo: row,
             rowDescription: clipText,
             magnitude: .reveal,
             expectedLabel: expectedLabel,
@@ -172,8 +186,11 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealDeleteAction(
-            on: [imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)],
+        // Feature 021: scope the delete-button query to the targeted image row.
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealDeleteAction(
+            on: [row],
+            scopedTo: row,
             rowDescription: thumbnailDescription,
             file: file,
             line: line
@@ -200,8 +217,11 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealPinAction(
-            on: [imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)],
+        // Feature 021: scope the pin-button query to the targeted image row.
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealPinAction(
+            on: [row],
+            scopedTo: row,
             rowDescription: thumbnailDescription,
             magnitude: .reveal,
             expectedLabel: expectedLabel,
@@ -217,11 +237,13 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealPinAction(
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealPinAction(
             on: [
-                textRow(containing: clipText, file: file, line: line),
+                row,
                 textSwipeElement(containing: clipText, file: file, line: line)
             ],
+            scopedTo: row,
             rowDescription: clipText,
             magnitude: .full,
             expectedLabel: expectedLabel,
@@ -236,11 +258,13 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealDeleteAction(
+        let row = textRow(containing: clipText, file: file, line: line)
+        return revealDeleteAction(
             on: [
-                textRow(containing: clipText, file: file, line: line),
+                row,
                 textSwipeElement(containing: clipText, file: file, line: line)
             ],
+            scopedTo: row,
             rowDescription: clipText,
             magnitude: .full,
             file: file,
@@ -254,8 +278,10 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealDeleteAction(
-            on: [imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)],
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealDeleteAction(
+            on: [row],
+            scopedTo: row,
             rowDescription: thumbnailDescription,
             magnitude: .full,
             file: file,
@@ -270,8 +296,10 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        revealPinAction(
-            on: [imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)],
+        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
+        return revealPinAction(
+            on: [row],
+            scopedTo: row,
             rowDescription: thumbnailDescription,
             magnitude: .full,
             expectedLabel: expectedLabel,
@@ -577,18 +605,30 @@ struct RowRobot {
 
     private func revealPinAction(
         on candidates: [XCUIElement],
+        scopedTo rowScope: XCUIElement,
         rowDescription: String,
         magnitude: SwipeMagnitude,
         expectedLabel: String,
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        let button = app.buttons[Accessibility.pinButtonIdentifier]
-
+        // Feature 021: macOS NSTableView realizes swipe-action buttons as separate
+        // overlay elements (not descendants of the row cell), so a row-descendant
+        // query cannot find them. A global `app.buttons[...]` subscript returns the
+        // first matching button, which may belong to a different row (a stale
+        // still-revealed action, or a realized overlay button), causing the tap to
+        // mutate the wrong item. Instead, after each swipe, enumerate all pin
+        // buttons and select the one that is hittable AND vertically centered on the
+        // targeted row, so the tap always acts on the intended row.
         for candidate in candidates {
             for _ in 0..<3 {
                 horizontalGesture(on: candidate, direction: .right, magnitude: magnitude, file: file, line: line)
-                if button.waitForExistence(timeout: 1) {
+                if let button = hittableActionButton(
+                    identifier: Accessibility.pinButtonIdentifier,
+                    alignedTo: rowScope,
+                    file: file,
+                    line: line
+                ) {
                     UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
                     return button
                 }
@@ -596,22 +636,28 @@ struct RowRobot {
         }
 
         XCTFail("Pin action was not revealed for \(rowDescription)", file: file, line: line)
-        return button
+        return app.buttons[Accessibility.pinButtonIdentifier]
     }
 
     private func revealDeleteAction(
         on candidates: [XCUIElement],
+        scopedTo rowScope: XCUIElement,
         rowDescription: String,
         magnitude: SwipeMagnitude = .reveal,
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        let button = app.buttons[Accessibility.deleteButtonIdentifier]
-
+        // Feature 021: select the hittable delete button aligned with the targeted
+        // row (see revealPinAction rationale).
         for candidate in candidates {
             for _ in 0..<3 {
                 horizontalGesture(on: candidate, direction: .left, magnitude: magnitude, file: file, line: line)
-                if button.waitForExistence(timeout: 1) {
+                if let button = hittableActionButton(
+                    identifier: Accessibility.deleteButtonIdentifier,
+                    alignedTo: rowScope,
+                    file: file,
+                    line: line
+                ) {
                     UITestAssertions.assertAccessibleTextContains(button, "Delete", file: file, line: line)
                     return button
                 }
@@ -619,7 +665,40 @@ struct RowRobot {
         }
 
         XCTFail("Delete action was not revealed for \(rowDescription)", file: file, line: line)
-        return button
+        return app.buttons[Accessibility.deleteButtonIdentifier]
+    }
+
+    /// Feature 021: enumerate all realized action buttons with `identifier` and
+    /// return the one that is hittable and vertically centered on the targeted row.
+    /// macOS realizes swipe-action buttons as separate overlay elements that may
+    /// all report as hittable, so hittability alone is not enough. Requiring the
+    /// button's vertical center to lie within the targeted row's vertical extent
+    /// guarantees the revealed button belongs to `rowScope` and not to an adjacent
+    /// row's realized/stale swipe action.
+    private func hittableActionButton(
+        identifier: String,
+        alignedTo row: XCUIElement,
+        file: StaticString,
+        line: UInt
+    ) -> XCUIElement? {
+        guard row.exists else { return nil }
+        let rowFrame = row.frame
+        guard rowFrame.height > 0 else { return nil }
+        let rowCenterY = rowFrame.midY
+        // The button must be vertically centered on the row. Allow the button
+        // center to lie anywhere within the row's vertical extent (± half the row
+        // height from the row center). Adjacent rows' centers are one full row
+        // height away, so they are rejected.
+        let verticalTolerance = rowFrame.height / 2
+        for button in app.buttons.matching(identifier: identifier).allElementsBoundByIndex {
+            guard button.exists, button.isHittable else { continue }
+            let buttonFrame = button.frame
+            guard buttonFrame.height > 0 else { continue }
+            if abs(buttonFrame.midY - rowCenterY) <= verticalTolerance {
+                return button
+            }
+        }
+        return nil
     }
 
     private enum HorizontalDirection {
