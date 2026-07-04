@@ -27,11 +27,11 @@ use swizzling, use private selectors, or reintroduce timing-based fixes such as 
 **Purpose**: Establish the display-order snapshot state and snapshot reconciliation state that
 all row-action behavior depends on.
 
-- [ ] T001 Audit current display-order snapshot comments and state lifetime in `NextPaste/HomeView.swift` against `specs/020-row-action-display-order-reconciliation-policy/data-model.md`.
-- [ ] T002 Implement or refine display-order snapshot state for Pin/Unpin in `NextPaste/HomeView.swift` so it stores only transient in-memory clip identity/order metadata.
-- [ ] T003 Implement or refine snapshot reconciliation state in `NextPaste/HomeView.swift` so the monitor/token lifecycle is explicit, cleared on reconciliation, and cleared on `HomeView` disappearance.
-- [ ] T004 [P] Add or update focused snapshot-state unit coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` for no persisted content, no previews, no trace payloads, and no interaction history.
-- [ ] T005 [P] Add or update focused source-policy coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` proving `NextPaste/HomeView.swift` contains no `Task.sleep`, fixed-delay reconciliation, private AppKit selectors, swizzling hooks, or `List` replacement for this feature.
+- [x] T001 Audit current display-order snapshot comments and state lifetime in `NextPaste/HomeView.swift` against `specs/020-row-action-display-order-reconciliation-policy/data-model.md`.
+- [x] T002 Implement or refine display-order snapshot state for Pin/Unpin in `NextPaste/HomeView.swift` so it stores only transient in-memory clip identity/order metadata.
+- [x] T003 Implement or refine snapshot reconciliation state in `NextPaste/HomeView.swift` so the monitor/token lifecycle is explicit, cleared on reconciliation, and cleared on `HomeView` disappearance.
+- [x] T004 [P] Add or update focused snapshot-state unit coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` for no persisted content, no previews, no trace payloads, and no interaction history.
+- [x] T005 [P] Add or update focused source-policy coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` proving `NextPaste/HomeView.swift` contains no `Task.sleep`, fixed-delay reconciliation, private AppKit selectors, swizzling hooks, or `List` replacement for this feature.
 
 **Checkpoint**: Display-order snapshot state and reconciliation state are ready for action-path
 implementation.
@@ -41,15 +41,15 @@ implementation.
 **Purpose**: Implement Pin/Unpin behavior, Delete immediate-removal behavior, and explicit-input
 reconciliation while preserving Feature 019 crash prevention.
 
-- [ ] T006 [US1] Update Pin/Unpin action flow in `NextPaste/HomeView.swift` so `scheduleTogglePin(_:)` applies pinned state immediately while deferring only row-position relocation.
-- [ ] T007 [US1] Ensure Pin/Unpin visual and accessibility state in `NextPaste/DesignSystem/Components/ClipboardRow.swift` and `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` reflects the saved pinned state before row-position reconciliation.
-- [ ] T008 [US1] Keep Pin/Unpin display-order snapshot activation in `NextPaste/HomeView.swift` before SwiftData save so the acted-on row is not relocated or recycled during AppKit teardown.
-- [ ] T009 [US2] Update Delete path in `NextPaste/HomeView.swift` so `deleteClip(_:)` removes the targeted row from visible state immediately and does not wait for the reconciliation boundary.
-- [ ] T010 [US2] Ensure Delete removes only the selected clip through `ClipDeletionAction.delete(_:)` in `NextPaste/HomeView.swift` while preserving remaining row order until any pending Pin/Unpin reconciliation.
-- [ ] T011 [US3] Implement explicit-input reconciliation trigger in `NextPaste/HomeView.swift` for click, scroll, and key input only, with no fixed delay, run-loop-hop, render-cycle, private AppKit, or timing assumption.
-- [ ] T012 [US3] Ensure reconciliation in `NextPaste/HomeView.swift` clears the snapshot immediately when the explicit input boundary is observed and restores `ClipItem.historySortDescriptors` ordering from `NextPaste/ClipItem.swift`.
-- [ ] T013 [US4] Preserve native SwiftUI `List` and native `.swipeActions` declarations in `NextPaste/HomeView.swift` for Pin, Unpin, and Delete without custom gesture replacement.
-- [ ] T014 [US5] Verify reconciliation state in `NextPaste/HomeView.swift` remains local, transient, in-memory, and content-free with no new SwiftData schema, CloudKit, telemetry, or trace retention.
+- [x] T006 [US1] Update Pin/Unpin action flow in `NextPaste/HomeView.swift` so `scheduleTogglePin(_:)` applies pinned state immediately while deferring only row-position relocation.
+- [x] T007 [US1] Ensure Pin/Unpin visual and accessibility state in `NextPaste/DesignSystem/Components/ClipboardRow.swift` and `NextPaste/DesignSystem/Components/ImageClipboardRow.swift` reflects the saved pinned state before row-position reconciliation.
+- [x] T008 [US1] Keep Pin/Unpin display-order snapshot activation in `NextPaste/HomeView.swift` before SwiftData save so the acted-on row is not relocated or recycled during AppKit teardown.
+- [x] T009 [US2] Update Delete path in `NextPaste/HomeView.swift` so `deleteClip(_:)` removes the targeted row from visible state immediately and does not wait for the reconciliation boundary.
+- [x] T010 [US2] Ensure Delete removes only the selected clip through `ClipDeletionAction.delete(_:)` in `NextPaste/HomeView.swift` while preserving remaining row order until any pending Pin/Unpin reconciliation.
+- [x] T011 [US3] Implement explicit-input reconciliation trigger in `NextPaste/HomeView.swift` for click, scroll, and key input only, with no fixed delay, run-loop-hop, render-cycle, private AppKit, or timing assumption.
+- [x] T012 [US3] Ensure reconciliation in `NextPaste/HomeView.swift` clears the snapshot immediately when the explicit input boundary is observed and restores `ClipItem.historySortDescriptors` ordering from `NextPaste/ClipItem.swift`.
+- [x] T013 [US4] Preserve native SwiftUI `List` and native `.swipeActions` declarations in `NextPaste/HomeView.swift` for Pin, Unpin, and Delete without custom gesture replacement.
+- [x] T014 [US5] Verify reconciliation state in `NextPaste/HomeView.swift` remains local, transient, in-memory, and content-free with no new SwiftData schema, CloudKit, telemetry, or trace retention.
 
 **Checkpoint**: Pin/Unpin, Delete, and explicit-input reconciliation behavior are implemented
 without timing-based or private-API mechanisms.
@@ -59,17 +59,17 @@ without timing-based or private-API mechanisms.
 **Purpose**: Migrate obsolete immediate Pin/Unpin reorder assertions, preserve valid existing
 coverage, and add regression coverage for the reconciled policy.
 
-- [ ] T015 [US1] Migrate `testRightSwipePinTogglesIconAndPinnedOrdering` in `NextPasteUITests/ClipRowActionsUITests.swift` to assert immediate Pin/Unpin icon and accessibility feedback before asserting row order.
-- [ ] T016 [US1] Add explicit click, scroll, or key reconciliation steps to `testRightSwipePinTogglesIconAndPinnedOrdering` in `NextPasteUITests/ClipRowActionsUITests.swift` before final pinned-first/newest-first ordering assertions.
-- [ ] T017 [US1] Update `testRowActionsWorkWithLocalUITestingStore` in `NextPasteUITests/ClipRowActionsUITests.swift` so its post-Pin ordering assertion happens only after an explicit reconciliation input.
-- [ ] T018 [US3] Update `testUnpinOneOfThreePinnedClipsDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift` so any post-Unpin ordering assertions happen only after an explicit reconciliation input.
-- [ ] T019 [US2] Preserve Delete immediate-removal assertions in `testLeftSwipeDeleteRemovesOnlySelectedClip`, `testRowActionsWorkWithLocalUITestingStore`, `testAutoCapturedClipSupportsCopyDeleteAndPinOffline`, and `testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection` in `NextPasteUITests/ClipRowActionsUITests.swift`.
-- [ ] T020 [US4] Preserve crash-prevention intent in `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`, `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash`, `testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture`, `testUnpinOneOfThreePinnedClipsDoesNotCrash`, and `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift`.
-- [ ] T021 [US3] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` for multiple accumulated Pin/Unpin actions followed by one explicit reconciliation input producing pinned-first/newest-first ordering.
-- [ ] T022 [US2] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` for Delete while a Pin/Unpin snapshot is pending, proving Delete immediate visible removal and later reconciliation of remaining rows.
-- [ ] T023 [US1] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` proving temporary stale Pin/Unpin row position before explicit input is accepted only when pinned-state feedback is already visible.
-- [ ] T024 [US5] Add or update trace/privacy regression coverage in `NextPasteTests/RowActionTraceEventTests.swift` proving deferred reconciliation does not persist clipboard content, row previews, snapshot content, or user interaction history.
-- [ ] T025 [P] [US4] Add source-policy regression coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` confirming no private AppKit API, swizzling, fixed delays, run-loop-hop assumptions, render-cycle assumptions, `List` replacement, or `swipeActions` replacement.
+- [x] T015 [US1] Migrate `testRightSwipePinTogglesIconAndPinnedOrdering` in `NextPasteUITests/ClipRowActionsUITests.swift` to assert immediate Pin/Unpin icon and accessibility feedback before asserting row order.
+- [x] T016 [US1] Add explicit click, scroll, or key reconciliation steps to `testRightSwipePinTogglesIconAndPinnedOrdering` in `NextPasteUITests/ClipRowActionsUITests.swift` before final pinned-first/newest-first ordering assertions.
+- [x] T017 [US1] Update `testRowActionsWorkWithLocalUITestingStore` in `NextPasteUITests/ClipRowActionsUITests.swift` so its post-Pin ordering assertion happens only after an explicit reconciliation input.
+- [x] T018 [US3] Update `testUnpinOneOfThreePinnedClipsDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift` so any post-Unpin ordering assertions happen only after an explicit reconciliation input.
+- [x] T019 [US2] Preserve Delete immediate-removal assertions in `testLeftSwipeDeleteRemovesOnlySelectedClip`, `testRowActionsWorkWithLocalUITestingStore`, `testAutoCapturedClipSupportsCopyDeleteAndPinOffline`, and `testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection` in `NextPasteUITests/ClipRowActionsUITests.swift`.
+- [x] T020 [US4] Preserve crash-prevention intent in `testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash`, `testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash`, `testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture`, `testUnpinOneOfThreePinnedClipsDoesNotCrash`, and `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` in `NextPasteUITests/ClipRowActionsUITests.swift`.
+- [x] T021 [US3] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` for multiple accumulated Pin/Unpin actions followed by one explicit reconciliation input producing pinned-first/newest-first ordering.
+- [x] T022 [US2] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` for Delete while a Pin/Unpin snapshot is pending, proving Delete immediate visible removal and later reconciliation of remaining rows.
+- [x] T023 [US1] Add a new regression test in `NextPasteUITests/ClipRowActionsUITests.swift` proving temporary stale Pin/Unpin row position before explicit input is accepted only when pinned-state feedback is already visible.
+- [x] T024 [US5] Add or update trace/privacy regression coverage in `NextPasteTests/RowActionTraceEventTests.swift` proving deferred reconciliation does not persist clipboard content, row previews, snapshot content, or user interaction history.
+- [x] T025 [P] [US4] Add source-policy regression coverage in `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` confirming no private AppKit API, swizzling, fixed delays, run-loop-hop assumptions, render-cycle assumptions, `List` replacement, or `swipeActions` replacement.
 
 **Checkpoint**: Existing `ClipRowActionsUITests` are migrated according to the spec-backed
 classification, and new regressions cover immediate feedback, immediate Delete removal,

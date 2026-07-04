@@ -535,9 +535,14 @@ struct HomeView: View {
         )
 #endif
         observation.rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { observedTableView, change in
+            // Feature 020 edge-case guard: update areRowActionsVisible synchronously so the
+            // reconciliation monitor has accurate visibility state without waiting for a
+            // Task hop. The KVO callback fires on the main thread (UI property), so a
+            // synchronous boolean update is safe. Trace emission remains deferred to avoid
+            // trace work during a potential layout pass.
+            let isVisible = change.newValue ?? false
+            observation.areRowActionsVisible = isVisible
             Task { @MainActor in
-                let isVisible = change.newValue ?? false
-                observation.areRowActionsVisible = isVisible
 #if DEBUG
                 RowActionAppKitObserver.recordRowActionsVisible(
                     isVisible,
@@ -564,6 +569,17 @@ struct HomeView: View {
     // swipe and act again before another intentional event is delivered), so the
     // subsequent @Query reorder happens after the teardown hazard window. This is
     // event-driven, not a fixed delay, KVO signal, or sleep.
+    //
+    // Feature 020 edge-case guard (Codex review): if the next explicit user input occurs
+    // while native row-action dismiss animation may still be active
+    // (`rowActionResolverObservation.currentRowActionsVisible` is still true), clearing
+    // the snapshot would let the @Query reorder relocate or recycle the acted-on row
+    // during AppKit teardown. The guard passes the event through unchanged without
+    // clearing; the next explicit input after `rowActionsVisible` becomes false reconciles.
+    // The `areRowActionsVisible` flag is updated synchronously in the KVO callback (no
+    // Task hop) so the guard always has accurate visibility state. This reads only the
+    // public `NSTableView.rowActionsVisible` state — no private API, swizzling, fixed
+    // delay, run-loop-hop, or render-cycle assumption.
     private func scheduleRowActionDisplayOrderReconciliation() {
         guard rowActionReconciliationMonitor == nil else {
             return
@@ -571,6 +587,9 @@ struct HomeView: View {
 
         let eventMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel]
         let monitor = NSEvent.addLocalMonitorForEvents(matching: eventMask) { [self] event in
+            if rowActionResolverObservation.currentRowActionsVisible {
+                return event
+            }
             clearRowActionDisplayOrderSnapshot()
             return event
         }

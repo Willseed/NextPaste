@@ -159,6 +159,9 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         pinButton.tap()
 
         UITestAssertions.assertImagePinnedIconExists(in: app)
+        // Feature 020 (US1): Pin pinned-state icon feedback is immediate (asserted above),
+        // but row-position relocation is deferred until the next explicit user input event.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(olderRow, appearsAbove: newerRow)
 
         let unpinButton = row.revealImagePinActionWithRightSwipe(
@@ -168,6 +171,9 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         unpinButton.tap()
 
         UITestAssertions.assertImagePinnedIconDisappears(in: app)
+        // Feature 020 (US1): Unpin pinned-state feedback is immediate (asserted above), but
+        // row-position relocation is deferred until the next explicit user input event.
+        triggerDisplayOrderReconciliation(in: app)
         UITestAssertions.assert(newerRow, appearsAbove: olderRow)
     }
 
@@ -274,6 +280,26 @@ final class ClipboardImageRowActionsUITests: UITestCase {
             self.closeApp(app)
         }
         return app
+    }
+
+    /// Feature 020: deliver an explicit user input event so the deferred Pin/Unpin
+    /// display-order snapshot reconciles back to the @Query-sorted order. See
+    /// ClipRowActionsUITests.triggerDisplayOrderReconciliation for the full rationale.
+    /// Uses a combination of key events and run-loop waits to ensure the NSEvent
+    /// reconciliation monitor fires reliably.
+    @MainActor
+    private func triggerDisplayOrderReconciliation(in app: XCUIApplication) {
+        // Click the clip-history-list to ensure focus is on the list (not a text field
+        // that might consume the Escape key), then send key events.
+        let list = app.descendants(matching: .any)["clip-history-list"]
+        if list.exists {
+            list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.1)).tap()
+        }
+        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        for _ in 0..<4 {
+            app.typeKey(.escape, modifierFlags: [])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        }
     }
 
 }

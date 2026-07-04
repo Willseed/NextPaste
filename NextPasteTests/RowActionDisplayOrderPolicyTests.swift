@@ -127,6 +127,73 @@ struct RowActionDisplayOrderPolicyTests {
         )
     }
 
+    // MARK: - T025: Final source-policy regression coverage
+
+    /// T025 [US4]: the deferred-reconciliation monitor includes the edge-case guard that
+    /// prevents clearing the display-order snapshot while the native row-action dismiss
+    /// animation may still be active. The `areRowActionsVisible` flag is updated
+    /// synchronously in the KVO callback (no Task hop) so the guard always has accurate
+    /// visibility state. This reads only the public `NSTableView.rowActionsVisible`
+    /// state — no private API, swizzling, fixed delay, run-loop hop, or render-cycle
+    /// assumption.
+    @Test("reconciliation monitor gates snapshot clearing on rowActionsVisible == false")
+    func reconciliationMonitorGatesOnRowActionsVisible() throws {
+        let reconciliation = try reconciliationSectionSource()
+        #expect(
+            reconciliation.contains("if rowActionResolverObservation.currentRowActionsVisible"),
+            "Reconciliation monitor must gate clearing the snapshot on currentRowActionsVisible == false so an explicit input delivered during the native dismiss animation does not reintroduce the rowActionsGroupView crash."
+        )
+        #expect(
+            reconciliation.contains("return event") == true,
+            "Reconciliation monitor must pass the event through unchanged while row actions are still visible."
+        )
+    }
+
+    @Test("reconciliation monitor uses synchronous KVO visibility update")
+    func reconciliationMonitorUsesSynchronousKVOVisibilityUpdate() throws {
+        let source = try homeViewSource()
+        let kvoFragment = try fragment(
+            in: source,
+            from: "tableView.observe(\\.rowActionsVisible",
+            to: "Task { @MainActor in"
+        )
+        #expect(
+            kvoFragment.contains("observation.areRowActionsVisible = isVisible"),
+            "areRowActionsVisible must be updated synchronously in the KVO callback, before the Task hop, so the monitor always has accurate visibility state."
+        )
+    }
+
+    @Test("reconciliation section reintroduces no run-loop-hop, render-cycle, or timing workaround")
+    func reconciliationSectionHasNoRunLoopHopRenderCycleOrTimingWorkaround() throws {
+        let reconciliation = try reconciliationSectionSource()
+        #expect(reconciliation.contains("RunLoop.current.run") == false, "Run-loop hops must not be used as a reconciliation boundary.")
+        #expect(reconciliation.contains("DispatchQueue.main.async") == false, "Dispatch-async hops must not be used as a reconciliation boundary.")
+        #expect(reconciliation.contains("CATransaction") == false, "CATransaction timing must not be used as a reconciliation boundary.")
+        #expect(reconciliation.contains("displayLink") == false, "CVDisplayLink/render-cycle callbacks must not be used as a reconciliation boundary.")
+        #expect(reconciliation.contains("Timer.scheduledTimer") == false, "Timer-based reconciliation is prohibited.")
+        #expect(reconciliation.contains("Task.sleep") == false, "Task.sleep must not be used as a reconciliation boundary.")
+        #expect(reconciliation.contains("DispatchQueue.main.asyncAfter") == false, "Fixed dispatch delays must not be used as a reconciliation boundary.")
+    }
+
+    @Test("reconciliation section reintroduces no private AppKit teardown signals")
+    func reconciliationSectionHasNoPrivateAppKitTeardownSignals() throws {
+        let reconciliation = try reconciliationSectionSource()
+        #expect(reconciliation.contains("performSelector") == false, "Private selector invocation is prohibited.")
+        #expect(reconciliation.contains("method_exchangeImplementations") == false, "Swizzling is prohibited.")
+        #expect(reconciliation.contains("_updateActionButtonPositions") == false, "Private AppKit teardown selectors are prohibited.")
+        #expect(reconciliation.contains(".animationDidEnd") == false, "Private AppKit animation callbacks must not be used as a reconciliation signal.")
+        #expect(reconciliation.contains("NSTableRowData") == false, "Private AppKit row internals must not be referenced.")
+    }
+
+    @Test("HomeView preserves native SwiftUI List and native swipeActions for Pin/Unpin/Delete")
+    func preservesNativeListAndSwipeActionsForAllActions() throws {
+        let source = try homeViewSource()
+        #expect(source.contains("List {"), "Native SwiftUI `List` must remain the history container.")
+        #expect(source.contains("swipeActions(edge: .trailing"), "Native `.swipeActions` for Delete must be preserved.")
+        #expect(source.contains("swipeActions(edge: .leading"), "Native `.swipeActions` for Pin/Unpin must be preserved.")
+        #expect(source.contains("allowsFullSwipe: false") == true, "Native swipe-action full-swipe auto-execute must remain disabled to preserve the Feature 019 crash-prevention contract.")
+    }
+
     // MARK: - Source helpers
 
     private func homeViewSource() throws -> String {

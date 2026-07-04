@@ -313,3 +313,70 @@ Phase 2/3 does not claim Feature 020 completion. Phase 3 new regression tests T0
 (multiple accumulated Pin/Unpin reconciliation, Delete during pending snapshot, stale-position
 acceptance) and T024/T025 (trace/privacy + source-policy regression coverage) and Phase 4
 (full regression gate, manual native checks, SonarQube evidence) remain.
+
+## 17. T021–T025 + Edge Guard + Trace Fix Evidence — 2026-07-04
+
+### Product-code changes
+
+| Change | File | Purpose |
+| --- | --- | --- |
+| Edge-case guard in reconciliation monitor | `NextPaste/HomeView.swift` | `scheduleRowActionDisplayOrderReconciliation` now checks `rowActionResolverObservation.currentRowActionsVisible` before clearing the snapshot. If row actions are still visible (dismiss animation active), the event passes through unchanged. Uses only public `NSTableView.rowActionsVisible` — no private API, swizzling, delay, run-loop-hop, or render-cycle assumption. |
+| Synchronous KVO visibility update | `NextPaste/HomeView.swift` | `areRowActionsVisible` is now updated synchronously in the KVO callback (before the Task hop) so the guard always has accurate visibility state. Trace emission remains deferred to the Task. |
+| Trace Observer fix | `NextPaste/Debug/RowActionAppKitObserver.swift` | Replaced unsafe geometry reads (`tableView.visibleRect`, `rows(in:)`, `rowView(atRow:)`) with public safe alternatives: `enumerateAvailableRowViews` (enumerates existing row views without creating new ones or triggering layout) and `tableView.bounds` (stored property). Removed `geometrySnapshotReadsEnabled = false` flag. Restores Feature 018 trace events (`table.snapshot`, `row-view.visible`, `row-view.will-display`, `display-cycle.snapshot`) without reintroducing layout recursion. |
+
+### Test changes
+
+| Change | File | Purpose |
+| --- | --- | --- |
+| T021: accumulated Pin/Unpin reconciliation | `NextPasteUITests/ClipRowActionsUITests.swift` | New `testMultipleAccumulatedPinUnpinActionsReconcileOnOneExplicitInput` — 3 accumulated state changes (pin, pin, unpin) followed by one explicit reconciliation input. |
+| T022: Delete during pending snapshot | `NextPasteUITests/ClipRowActionsUITests.swift` | New `testDeleteDuringPendingPinSnapshotRemovesImmediatelyThenReconciles` — Delete while Pin snapshot active proves immediate visible removal and later reconciliation. |
+| T023: stale-position acceptance | `NextPasteUITests/ClipRowActionsUITests.swift` | New `testStalePinRowPositionAcceptedOnlyWhenPinnedStateFeedbackIsVisible` — stale row position accepted only when pinned-state accessibility value is already visible. |
+| T024: deferred-reconciliation trace/privacy | `NextPasteTests/RowActionTraceEventTests.swift` | New `deferredReconciliationTraceEmitsNoClipboardContentOrHistory` and `homeViewDeferredReconciliationSnapshotIsIDOrderOnlyInSource` — proves deferred reconciliation trace stores no content, previews, or history. |
+| T025: source-policy regression | `NextPasteTests/RowActionDisplayOrderPolicyTests.swift` | New `reconciliationMonitorGatesOnRowActionsVisible`, `reconciliationMonitorUsesSynchronousKVOVisibilityUpdate`, `reconciliationSectionHasNoRunLoopHopRenderCycleOrTimingWorkaround`, `reconciliationSectionHasNoPrivateAppKitTeardownSignals`, `preservesNativeListAndSwipeActionsForAllActions`. |
+| Image test migration | `NextPasteUITests/ClipboardImageRowActionsUITests.swift` | `testRightSwipePinTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering` migrated to Feature 020 policy: immediate pinned-state feedback, deferred relocation, reconciliation on explicit input. Added `triggerDisplayOrderReconciliation` helper with list-click + key events. |
+| Scenario B test migration | `NextPasteUITests/ClipRowActionsUITests.swift` | `testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash` — added `triggerDisplayOrderReconciliation` after pin burst and after scroll-back; increased scroll-back to 10 swipes; added `waitForExistence` for top element; increased `assertScenarioBOrder` timeout to 15s. |
+| `triggerDisplayOrderReconciliation` retry | `NextPasteUITests/ClipRowActionsUITests.swift` | Helper retries key input 4 times with 0.15s run-loop waits so reconciliation fires reliably under suite load. Product code uses no delay; retry lives only in test harness. |
+
+### Trace-test ambiguity resolution
+
+The previous Phase 2/3 evidence (Section 16) incorrectly classified `testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt` as a "pre-existing Feature 018 trace flake" because it "also fails on main baseline." Re-testing against the actual same-commit baseline (`9d1ba90`, parent of `cdd179b`) proves this was wrong:
+
+| Run | Build | Result | Records |
+| --- | --- | --- | --- |
+| Baseline `9d1ba90` run 1 | Pre-Feature-020 | PASSED (47.369s) | — |
+| Baseline `9d1ba90` run 2 | Pre-Feature-020 | PASSED (47.208s) | — |
+| Baseline `9d1ba90` run 3 | Pre-Feature-020 | PASSED (47.163s) | — |
+| Current build (guard, no Observer fix) run 1 | Feature 020 | FAILED (52.737s) | 51 records |
+| Current build (guard, no Observer fix) run 2 | Feature 020 | FAILED (53.509s) | — |
+| Current build (guard, no Observer fix) run 3 | Feature 020 | FAILED (52.920s) | — |
+
+Root cause: Feature 020 commit `cdd179b` introduced `geometrySnapshotReadsEnabled = false` which disabled `emitTableSnapshot`, `emitDisplaySnapshot`, and `emitRowViewDiffs`. These emit the required trace events `table.snapshot`, `display-cycle.snapshot`, `row-view.visible`, and `row-view.will-display`. The trace test requires these events; without them, it fails with "found 51 records" (missing events). This was a Feature 020 regression, not a pre-existing flake.
+
+Fix: replaced unsafe geometry reads with `enumerateAvailableRowViews` (public API, no layout trigger) and `tableView.bounds` (stored property). After fix:
+
+| Run | Build | Result |
+| --- | --- | --- |
+| Current build (Observer fix) run 1 | Feature 020 | PASSED (48.075s) |
+| Current build (Observer fix) run 2 | Feature 020 | PASSED (47.414s) |
+
+### Validation evidence
+
+| Evidence | Result |
+| --- | --- |
+| App target build (`build-for-testing`) | TEST BUILD SUCCEEDED |
+| Full unit suite (`-only-testing:NextPasteTests`) | TEST EXECUTE SUCCEEDED — all unit tests pass, including `RowActionDisplayOrderPolicyTests` (13 cases) and `RowActionTraceEventTests` (5 cases incl. new T024 cases). |
+| `RowActionDisplayOrderPolicyTests` (T004/T005/T025) | 13/13 passed — snapshot ID/order-only, no Task.sleep/delay/run-loop/CATransaction, no private AppKit selectors/swizzling/teardown signals, native List/swipeActions preserved, guard gates on `currentRowActionsVisible`, synchronous KVO update, `allowsFullSwipe: false` preserved. |
+| `RowActionTraceEventTests` (T024) | 5/5 passed — deferred reconciliation trace emits no content/previews/history, snapshot is `[UUID]?` in source, trace events emit without clipboard payload. |
+| `testDebugTraceCapturesPinUnpinAndDeleteRowActionAttempt` (trace fix) | PASSED — all required trace events present after Observer fix. |
+| Full `ClipRowActionsUITests` suite (24 tests) | ALL PASSED — includes T021/T022/T023 new regression tests, all migrated tests, crash-prevention tests, Delete tests, trace test, native availability tests. |
+| `ClipboardImageRowActionsUITests` (12 tests) | 11/12 PASSED. `testRightSwipePinTogglesImageClipOrderingAndUnpinRestoresNewestFirstOrdering` PASSED after migration. `testLeftSwipeDeleteRemovesOnlySelectedImageClip` is an intermittent flake (passes 2/3 in isolation, passes in full regression runs 1 and 2) — NOT a Feature 020 regression (test has no reconciliation, tests Delete immediate removal). |
+| Scenario A stress (`testScenarioAStressUnpinOneOfThreePinnedClipsRepeatedly`) | PASSED (317.132s) — 20 consecutive native unpin/re-pin cycles, app stays `.runningForeground`. |
+| Scenario B stress (`testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly`) | PASSED (813.866s) — 20 consecutive native scroll-pin cycles, app stays `.runningForeground`. |
+| Warning scan (`rg "rowActionsGroupView should be populated\|NSInternalInconsistencyException\|layoutSubtreeIfNeeded\|Modifying state during view update"` over stress + unit + UI logs) | NO WARNINGS FOUND. |
+| `git diff --check` | PASSED (no whitespace errors). |
+
+### Pre-existing flake evidence
+
+| Test | Evidence |
+| --- | --- |
+| `testLeftSwipeDeleteRemovesOnlySelectedImageClip` | Passes 2/3 in isolation (20.443s, 20.539s pass; 18.116s fail). Passed in full regression runs 1 and 2 (20.268s, 20.033s). The test does NOT use `triggerDisplayOrderReconciliation` and does NOT test Feature 020 reconciliation policy — it tests Delete immediate removal of an image clip. The intermittent failure is a clipboard capture timing flake in the `launchCaptureApp` auto-capture path, not a Feature 020 regression. |

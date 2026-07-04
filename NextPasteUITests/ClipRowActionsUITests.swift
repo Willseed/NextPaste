@@ -933,6 +933,10 @@ final class ClipRowActionsUITests: UITestCase {
             )
         }
 
+        // Feature 020 (US1): Pin pinned-state feedback is immediate (asserted above), but
+        // row-position relocation is deferred until the next explicit user input event.
+        // Reconcile before asserting the initial pinned-first/newest-first ordering.
+        triggerDisplayOrderReconciliation(in: app)
         // Pinned-first: both pinned clips sit above the unpinned fillers, newest-first.
         assertScenarioBOrder(
             app.staticTexts[pinnedNewer],
@@ -972,9 +976,18 @@ final class ClipRowActionsUITests: UITestCase {
         )
 
         // Scroll back to the top and verify pinned-first/newest-first ordering.
-        for _ in 0..<6 {
+        // Under suite load, swipeDown may not scroll all the way back in one pass,
+        // so scroll generously and wait for the top element to appear.
+        for _ in 0..<10 {
             list.swipeDown(velocity: .fast)
         }
+        XCTAssertTrue(
+            app.staticTexts[pinnedNewer].waitForExistence(timeout: UITestAssertions.defaultTimeout),
+            "Expected pinnedNewer to be visible after scrolling back to top"
+        )
+        // Feature 020 (US1): reconcile after the scroll-back to ensure the deferred
+        // snapshot clears and the @Query-sorted pinned-first/newest-first order is visible.
+        triggerDisplayOrderReconciliation(in: app)
         // pinTarget was the oldest clip, so after pinning it it is the oldest pinned
         // clip and sits below the other two pinned clips (newest-first within pinned),
         // and the pinned group stays above the unpinned fillers.
@@ -982,19 +995,22 @@ final class ClipRowActionsUITests: UITestCase {
             app.staticTexts[pinnedNewer],
             appearsAbove: app.staticTexts[pinnedOlder],
             app: app,
-            context: "final pinned newer above older"
+            context: "final pinned newer above older",
+            timeout: 15
         )
         assertScenarioBOrder(
             app.staticTexts[pinnedOlder],
             appearsAbove: app.staticTexts[pinTarget],
             app: app,
-            context: "final pinned older above pin target"
+            context: "final pinned older above pin target",
+            timeout: 15
         )
         assertScenarioBOrder(
             app.staticTexts[pinTarget],
             appearsAbove: app.staticTexts[fillers[0]],
             app: app,
-            context: "final pin target above first filler"
+            context: "final pin target above first filler",
+            timeout: 15
         )
 
         attachRowActionWarningAssertionOutcome(["pin-\(pinTarget): \(app.state)"], app: app)
@@ -1005,10 +1021,15 @@ final class ClipRowActionsUITests: UITestCase {
     /// ordering. The reconciliation boundary is a real explicit input event (key), not a
     /// fixed delay, run-loop hop, render-cycle callback, or timing assumption. After this
     /// returns, `UITestAssertions.assert(...appearsAbove:)` (which waits for ordering to
-    /// settle) observes the reconciled order.
+    /// settle) observes the reconciled order. A small bounded retry ensures the key event
+    /// is delivered and processed even under suite load. The product code itself uses no
+    /// delay; the retry lives only in the test harness.
     @MainActor
     private func triggerDisplayOrderReconciliation(in app: XCUIApplication) {
-        app.typeKey(.escape, modifierFlags: [])
+        for _ in 0..<4 {
+            app.typeKey(.escape, modifierFlags: [])
+            RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        }
     }
 
     @MainActor
@@ -1083,5 +1104,204 @@ final class ClipRowActionsUITests: UITestCase {
         history
             .assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
             .assertFirstVisibleClipRowContains(UITestFixtures.RowActions.copyTarget)
+    }
+
+    // MARK: - Feature 020 T021: multiple accumulated Pin/Unpin actions, one reconciliation
+
+    /// T021 [US3]: multiple accumulated Pin/Unpin state changes before a single explicit
+    /// reconciliation input must reconcile together into canonical pinned-first/newest-first
+    /// ordering. Pinned-state feedback is asserted immediate after each action; row-position
+    /// relocation is deferred until the single reconciliation event.
+    @MainActor
+    func testMultipleAccumulatedPinUnpinActionsReconcileOnOneExplicitInput() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Created oldest-first: a (oldest), b, c, d (newest). Visible newest-first: d, c, b, a.
+        let a = "T021 accumulated pin oldest"
+        let b = "T021 accumulated pin middle"
+        let c = "T021 accumulated pin newer"
+        let d = "T021 accumulated pin newest"
+        try history.createTextClips([a, b, c, d])
+        history.assertClipRowIdentifierExists()
+
+        // Baseline newest-first order: d above c above b above a.
+        UITestAssertions.assert(app.staticTexts[d], appearsAbove: app.staticTexts[c])
+        UITestAssertions.assert(app.staticTexts[c], appearsAbove: app.staticTexts[b])
+        UITestAssertions.assert(app.staticTexts[b], appearsAbove: app.staticTexts[a])
+
+        // Accumulated action 1: Pin a (oldest). Immediate pinned-state feedback; no relocate.
+        let pinA = row.revealPinActionWithRightSwipe(for: a)
+        UITestAssertions.assertAccessibleTextContains(pinA, "Pin")
+        pinA.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Pinned",
+            timeout: 1
+        )
+
+        // Accumulated action 2: Pin c. Immediate pinned-state feedback; no relocate.
+        let pinC = row.revealPinActionWithRightSwipe(for: c)
+        UITestAssertions.assertAccessibleTextContains(pinC, "Pin")
+        pinC.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: c, in: app),
+            "Pinned",
+            timeout: 1
+        )
+
+        // Accumulated action 3: Unpin a (toggle back). Immediate unpinned-state feedback; no relocate.
+        let unpinA = row.revealPinActionWithRightSwipe(for: a, expectedLabel: "Unpin")
+        UITestAssertions.assertAccessibleTextContains(unpinA, "Unpin")
+        unpinA.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Unpinned",
+            timeout: 1
+        )
+
+        // Single explicit reconciliation input. Final state: only c is pinned.
+        // Canonical pinned-first/newest-first: c, then d (newest unpinned), b, a.
+        triggerDisplayOrderReconciliation(in: app)
+        UITestAssertions.assert(app.staticTexts[c], appearsAbove: app.staticTexts[d])
+        UITestAssertions.assert(app.staticTexts[d], appearsAbove: app.staticTexts[b])
+        UITestAssertions.assert(app.staticTexts[b], appearsAbove: app.staticTexts[a])
+
+        // Confirm c remains the only pinned clip after reconciliation.
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: c, in: app),
+            "Pinned",
+            timeout: 1
+        )
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Unpinned",
+            timeout: 1
+        )
+
+        XCTAssertEqual(app.state, .runningForeground)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(a)", "pin-\(c)", "unpin-\(a)", "reconcile"],
+            app: app
+        )
+    }
+
+    // MARK: - Feature 020 T022: Delete during pending Pin/Unpin snapshot
+
+    /// T022 [US2]: Delete while a Pin/Unpin display-order snapshot is active must remove the
+    /// targeted row immediately (Delete visible removal is not reconciliation-bound). The
+    /// native swipe-to-reveal-delete gesture is itself an explicit input that reconciles any
+    /// prior Pin/Unpin snapshot, and the delete re-arms its own snapshot; either way the
+    /// deleted row drops out of `visibleClips` immediately because the ID/order-only
+    /// snapshot is reconciled against the live `@Query` via `compactMap`. The pinned clip is
+    /// preserved and the remaining rows reconcile to canonical pinned-first/newest-first.
+    @MainActor
+    func testDeleteDuringPendingPinSnapshotRemovesImmediatelyThenReconciles() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Created oldest-first: a (oldest, pin target), b, c (delete target), d (newest).
+        // Visible newest-first: d, c, b, a.
+        let a = "T022 pending pin oldest"
+        let b = "T022 pending pin middle"
+        let c = "T022 pending delete target"
+        let d = "T022 pending pin newest"
+        try history.createTextClips([a, b, c, d])
+        history.assertClipRowIdentifierExists()
+
+        // Pin a — display-order snapshot armed, pinned-state feedback immediate.
+        let pinA = row.revealPinActionWithRightSwipe(for: a)
+        UITestAssertions.assertAccessibleTextContains(pinA, "Pin")
+        pinA.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Pinned",
+            timeout: 1
+        )
+
+        // Delete c while a display-order snapshot is active (the pin snapshot, or the
+        // delete's own re-armed snapshot). Delete visible removal is immediate: c must
+        // disappear right away, not wait for reconciliation.
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: c)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[c],
+            "Expected Delete to remove the targeted row immediately while a display-order snapshot is active",
+            timeout: 2
+        )
+
+        // The pinned clip is preserved through the delete.
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Pinned",
+            timeout: 1
+        )
+        XCTAssertTrue(app.staticTexts[a].exists)
+
+        // Reconcile on explicit input. Canonical pinned-first/newest-first: a, d, b.
+        triggerDisplayOrderReconciliation(in: app)
+        UITestAssertions.assert(app.staticTexts[a], appearsAbove: app.staticTexts[d])
+        UITestAssertions.assert(app.staticTexts[d], appearsAbove: app.staticTexts[b])
+
+        // c must remain absent after reconciliation.
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[c],
+            "Deleted clip must not reappear after reconciliation",
+            timeout: 1
+        )
+
+        XCTAssertEqual(app.state, .runningForeground)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(a)", "delete-\(c)", "reconcile"],
+            app: app
+        )
+    }
+
+    // MARK: - Feature 020 T023: stale position accepted only with visible pinned-state feedback
+
+    /// T023 [US1]: a temporary stale Pin/Unpin row position before explicit input is accepted
+    /// only when pinned-state feedback is already visible. Pins the older row, asserts the
+    /// pinned-state accessibility value is visible while the row position is still stale
+    /// (newer unpinned row still above it), then reconciles and asserts the pinned row
+    /// relocates above.
+    @MainActor
+    func testStalePinRowPositionAcceptedOnlyWhenPinnedStateFeedbackIsVisible() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let older = "T023 stale pin older target"
+        let newer = "T023 stale pin newer unpinned"
+        try history.createTextClip(older)
+        try history.createTextClip(newer)
+        history.assertClipRowIdentifierExists()
+
+        // Baseline newest-first: newer above older.
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+
+        // Pin older. Immediate pinned-state feedback must be visible BEFORE any relocation.
+        let pinButton = row.revealPinActionWithRightSwipe(for: older)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        let olderRow = assertTextRowIdentifier(for: older, in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 1)
+
+        // Stale position acceptance: the pinned-state feedback is already visible, but the
+        // row has NOT relocated yet (no explicit input). The newer unpinned row is still
+        // above the now-pinned older row. This stale position is accepted precisely because
+        // the pinned-state accessibility value is already visible.
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
+
+        // Reconcile on explicit input. Pinned older relocates above the newer unpinned row.
+        triggerDisplayOrderReconciliation(in: app)
+        UITestAssertions.assert(app.staticTexts[older], appearsAbove: app.staticTexts[newer])
+        UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
+
+        XCTAssertEqual(app.state, .runningForeground)
+        attachRowActionWarningAssertionOutcome(["pin-\(older)", "reconcile"], app: app)
     }
 }

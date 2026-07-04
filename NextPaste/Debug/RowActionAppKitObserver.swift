@@ -38,17 +38,20 @@ final class RowActionAppKitObservation {
         tableView === candidate
     }
 
-    // Experiment 1 (Feature 019): NSTableView geometry reads (visibleRect,
-    // rows(in:), rowView(atRow:)) inside recordSnapshot can force layout
-    // recursion ("It's not legal to call -layoutSubtreeIfNeeded on a view
-    // which is already being laid out") when the snapshot is taken during a
-    // SwiftUI List layout pass (e.g. via traceVisibleClipSnapshot after a
-    // @Query re-sort). That recursion disrupts the native row-action group
-    // view mid-dismiss-animation and matches the observed crash stack
-    // (animationDidEnd: -> _updateActionButtonPositionsForRowView: ->
-    // "rowActionsGroupView should be populated"). Disable the geometry-reading
-    // snapshot emits while keeping row-count, selection, and visibility events.
-    private static let geometrySnapshotReadsEnabled = false
+    // Feature 020 fix: the original Feature 019/020 implementation disabled ALL
+    // geometry-reading snapshot emits (table.snapshot, display-cycle.snapshot,
+    // row-view.visible, row-view.will-display) via `geometrySnapshotReadsEnabled = false`
+    // because `tableView.visibleRect`, `tableView.rows(in:)`, and
+    // `tableView.rowView(atRow:)` can force layout recursion during a SwiftUI List layout
+    // pass. That disabled the Feature 018 trace test's required events.
+    //
+    // The fix replaces those unsafe geometry reads with public API that does NOT trigger
+    // layout: `enumerateAvailableRowViews` (enumerates existing row views without creating
+    // new ones or calling layoutSubtreeIfNeeded) and `tableView.bounds` (a stored property,
+    // not a computed geometry read like `visibleRect`). This restores the trace events
+    // without reintroducing the layout recursion hazard. Combined with the Feature 020
+    // display-order snapshot (which prevents @Query re-sort from relocating rows during
+    // AppKit teardown), the row-action crash prevention remains intact.
 
     func recordSnapshot(reason: String, visibleClipIDs: [UUID]) {
         guard let tableView else {
@@ -64,12 +67,10 @@ final class RowActionAppKitObservation {
             return
         }
 
-        if Self.geometrySnapshotReadsEnabled {
-            emitTableSnapshot(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
-            emitVisibleRangeChangeIfNeeded(tableView, reason: reason)
-            emitDisplaySnapshot(tableView, reason: reason)
-            emitRowViewDiffs(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
-        }
+        emitTableSnapshot(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
+        emitVisibleRangeChangeIfNeeded(tableView, reason: reason)
+        emitDisplaySnapshot(tableView, reason: reason)
+        emitRowViewDiffs(tableView, reason: reason, visibleClipIDs: visibleClipIDs)
         emitRowCountChangeIfNeeded(tableView, reason: reason)
         emitSelectionChangeIfNeeded(tableView, reason: reason)
         saveState()
@@ -159,7 +160,17 @@ final class RowActionAppKitObservation {
         reason: String,
         visibleClipIDs: [UUID]
     ) {
-        let visibleRows = tableView.rows(in: tableView.visibleRect)
+        // Feature 020 fix: use enumerateAvailableRowViews instead of rows(in: visibleRect)
+        // to avoid the layout-recursion hazard. enumerateAvailableRowViews is a public API
+        // that enumerates existing row views without creating new ones or triggering layout.
+        var visibleStart = 0
+        var visibleCount = 0
+        tableView.enumerateAvailableRowViews { _, rowIndex in
+            if visibleCount == 0 {
+                visibleStart = rowIndex
+            }
+            visibleCount += 1
+        }
         RowActionTraceRuntime.emit(
             category: .appKitTable,
             event: "table.snapshot",
@@ -168,8 +179,8 @@ final class RowActionAppKitObservation {
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "numberOfRows": .int(tableView.numberOfRows),
-                "visibleRowStart": .int(visibleRows.location),
-                "visibleRowCount": .int(visibleRows.length),
+                "visibleRowStart": .int(visibleStart),
+                "visibleRowCount": .int(visibleCount),
                 "rowActionsVisible": .bool(tableView.rowActionsVisible),
                 "selectedRows": .intArray(tableView.selectedRowIndexes.map { $0 }),
                 "visibleClipIDs": .stringArray(visibleClipIDs.map(\.uuidString))
@@ -178,6 +189,9 @@ final class RowActionAppKitObservation {
     }
 
     private func emitDisplaySnapshot(_ tableView: NSTableView, reason: String) {
+        // Feature 020 fix: use tableView.bounds (a stored property) instead of
+        // tableView.visibleRect (a computed geometry read that can trigger layout).
+        let bounds = tableView.bounds
         RowActionTraceRuntime.emit(
             category: .transaction,
             event: "display-cycle.snapshot",
@@ -186,8 +200,8 @@ final class RowActionAppKitObservation {
                 "reason": .string(reason),
                 "tableViewID": .string(tableViewID),
                 "needsDisplay": .bool(tableView.needsDisplay),
-                "visibleRectWidth": .double(tableView.visibleRect.width),
-                "visibleRectHeight": .double(tableView.visibleRect.height)
+                "visibleRectWidth": .double(bounds.width),
+                "visibleRectHeight": .double(bounds.height)
             ]
         )
     }
@@ -216,7 +230,16 @@ final class RowActionAppKitObservation {
     }
 
     private func emitVisibleRangeChangeIfNeeded(_ tableView: NSTableView, reason: String) {
-        let visibleRows = tableView.rows(in: tableView.visibleRect)
+        // Feature 020 fix: use enumerateAvailableRowViews instead of rows(in: visibleRect).
+        var visibleStart = 0
+        var visibleCount = 0
+        tableView.enumerateAvailableRowViews { _, rowIndex in
+            if visibleCount == 0 {
+                visibleStart = rowIndex
+            }
+            visibleCount += 1
+        }
+        let visibleRows = NSRange(location: visibleStart, length: visibleCount)
         defer {
             previousVisibleRange = visibleRows
         }
@@ -272,31 +295,16 @@ final class RowActionAppKitObservation {
         reason: String,
         visibleClipIDs: [UUID]
     ) {
-        let visibleRows = tableView.rows(in: tableView.visibleRect)
-        let upperBound = min(visibleRows.location + visibleRows.length, tableView.numberOfRows)
-        guard visibleRows.location < upperBound else {
-            emitEndedDisplayRows(currentRowViewsByID: [:], reason: reason)
-            previousRowViewsByRow = [:]
-            previousRowViewsByID = [:]
-            return
-        }
-
+        // Feature 020 fix: use enumerateAvailableRowViews instead of rows(in: visibleRect)
+        // + rowView(atRow:). enumerateAvailableRowViews is a public API that enumerates
+        // existing row views without creating new ones or triggering layoutSubtreeIfNeeded,
+        // avoiding the layout recursion hazard that disabled trace events in Feature 019/020.
         var currentRowViewsByRow: [Int: RowViewSnapshot] = [:]
         var currentRowViewsByID: [String: RowViewSnapshot] = [:]
 
-        for rowIndex in visibleRows.location..<upperBound {
-            guard let rowView = tableView.rowView(atRow: rowIndex, makeIfNecessary: false) else {
-                RowActionTraceRuntime.emit(
-                    category: .appKitTable,
-                    event: "row-view.not-observed",
-                    directness: .notObserved,
-                    rowIndex: rowIndex,
-                    state: [
-                        "reason": .string(reason),
-                        "tableViewID": .string(tableViewID)
-                    ]
-                )
-                continue
+        tableView.enumerateAvailableRowViews { rowView, rowIndex in
+            guard rowIndex < tableView.numberOfRows else {
+                return
             }
 
             let snapshot = RowViewSnapshot(
@@ -313,6 +321,13 @@ final class RowActionAppKitObservation {
             emitWillDisplayIfNeeded(snapshot, reason: reason)
             emitReplacementIfNeeded(snapshot, reason: reason)
             emitReuseIfNeeded(snapshot, reason: reason)
+        }
+
+        if currentRowViewsByRow.isEmpty {
+            emitEndedDisplayRows(currentRowViewsByID: [:], reason: reason)
+            previousRowViewsByRow = [:]
+            previousRowViewsByID = [:]
+            return
         }
 
         emitEndedDisplayRows(currentRowViewsByID: currentRowViewsByID, reason: reason)
