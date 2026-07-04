@@ -438,14 +438,15 @@ struct HomeView: View {
 
     private func openSettingsOrShowPlaceholder() {
 #if os(macOS)
+        // T010/T011: with the native SwiftUI Settings scene present,
+        // `showSettingsWindow:` opens the real Settings window. The placeholder
+        // message is no longer used; keep the state for compatibility but never
+        // set it so no placeholder text renders.
         _ = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        if hasVisibleSettingsWindow {
-            settingsPlaceholderMessage = nil
-            return
-        }
-#endif
-
+        settingsPlaceholderMessage = nil
+#else
         settingsPlaceholderMessage = "Settings are not available yet."
+#endif
     }
 
 #if os(macOS)

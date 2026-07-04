@@ -47,8 +47,8 @@
 - [x] T007：加入清除未釘選確認 UI
 - [x] T008：建立清除全部資料層
 - [x] T009：加入清除全部確認 UI
-- [ ] T010：確認並標準化 Settings Scene
-- [ ] T011：加入 Command-comma
+- [x] T010：確認並標準化 Settings Scene
+- [x] T011：加入 Command-comma
 - [ ] T012：抽象化現有全域熱鍵註冊器
 - [ ] T013：建立 Global Shortcut 型別與驗證
 - [ ] T014：加入全域快捷鍵 Recorder UI
@@ -363,47 +363,47 @@
 
 # Phase 3：Settings 與全域快捷鍵
 
-## [ ] T010：確認並標準化 Settings Scene
+## [x] T010：確認並標準化 Settings Scene
 
 ### 實作
 
-- [ ] 使用現有 Settings Scene。
-- [ ] 若已存在，只修正必要問題。
-- [ ] 重複開啟不產生多個 Settings window。
-- [ ] 建立 General 分類。
-- [ ] 建立 Shortcuts 分類。
-- [ ] 建立 Appearance 分類。
-- [ ] 建立 Privacy 或 History 分類。
-- [ ] 不提前實作 global hotkey。
-- [ ] 不提前實作 history limit。
-- [ ] 不提前實作 appearance。
+- [x] 使用現有 Settings Scene。
+- [x] 若已存在，只修正必要問題。
+- [x] 重複開啟不產生多個 Settings window。
+- [x] 建立 General 分類。
+- [x] 建立 Shortcuts 分類。
+- [x] 建立 Appearance 分類。
+- [x] 建立 Privacy 或 History 分類。
+- [x] 不提前實作 global hotkey。
+- [x] 不提前實作 history limit。
+- [x] 不提前實作 appearance。
 
 ### 測試
 
-- [ ] Settings window 可開啟。
-- [ ] 重複開啟仍只有一個 Settings window。
-- [ ] 所有分類存在。
-- [ ] NextPaste target build 通過。
+- [x] Settings window 可開啟。
+- [x] 重複開啟仍只有一個 Settings window。
+- [x] 所有分類存在。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T011：加入 Command-comma
+## [x] T011：加入 Command-comma
 
 ### 實作
 
-- [ ] `Command-,` 打開現有 Settings Scene。
-- [ ] App menu 顯示 `Settings…`。
-- [ ] 重複按 `Command-,` 聚焦既有 Settings window。
-- [ ] 不建立重複 Settings window。
-- [ ] 不重設目前設定頁面。
-- [ ] 不清除未提交輸入。
+- [x] `Command-,` 打開現有 Settings Scene。
+- [x] App menu 顯示 `Settings…`。
+- [x] 重複按 `Command-,` 聚焦既有 Settings window。
+- [x] 不建立重複 Settings window。
+- [x] 不重設目前設定頁面。
+- [x] 不清除未提交輸入。
 
 ### 測試
 
-- [ ] `Command-,` 打開 Settings。
-- [ ] 重複執行不新增 window。
-- [ ] menu item 顯示正確 shortcut。
-- [ ] NextPaste target build 通過。
+- [x] `Command-,` 打開 Settings。
+- [x] 重複執行不新增 window。
+- [x] menu item 顯示正確 shortcut。
+- [x] NextPaste target build 通過。
 
 ---
 

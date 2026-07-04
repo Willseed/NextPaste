@@ -52,6 +52,15 @@ struct NextPasteApp: App {
             SearchCommands()
             HistoryClearCommands()
         }
+#if os(macOS)
+        // T010/T011: native SwiftUI Settings scene. The system provides the
+        // standard app-menu `Settings…` item and `Command-,`, and ensures only
+        // one Settings window exists. The four tabs are established here; later
+        // tasks populate them.
+        Settings {
+            SettingsView()
+        }
+#endif
     }
 }
 
