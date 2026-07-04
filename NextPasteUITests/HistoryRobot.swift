@@ -159,8 +159,18 @@ struct HistoryRobot {
         )
         newClipButton.tap()
 
+        // The New Clip sheet presentation can exceed the default 5s timeout when the
+        // full UI suite is running under load (observed in the Phase 0 baseline: the
+        // editor assertion timed out at ~15s into the test while the sheet was still
+        // presenting). Use a more generous wait for the editor only.
         let editor = app.textViews["clip-text-editor"]
-        UITestAssertions.assertExists(editor, "Expected clip text editor", file: file, line: line)
+        UITestAssertions.assertExists(
+            editor,
+            "Expected clip text editor",
+            timeout: 10,
+            file: file,
+            line: line
+        )
         editor.tap()
         editor.typeText(text)
 
