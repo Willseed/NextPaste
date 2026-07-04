@@ -28,9 +28,10 @@ public protocol PinStatePersistenceGateway: Sendable {
 /// Default production gateway. Delegates to `ModelContext.save()` and
 /// `ModelContext.rollback()` without changing persistence technology.
 public struct SwiftDataPinStatePersistenceGateway: PinStatePersistenceGateway {
-    // No configuration is required: this gateway is a thin pass-through wrapper over
-    // `ModelContext.save()` and `ModelContext.rollback()`.
-    public init() {}
+    public init() {
+        // No configuration is required: this gateway is a thin pass-through wrapper
+        // over `ModelContext.save()` and `ModelContext.rollback()`.
+    }
 
     public func save(context: ModelContext) throws {
         try context.save()

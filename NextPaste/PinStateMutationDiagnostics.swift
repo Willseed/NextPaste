@@ -87,9 +87,10 @@ public protocol PinStateMutationDiagnosticsSink: Sendable {
 
 /// No-op sink used when diagnostics are not being collected.
 public struct NullPinStateMutationDiagnosticsSink: PinStateMutationDiagnosticsSink {
-    // No stored state is required for the no-op sink; the initializer exists only
-    // to satisfy the protocol's concrete-type construction contract.
-    public init() {}
+    public init() {
+        // No stored state is required for the no-op sink; the initializer exists
+        // only to satisfy the protocol's concrete-type construction contract.
+    }
     // Intentional no-op: this sink discards every diagnostic record so production
     // release builds pay no capture/retention cost. Tests inject a capturing sink.
     public func emit(_: PinStateMutationDiagnosticRecord) {

@@ -47,9 +47,10 @@ public struct PinStateSnapshotInvariantDiagnostic: Sendable, Equatable {
 /// isolation (`SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor`); the projector is pure and
 /// may be called from the store on the MainActor.
 public struct PinStateSnapshotProjector: Sendable {
-    // The projector is a pure function over its inputs and holds no state, so the
-    // initializer intentionally takes no configuration.
-    init() {}
+    init() {
+        // The projector is a pure function over its inputs and holds no state, so
+        // the initializer intentionally takes no configuration.
+    }
 
     /// Project the visible ordered IDs from the authoritative clips, applying the
     /// current search filter and FR-010 ordering. Returns the snapshot and any
