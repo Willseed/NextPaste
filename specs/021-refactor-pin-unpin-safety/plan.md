@@ -293,8 +293,7 @@ request is stale or idempotent, and when the next visible snapshot is allowed to
    accepting item ID and desired state.
 3. **UI routing**: update row action closures to pass `clip.id` and target state; remove direct
    `ClipItem` mutation from `HomeView` Pin/Unpin.
-4. **Snapshot ownership**: generate visible snapshots from authoritative state after accepted
-   mutation and reconcile with existing search text and macOS display-order snapshot.
+4. **Snapshot ownership**: accepted Pin/Unpin mutation MUST synchronously publish the authoritative section and ordering state on the MainActor. Reconciliation MAY validate or repair externally introduced drift, but MUST NOT be required for the normal user-visible relocation. Visible snapshots are generated from authoritative state after accepted mutation and only defensively reconciled with existing search text and the macOS display-order snapshot.
 5. **Failure harness**: add injectable persistence save gateway and tests for save failure rollback
    and content-free diagnostics.
 6. **Stress and sanitizer validation**: run targeted 1,000 randomized mutation stress, stale event
