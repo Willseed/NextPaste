@@ -50,6 +50,7 @@ struct NextPasteApp: App {
         .modelContainer(sharedModelContainer)
         .commands {
             SearchCommands()
+            HistoryClearCommands()
         }
     }
 }

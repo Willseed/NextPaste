@@ -42,11 +42,11 @@
 - [x] T002：建立單一搜尋 Focus Action
 - [x] T003：加入 Command-F 搜尋命令
 - [x] T004：加入非鍵盤搜尋入口
-- [ ] T005：建立歷史統計 Query
-- [ ] T006：建立清除未釘選資料層
-- [ ] T007：加入清除未釘選確認 UI
-- [ ] T008：建立清除全部資料層
-- [ ] T009：加入清除全部確認 UI
+- [x] T005：建立歷史統計 Query
+- [x] T006：建立清除未釘選資料層
+- [x] T007：加入清除未釘選確認 UI
+- [x] T008：建立清除全部資料層
+- [x] T009：加入清除全部確認 UI
 - [ ] T010：確認並標準化 Settings Scene
 - [ ] T011：加入 Command-comma
 - [ ] T012：抽象化現有全域熱鍵註冊器
@@ -235,129 +235,129 @@
 
 # Phase 2：清除歷史
 
-## [ ] T005：建立歷史統計 Query
+## [x] T005：建立歷史統計 Query
 
 ### 實作
 
-- [ ] 建立 `countPinnedHistory()` 或現有架構對應 API。
-- [ ] 建立 `countUnpinnedHistory()` 或現有架構對應 API。
-- [ ] 建立 `countAllHistory()` 或現有架構對應 API。
-- [ ] 集中在 repository 或 service。
-- [ ] 不將 SwiftData fetch 邏輯放在 View。
-- [ ] 遵守 MainActor 與 ModelContext 邊界。
-- [ ] 查詢結果 deterministic。
+- [x] 建立 `countPinnedHistory()` 或現有架構對應 API。
+- [x] 建立 `countUnpinnedHistory()` 或現有架構對應 API。
+- [x] 建立 `countAllHistory()` 或現有架構對應 API。
+- [x] 集中在 repository 或 service。
+- [x] 不將 SwiftData fetch 邏輯放在 View。
+- [x] 遵守 MainActor 與 ModelContext 邊界。
+- [x] 查詢結果 deterministic。
 
 ### 測試
 
-- [ ] 空資料。
-- [ ] 全部 pinned。
-- [ ] 全部 unpinned。
-- [ ] pinned 與 unpinned 混合。
-- [ ] NextPaste target build 通過。
+- [x] 空資料。
+- [x] 全部 pinned。
+- [x] 全部 unpinned。
+- [x] pinned 與 unpinned 混合。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T006：建立清除未釘選資料層
+## [x] T006：建立清除未釘選資料層
 
 ### 實作
 
-- [ ] 建立 `clearUnpinnedHistory()`。
-- [ ] 刪除所有 `isPinned == false` 的 `ClipItem`。
-- [ ] 保留全部 pinned items。
-- [ ] 保留 pinned identity。
-- [ ] 保留 pinned order。
-- [ ] 不操作 `NSPasteboard.general`。
-- [ ] 不使用陣列 index。
-- [ ] 不在 mutation 中 enumerate 同一個 mutable collection。
-- [ ] 安全處理 selection 指向已刪除 item。
-- [ ] 搜尋結果由既有資料流自然更新。
-- [ ] 不加入 UI。
-- [ ] 不加入快捷鍵。
+- [x] 建立 `clearUnpinnedHistory()`。
+- [x] 刪除所有 `isPinned == false` 的 `ClipItem`。
+- [x] 保留全部 pinned items。
+- [x] 保留 pinned identity。
+- [x] 保留 pinned order。
+- [x] 不操作 `NSPasteboard.general`。
+- [x] 不使用陣列 index。
+- [x] 不在 mutation 中 enumerate 同一個 mutable collection。
+- [x] 安全處理 selection 指向已刪除 item。
+- [x] 搜尋結果由既有資料流自然更新。
+- [x] 不加入 UI。
+- [x] 不加入快捷鍵。
 
 ### 測試
 
-- [ ] pinned + unpinned 混合。
-- [ ] 執行後只剩 pinned。
-- [ ] pinned identity 不變。
-- [ ] pinned order 不變。
-- [ ] 空資料不 crash。
-- [ ] 全部 pinned 不會被刪除。
-- [ ] 全部 unpinned 全部刪除。
-- [ ] NextPaste target build 通過。
+- [x] pinned + unpinned 混合。
+- [x] 執行後只剩 pinned。
+- [x] pinned identity 不變。
+- [x] pinned order 不變。
+- [x] 空資料不 crash。
+- [x] 全部 pinned 不會被刪除。
+- [x] 全部 unpinned 全部刪除。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T007：加入清除未釘選確認 UI
+## [x] T007：加入清除未釘選確認 UI
 
 ### 實作
 
-- [ ] 提供非鍵盤入口。
-- [ ] 入口位於 History menu、toolbar menu 或 overflow menu。
-- [ ] 不將唯一入口放在 row context menu。
-- [ ] 顯示即將刪除的未釘選數量。
-- [ ] 顯示將保留的 pinned 數量。
-- [ ] 提供 Cancel。
-- [ ] 提供 destructive confirm button。
-- [ ] 沒有 unpinned item 時 action disabled 或顯示無資料狀態。
-- [ ] confirmation 僅呼叫 T006 service。
-- [ ] 不複製 SwiftData 刪除邏輯。
-- [ ] 操作不可復原。
-- [ ] 加入 `Option-Command-Delete`。
+- [x] 提供非鍵盤入口。
+- [x] 入口位於 History menu、toolbar menu 或 overflow menu。
+- [x] 不將唯一入口放在 row context menu。
+- [x] 顯示即將刪除的未釘選數量。
+- [x] 顯示將保留的 pinned 數量。
+- [x] 提供 Cancel。
+- [x] 提供 destructive confirm button。
+- [x] 沒有 unpinned item 時 action disabled 或顯示無資料狀態。
+- [x] confirmation 僅呼叫 T006 service。
+- [x] 不複製 SwiftData 刪除邏輯。
+- [x] 操作不可復原。
+- [x] 加入 `Option-Command-Delete`。
 
 ### 測試
 
-- [ ] confirmation 顯示正確數量。
-- [ ] Cancel 不刪除。
-- [ ] Confirm 只刪除 unpinned。
-- [ ] pinned 保留。
-- [ ] 非鍵盤入口可操作。
-- [ ] NextPaste target build 通過。
+- [x] confirmation 顯示正確數量。
+- [x] Cancel 不刪除。
+- [x] Confirm 只刪除 unpinned。
+- [x] pinned 保留。
+- [x] 非鍵盤入口可操作。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T008：建立清除全部資料層
+## [x] T008：建立清除全部資料層
 
 ### 實作
 
-- [ ] 建立 `clearAllHistory()`。
-- [ ] 刪除全部 `ClipItem`，包含 pinned。
-- [ ] 不清除 `NSPasteboard.general`。
-- [ ] 不使用 index mutation。
-- [ ] 安全處理 selection。
-- [ ] 不加入 UI。
-- [ ] 不加入快捷鍵。
+- [x] 建立 `clearAllHistory()`。
+- [x] 刪除全部 `ClipItem`，包含 pinned。
+- [x] 不清除 `NSPasteboard.general`。
+- [x] 不使用 index mutation。
+- [x] 安全處理 selection。
+- [x] 不加入 UI。
+- [x] 不加入快捷鍵。
 
 ### 測試
 
-- [ ] mixed data 執行後為空。
-- [ ] 全部 pinned 執行後為空。
-- [ ] 空資料不 crash。
-- [ ] NextPaste target build 通過。
+- [x] mixed data 執行後為空。
+- [x] 全部 pinned 執行後為空。
+- [x] 空資料不 crash。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T009：加入清除全部確認 UI
+## [x] T009：加入清除全部確認 UI
 
 ### 實作
 
-- [ ] 提供非鍵盤入口。
-- [ ] 顯示將刪除的總數。
-- [ ] 明確說明包含 pinned items。
-- [ ] 明確說明操作不可復原。
-- [ ] 使用較高強度 destructive wording。
-- [ ] Cancel 不執行。
-- [ ] Confirm 僅呼叫 T008 service。
-- [ ] 不複製刪除邏輯。
-- [ ] 加入 `Shift-Option-Command-Delete`。
+- [x] 提供非鍵盤入口。
+- [x] 顯示將刪除的總數。
+- [x] 明確說明包含 pinned items。
+- [x] 明確說明操作不可復原。
+- [x] 使用較高強度 destructive wording。
+- [x] Cancel 不執行。
+- [x] Confirm 僅呼叫 T008 service。
+- [x] 不複製刪除邏輯。
+- [x] 加入 `Shift-Option-Command-Delete`。
 
 ### 測試
 
-- [ ] confirmation 顯示總數。
-- [ ] confirmation 明確提到 pinned。
-- [ ] Cancel 保留資料。
-- [ ] Confirm 清除全部。
-- [ ] 非鍵盤入口可操作。
-- [ ] NextPaste target build 通過。
+- [x] confirmation 顯示總數。
+- [x] confirmation 明確提到 pinned。
+- [x] Cancel 保留資料。
+- [x] Confirm 清除全部。
+- [x] 非鍵盤入口可操作。
+- [x] NextPaste target build 通過。
 
 ---
 

@@ -25,6 +25,11 @@ struct HomeView: View {
     // state (`searchText`) — `focusSearch()` does not create a second search entry.
     @State private var isSearchPresented = true
     @FocusState private var isSearchFieldFocused: Bool
+    // T007/T009: clear-history confirmation state. The dialogs are presented from
+    // HomeView so the clearing logic stays centralized; menu commands and the
+    // toolbar menu only request presentation.
+    @State private var isPresentingClearUnpinnedConfirmation = false
+    @State private var isPresentingClearAllConfirmation = false
     @State private var settingsPlaceholderMessage: String?
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
@@ -109,6 +114,29 @@ struct HomeView: View {
                             Label("New Clip", systemImage: "plus")
                         }
                         .accessibilityIdentifier("new-clip-button")
+
+                        // T007/T009: non-keyboard entry for clearing history. A native
+                        // SwiftUI Menu is operable with mouse and trackpad, and is not
+                        // a row context menu. The items only request the confirmation
+                        // dialog; they do not perform destructive work directly.
+                        Menu {
+                            Button("Clear Unpinned History…") {
+                                requestClearUnpinnedHistory()
+                            }
+                            .accessibilityIdentifier("menu-clear-unpinned-history")
+                            .disabled(unpinnedCount == 0)
+
+                            Button("Clear All History…") {
+                                requestClearAllHistory()
+                            }
+                            .accessibilityIdentifier("menu-clear-all-history")
+                            .disabled(allCount == 0)
+                        } label: {
+                            Label("History", systemImage: "ellipsis.circle")
+                        }
+                        .accessibilityIdentifier("history-overflow-menu")
+                        .accessibilityLabel("History actions")
+                        .accessibilityHint("Clear clipboard history")
                     }
                 }
                 .background(measuredFrameReader(for: .header))
@@ -142,6 +170,45 @@ struct HomeView: View {
         // the app-level `SearchCommands` (`Command-F`) can invoke it without owning
         // any search state.
         .focusedValue(\.searchFocusAction, focusSearch)
+        // T007/T009: publish the request-clear actions so `HistoryClearCommands`
+        // (`Option-Command-Delete`, `Shift-Option-Command-Delete`) can request the
+        // confirmation dialogs without owning clearing logic.
+        .focusedValue(\.requestClearUnpinnedAction, requestClearUnpinnedHistory)
+        .focusedValue(\.requestClearAllAction, requestClearAllHistory)
+        // T007: clear unpinned confirmation. Shows counts, preserves pinned, is
+        // destructive and irreversible. Confirm only calls the T006 service.
+        .confirmationDialog(
+            "Clear Unpinned History",
+            isPresented: $isPresentingClearUnpinnedConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear \(unpinnedCount) Unpinned Items", role: .destructive) {
+                confirmClearUnpinnedHistory()
+            }
+            .accessibilityIdentifier("confirm-clear-unpinned-button")
+            Button("Cancel", role: .cancel) { }
+            .accessibilityIdentifier("cancel-clear-unpinned-button")
+        } message: {
+            Text(clearUnpinnedConfirmationMessage)
+                .accessibilityIdentifier("clear-unpinned-confirmation-message")
+        }
+        // T009: clear all confirmation. Uses stronger destructive wording, explicitly
+        // mentions pinned items and irreversibility. Confirm only calls T008 service.
+        .confirmationDialog(
+            "Clear All History",
+            isPresented: $isPresentingClearAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Delete All \(allCount) Items", role: .destructive) {
+                confirmClearAllHistory()
+            }
+            .accessibilityIdentifier("confirm-clear-all-button")
+            Button("Cancel", role: .cancel) { }
+            .accessibilityIdentifier("cancel-clear-all-button")
+        } message: {
+            Text(clearAllConfirmationMessage)
+                .accessibilityIdentifier("clear-all-confirmation-message")
+        }
 #if DEBUG
         .onAppear {
             traceVisibleClipSnapshot(reason: "home.appear")
@@ -288,6 +355,52 @@ struct HomeView: View {
     /// button so there is a non-keyboard, accessibility-identifiable clear entry.
     private func clearSearchText() {
         searchText = ""
+    }
+
+    // MARK: - Clear history (T007/T009)
+
+    private var clearService: ClipHistoryClearService {
+        ClipHistoryClearService(modelContext: modelContext)
+    }
+
+    private var unpinnedCount: Int { clips.filter { $0.isPinned == false }.count }
+    private var pinnedCount: Int { clips.filter { $0.isPinned }.count }
+    private var allCount: Int { clips.count }
+
+    private var clearUnpinnedConfirmationMessage: String {
+        "This will permanently delete \(unpinnedCount) unpinned item\(unpinnedCount == 1 ? "" : "s"). "
+            + "\(pinnedCount) pinned item\(pinnedCount == 1 ? "" : "s") will be preserved. "
+            + "This action cannot be undone."
+    }
+
+    private var clearAllConfirmationMessage: String {
+        "This will permanently delete all \(allCount) item\(allCount == 1 ? "" : "s"), "
+            + "including \(pinnedCount) pinned item\(pinnedCount == 1 ? "" : "s"). "
+            + "This action cannot be undone."
+    }
+
+    /// T007: request the clear-unpinned confirmation. No destructive work happens
+    /// here — the confirmation dialog performs the clear only after confirmation.
+    private func requestClearUnpinnedHistory() {
+        guard unpinnedCount > 0 else { return }
+        isPresentingClearUnpinnedConfirmation = true
+    }
+
+    /// T009: request the clear-all confirmation. Allowed even when history is empty
+    /// so the entry is consistent, but the dialog makes the count explicit.
+    private func requestClearAllHistory() {
+        guard allCount > 0 else { return }
+        isPresentingClearAllConfirmation = true
+    }
+
+    /// T007: confirm clears unpinned history via the T006 service only.
+    private func confirmClearUnpinnedHistory() {
+        _ = try? clearService.clearUnpinnedHistory()
+    }
+
+    /// T009: confirm clears all history via the T008 service only.
+    private func confirmClearAllHistory() {
+        _ = try? clearService.clearAllHistory()
     }
 
     private var historyContent: some View {
