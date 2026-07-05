@@ -52,8 +52,8 @@
 - [x] T012：抽象化現有全域熱鍵註冊器
 - [x] T013：建立 Global Shortcut 型別與驗證
 - [x] T014：加入全域快捷鍵 Recorder UI
-- [x] T015：實作 Transactional Global Shortcut 更新
-- [x] T016：建立 History Limit typed preference
+- [ ] T015：實作 Transactional Global Shortcut 更新
+- [ ] T016：建立 History Limit typed preference
 - [x] T017：加入 History Limit 設定 UI
 - [x] T018：建立 History Retention Service
 - [x] T019：新剪貼簿寫入後執行 Retention
@@ -500,7 +500,11 @@
 
 ---
 
-## [x] T015：實作 Transactional Global Shortcut 更新
+## [ ] T015：實作 Transactional Global Shortcut 更新
+
+- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Summary: `docs/implementation/task-summaries/T015.md`
+- Reconstruction note: committed code includes the transactional service and tests, but production code does not retain an app-level registrar owner or call `restoreAtLaunch`, so active global-hotkey lifecycle is not yet evidenced end-to-end.
 
 ### 更新流程
 
@@ -538,7 +542,11 @@
 
 # Phase 4：歷史上限
 
-## [x] T016：建立 History Limit Typed Preference
+## [ ] T016：建立 History Limit Typed Preference
+
+- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Summary: `docs/implementation/task-summaries/T016.md`
+- Reconstruction note: committed code includes the typed preference and migration tests, but `NextPasteApp` currently initializes `HistoryLimitPreference()` without new-install detection, so fresh-install default behavior is not yet evidenced as `500` in production.
 
 ### 實作
 
