@@ -64,8 +64,32 @@ final class HistoryLimitPreference: ObservableObject {
     }
 
     func persist(_ limit: HistoryLimit) {
-        self.limit = limit
-        Self.save(limit, to: defaults)
+        let persistedLimit = Self.sanitized(limit) ?? .unlimited
+        self.limit = persistedLimit
+        Self.save(persistedLimit, to: defaults)
+    }
+
+    static func shouldTreatAsNewInstall(
+        defaults: UserDefaults,
+        appDomainName: String? = Bundle.main.bundleIdentifier,
+        hasExistingInstallationEvidence: Bool
+    ) -> Bool {
+        if defaults.object(forKey: storageKey) != nil || defaults.object(forKey: migrationMarkerKey) != nil {
+            return false
+        }
+
+        if hasExistingInstallationEvidence {
+            return false
+        }
+
+        guard let appDomainName else {
+            return true
+        }
+
+        let appDomain = defaults.persistentDomain(forName: appDomainName) ?? [:]
+        return appDomain.keys.allSatisfy { key in
+            key == storageKey || key == migrationMarkerKey
+        }
     }
 
     // MARK: Migration
@@ -75,17 +99,18 @@ final class HistoryLimitPreference: ObservableObject {
     /// - Existing install upgrade → Unlimited.
     /// Uses a migration marker so the default is only applied once.
     private static func loadOrCreate(from defaults: UserDefaults, isNewInstall: Bool) -> HistoryLimit {
-        // If already migrated or has a stored value, load it.
-        if let data = defaults.data(forKey: storageKey),
-           let limit = try? JSONDecoder().decode(HistoryLimit.self, from: data) {
-            return limit
+        if let data = defaults.data(forKey: storageKey) {
+            if let limit = try? JSONDecoder().decode(HistoryLimit.self, from: data),
+               let sanitizedLimit = sanitized(limit) {
+                return sanitizedLimit
+            }
+
+            return repairMissingOrInvalidPersistedValue(in: defaults)
         }
 
         // No stored value. Apply migration default.
-        let migrated = defaults.bool(forKey: migrationMarkerKey)
-        if migrated {
-            // Marker set but no data — treat as unlimited (safe fallback).
-            return .unlimited
+        if defaults.object(forKey: migrationMarkerKey) != nil {
+            return repairMissingOrInvalidPersistedValue(in: defaults)
         }
 
         // First launch: set marker and apply default.
@@ -93,6 +118,26 @@ final class HistoryLimitPreference: ObservableObject {
         let defaultLimit = isNewInstall ? newInstallDefault : .unlimited
         save(defaultLimit, to: defaults)
         return defaultLimit
+    }
+
+    private static func repairMissingOrInvalidPersistedValue(in defaults: UserDefaults) -> HistoryLimit {
+        let fallback: HistoryLimit = .unlimited
+        defaults.set(true, forKey: migrationMarkerKey)
+        save(fallback, to: defaults)
+        return fallback
+    }
+
+    private static func sanitized(_ limit: HistoryLimit) -> HistoryLimit? {
+        switch limit {
+        case .unlimited:
+            return .unlimited
+        case .preset(let value) where HistoryLimit.presets.contains(value):
+            return .preset(value)
+        case .custom(let value) where HistoryLimitValidator.validateCustom(value):
+            return .custom(value)
+        default:
+            return nil
+        }
     }
 
     private static func save(_ limit: HistoryLimit, to defaults: UserDefaults) {

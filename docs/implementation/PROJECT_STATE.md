@@ -19,11 +19,11 @@
 
 ## Current Phase
 
-- Phase: `Phase 8 prep — Phase 3 verification is complete; T016 still needs verification-grade follow-up before final regression.`
+- Phase: `Phase 4 targeted verification prep — T016 is implemented and now awaits precise verification before final regression.`
 
 ## Next Task
 
-- Task: `T016`
+- Task: `Run minimal Phase 4 verifier for T016 launch-default, existing-install, and retention integration behavior`
 
 ## Active Architecture Decisions
 
@@ -49,7 +49,7 @@
 
 ## Open Risks
 
-- `T016`: `NextPasteApp` initializes `HistoryLimitPreference()` without new-install detection, so fresh installs likely default to `Unlimited` instead of the required `500`.
+- `T016`: targeted unit coverage now passes, but Phase 4 still needs app-level verification for fresh install, existing install, and retention integration behavior.
 - `T030` and `T031` remain open; no final regression pass or manual accessibility checklist evidence is stored in the repository.
 
 ## Reconstruction Evidence

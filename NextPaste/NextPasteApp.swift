@@ -32,7 +32,14 @@ struct NextPasteApp: App {
             arguments: ProcessInfo.processInfo.arguments,
             container: sharedModelContainer
         )
-        let limitPref = HistoryLimitPreference()
+        let defaults = UserDefaults.standard
+        let limitPref = HistoryLimitPreference(
+            defaults: defaults,
+            isNewInstall: Self.resolveHistoryLimitNewInstallState(
+                defaults: defaults,
+                hasPersistedHistory: Self.hasPersistedHistory(in: sharedModelContainer)
+            )
+        )
         let appearancePref = AppearancePreference()
 #if os(macOS)
         let globalShortcutPref = GlobalShortcutPreference()
@@ -63,6 +70,29 @@ struct NextPasteApp: App {
             return try ModelContainer(for: schema, configurations: [modelConfiguration])
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
+        }
+    }
+
+    static func resolveHistoryLimitNewInstallState(
+        defaults: UserDefaults = .standard,
+        hasPersistedHistory: Bool,
+        appDomainName: String? = Bundle.main.bundleIdentifier
+    ) -> Bool {
+        HistoryLimitPreference.shouldTreatAsNewInstall(
+            defaults: defaults,
+            appDomainName: appDomainName,
+            hasExistingInstallationEvidence: hasPersistedHistory
+        )
+    }
+
+    static func hasPersistedHistory(in container: ModelContainer) -> Bool {
+        var descriptor = FetchDescriptor<ClipItem>()
+        descriptor.fetchLimit = 1
+
+        do {
+            return try container.mainContext.fetch(descriptor).isEmpty == false
+        } catch {
+            return false
         }
     }
 

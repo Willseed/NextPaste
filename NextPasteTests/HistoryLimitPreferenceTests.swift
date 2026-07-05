@@ -96,6 +96,15 @@ struct HistoryLimitPreferenceTests {
         #expect(pref.limit == .unlimited)
     }
 
+    @Test func existingPersistedValueWinsOverNewInstallDefault() {
+        let defaults = makeDefaults()
+        let original = HistoryLimitPreference(defaults: defaults, isNewInstall: false)
+        original.persist(.preset(1000))
+
+        let reloaded = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
+        #expect(reloaded.limit == .preset(1000))
+    }
+
     @Test func persistedLimitSurvivesNewInstance() {
         let suite = "nextpaste-limit-restart-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
@@ -126,6 +135,77 @@ struct HistoryLimitPreferenceTests {
         let pref2 = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
         #expect(pref2.limit == .unlimited)
 
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    @Test func invalidPersistedDataFallsBackToUnlimited() {
+        let defaults = makeDefaults()
+        defaults.set(Data("not-json".utf8), forKey: HistoryLimitPreference.storageKey)
+
+        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
+
+        #expect(pref.limit == .unlimited)
+        #expect(defaults.bool(forKey: HistoryLimitPreference.migrationMarkerKey))
+
+        let repaired = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
+        #expect(repaired.limit == .unlimited)
+    }
+
+    @Test func invalidTypedPersistedValueFallsBackToUnlimited() throws {
+        let defaults = makeDefaults()
+        defaults.set(
+            try JSONEncoder().encode(HistoryLimit.custom(5)),
+            forKey: HistoryLimitPreference.storageKey
+        )
+
+        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
+
+        #expect(pref.limit == .unlimited)
+    }
+
+    @Test func newInstallDetectionReturnsTrueOnlyForEmptyState() {
+        let suite = "nextpaste-limit-detection-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+
+        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
+            defaults: defaults,
+            hasPersistedHistory: false,
+            appDomainName: suite
+        )
+
+        #expect(isNewInstall)
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    @Test func newInstallDetectionTreatsPersistedHistoryAsExistingInstall() {
+        let suite = "nextpaste-limit-history-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+
+        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
+            defaults: defaults,
+            hasPersistedHistory: true,
+            appDomainName: suite
+        )
+
+        #expect(isNewInstall == false)
+        defaults.removePersistentDomain(forName: suite)
+    }
+
+    @Test func newInstallDetectionTreatsExistingDefaultsAsUpgrade() {
+        let suite = "nextpaste-limit-domain-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defaults.set("legacy", forKey: "nextpaste.someExistingPreference")
+
+        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
+            defaults: defaults,
+            hasPersistedHistory: false,
+            appDomainName: suite
+        )
+
+        #expect(isNewInstall == false)
         defaults.removePersistentDomain(forName: suite)
     }
 }

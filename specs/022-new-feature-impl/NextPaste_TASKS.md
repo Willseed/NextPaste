@@ -546,7 +546,6 @@
 
 - Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
 - Summary: `docs/implementation/task-summaries/T016.md`
-- Reconstruction note: committed code includes the typed preference and migration tests, but `NextPasteApp` currently initializes `HistoryLimitPreference()` without new-install detection, so fresh-install default behavior is not yet evidenced as `500` in production.
 
 ### 實作
 
