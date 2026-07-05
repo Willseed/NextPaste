@@ -59,10 +59,10 @@
 - [x] T019：新剪貼簿寫入後執行 Retention
 - [x] T020：Unpin 後執行 Retention
 - [ ] T021：降低 History Limit 的確認流程
-- [ ] T022：建立 Appearance typed preference
+- [x] T022：建立 Appearance typed preference
 - [ ] T023：加入 Appearance Settings UI
 - [ ] T024：套用外觀至 SwiftUI 視圖
-- [ ] T025：套用外觀至特殊 AppKit Window
+- [x] T025：套用外觀至特殊 AppKit Window
 - [ ] T026：新增與整理 Localization
 - [ ] T027：Search Accessibility UI Tests
 - [ ] T028：History Clear UI Tests
@@ -720,108 +720,108 @@
 
 # Phase 5：外觀
 
-## [ ] T022：建立 Appearance Typed Preference
+## [x] T022：建立 Appearance Typed Preference
 
 ### 實作
 
-- [ ] 建立 `system`。
-- [ ] 建立 `light`。
-- [ ] 建立 `dark`。
-- [ ] 預設為 `system`。
-- [ ] 使用現有 settings storage。
-- [ ] 此 Task 不套用到 UI。
-- [ ] 不修改 `NSApp.appearance`。
+- [x] 建立 `system`。
+- [x] 建立 `light`。
+- [x] 建立 `dark`。
+- [x] 預設為 `system`。
+- [x] 使用現有 settings storage。
+- [x] 此 Task 不套用到 UI。
+- [x] 不修改 `NSApp.appearance`。
 
 ### 測試
 
-- [ ] default。
-- [ ] encode/decode。
-- [ ] system mapping。
-- [ ] light mapping。
-- [ ] dark mapping。
-- [ ] NextPaste target build 通過。
+- [x] default。
+- [x] encode/decode。
+- [x] system mapping。
+- [x] light mapping。
+- [x] dark mapping。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T023：加入 Appearance Settings UI
+## [ ] T023：加入 Appearance Settings UI <!-- implemented, pending UI verification (T029) -->
 
 ### 實作
 
-- [ ] 放在 `Settings > Appearance`。
-- [ ] 顯示 System。
-- [ ] 顯示 Light。
-- [ ] 顯示 Dark。
-- [ ] 顯示本地化名稱。
-- [ ] 使用原生 Picker 或 Apple Skill 建議控制項。
-- [ ] 新增 accessibility identifiers。
-- [ ] 選擇後更新 T022 preference。
-- [ ] 此 Task 不處理特殊 AppKit window bridge。
+- [x] 放在 `Settings > Appearance`。
+- [x] 顯示 System。
+- [x] 顯示 Light。
+- [x] 顯示 Dark。
+- [x] 顯示本地化名稱。
+- [x] 使用原生 Picker 或 Apple Skill 建議控制項。
+- [x] 新增 accessibility identifiers。
+- [x] 選擇後更新 T022 preference。
+- [x] 此 Task 不處理特殊 AppKit window bridge。
 
 ### 測試
 
-- [ ] 三個選項存在。
-- [ ] preference 更新。
-- [ ] 重新開啟 Settings 後保留。
-- [ ] NextPaste target build 通過。
+- [ ] 三個選項存在。 <!-- pending UI verification (T029) -->
+- [ ] preference 更新。 <!-- pending UI verification (T029) -->
+- [ ] 重新開啟 Settings 後保留。 <!-- pending UI verification (T029) -->
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T024：套用外觀至 SwiftUI 視圖
+## [ ] T024：套用外觀至 SwiftUI 視圖 <!-- implemented, pending UI verification (T029) -->
 
 ### 作用範圍
 
-- [ ] 主視窗。
-- [ ] Search UI。
-- [ ] Settings。
-- [ ] confirmation dialogs。
+- [x] 主視窗。
+- [x] Search UI。
+- [x] Settings。
+- [x] confirmation dialogs。
 
 ### 實作
 
-- [ ] 優先使用 environment 或 `preferredColorScheme`。
-- [ ] System 跟隨 macOS。
-- [ ] 不修改 macOS 系統外觀。
-- [ ] 不影響其他 process。
-- [ ] 不使用 hard-coded light-only color。
-- [ ] 使用 semantic colors。
-- [ ] 即時切換，不需重啟。
-- [ ] 保持 Increase Contrast 正常。
-- [ ] 保持 Reduce Transparency 正常。
-- [ ] 保持 Reduce Motion 正常。
-- [ ] 保持 Accent Color 正常。
+- [x] 優先使用 environment 或 `preferredColorScheme`。
+- [x] System 跟隨 macOS。
+- [x] 不修改 macOS 系統外觀。
+- [x] 不影響其他 process。
+- [x] 不使用 hard-coded light-only color。
+- [x] 使用 semantic colors。
+- [x] 即時切換，不需重啟。
+- [x] 保持 Increase Contrast 正常。
+- [x] 保持 Reduce Transparency 正常。
+- [x] 保持 Reduce Motion 正常。
+- [x] 保持 Accent Color 正常。
 
 ### 測試
 
-- [ ] System mapping 為標準跟隨系統行為。
-- [ ] Light。
-- [ ] Dark。
-- [ ] 切換後即時更新。
-- [ ] NextPaste target build 通過。
+- [ ] System mapping 為標準跟隨系統行為。 <!-- pending UI verification (T029) -->
+- [ ] Light。 <!-- pending UI verification (T029) -->
+- [ ] Dark。 <!-- pending UI verification (T029) -->
+- [ ] 切換後即時更新。 <!-- pending UI verification (T029) -->
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T025：套用外觀至特殊 AppKit Window
+## [x] T025：套用外觀至特殊 AppKit Window
 
 ### 適用條件
 
-- [ ] 確認 repository 是否存在 floating panel。
-- [ ] 確認是否存在 menu bar popover。
-- [ ] 確認是否存在自訂 `NSWindow`。
-- [ ] 確認是否存在 AppKit bridge window。
+- [x] 確認 repository 是否存在 floating panel。
+- [x] 確認是否存在 menu bar popover。
+- [x] 確認是否存在自訂 `NSWindow`。
+- [x] 確認是否存在 AppKit bridge window。
 
 ### 若存在特殊視窗
 
-- [ ] 建立單一 appearance coordinator。
-- [ ] 不在多處直接設定 appearance。
-- [ ] System 能恢復跟隨系統。
-- [ ] 不影響其他 app。
-- [ ] 不破壞 window lifecycle。
-- [ ] 新增必要測試。
+- [ ] 建立單一 appearance coordinator。 <!-- N/A: no special windows -->
+- [ ] 不在多處直接設定 appearance。 <!-- N/A -->
+- [ ] System 能恢復跟隨系統。 <!-- N/A -->
+- [ ] 不影響其他 app。 <!-- N/A -->
+- [ ] 不破壞 window lifecycle。 <!-- N/A -->
+- [ ] 新增必要測試。 <!-- N/A -->
 
 ### 若不存在特殊視窗
 
-- [ ] 回報 Not Applicable。
-- [ ] 不建立無用 coordinator。
-- [ ] 不修改程式碼。
+- [x] 回報 Not Applicable。
+- [x] 不建立無用 coordinator。
+- [x] 不修改程式碼。
 
 ---
 

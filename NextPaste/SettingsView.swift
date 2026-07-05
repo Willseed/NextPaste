@@ -260,13 +260,25 @@ private struct ShortcutsSettingsTab: View {
     #endif
 }
 
-// MARK: - Appearance (T010 placeholder; T022-T025 populate)
+// MARK: - Appearance (T023: appearance picker)
 
 private struct AppearanceSettingsTab: View {
+    @EnvironmentObject private var appearancePreference: AppearancePreference
+
     var body: some View {
         Form {
-            Text("Appearance settings")
-                .accessibilityIdentifier("settings-appearance-placeholder")
+            Section("Appearance") {
+                Picker("Appearance", selection: Binding(
+                    get: { appearancePreference.mode },
+                    set: { appearancePreference.persist($0) }
+                )) {
+                    ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                }
+                .accessibilityIdentifier("appearance-picker")
+                .accessibilityLabel("Appearance")
+            }
         }
         .padding()
     }
