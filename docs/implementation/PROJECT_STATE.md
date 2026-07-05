@@ -6,25 +6,24 @@
 
 ## Last Verified Commit
 
-- Commit: `fad3479 feat(tests): 新增歷史清除、搜尋可及性及設定場景的 UI 測試`
+- Commit: `d06175f feat: 新增全局快捷鍵生命週期控制器以管理快捷鍵註冊和恢復`
 
 ## Completed Tasks
 
-- `T000-T014`
+- `T000-T015`
 - `T017-T029`
 
 ## Implemented but Unverified Tasks
 
-- `T015`
 - `T016`
 
 ## Current Phase
 
-- Phase: `Phase 8 prep — feature code is largely landed, but T015/T016 still need verification-grade follow-up before final regression.`
+- Phase: `Phase 8 prep — Phase 3 verification is complete; T016 still needs verification-grade follow-up before final regression.`
 
 ## Next Task
 
-- Task: `T015`
+- Task: `T016`
 
 ## Active Architecture Decisions
 
@@ -46,13 +45,10 @@
 
 ## Existing Uncommitted Changes
 
-- State reconstruction docs under `docs/implementation/`.
-- Task summaries under `docs/implementation/task-summaries/`.
-- `specs/022-new-feature-impl/NextPaste_TASKS.md` corrected to mark `T015` and `T016` as `IMPLEMENTED_PENDING_PHASE_VERIFICATION`.
+- None at Phase 3 verification start; the worktree was clean before status synchronization.
 
 ## Open Risks
 
-- `T015`: targeted macOS unit validation passed for the retained owner and `restoreAtLaunch` wiring, but broader phase verification evidence is still pending.
 - `T016`: `NextPasteApp` initializes `HistoryLimitPreference()` without new-install detection, so fresh installs likely default to `Unlimited` instead of the required `500`.
 - `T030` and `T031` remain open; no final regression pass or manual accessibility checklist evidence is stored in the repository.
 
@@ -63,4 +59,5 @@
 - Git diff
 - Source files
 - Test files
+- `docs/implementation/phase-reports/phase-3.md`
 - `docs/implementation/phase-00-inspection-and-baseline.md`

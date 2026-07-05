@@ -52,7 +52,7 @@
 - [x] T012：抽象化現有全域熱鍵註冊器
 - [x] T013：建立 Global Shortcut 型別與驗證
 - [x] T014：加入全域快捷鍵 Recorder UI
-- [ ] T015：實作 Transactional Global Shortcut 更新
+- [x] T015：實作 Transactional Global Shortcut 更新
 - [ ] T016：建立 History Limit typed preference
 - [x] T017：加入 History Limit 設定 UI
 - [x] T018：建立 History Retention Service
@@ -500,11 +500,11 @@
 
 ---
 
-## [ ] T015：實作 Transactional Global Shortcut 更新
+## [x] T015：實作 Transactional Global Shortcut 更新
 
-- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Status: COMPLETE
 - Summary: `docs/implementation/task-summaries/T015.md`
-- Reconstruction note: app-level hotkey ownership now lives in `NextPasteApp` via a retained `GlobalShortcutLifecycleController`; launch-time restore is wired from the app lifecycle host, and targeted macOS unit validation passed. Broader phase verification is still pending before this task can be checked off.
+- Reconstruction note: Phase 3 verification confirmed the retained app-level `GlobalShortcutLifecycleController`, launch-time restore wiring, termination cleanup, shared Settings ownership, and targeted macOS unit validation.
 
 ### 更新流程
 
