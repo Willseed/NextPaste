@@ -49,10 +49,10 @@
 - [x] T009：加入清除全部確認 UI
 - [x] T010：確認並標準化 Settings Scene
 - [x] T011：加入 Command-comma
-- [ ] T012：抽象化現有全域熱鍵註冊器
-- [ ] T013：建立 Global Shortcut 型別與驗證
+- [x] T012：抽象化現有全域熱鍵註冊器
+- [x] T013：建立 Global Shortcut 型別與驗證
 - [ ] T014：加入全域快捷鍵 Recorder UI
-- [ ] T015：實作 Transactional Global Shortcut 更新
+- [x] T015：實作 Transactional Global Shortcut 更新
 - [ ] T016：建立 History Limit typed preference
 - [ ] T017：加入 History Limit 設定 UI
 - [ ] T018：建立 History Retention Service
@@ -407,132 +407,132 @@
 
 ---
 
-## [ ] T012：抽象化現有全域熱鍵註冊器
+## [x] T012：抽象化現有全域熱鍵註冊器
 
 ### 實作
 
-- [ ] 沿用現有原生實作。
-- [ ] 不新增第三方 package。
-- [ ] 不改變目前預設 global shortcut。
-- [ ] 建立 `GlobalHotKeyRegistering` 或符合現有命名的 protocol。
-- [ ] production implementation 包裝現有實作。
-- [ ] 提供 fake registrar。
-- [ ] 支援 register。
-- [ ] 支援 unregister。
-- [ ] 支援 registration failure。
-- [ ] 支援 current registration lifecycle。
-- [ ] 不加入 recorder UI。
-- [ ] 不改變使用者設定。
+- [x] 沿用現有原生實作。
+- [x] 不新增第三方 package。
+- [x] 不改變目前預設 global shortcut。
+- [x] 建立 `GlobalHotKeyRegistering` 或符合現有命名的 protocol。
+- [x] production implementation 包裝現有實作。
+- [x] 提供 fake registrar。
+- [x] 支援 register。
+- [x] 支援 unregister。
+- [x] 支援 registration failure。
+- [x] 支援 current registration lifecycle。
+- [x] 不加入 recorder UI。
+- [x] 不改變使用者設定。
 
 ### 測試
 
-- [ ] register。
-- [ ] unregister。
-- [ ] registration failure。
-- [ ] 不重複註冊。
-- [ ] lifecycle cleanup。
-- [ ] NextPaste target build 通過。
+- [x] register。
+- [x] unregister。
+- [x] registration failure。
+- [x] 不重複註冊。
+- [x] lifecycle cleanup。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T013：建立 Global Shortcut 型別與驗證
+## [x] T013：建立 Global Shortcut 型別與驗證
 
 ### 實作
 
-- [ ] 建立可儲存 key 與 modifiers 的型別。
-- [ ] 支援序列化至現有 settings storage。
-- [ ] 至少包含一個 modifier。
-- [ ] 禁止單一字母。
-- [ ] 禁止單一數字。
-- [ ] 禁止單一 Space。
-- [ ] 禁止單一 Return。
-- [ ] 禁止單一 Delete。
-- [ ] 禁止純 Option。
-- [ ] 禁止 `Command-F`。
-- [ ] 禁止 `Command-,`。
-- [ ] 禁止與 NextPaste menu commands 衝突。
-- [ ] 提供可本地化 validation error。
-- [ ] 不加入 recorder UI。
-- [ ] 不改變目前 hotkey。
+- [x] 建立可儲存 key 與 modifiers 的型別。
+- [x] 支援序列化至現有 settings storage。
+- [x] 至少包含一個 modifier。
+- [x] 禁止單一字母。
+- [x] 禁止單一數字。
+- [x] 禁止單一 Space。
+- [x] 禁止單一 Return。
+- [x] 禁止單一 Delete。
+- [x] 禁止純 Option。
+- [x] 禁止 `Command-F`。
+- [x] 禁止 `Command-,`。
+- [x] 禁止與 NextPaste menu commands 衝突。
+- [x] 提供可本地化 validation error。
+- [x] 不加入 recorder UI。
+- [x] 不改變目前 hotkey。
 
 ### 測試
 
-- [ ] 合法 shortcut。
-- [ ] 無 modifier。
-- [ ] 純 Option。
-- [ ] `Command-F`。
-- [ ] `Command-,`。
-- [ ] menu conflict。
-- [ ] encode/decode。
-- [ ] NextPaste target build 通過。
+- [x] 合法 shortcut。
+- [x] 無 modifier。
+- [x] 純 Option。
+- [x] `Command-F`。
+- [x] `Command-,`。
+- [x] menu conflict。
+- [x] encode/decode。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T014：加入全域快捷鍵 Recorder UI
+## [ ] T014：加入全域快捷鍵 Recorder UI <!-- implemented, pending UI verification (T029) -->
 
 ### 實作
 
-- [ ] 放在 `Settings > Shortcuts`。
-- [ ] 顯示目前 global shortcut。
-- [ ] 可以錄製候選 shortcut。
-- [ ] 使用 T013 validation。
-- [ ] 提供 Record。
-- [ ] 提供 Clear。
-- [ ] 提供 Reset to Default。
-- [ ] Reset 使用 repository 現有 default。
-- [ ] 不自行發明新 default。
-- [ ] 新增 accessibility label。
-- [ ] 新增 accessibility hint。
-- [ ] VoiceOver 可讀取目前值。
-- [ ] VoiceOver 可讀取 validation error。
-- [ ] 此 Task 不改變實際註冊 shortcut。
-- [ ] recorder 只產生 candidate value。
+- [x] 放在 `Settings > Shortcuts`。
+- [x] 顯示目前 global shortcut。
+- [x] 可以錄製候選 shortcut。
+- [x] 使用 T013 validation。
+- [x] 提供 Record。
+- [x] 提供 Clear。
+- [x] 提供 Reset to Default。
+- [x] Reset 使用 repository 現有 default。
+- [x] 不自行發明新 default。
+- [x] 新增 accessibility label。
+- [x] 新增 accessibility hint。
+- [x] VoiceOver 可讀取目前值。
+- [x] VoiceOver 可讀取 validation error。
+- [x] 此 Task 不改變實際註冊 shortcut。
+- [x] recorder 只產生 candidate value。
 
 ### 測試
 
-- [ ] Recorder 顯示現有值。
-- [ ] 合法輸入。
-- [ ] 非法輸入顯示錯誤。
-- [ ] Clear 按鈕存在。
-- [ ] Reset 按鈕存在。
-- [ ] accessibility identifiers 存在。
-- [ ] NextPaste target build 通過。
+- [ ] Recorder 顯示現有值。 <!-- pending UI verification (T029) -->
+- [ ] 合法輸入。 <!-- pending UI verification (T029) -->
+- [ ] 非法輸入顯示錯誤。 <!-- pending UI verification (T029) -->
+- [ ] Clear 按鈕存在。 <!-- pending UI verification (T029) -->
+- [ ] Reset 按鈕存在。 <!-- pending UI verification (T029) -->
+- [ ] accessibility identifiers 存在。 <!-- pending UI verification (T029) -->
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T015：實作 Transactional Global Shortcut 更新
+## [x] T015：實作 Transactional Global Shortcut 更新
 
 ### 更新流程
 
-- [ ] 驗證 candidate。
-- [ ] 嘗試註冊新 shortcut。
-- [ ] 新 shortcut 註冊成功後才持久化。
-- [ ] 持久化成功後解除舊 shortcut。
-- [ ] 註冊失敗時保留舊 shortcut。
-- [ ] 註冊失敗時不覆寫儲存設定。
-- [ ] 註冊失敗時顯示 inline error。
-- [ ] 註冊失敗後舊 shortcut 繼續運作。
+- [x] 驗證 candidate。
+- [x] 嘗試註冊新 shortcut。
+- [x] 新 shortcut 註冊成功後才持久化。
+- [x] 持久化成功後解除舊 shortcut。
+- [x] 註冊失敗時保留舊 shortcut。
+- [x] 註冊失敗時不覆寫儲存設定。
+- [x] 註冊失敗時顯示 inline error。
+- [x] 註冊失敗後舊 shortcut 繼續運作。
 
 ### Clear
 
-- [ ] 解除目前 global shortcut。
-- [ ] 儲存 disabled 狀態。
-- [ ] menu、Dock 或現有 UI 仍可打開 NextPaste。
+- [x] 解除目前 global shortcut。
+- [x] 儲存 disabled 狀態。
+- [x] menu、Dock 或現有 UI 仍可打開 NextPaste。
 
 ### Reset
 
-- [ ] transactionally 還原 repository 現有 default。
+- [x] transactionally 還原 repository 現有 default。
 
 ### 測試
 
-- [ ] 成功更新。
-- [ ] 衝突時保留舊 shortcut。
-- [ ] persistence failure 一致性。
-- [ ] clear。
-- [ ] reset。
-- [ ] app restart restore。
-- [ ] unregister lifecycle。
-- [ ] NextPaste target build 通過。
+- [x] 成功更新。
+- [x] 衝突時保留舊 shortcut。
+- [x] persistence failure 一致性。
+- [x] clear。
+- [x] reset。
+- [x] app restart restore。
+- [x] unregister lifecycle。
+- [x] NextPaste target build 通過。
 
 ---
 
