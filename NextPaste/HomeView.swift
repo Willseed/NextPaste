@@ -187,7 +187,9 @@ struct HomeView: View {
                 confirmClearUnpinnedHistory()
             }
             .accessibilityIdentifier("confirm-clear-unpinned-button")
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {
+                cancelClearUnpinnedHistory()
+            }
             .accessibilityIdentifier("cancel-clear-unpinned-button")
         } message: {
             Text(clearUnpinnedConfirmationMessage)
@@ -204,7 +206,9 @@ struct HomeView: View {
                 confirmClearAllHistory()
             }
             .accessibilityIdentifier("confirm-clear-all-button")
-            Button("Cancel", role: .cancel) { }
+            Button("Cancel", role: .cancel) {
+                cancelClearAllHistory()
+            }
             .accessibilityIdentifier("cancel-clear-all-button")
         } message: {
             Text(clearAllConfirmationMessage)
@@ -444,9 +448,19 @@ struct HomeView: View {
         _ = try? clearService.clearUnpinnedHistory()
     }
 
+    /// T007: explicit cancel keeps the dialog binding in sync without side effects.
+    private func cancelClearUnpinnedHistory() {
+        isPresentingClearUnpinnedConfirmation = false
+    }
+
     /// T009: confirm clears all history via the T008 service only.
     private func confirmClearAllHistory() {
         _ = try? clearService.clearAllHistory()
+    }
+
+    /// T009: explicit cancel keeps the dialog binding in sync without side effects.
+    private func cancelClearAllHistory() {
+        isPresentingClearAllConfirmation = false
     }
 
     private var historyContent: some View {

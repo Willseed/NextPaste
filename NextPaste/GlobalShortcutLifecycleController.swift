@@ -14,6 +14,10 @@ import Foundation
 import AppKit
 #endif
 
+private nonisolated func noOpGlobalShortcutActivationHandler() {
+    // Intentionally empty: tests and previews can exercise lifecycle wiring without activating the app.
+}
+
 @MainActor
 final class GlobalShortcutLifecycleController: ObservableObject {
     let preference: GlobalShortcutPreference
@@ -26,7 +30,7 @@ final class GlobalShortcutLifecycleController: ObservableObject {
     init(
         preference: GlobalShortcutPreference,
         registrar: GlobalHotKeyRegistering,
-        activationHandler: @escaping () -> Void = {}
+        activationHandler: @escaping () -> Void = noOpGlobalShortcutActivationHandler
     ) {
         self.preference = preference
         self.registrar = registrar

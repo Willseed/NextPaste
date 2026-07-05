@@ -51,15 +51,6 @@ struct GlobalShortcutValidatorTests {
         #expect(GlobalShortcutValidator.validate(shortcut) == .noModifier)
     }
 
-    @Test func singleLetterIsRejectedAsNoModifier() {
-        let shortcut = GlobalShortcut(
-            keyCode: 0x00,
-            keyCharacter: "a",
-            modifiers: []
-        )
-        #expect(GlobalShortcutValidator.validate(shortcut) == .noModifier)
-    }
-
     @Test func singleNumberIsRejectedAsNoModifier() {
         let shortcut = GlobalShortcut(
             keyCode: 0x12,

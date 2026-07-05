@@ -54,8 +54,6 @@ final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
     /// this file can access it. Cleared on unregister.
     fileprivate static var callbackTarget: CarbonGlobalHotKeyRegistrar?
 
-    init() {}
-
     deinit {
         if let ref = hotKeyRef {
             UnregisterEventHotKey(ref)
@@ -165,8 +163,6 @@ final class FakeGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
     /// When `true`, the next `register` call returns `false` to simulate a
     /// registration failure (e.g. conflict with another app).
     var shouldFailRegistration = false
-
-    init() {}
 
     @discardableResult
     func register(shortcut: GlobalShortcut, handler: @escaping () -> Void) -> Bool {

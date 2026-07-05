@@ -28,8 +28,8 @@ struct HistoryRobot {
     @discardableResult
     func typeIntoFocusedElement(
         _ text: String,
-        file: StaticString = #filePath,
-        line: UInt = #line
+        file _: StaticString = #filePath,
+        line _: UInt = #line
     ) -> Self {
         app.typeText(text)
         return self

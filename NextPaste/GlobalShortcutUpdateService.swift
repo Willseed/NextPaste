@@ -12,6 +12,10 @@
 
 import Foundation
 
+private nonisolated func noOpGlobalShortcutUpdateHandler() {
+    // Intentionally empty: some callers only need registration state changes, not an activation side effect.
+}
+
 /// T015: result of a transactional shortcut update.
 enum GlobalShortcutUpdateResult: Equatable {
     case success(GlobalShortcut?)
@@ -37,7 +41,7 @@ final class GlobalShortcutUpdateService {
     @discardableResult
     func update(
         to candidate: GlobalShortcut,
-        handler: @escaping () -> Void = {}
+        handler: @escaping () -> Void = noOpGlobalShortcutUpdateHandler
     ) -> GlobalShortcutUpdateResult {
         if let error = GlobalShortcutValidator.validate(candidate) {
             return .validationFailed(error)
@@ -69,7 +73,7 @@ final class GlobalShortcutUpdateService {
 
     /// Reset to the repository default, transactionally.
     @discardableResult
-    func reset(handler: @escaping () -> Void = {}) -> GlobalShortcutUpdateResult {
+    func reset(handler: @escaping () -> Void = noOpGlobalShortcutUpdateHandler) -> GlobalShortcutUpdateResult {
         let defaultShortcut = GlobalShortcutPreference.defaultShortcut
         return update(to: defaultShortcut, handler: handler)
     }
@@ -86,9 +90,8 @@ final class GlobalShortcutUpdateService {
             return true
         }
 
-        if let error = GlobalShortcutValidator.validate(stored) {
+        if GlobalShortcutValidator.validate(stored) != nil {
             // Stored shortcut is invalid (e.g. spec changed); do not register.
-            _ = error
             return false
         }
         return registrar.register(shortcut: stored, handler: handler)

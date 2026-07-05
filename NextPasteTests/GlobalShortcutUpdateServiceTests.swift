@@ -9,6 +9,10 @@ import Testing
 import Foundation
 @testable import NextPaste
 
+private func unexpectedRestoreHandlerInvocation() {
+    Issue.record("Restore should not invoke the hotkey handler when no shortcut is stored.")
+}
+
 @MainActor
 struct GlobalShortcutUpdateServiceTests {
     private func makeService(
@@ -161,7 +165,7 @@ struct GlobalShortcutUpdateServiceTests {
         let defaults = makeDefaults()
         let (service, registrar, _) = makeService(defaults: defaults)
 
-        let restored = service.restoreAtLaunch { }
+        let restored = service.restoreAtLaunch(handler: unexpectedRestoreHandlerInvocation)
         #expect(restored == false)
         #expect(registrar.isRegistered == false)
     }

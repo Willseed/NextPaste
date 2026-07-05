@@ -9,6 +9,10 @@ import Testing
 import Foundation
 @testable import NextPaste
 
+private func unexpectedRegistrarTestHandlerInvocation() {
+    Issue.record("The hotkey handler should not fire during registrar lifecycle tests.")
+}
+
 @MainActor
 struct GlobalHotKeyRegistrarTests {
     @Test func fakeRegistrarRegisterSucceedsAndStoresShortcut() {
@@ -19,7 +23,10 @@ struct GlobalHotKeyRegistrarTests {
             modifiers: [.command, .shift]
         )
 
-        let result = registrar.register(shortcut: shortcut) { }
+        let result = registrar.register(
+            shortcut: shortcut,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
         #expect(result == true)
         #expect(registrar.isRegistered)
         #expect(registrar.currentShortcut == shortcut)
@@ -35,7 +42,10 @@ struct GlobalHotKeyRegistrarTests {
             modifiers: [.command]
         )
 
-        let result = registrar.register(shortcut: shortcut) { }
+        let result = registrar.register(
+            shortcut: shortcut,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
         #expect(result == false)
         #expect(registrar.isRegistered == false)
         #expect(registrar.currentShortcut == nil)
@@ -49,7 +59,10 @@ struct GlobalHotKeyRegistrarTests {
             keyCharacter: "a",
             modifiers: [.command]
         )
-        _ = registrar.register(shortcut: shortcut) { }
+        _ = registrar.register(
+            shortcut: shortcut,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
         let countBeforeExplicitUnregister = registrar.unregisterCallCount
         registrar.unregister()
 
@@ -63,8 +76,14 @@ struct GlobalHotKeyRegistrarTests {
         let first = GlobalShortcut(keyCode: 0x00, keyCharacter: "a", modifiers: [.command])
         let second = GlobalShortcut(keyCode: 0x0B, keyCharacter: "b", modifiers: [.command, .shift])
 
-        _ = registrar.register(shortcut: first) { }
-        _ = registrar.register(shortcut: second) { }
+        _ = registrar.register(
+            shortcut: first,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
+        _ = registrar.register(
+            shortcut: second,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
 
         #expect(registrar.currentShortcut == second)
         #expect(registrar.registerCallCount == 2)
@@ -98,7 +117,10 @@ struct GlobalHotKeyRegistrarTests {
         let registrar = FakeGlobalHotKeyRegistrar()
         let shortcut = GlobalShortcut(keyCode: 0x00, keyCharacter: "a", modifiers: [.command])
 
-        _ = registrar.register(shortcut: shortcut) { }
+        _ = registrar.register(
+            shortcut: shortcut,
+            handler: unexpectedRegistrarTestHandlerInvocation
+        )
         #expect(registrar.isRegistered)
         registrar.unregister()
         #expect(registrar.isRegistered == false)
