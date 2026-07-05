@@ -2,28 +2,27 @@
 
 ## Current Branch
 
-- Branch: `feature/nextpaste-search-history-settings`
+- Branch: `main`
 
 ## Last Verified Commit
 
-- Commit: `d06175f feat: 新增全局快捷鍵生命週期控制器以管理快捷鍵註冊和恢復`
+- Commit: `f798cee feat: 新增歷史限制偏好設定與安裝檢測功能`
 
 ## Completed Tasks
 
-- `T000-T015`
-- `T017-T029`
+- `T000-T029`
 
 ## Implemented but Unverified Tasks
 
-- `T016`
+- None
 
 ## Current Phase
 
-- Phase: `Phase 4 targeted verification prep — T016 is implemented and now awaits precise verification before final regression.`
+- Phase: `Phase 8 completion prep — Phase 4 (T016-T021) is verified and final regression/manual accessibility remain.`
 
 ## Next Task
 
-- Task: `Run minimal Phase 4 verifier for T016 launch-default, existing-install, and retention integration behavior`
+- Task: `Run T030 full regression/stability verification and T031 manual accessibility checklist`
 
 ## Active Architecture Decisions
 
@@ -45,11 +44,10 @@
 
 ## Existing Uncommitted Changes
 
-- None at Phase 3 verification start; the worktree was clean before status synchronization.
+- None at Phase 4 verification start; the worktree was clean before verifier warning cleanup and status synchronization.
 
 ## Open Risks
 
-- `T016`: targeted unit coverage now passes, but Phase 4 still needs app-level verification for fresh install, existing install, and retention integration behavior.
 - `T030` and `T031` remain open; no final regression pass or manual accessibility checklist evidence is stored in the repository.
 
 ## Reconstruction Evidence
@@ -59,5 +57,6 @@
 - Git diff
 - Source files
 - Test files
+- `docs/implementation/phase-reports/phase-4.md`
 - `docs/implementation/phase-reports/phase-3.md`
 - `docs/implementation/phase-00-inspection-and-baseline.md`

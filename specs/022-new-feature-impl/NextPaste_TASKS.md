@@ -542,9 +542,9 @@
 
 # Phase 4：歷史上限
 
-## [ ] T016：建立 History Limit Typed Preference
+## [x] T016：建立 History Limit Typed Preference
 
-- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Status: COMPLETE
 - Summary: `docs/implementation/task-summaries/T016.md`
 
 ### 實作

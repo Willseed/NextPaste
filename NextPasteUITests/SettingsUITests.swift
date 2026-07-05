@@ -56,7 +56,7 @@ final class SettingsUITests: UITestCase {
         let settingsWindow = openSettingsWindow(in: app)
         XCTAssertEqual(settingsWindow.identifier, Accessibility.settingsWindowIdentifier)
 
-        openSettingsWindow(in: app)
+        _ = openSettingsWindow(in: app)
         XCTAssertEqual(settingsWindowCount(in: app), 1, "Expected repeated Command-, to reuse the same Settings window")
 
         openSettingsTab(Accessibility.generalTab, in: app)
