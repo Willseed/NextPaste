@@ -11,6 +11,7 @@
 //
 
 import SwiftUI
+import SwiftData
 #if os(macOS)
 import AppKit
 #endif
@@ -21,26 +22,26 @@ struct SettingsView: View {
             GeneralSettingsTab()
                 .tabItem {
                     Label("General", systemImage: "gear")
+                        .accessibilityIdentifier("settings-tab-general")
                 }
-                .accessibilityIdentifier("settings-tab-general")
 
             ShortcutsSettingsTab()
                 .tabItem {
                     Label("Shortcuts", systemImage: "keyboard")
+                        .accessibilityIdentifier("settings-tab-shortcuts")
                 }
-                .accessibilityIdentifier("settings-tab-shortcuts")
 
             AppearanceSettingsTab()
                 .tabItem {
                     Label("Appearance", systemImage: "circle.lefthalf.filled")
+                        .accessibilityIdentifier("settings-tab-appearance")
                 }
-                .accessibilityIdentifier("settings-tab-appearance")
 
             HistorySettingsTab()
                 .tabItem {
                     Label("History", systemImage: "clock.arrow.circlepath")
+                        .accessibilityIdentifier("settings-tab-history")
                 }
-                .accessibilityIdentifier("settings-tab-history")
         }
         .frame(width: 460, height: 320)
     }
@@ -141,7 +142,7 @@ private struct ShortcutsSettingsTab: View {
         if isRecording, let candidate {
             return candidate.displayString
         }
-        return preference.shortcut?.displayString ?? "None"
+        return preference.shortcut?.displayString ?? String(localized: "None")
     }
 
     private func startRecording() {
@@ -291,6 +292,7 @@ private struct HistorySettingsTab: View {
     @Environment(\.modelContext) private var modelContext
     @State private var customText: String = ""
     @State private var customValidationError: String?
+    @State private var selectedHistoryLimitTag: String = ""
     @State private var pendingLowerLimit: HistoryLimit?
     @State private var pendingRemovalCount: Int = 0
 
@@ -301,7 +303,7 @@ private struct HistorySettingsTab: View {
         Form {
             Section("History Limit") {
                 Picker("History Limit", selection: Binding(
-                    get: { selectionTag(for: historyLimitPreference.limit) },
+                    get: { currentSelectionTag },
                     set: { newTag in applySelection(newTag) }
                 )) {
                     Text("Unlimited").tag(unlimitedTag)
@@ -332,36 +334,67 @@ private struct HistorySettingsTab: View {
             }
         }
         .padding()
+        .onAppear {
+            syncFromPersistedLimit(historyLimitPreference.limit)
+        }
+        .onChange(of: historyLimitPreference.limit) { _, newLimit in
+            syncFromPersistedLimit(newLimit)
+        }
         // T021: confirmation when lowering the limit would delete items.
         .confirmationDialog(
             "Lower History Limit",
             isPresented: Binding(
                 get: { pendingLowerLimit != nil },
-                set: { if $0 == false { pendingLowerLimit = nil } }
+                set: {
+                    if $0 == false {
+                        cancelPendingLowerLimit()
+                    }
+                }
             ),
             titleVisibility: .visible
         ) {
             if let pending = pendingLowerLimit {
-                Button("Delete \(pendingRemovalCount) Items", role: .destructive) {
+                Button(lowerLimitConfirmationButtonTitle, role: .destructive) {
                     confirmLowerLimit(pending)
                 }
                 .accessibilityIdentifier("confirm-lower-limit-button")
             }
             Button("Cancel", role: .cancel) {
-                pendingLowerLimit = nil
+                cancelPendingLowerLimit()
             }
             .accessibilityIdentifier("cancel-lower-limit-button")
         } message: {
             if let pending = pendingLowerLimit {
-                Text("This will delete \(pendingRemovalCount) unpinned item\(pendingRemovalCount == 1 ? "" : "s") to meet the new limit of \(pending.displayName). Pinned items are not affected. This action cannot be undone.")
+                Text(lowerLimitConfirmationMessage(for: pending))
                     .accessibilityIdentifier("lower-limit-confirmation-message")
             }
         }
     }
 
+    private var lowerLimitConfirmationButtonTitle: String {
+        let format = pendingRemovalCount == 1
+            ? String(localized: "Delete %lld Item")
+            : String(localized: "Delete %lld Items")
+        return String.localizedStringWithFormat(format, Int64(pendingRemovalCount))
+    }
+
+    private func lowerLimitConfirmationMessage(for pending: HistoryLimit) -> String {
+        let format = pendingRemovalCount == 1
+            ? String(localized: "This will delete %lld unpinned item to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.")
+            : String(localized: "This will delete %lld unpinned items to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.")
+        return String.localizedStringWithFormat(
+            format,
+            Int64(pendingRemovalCount),
+            pending.displayName
+        )
+    }
+
+    private var currentSelectionTag: String {
+        selectedHistoryLimitTag.isEmpty ? selectionTag(for: historyLimitPreference.limit) : selectedHistoryLimitTag
+    }
+
     private var showsCustomField: Bool {
-        if case .custom = historyLimitPreference.limit { return true }
-        return selectionTag(for: historyLimitPreference.limit) == customTag
+        currentSelectionTag == customTag
     }
 
     private func selectionTag(for limit: HistoryLimit) -> String {
@@ -373,12 +406,17 @@ private struct HistorySettingsTab: View {
     }
 
     private func applySelection(_ tag: String) {
+        selectedHistoryLimitTag = tag
         customValidationError = nil
         if tag == unlimitedTag {
             historyLimitPreference.persist(.unlimited)
         } else if tag == customTag {
             // Show the custom field; don't persist until a valid value is entered.
-            if customText.isEmpty { customText = "100" }
+            if case .custom(let value) = historyLimitPreference.limit {
+                customText = String(value)
+            } else if customText.isEmpty {
+                customText = "100"
+            }
         } else if let value = Int(tag) {
             // Preset selection. If lowering, check if items would be deleted.
             let newLimit = HistoryLimit.preset(value)
@@ -388,7 +426,11 @@ private struct HistorySettingsTab: View {
 
     private func applyCustomText() {
         guard let value = HistoryLimitValidator.validateCustom(customText) else {
-            customValidationError = "Enter a whole number from \(HistoryLimit.customMin) to \(HistoryLimit.customMax)."
+            customValidationError = String.localizedStringWithFormat(
+                String(localized: "Enter a whole number from %lld to %lld."),
+                Int64(HistoryLimit.customMin),
+                Int64(HistoryLimit.customMax)
+            )
             return
         }
         customValidationError = nil
@@ -415,7 +457,24 @@ private struct HistorySettingsTab: View {
     private func confirmLowerLimit(_ limit: HistoryLimit) {
         historyLimitPreference.persist(limit)
         // T021: immediately execute retention after confirming.
-        try? HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
+        _ = try? HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
         pendingLowerLimit = nil
+        pendingRemovalCount = 0
+        syncFromPersistedLimit(limit)
+    }
+
+    private func cancelPendingLowerLimit() {
+        pendingLowerLimit = nil
+        pendingRemovalCount = 0
+        syncFromPersistedLimit(historyLimitPreference.limit)
+    }
+
+    private func syncFromPersistedLimit(_ limit: HistoryLimit) {
+        selectedHistoryLimitTag = selectionTag(for: limit)
+        if case .custom(let value) = limit {
+            customText = String(value)
+        } else if selectedHistoryLimitTag != customTag {
+            customText = ""
+        }
     }
 }

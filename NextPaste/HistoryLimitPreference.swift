@@ -27,9 +27,13 @@ enum HistoryLimit: Codable, Equatable, Hashable, Sendable {
 
     var displayName: String {
         switch self {
-        case .unlimited: return "Unlimited"
+        case .unlimited: return String(localized: "Unlimited")
         case .preset(let n): return String(n)
-        case .custom(let n): return "Custom (\(n))"
+        case .custom(let n):
+            return String.localizedStringWithFormat(
+                String(localized: "Custom (%lld)"),
+                Int64(n)
+            )
         }
     }
 

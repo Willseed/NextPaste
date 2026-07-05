@@ -46,12 +46,13 @@ final class RowActionTraceSession {
         event: String,
         directness: RowActionTraceDirectness,
         clipID: String? = nil,
-        payload: RowActionTraceEventPayload = .init()
+        payload: RowActionTraceEventPayload? = nil
     ) -> RowActionTraceEvent? {
         guard status == .active else {
             return nil
         }
 
+        let payload = payload ?? .init()
         let sanitizedPayload = RowActionTraceEventPayload(
             rowIndex: payload.rowIndex,
             rowViewID: payload.rowViewID,
@@ -128,7 +129,7 @@ enum RowActionTraceRuntime {
         event: String,
         directness: RowActionTraceDirectness,
         clipID: UUID? = nil,
-        payload: RowActionTraceEventPayload = .init()
+        payload: RowActionTraceEventPayload? = nil
     ) -> RowActionTraceEvent? {
         currentSession?.emit(
             category: category,

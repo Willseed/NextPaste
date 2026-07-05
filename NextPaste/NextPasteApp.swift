@@ -24,6 +24,10 @@ struct NextPasteApp: App {
         sharedModelContainer = Self.makeModelContainer(
             isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")
         )
+        UITestHistorySeeder.seedIfNeeded(
+            arguments: ProcessInfo.processInfo.arguments,
+            container: sharedModelContainer
+        )
         let limitPref = HistoryLimitPreference()
         let appearancePref = AppearancePreference()
         // T019: wire the history limit provider so post-capture retention
@@ -52,9 +56,9 @@ struct NextPasteApp: App {
         WindowGroup("NextPaste") {
             ClipboardMonitorHostView {
                 ContentView()
-                    .environmentObject(appearancePreference)
-                    .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
             }
+                .environmentObject(appearancePreference)
+                .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
                 .frame(minWidth: 520, minHeight: 380)
         }
 #if os(macOS)
@@ -72,8 +76,10 @@ struct NextPasteApp: App {
         // tasks populate them.
         Settings {
             SettingsView()
+                .modelContainer(sharedModelContainer)
                 .environmentObject(historyLimitPreference)
                 .environmentObject(appearancePreference)
+                .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
         }
 #endif
     }

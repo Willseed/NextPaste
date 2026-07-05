@@ -8,7 +8,9 @@
 import Foundation
 
 enum ClipValidation {
-    static let emptyTextMessage = "Enter text to save a clip."
+    static var emptyTextMessage: String {
+        String(localized: "Enter text to save a clip.")
+    }
 
     static func validationMessage(for text: String) -> String? {
         text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? emptyTextMessage : nil

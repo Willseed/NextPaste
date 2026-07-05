@@ -7,10 +7,15 @@
 
 import SwiftUI
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 
 struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var appearancePreference: AppearancePreference
 
     var body: some View {
         NavigationViewWrapper {
@@ -26,7 +31,27 @@ struct ContentView: View {
     }
 
     private var appearance: AppTheme.Appearance {
-        colorScheme == .dark ? .dark : .light
+        let isDark: Bool
+
+        switch appearancePreference.mode {
+        case .light:
+            isDark = false
+        case .dark:
+            isDark = true
+        case .system:
+            #if os(macOS)
+            let bestMatch = NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+            isDark = bestMatch == .darkAqua
+            #else
+            isDark = colorScheme == .dark
+            #endif
+        }
+
+        if colorSchemeContrast == .increased {
+            return isDark ? .highContrastDark : .highContrastLight
+        }
+
+        return isDark ? .dark : .light
     }
 }
 

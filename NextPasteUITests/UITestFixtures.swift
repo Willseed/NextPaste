@@ -19,6 +19,7 @@ enum UITestFixtures {
     }
 
     enum Search {
+        static let identifier = "history-search-field"
         static let prompt = "Search clips"
         static let matchingText = "Project Alpha launch notes"
         static let caseVariantText = "alpha uppercase marker"
@@ -36,6 +37,14 @@ enum UITestFixtures {
         static let nonMatchingCapture = "Haystack live capture"
         static let offlineLaunchArgument = "-simulate-offline"
         static let responsivenessRecordCount = 1_000
+    }
+
+    enum ClearHistory {
+        static let pinnedKeep = "Pinned keep-after-clear clip"
+        static let unpinnedFirst = "Unpinned clear target one"
+        static let unpinnedSecond = "Unpinned clear target two"
+        static let clearAllPinned = "Pinned clear-all fixture"
+        static let clearAllUnpinned = "Unpinned clear-all fixture"
     }
 
     enum ClipboardCapture {

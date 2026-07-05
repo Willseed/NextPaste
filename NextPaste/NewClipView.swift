@@ -85,7 +85,7 @@ struct NewClipView: View {
             dismiss()
         } catch {
             modelContext.rollback()
-            saveErrorMessage = "Clip was not saved. Try again."
+            saveErrorMessage = String(localized: "Clip was not saved. Try again.")
         }
     }
 }

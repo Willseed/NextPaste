@@ -32,14 +32,14 @@ final class PinStateMutationStore {
 
     init(
         modelContext: ModelContext,
-        projector: PinStateSnapshotProjector = PinStateSnapshotProjector(),
-        persistence: PinStatePersistenceGateway = SwiftDataPinStatePersistenceGateway(),
-        diagnostics: PinStateMutationDiagnostics = PinStateMutationDiagnostics()
+        projector: PinStateSnapshotProjector? = nil,
+        persistence: PinStatePersistenceGateway? = nil,
+        diagnostics: PinStateMutationDiagnostics? = nil
     ) {
         self.modelContext = modelContext
-        self.projector = projector
-        self.persistence = persistence
-        self.diagnostics = diagnostics
+        self.projector = projector ?? PinStateSnapshotProjector()
+        self.persistence = persistence ?? SwiftDataPinStatePersistenceGateway()
+        self.diagnostics = diagnostics ?? PinStateMutationDiagnostics()
     }
 
     /// Convenience entry point: request a target Pin state for one item by stable ID.

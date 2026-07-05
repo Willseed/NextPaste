@@ -2,14 +2,18 @@
 //  AppearancePreference.swift
 //  NextPaste
 //
-//  T022 — typed preference for app appearance (System, Light, Dark). Default
-//  is System. Stored in UserDefaults (NOT SwiftData). This task does not apply
-//  the preference to the UI or modify NSApp.appearance.
+//  T022/T024 — typed preference for app appearance (System, Light, Dark).
+//  Default is System. Stored in UserDefaults (NOT SwiftData). T024 applies the
+//  persisted mode to the live macOS app appearance so switching back to Follow
+//  System restores the current system appearance immediately.
 //
 
 import Foundation
 import Combine
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 /// T022: the appearance preference.
 enum AppearanceMode: String, Codable, CaseIterable, Sendable {
@@ -19,9 +23,9 @@ enum AppearanceMode: String, Codable, CaseIterable, Sendable {
 
     var displayName: String {
         switch self {
-        case .system: return "Follow System"
-        case .light: return "Light"
-        case .dark: return "Dark"
+        case .system: return String(localized: "Follow System")
+        case .light: return String(localized: "Light")
+        case .dark: return String(localized: "Dark")
         }
     }
 
@@ -34,6 +38,19 @@ enum AppearanceMode: String, Codable, CaseIterable, Sendable {
         case .dark: return .dark
         }
     }
+
+    #if os(macOS)
+    var nsAppearance: NSAppearance? {
+        switch self {
+        case .system:
+            return nil
+        case .light:
+            return NSAppearance(named: .aqua)
+        case .dark:
+            return NSAppearance(named: .darkAqua)
+        }
+    }
+    #endif
 }
 
 /// T022: typed store for the appearance preference. `@MainActor`.
@@ -53,10 +70,17 @@ final class AppearancePreference: ObservableObject {
     func persist(_ mode: AppearanceMode) {
         self.mode = mode
         defaults.set(mode.rawValue, forKey: Self.storageKey)
+        applyToApplication(mode)
     }
 
     private static func load(from defaults: UserDefaults) -> AppearanceMode? {
         guard let raw = defaults.string(forKey: storageKey) else { return nil }
         return AppearanceMode(rawValue: raw)
+    }
+
+    private func applyToApplication(_ mode: AppearanceMode) {
+        #if os(macOS)
+        NSApplication.shared.appearance = mode.nsAppearance
+        #endif
     }
 }

@@ -20,9 +20,9 @@ struct ClipHistoryClearService {
     private let modelContext: ModelContext
     private let imageFileStore: ImageClipFileStore
 
-    init(modelContext: ModelContext, imageFileStore: ImageClipFileStore = ImageClipFileStore()) {
+    init(modelContext: ModelContext, imageFileStore: ImageClipFileStore? = nil) {
         self.modelContext = modelContext
-        self.imageFileStore = imageFileStore
+        self.imageFileStore = imageFileStore ?? ImageClipFileStore()
     }
 
     /// T006: delete every unpinned `ClipItem`, preserving all pinned items (identity

@@ -23,10 +23,10 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
 
         var displayName: String {
             switch self {
-            case .command: return "Command"
-            case .option: return "Option"
-            case .control: return "Control"
-            case .shift: return "Shift"
+            case .command: return String(localized: "Command")
+            case .option: return String(localized: "Option")
+            case .control: return String(localized: "Control")
+            case .shift: return String(localized: "Shift")
             }
         }
 
@@ -64,9 +64,24 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
             .filter { modifiers.contains($0) }
             .map { $0.displayName }
             .joined(separator: "+")
-        if modifierNames.isEmpty {
-            return keyCharacter.uppercased()
+        let displayKey: String
+        switch keyCharacter {
+        case "space":
+            displayKey = String(localized: "Space")
+        case "return":
+            displayKey = String(localized: "Return")
+        case "delete":
+            displayKey = String(localized: "Delete")
+        case "escape":
+            displayKey = String(localized: "Escape")
+        case "tab":
+            displayKey = String(localized: "Tab")
+        default:
+            displayKey = keyCharacter.uppercased()
         }
-        return "\(modifierNames)+\(keyCharacter.uppercased())"
+        if modifierNames.isEmpty {
+            return displayKey
+        }
+        return "\(modifierNames)+\(displayKey)"
     }
 }

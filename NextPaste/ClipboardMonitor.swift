@@ -21,14 +21,14 @@ final class ClipboardMonitor {
     private var task: ClipboardMonitorTask?
 
     init(
-        reader: ClipboardPasteboardReader = .live,
-        scheduler: ClipboardMonitorScheduler = .live,
+        reader: ClipboardPasteboardReader? = nil,
+        scheduler: ClipboardMonitorScheduler? = nil,
         captureService: ClipboardCaptureService,
         pollInterval: TimeInterval = 0.5,
         now: @escaping () -> Date = Date.init
     ) {
-        self.reader = reader
-        self.scheduler = scheduler
+        self.reader = reader ?? .live
+        self.scheduler = scheduler ?? .live
         self.captureService = captureService
         self.pollInterval = pollInterval
         self.now = now
@@ -87,7 +87,7 @@ final class ClipboardMonitorLifecycleController {
         // set by the app from the HistoryLimitPreference.
         service.postCaptureRetention = { [weak self] context in
             guard let limit = self?.historyLimitProvider?() else { return }
-            try? HistoryRetentionService(modelContext: context).enforceLimit(limit: limit)
+            _ = try? HistoryRetentionService(modelContext: context).enforceLimit(limit: limit)
         }
         let monitor = ClipboardMonitor(
             captureService: service,

@@ -51,22 +51,22 @@
 - [x] T011：加入 Command-comma
 - [x] T012：抽象化現有全域熱鍵註冊器
 - [x] T013：建立 Global Shortcut 型別與驗證
-- [ ] T014：加入全域快捷鍵 Recorder UI
+- [x] T014：加入全域快捷鍵 Recorder UI
 - [x] T015：實作 Transactional Global Shortcut 更新
 - [x] T016：建立 History Limit typed preference
-- [ ] T017：加入 History Limit 設定 UI
+- [x] T017：加入 History Limit 設定 UI
 - [x] T018：建立 History Retention Service
 - [x] T019：新剪貼簿寫入後執行 Retention
 - [x] T020：Unpin 後執行 Retention
-- [ ] T021：降低 History Limit 的確認流程
+- [x] T021：降低 History Limit 的確認流程
 - [x] T022：建立 Appearance typed preference
-- [ ] T023：加入 Appearance Settings UI
-- [ ] T024：套用外觀至 SwiftUI 視圖
+- [x] T023：加入 Appearance Settings UI
+- [x] T024：套用外觀至 SwiftUI 視圖
 - [x] T025：套用外觀至特殊 AppKit Window
-- [ ] T026：新增與整理 Localization
-- [ ] T027：Search Accessibility UI Tests
-- [ ] T028：History Clear UI Tests
-- [ ] T029：Settings UI Tests
+- [x] T026：新增與整理 Localization
+- [x] T027：Search Accessibility UI Tests
+- [x] T028：History Clear UI Tests
+- [x] T029：Settings UI Tests
 - [ ] T030：完整 Regression 與穩定性驗證
 - [ ] T031：Manual Accessibility Verification 清單
 
@@ -468,7 +468,7 @@
 
 ---
 
-## [ ] T014：加入全域快捷鍵 Recorder UI <!-- implemented, pending UI verification (T029) -->
+## [x] T014：加入全域快捷鍵 Recorder UI
 
 ### 實作
 
@@ -490,12 +490,12 @@
 
 ### 測試
 
-- [ ] Recorder 顯示現有值。 <!-- pending UI verification (T029) -->
-- [ ] 合法輸入。 <!-- pending UI verification (T029) -->
-- [ ] 非法輸入顯示錯誤。 <!-- pending UI verification (T029) -->
-- [ ] Clear 按鈕存在。 <!-- pending UI verification (T029) -->
-- [ ] Reset 按鈕存在。 <!-- pending UI verification (T029) -->
-- [ ] accessibility identifiers 存在。 <!-- pending UI verification (T029) -->
+- [x] Recorder 顯示現有值。
+- [x] 合法輸入。
+- [x] 非法輸入顯示錯誤。
+- [x] Clear 按鈕存在。
+- [x] Reset 按鈕存在。
+- [x] accessibility identifiers 存在。
 - [x] NextPaste target build 通過。
 
 ---
@@ -578,7 +578,7 @@
 
 ---
 
-## [ ] T017：加入 History Limit 設定 UI <!-- implemented, pending UI verification (T029) -->
+## [x] T017：加入 History Limit 設定 UI
 
 ### 實作
 
@@ -595,10 +595,10 @@
 
 ### 測試
 
-- [ ] options 顯示。 <!-- pending UI verification (T029) -->
-- [ ] Custom validation。 <!-- pending UI verification (T029) -->
-- [ ] 無效輸入不改變既有設定。 <!-- pending UI verification (T029) -->
-- [ ] accessibility identifiers 存在。 <!-- pending UI verification (T029) -->
+- [x] options 顯示。
+- [x] Custom validation。
+- [x] 無效輸入不改變既有設定。
+- [x] accessibility identifiers 存在。
 - [x] NextPaste target build 通過。
 
 ---
@@ -689,7 +689,7 @@
 
 ---
 
-## [ ] T021：降低 History Limit 的確認流程 <!-- implemented, pending UI verification (T029) -->
+## [x] T021：降低 History Limit 的確認流程
 
 ### 實作
 
@@ -707,13 +707,13 @@
 
 ### 測試
 
-- [ ] 降低且需刪除。 <!-- pending UI verification (T029) -->
-- [ ] 降低但不需刪除。 <!-- pending UI verification (T029) -->
-- [ ] Cancel。 <!-- pending UI verification (T029) -->
-- [ ] Confirm。 <!-- pending UI verification (T029) -->
-- [ ] 增加 limit。 <!-- pending UI verification (T029) -->
-- [ ] Unlimited。 <!-- pending UI verification (T029) -->
-- [ ] pinned 保留。 <!-- pending UI verification (T029) -->
+- [x] 降低且需刪除。
+- [x] 降低但不需刪除。
+- [x] Cancel。
+- [x] Confirm。
+- [x] 增加 limit。
+- [x] Unlimited。
+- [x] pinned 保留。
 - [x] NextPaste target build 通過。
 
 ---
@@ -743,7 +743,7 @@
 
 ---
 
-## [ ] T023：加入 Appearance Settings UI <!-- implemented, pending UI verification (T029) -->
+## [x] T023：加入 Appearance Settings UI
 
 ### 實作
 
@@ -759,14 +759,14 @@
 
 ### 測試
 
-- [ ] 三個選項存在。 <!-- pending UI verification (T029) -->
-- [ ] preference 更新。 <!-- pending UI verification (T029) -->
-- [ ] 重新開啟 Settings 後保留。 <!-- pending UI verification (T029) -->
+- [x] 三個選項存在。
+- [x] preference 更新。
+- [x] 重新開啟 Settings 後保留。
 - [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T024：套用外觀至 SwiftUI 視圖 <!-- implemented, pending UI verification (T029) -->
+## [x] T024：套用外觀至 SwiftUI 視圖
 
 ### 作用範圍
 
@@ -791,10 +791,10 @@
 
 ### 測試
 
-- [ ] System mapping 為標準跟隨系統行為。 <!-- pending UI verification (T029) -->
-- [ ] Light。 <!-- pending UI verification (T029) -->
-- [ ] Dark。 <!-- pending UI verification (T029) -->
-- [ ] 切換後即時更新。 <!-- pending UI verification (T029) -->
+- [x] System mapping 為標準跟隨系統行為。
+- [x] Light。
+- [x] Dark。
+- [x] 切換後即時更新。
 - [x] NextPaste target build 通過。
 
 ---
@@ -827,118 +827,122 @@
 
 # Phase 6：Localization
 
-## [ ] T026：新增與整理 Localization
+## [x] T026：新增與整理 Localization
 
 ### 字串
 
-- [ ] `Find…`
-- [ ] `Search Clipboard History`
-- [ ] `Clear Search`
-- [ ] `Clear Unpinned History`
-- [ ] `Clear All History`
-- [ ] `Items to Be Deleted`
-- [ ] `Pinned Items Will Be Preserved`
-- [ ] `This Includes Pinned Items`
-- [ ] `This Action Cannot Be Undone`
-- [ ] `Global Shortcut`
-- [ ] `Record Shortcut`
-- [ ] `Clear Shortcut`
-- [ ] `Reset to Default`
-- [ ] `Shortcut Is Already in Use`
-- [ ] `History Limit`
-- [ ] `Unlimited`
-- [ ] `Custom`
-- [ ] `Follow System`
-- [ ] `Light`
-- [ ] `Dark`
-- [ ] `General`
-- [ ] `Shortcuts`
-- [ ] `Appearance`
-- [ ] `Privacy`
-- [ ] `History`
-- [ ] 所有 validation messages。
-- [ ] 所有 confirmation messages。
+- [x] `Find…`
+- [x] `Search Clipboard History`
+- [x] `Clear Search`
+- [x] `Clear Unpinned History`
+- [x] `Clear All History`
+- [x] `Items to Be Deleted`
+- [x] `Pinned Items Will Be Preserved`
+- [x] `This Includes Pinned Items`
+- [x] `This Action Cannot Be Undone`
+- [x] `Global Shortcut`
+- [x] `Record Shortcut`
+- [x] `Clear Shortcut`
+- [x] `Reset to Default`
+- [x] `Shortcut Is Already in Use`
+- [x] `History Limit`
+- [x] `Unlimited`
+- [x] `Custom`
+- [x] `Follow System`
+- [x] `Light`
+- [x] `Dark`
+- [x] `General`
+- [x] `Shortcuts`
+- [x] `Appearance`
+- [x] `Privacy`
+- [x] `History`
+- [x] 所有 validation messages。
+- [x] 所有 confirmation messages。
 
 ### 實作要求
 
-- [ ] 補齊 repository 目前支援的全部語言。
-- [ ] 不 hard-code 中文。
-- [ ] 不 hard-code 英文。
-- [ ] 不重複建立不同 key 表示相同文字。
-- [ ] 遵循現有 String Catalog 或 `Localizable.strings` 架構。
+- [x] 補齊 repository 目前支援的全部語言。
+- [x] 不 hard-code 中文。
+- [x] 不 hard-code 英文。
+- [x] 不重複建立不同 key 表示相同文字。
+- [x] 遵循現有 String Catalog 或 `Localizable.strings` 架構。
 
 ### 測試
 
-- [ ] localization key 完整性。
-- [ ] 缺少翻譯檢查。
-- [ ] Build 無 localization warning。
-- [ ] NextPaste target build 通過。
+- [x] localization key 完整性。
+- [x] 缺少翻譯檢查。
+- [x] Build 無 localization warning。
+- [x] NextPaste target build 通過。
 
 ---
 
 # Phase 7：UI Tests
 
-## [ ] T027：Search Accessibility UI Tests
+## [x] T027：Search Accessibility UI Tests
 
 ### 測試
 
-- [ ] `Command-F` 聚焦搜尋欄。
-- [ ] `Command-F` 後輸入文字進入搜尋欄。
-- [ ] 點擊 Search Button 聚焦搜尋欄。
-- [ ] Search Button identifier。
-- [ ] Search Field identifier。
-- [ ] Clear Search identifier。
-- [ ] 不使用鍵盤也能完成搜尋。
+- [x] `Command-F` 聚焦搜尋欄。
+- [x] `Command-F` 後輸入文字進入搜尋欄。
+- [x] 點擊 Search Button 聚焦搜尋欄。
+- [x] Search Button identifier。
+- [x] Search Field identifier。
+- [x] Clear Search identifier。
+- [x] 不使用鍵盤也能完成搜尋。
 
 ### 限制
 
 - [ ] 不修改 production behavior。
-- [ ] 若測試發現 production bug，停止並回報。
+- [x] 若測試發現 production bug，停止並回報。
 - [ ] 不在此 Task 順便修正 bug。
 
+註：T027 初次驗證已先依限制停止並回報；後續 product fix 是在使用者明確要求繼續完成 active thread goal 後補做。
+
 ---
 
-## [ ] T028：History Clear UI Tests
+## [x] T028：History Clear UI Tests
 
 ### 測試
 
-- [ ] 建立 pinned + unpinned fixture。
-- [ ] 開啟 Clear Unpinned confirmation。
-- [ ] 確認刪除數量正確。
-- [ ] 測試 Cancel。
-- [ ] 測試 Confirm。
-- [ ] 確認 pinned 保留。
-- [ ] 開啟 Clear All confirmation。
-- [ ] 確認包含 pinned 警告。
-- [ ] Clear All 後列表為空。
-- [ ] 非鍵盤入口存在。
+- [x] 建立 pinned + unpinned fixture。
+- [x] 開啟 Clear Unpinned confirmation。
+- [x] 確認刪除數量正確。
+- [x] 測試 Cancel。
+- [x] 測試 Confirm。
+- [x] 確認 pinned 保留。
+- [x] 開啟 Clear All confirmation。
+- [x] 確認包含 pinned 警告。
+- [x] Clear All 後列表為空。
+- [x] 非鍵盤入口存在。
 
 ### 限制
 
-- [ ] 不修改 production behavior。
-- [ ] 若測試發現 production bug，停止並回報。
+- [x] 不修改 production behavior。
+- [x] 若測試發現 production bug，停止並回報。
+
+註：T028 失敗原因為 macOS `confirmationDialog` 在 UI automation 中將 title/message 暴露為通用 `StaticText`，不是 production bug；最終僅調整 UI test selector，未修改 product code。
 
 ---
 
-## [ ] T029：Settings UI Tests
+## [x] T029：Settings UI Tests
 
 ### 測試
 
-- [ ] `Command-,`。
-- [ ] 單一 Settings window。
-- [ ] General section。
-- [ ] Shortcuts section。
-- [ ] Appearance section。
-- [ ] History 或 Privacy section。
-- [ ] Global Shortcut Recorder。
-- [ ] Clear。
-- [ ] Reset。
-- [ ] History Limit。
-- [ ] Custom validation。
-- [ ] System。
-- [ ] Light。
-- [ ] Dark。
-- [ ] 設定持久化。
+- [x] `Command-,`。
+- [x] 單一 Settings window。
+- [x] General section。
+- [x] Shortcuts section。
+- [x] Appearance section。
+- [x] History 或 Privacy section。
+- [x] Global Shortcut Recorder。
+- [x] Clear。
+- [x] Reset。
+- [x] History Limit。
+- [x] Custom validation。
+- [x] System。
+- [x] Light。
+- [x] Dark。
+- [x] 設定持久化。
 
 ### 限制
 

@@ -70,12 +70,13 @@ struct HomeView: View {
                 .ignoresSafeArea()
 
             accessibilityMarkers
+            searchFieldAccessibilityResolver
 
             uiTestWindowSizeControls
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(
-                    title: "Clips",
+                    title: String(localized: "Clips"),
                     onSettings: openSettingsOrShowPlaceholder
                 ) {
                     HStack(spacing: DesignTokens.Spacing.small) {
@@ -165,16 +166,16 @@ struct HomeView: View {
             NewClipView()
         }
         .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search clips")
-        .focused($isSearchFieldFocused)
+        .searchFocused($isSearchFieldFocused)
         // T003: publish the shared `focusSearch()` action to the focused window so
         // the app-level `SearchCommands` (`Command-F`) can invoke it without owning
         // any search state.
-        .focusedValue(\.searchFocusAction, focusSearch)
+        .focusedSceneValue(\.searchFocusAction, focusSearch)
         // T007/T009: publish the request-clear actions so `HistoryClearCommands`
         // (`Option-Command-Delete`, `Shift-Option-Command-Delete`) can request the
         // confirmation dialogs without owning clearing logic.
-        .focusedValue(\.requestClearUnpinnedAction, requestClearUnpinnedHistory)
-        .focusedValue(\.requestClearAllAction, requestClearAllHistory)
+        .focusedSceneValue(\.requestClearUnpinnedAction, requestClearUnpinnedHistory)
+        .focusedSceneValue(\.requestClearAllAction, requestClearAllHistory)
         // T007: clear unpinned confirmation. Shows counts, preserves pinned, is
         // destructive and irreversible. Confirm only calls the T006 service.
         .confirmationDialog(
@@ -182,7 +183,7 @@ struct HomeView: View {
             isPresented: $isPresentingClearUnpinnedConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Clear \(unpinnedCount) Unpinned Items", role: .destructive) {
+            Button(clearUnpinnedConfirmationButtonTitle, role: .destructive) {
                 confirmClearUnpinnedHistory()
             }
             .accessibilityIdentifier("confirm-clear-unpinned-button")
@@ -199,7 +200,7 @@ struct HomeView: View {
             isPresented: $isPresentingClearAllConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Delete All \(allCount) Items", role: .destructive) {
+            Button(clearAllConfirmationButtonTitle, role: .destructive) {
                 confirmClearAllHistory()
             }
             .accessibilityIdentifier("confirm-clear-all-button")
@@ -349,6 +350,9 @@ struct HomeView: View {
     private func focusSearch() {
         isSearchPresented = true
         isSearchFieldFocused = true
+#if os(macOS)
+        beginHistorySearchInteraction(in: NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first)
+#endif
     }
 
     /// T004: clears the active search query. Invoked by the explicit Clear Search
@@ -367,16 +371,58 @@ struct HomeView: View {
     private var pinnedCount: Int { clips.filter { $0.isPinned }.count }
     private var allCount: Int { clips.count }
 
+    private var clearUnpinnedConfirmationButtonTitle: String {
+        let format = unpinnedCount == 1
+            ? String(localized: "Clear %lld Unpinned Item")
+            : String(localized: "Clear %lld Unpinned Items")
+        return String.localizedStringWithFormat(format, Int64(unpinnedCount))
+    }
+
     private var clearUnpinnedConfirmationMessage: String {
-        "This will permanently delete \(unpinnedCount) unpinned item\(unpinnedCount == 1 ? "" : "s"). "
-            + "\(pinnedCount) pinned item\(pinnedCount == 1 ? "" : "s") will be preserved. "
-            + "This action cannot be undone."
+        let format: String
+        switch (unpinnedCount == 1, pinnedCount == 1) {
+        case (true, true):
+            format = String(localized: "This will permanently delete %lld unpinned item. %lld pinned item will be preserved. This action cannot be undone.")
+        case (true, false):
+            format = String(localized: "This will permanently delete %lld unpinned item. %lld pinned items will be preserved. This action cannot be undone.")
+        case (false, true):
+            format = String(localized: "This will permanently delete %lld unpinned items. %lld pinned item will be preserved. This action cannot be undone.")
+        case (false, false):
+            format = String(localized: "This will permanently delete %lld unpinned items. %lld pinned items will be preserved. This action cannot be undone.")
+        }
+
+        return String.localizedStringWithFormat(
+            format,
+            Int64(unpinnedCount),
+            Int64(pinnedCount)
+        )
+    }
+
+    private var clearAllConfirmationButtonTitle: String {
+        let format = allCount == 1
+            ? String(localized: "Delete All %lld Item")
+            : String(localized: "Delete All %lld Items")
+        return String.localizedStringWithFormat(format, Int64(allCount))
     }
 
     private var clearAllConfirmationMessage: String {
-        "This will permanently delete all \(allCount) item\(allCount == 1 ? "" : "s"), "
-            + "including \(pinnedCount) pinned item\(pinnedCount == 1 ? "" : "s"). "
-            + "This action cannot be undone."
+        let format: String
+        switch (allCount == 1, pinnedCount == 1) {
+        case (true, true):
+            format = String(localized: "This will permanently delete all %lld item, including %lld pinned item. This action cannot be undone.")
+        case (true, false):
+            format = String(localized: "This will permanently delete all %lld item, including %lld pinned items. This action cannot be undone.")
+        case (false, true):
+            format = String(localized: "This will permanently delete all %lld items, including %lld pinned item. This action cannot be undone.")
+        case (false, false):
+            format = String(localized: "This will permanently delete all %lld items, including %lld pinned items. This action cannot be undone.")
+        }
+
+        return String.localizedStringWithFormat(
+            format,
+            Int64(allCount),
+            Int64(pinnedCount)
+        )
     }
 
     /// T007: request the clear-unpinned confirmation. No destructive work happens
@@ -445,7 +491,7 @@ struct HomeView: View {
         _ = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
         settingsPlaceholderMessage = nil
 #else
-        settingsPlaceholderMessage = "Settings are not available yet."
+        settingsPlaceholderMessage = String(localized: "Settings are not available yet.")
 #endif
     }
 
@@ -635,7 +681,7 @@ struct HomeView: View {
             guard let limit = ClipboardMonitorLifecycleController.shared.historyLimitProvider?() else {
                 return
             }
-            try? HistoryRetentionService(modelContext: context).enforceLimit(
+            _ = try? HistoryRetentionService(modelContext: context).enforceLimit(
                 limit: limit,
                 protectedItemID: itemID
             )
@@ -683,7 +729,9 @@ struct HomeView: View {
             // synchronous boolean update is safe. Trace emission remains deferred to avoid
             // trace work during a potential layout pass.
             let isVisible = change.newValue ?? false
-            observation.areRowActionsVisible = isVisible
+            MainActor.assumeIsolated {
+                observation.areRowActionsVisible = isVisible
+            }
             Task { @MainActor in
 #if DEBUG
                 RowActionAppKitObserver.recordRowActionsVisible(
@@ -815,6 +863,18 @@ struct HomeView: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    @ViewBuilder
+    private var searchFieldAccessibilityResolver: some View {
+#if os(macOS)
+        SearchToolbarFieldAccessibilityResolver(searchFieldIdentifier: "history-search-field")
+            .frame(width: 0, height: 0)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
+#else
+        EmptyView()
+#endif
     }
 
     @ViewBuilder
@@ -999,6 +1059,83 @@ private struct RowActionTableViewResolver: NSViewRepresentable {
             return nil
         }
     }
+}
+
+private struct SearchToolbarFieldAccessibilityResolver: NSViewRepresentable {
+    let searchFieldIdentifier: String
+
+    func makeNSView(context _: Context) -> ResolverView {
+        let view = ResolverView()
+        view.searchFieldIdentifier = searchFieldIdentifier
+        return view
+    }
+
+    func updateNSView(_ nsView: ResolverView, context _: Context) {
+        nsView.searchFieldIdentifier = searchFieldIdentifier
+        nsView.resolve()
+    }
+
+    final class ResolverView: NSView {
+        var searchFieldIdentifier = ""
+
+        override func viewDidMoveToSuperview() {
+            super.viewDidMoveToSuperview()
+            scheduleResolve()
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            scheduleResolve()
+        }
+
+        func resolve() {
+            guard searchFieldIdentifier.isEmpty == false,
+                  let searchField = resolvedSearchField else {
+                return
+            }
+
+            let identifier = NSUserInterfaceItemIdentifier(searchFieldIdentifier)
+            if searchField.identifier != identifier {
+                searchField.identifier = identifier
+            }
+            if searchField.accessibilityIdentifier() != searchFieldIdentifier {
+                searchField.setAccessibilityIdentifier(searchFieldIdentifier)
+            }
+        }
+
+        private func scheduleResolve() {
+            resolve()
+
+            DispatchQueue.main.async { [weak self] in
+                self?.resolve()
+            }
+        }
+
+        private var resolvedSearchField: NSSearchField? {
+            if let toolbarSearchField = historySearchToolbarItem(in: window)?.searchField {
+                return toolbarSearchField
+            }
+
+            if let toolbarRoot = window?.contentView?.superview,
+               let searchField = toolbarRoot.firstDescendant(of: NSSearchField.self) {
+                return searchField
+            }
+
+            return window?.contentView?.firstDescendant(of: NSSearchField.self)
+        }
+    }
+}
+
+private func beginHistorySearchInteraction(in window: NSWindow?) {
+    historySearchToolbarItem(in: window)?.beginSearchInteraction()
+
+    DispatchQueue.main.async {
+        historySearchToolbarItem(in: window)?.beginSearchInteraction()
+    }
+}
+
+private func historySearchToolbarItem(in window: NSWindow?) -> NSSearchToolbarItem? {
+    window?.toolbar?.items.compactMap { $0 as? NSSearchToolbarItem }.first
 }
 
 private extension NSView {

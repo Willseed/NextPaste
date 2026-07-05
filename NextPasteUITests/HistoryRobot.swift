@@ -26,6 +26,16 @@ struct HistoryRobot {
     }
 
     @discardableResult
+    func typeIntoFocusedElement(
+        _ text: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        app.typeText(text)
+        return self
+    }
+
+    @discardableResult
     func clearSearch(
         file: StaticString = #filePath,
         line: UInt = #line
@@ -38,11 +48,109 @@ struct HistoryRobot {
     }
 
     @discardableResult
+    func searchButton(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.buttons["search-button"],
+            "Expected Search button",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func clearSearchButton(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.buttons["clear-search-button"],
+            "Expected Clear Search button",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func historyOverflowMenu(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.descendants(matching: .any)["history-overflow-menu"],
+            "Expected history overflow menu",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func clearUnpinnedMenuItem(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.descendants(matching: .any)["menu-clear-unpinned-history"],
+            "Expected Clear Unpinned History menu item",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func clearAllMenuItem(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.descendants(matching: .any)["menu-clear-all-history"],
+            "Expected Clear All History menu item",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+    }
+
+    @discardableResult
+    func assertSearchFieldContains(
+        _ text: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            searchField(file: file, line: line),
+            text,
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        return self
+    }
+
+
+    @discardableResult
     func searchField(
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        let identifiedSearchField = app.searchFields[UITestFixtures.Search.identifier]
+        if identifiedSearchField.waitForExistence(timeout: timeout) {
+            return identifiedSearchField
+        }
+
         let searchField = app.searchFields[UITestFixtures.Search.prompt]
         if searchField.waitForExistence(timeout: timeout) {
             return searchField
@@ -56,23 +164,6 @@ struct HistoryRobot {
             line: line
         )
     }
-
-    @discardableResult
-    func assertSearchFieldCount(
-        _ expectedCount: Int,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> Self {
-        XCTAssertEqual(
-            app.searchFields.count,
-            expectedCount,
-            "Expected exactly \(expectedCount) native search field(s)",
-            file: file,
-            line: line
-        )
-        return self
-    }
-
     @discardableResult
     func assertRowExists(
         withText text: String,

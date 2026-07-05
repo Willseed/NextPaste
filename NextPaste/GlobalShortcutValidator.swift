@@ -18,22 +18,25 @@ enum GlobalShortcutValidationError: Error, Equatable, Sendable {
     case conflictsWithMenuCommand(String)
     case forbiddenSingleKey
 
-    /// User-facing, localizable message. T026 will migrate these to a String
-    /// Catalog; the keys are stable identifiers.
+    /// User-facing, localizable message. Uses `String(localized:)` so the String
+    /// Catalog manages translations.
     var localizedDescription: String {
         switch self {
         case .noModifier:
-            return "At least one modifier is required."
+            return String(localized: "At least one modifier is required.")
         case .pureOptionOnly:
-            return "Option alone cannot be a shortcut."
+            return String(localized: "Option alone cannot be a shortcut.")
         case .conflictsWithCommandF:
-            return "Command-F is used for search."
+            return String(localized: "Command-F is used for search.")
         case .conflictsWithCommandComma:
-            return "Command-, is used for Settings."
+            return String(localized: "Command-, is used for Settings.")
         case .conflictsWithMenuCommand(let name):
-            return "This shortcut conflicts with the \(name) menu command."
+            return String.localizedStringWithFormat(
+                String(localized: "This shortcut conflicts with the %@ menu command."),
+                name
+            )
         case .forbiddenSingleKey:
-            return "A single key without modifiers cannot be a shortcut."
+            return String(localized: "A single key without modifiers cannot be a shortcut.")
         }
     }
 }
@@ -63,14 +66,14 @@ enum GlobalShortcutValidator {
     /// Reserved menu command display names for error messages, keyed by a
     /// normalized signature (keyCharacter + sorted modifiers).
     private static let reservedMenuCommandNames: [String: String] = [
-        "f|command": "Find",
-        ",|command": "Settings",
-        "n|command": "New Clip",
-        "q|command": "Quit",
-        "w|command": "Close",
-        "m|command": "Minimize",
-        "delete|command+option": "Clear Unpinned History",
-        "delete|command+option+shift": "Clear All History",
+        "f|command": String(localized: "Find…"),
+        ",|command": String(localized: "Settings"),
+        "n|command": String(localized: "New Clip"),
+        "q|command": String(localized: "Quit"),
+        "w|command": String(localized: "Close"),
+        "m|command": String(localized: "Minimize"),
+        "delete|command+option": String(localized: "Clear Unpinned History"),
+        "delete|command+option+shift": String(localized: "Clear All History"),
     ]
 
     /// Validate a candidate shortcut. Returns `nil` if valid, otherwise the
