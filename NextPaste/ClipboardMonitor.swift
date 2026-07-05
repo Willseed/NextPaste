@@ -71,6 +71,10 @@ final class ClipboardMonitorLifecycleController {
 
     private var monitor: ClipboardMonitor?
 
+    /// T019: provider for the current history limit. Set by the app so the
+    /// capture service can enforce retention after each successful save.
+    var historyLimitProvider: (() -> HistoryLimit)?
+
     func startIfNeeded(using modelContext: ModelContext, processInfo: ProcessInfo = .processInfo) {
         guard monitor == nil else { return }
 
@@ -78,6 +82,13 @@ final class ClipboardMonitorLifecycleController {
         guard configuration.isEnabled else { return }
 
         let service = ClipboardCaptureService(modelContext: modelContext)
+        // T019: wire post-capture retention. After a successful save, enforce
+        // the history limit (pinned items are never trimmed). The provider is
+        // set by the app from the HistoryLimitPreference.
+        service.postCaptureRetention = { [weak self] context in
+            guard let limit = self?.historyLimitProvider?() else { return }
+            try? HistoryRetentionService(modelContext: context).enforceLimit(limit: limit)
+        }
         let monitor = ClipboardMonitor(
             captureService: service,
             pollInterval: configuration.pollInterval

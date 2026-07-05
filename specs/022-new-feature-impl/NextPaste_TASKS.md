@@ -53,11 +53,11 @@
 - [x] T013：建立 Global Shortcut 型別與驗證
 - [ ] T014：加入全域快捷鍵 Recorder UI
 - [x] T015：實作 Transactional Global Shortcut 更新
-- [ ] T016：建立 History Limit typed preference
+- [x] T016：建立 History Limit typed preference
 - [ ] T017：加入 History Limit 設定 UI
-- [ ] T018：建立 History Retention Service
-- [ ] T019：新剪貼簿寫入後執行 Retention
-- [ ] T020：Unpin 後執行 Retention
+- [x] T018：建立 History Retention Service
+- [x] T019：新剪貼簿寫入後執行 Retention
+- [x] T020：Unpin 後執行 Retention
 - [ ] T021：降低 History Limit 的確認流程
 - [ ] T022：建立 Appearance typed preference
 - [ ] T023：加入 Appearance Settings UI
@@ -538,183 +538,183 @@
 
 # Phase 4：歷史上限
 
-## [ ] T016：建立 History Limit Typed Preference
+## [x] T016：建立 History Limit Typed Preference
 
 ### 實作
 
-- [ ] 支援 Unlimited。
-- [ ] 支援 50。
-- [ ] 支援 100。
-- [ ] 支援 200。
-- [ ] 支援 500。
-- [ ] 支援 1000。
-- [ ] 支援 Custom。
-- [ ] Custom 範圍為 10 至 10,000。
-- [ ] Custom 只接受整數。
-- [ ] pinned 不計入上限。
-- [ ] 不儲存在 SwiftData model。
-- [ ] 使用現有 UserDefaults、`@AppStorage` 或 typed settings。
+- [x] 支援 Unlimited。
+- [x] 支援 50。
+- [x] 支援 100。
+- [x] 支援 200。
+- [x] 支援 500。
+- [x] 支援 1000。
+- [x] 支援 Custom。
+- [x] Custom 範圍為 10 至 10,000。
+- [x] Custom 只接受整數。
+- [x] pinned 不計入上限。
+- [x] 不儲存在 SwiftData model。
+- [x] 使用現有 UserDefaults、`@AppStorage` 或 typed settings。
 
 ### Migration
 
-- [ ] 若已有既存上限，保留既有 default。
-- [ ] 若沒有既存上限，新安裝預設 500。
-- [ ] 若沒有既存上限，既有安裝升級預設 Unlimited。
-- [ ] 使用 migration marker。
-- [ ] 不修改 SwiftData schema。
+- [x] 若已有既存上限，保留既有 default。
+- [x] 若沒有既存上限，新安裝預設 500。
+- [x] 若沒有既存上限，既有安裝升級預設 Unlimited。
+- [x] 使用 migration marker。
+- [x] 不修改 SwiftData schema。
 
 ### 測試
 
-- [ ] encode/decode。
-- [ ] Unlimited。
-- [ ] presets。
-- [ ] custom valid。
-- [ ] custom too low。
-- [ ] custom too high。
-- [ ] non-integer。
-- [ ] new install。
-- [ ] existing install upgrade。
-- [ ] NextPaste target build 通過。
+- [x] encode/decode。
+- [x] Unlimited。
+- [x] presets。
+- [x] custom valid。
+- [x] custom too low。
+- [x] custom too high。
+- [x] non-integer。
+- [x] new install。
+- [x] existing install upgrade。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T017：加入 History Limit 設定 UI
+## [ ] T017：加入 History Limit 設定 UI <!-- implemented, pending UI verification (T029) -->
 
 ### 實作
 
-- [ ] 放在 General 或 History。
-- [ ] 支援 Unlimited。
-- [ ] 支援 presets。
-- [ ] 支援 Custom。
-- [ ] Custom 有 inline validation。
-- [ ] 無效值不能儲存為 0。
-- [ ] 此 Task 不刪除任何 `ClipItem`。
-- [ ] 降低上限時只建立 pending change。
-- [ ] 此 Task 不直接提交降低後的 limit。
-- [ ] 新增 accessibility identifiers。
+- [x] 放在 General 或 History。
+- [x] 支援 Unlimited。
+- [x] 支援 presets。
+- [x] 支援 Custom。
+- [x] Custom 有 inline validation。
+- [x] 無效值不能儲存為 0。
+- [x] 此 Task 不刪除任何 `ClipItem`。
+- [x] 降低上限時只建立 pending change。
+- [x] 此 Task 不直接提交降低後的 limit。
+- [x] 新增 accessibility identifiers。
 
 ### 測試
 
-- [ ] options 顯示。
-- [ ] Custom validation。
-- [ ] 無效輸入不改變既有設定。
-- [ ] accessibility identifiers 存在。
-- [ ] NextPaste target build 通過。
+- [ ] options 顯示。 <!-- pending UI verification (T029) -->
+- [ ] Custom validation。 <!-- pending UI verification (T029) -->
+- [ ] 無效輸入不改變既有設定。 <!-- pending UI verification (T029) -->
+- [ ] accessibility identifiers 存在。 <!-- pending UI verification (T029) -->
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T018：建立 History Retention Service
+## [x] T018：建立 History Retention Service
 
 ### 實作
 
-- [ ] 只計算 unpinned。
-- [ ] pinned 永遠排除。
-- [ ] 超過上限時刪除最舊 unpinned。
-- [ ] Unlimited 不刪除。
-- [ ] 使用現有 canonical sort field。
-- [ ] 不自行猜測 timestamp。
-- [ ] 支援 protected item identity。
-- [ ] 剛 Unpin 的 item 可被保護。
-- [ ] service deterministic。
-- [ ] 不連接 ClipboardMonitor。
-- [ ] 不連接 Settings UI。
+- [x] 只計算 unpinned。
+- [x] pinned 永遠排除。
+- [x] 超過上限時刪除最舊 unpinned。
+- [x] Unlimited 不刪除。
+- [x] 使用現有 canonical sort field。
+- [x] 不自行猜測 timestamp。
+- [x] 支援 protected item identity。
+- [x] 剛 Unpin 的 item 可被保護。
+- [x] service deterministic。
+- [x] 不連接 ClipboardMonitor。
+- [x] 不連接 Settings UI。
 
 ### 建議 API
 
-- [ ] `calculateItemsToRemove(...)`。
-- [ ] `enforceLimit(...)`。
-- [ ] `protectedItemID` 或等價設計。
+- [x] `calculateItemsToRemove(...)`。
+- [x] `enforceLimit(...)`。
+- [x] `protectedItemID` 或等價設計。
 
 ### 測試
 
-- [ ] pinned 不計入。
-- [ ] Unlimited。
-- [ ] 超過上限。
-- [ ] deterministic ordering。
-- [ ] 相同 timestamp 的 tie-break。
-- [ ] protected item。
-- [ ] limit 等於目前數量。
-- [ ] limit 大於目前數量。
-- [ ] NextPaste target build 通過。
+- [x] pinned 不計入。
+- [x] Unlimited。
+- [x] 超過上限。
+- [x] deterministic ordering。
+- [x] 相同 timestamp 的 tie-break。
+- [x] protected item。
+- [x] limit 等於目前數量。
+- [x] limit 大於目前數量。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T019：新剪貼簿寫入後執行 Retention
+## [x] T019：新剪貼簿寫入後執行 Retention
 
 ### 實作
 
-- [ ] 新 `ClipItem` 成功儲存後才執行 retention。
-- [ ] 不在資料寫入前裁剪。
-- [ ] 不裁剪 pinned。
-- [ ] 不改變 clipboard capture semantics。
-- [ ] 不使用 delay。
-- [ ] 不造成 capture loop。
-- [ ] 不影響搜尋。
-- [ ] 不影響列表 identity。
+- [x] 新 `ClipItem` 成功儲存後才執行 retention。
+- [x] 不在資料寫入前裁剪。
+- [x] 不裁剪 pinned。
+- [x] 不改變 clipboard capture semantics。
+- [x] 不使用 delay。
+- [x] 不造成 capture loop。
+- [x] 不影響搜尋。
+- [x] 不影響列表 identity。
 
 ### 測試
 
-- [ ] 新 item 未超限。
-- [ ] 新 item 導致超限。
-- [ ] pinned 不受影響。
-- [ ] Unlimited。
-- [ ] 寫入失敗時不執行 retention。
-- [ ] NextPaste target build 通過。
+- [x] 新 item 未超限。
+- [x] 新 item 導致超限。
+- [x] pinned 不受影響。
+- [x] Unlimited。
+- [x] 寫入失敗時不執行 retention。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T020：Unpin 後執行 Retention
+## [x] T020：Unpin 後執行 Retention
 
 ### 實作
 
-- [ ] item Unpin 成功後執行 retention。
-- [ ] 剛 Unpin 的 item 為 protected item。
-- [ ] 超出上限時優先刪除其他最舊 unpinned。
-- [ ] 不立即刪除剛 Unpin 的 item。
-- [ ] 不改變目前 Pin／Unpin 排序規則。
-- [ ] 不使用 index。
-- [ ] 不使用 sleep。
-- [ ] 不重現 stale row。
-- [ ] 不重現 swipe overlay 問題。
+- [x] item Unpin 成功後執行 retention。
+- [x] 剛 Unpin 的 item 為 protected item。
+- [x] 超出上限時優先刪除其他最舊 unpinned。
+- [x] 不立即刪除剛 Unpin 的 item。
+- [x] 不改變目前 Pin／Unpin 排序規則。
+- [x] 不使用 index。
+- [x] 不使用 sleep。
+- [x] 不重現 stale row。
+- [x] 不重現 swipe overlay 問題。
 
 ### 測試
 
-- [ ] Unpin 未超限。
-- [ ] Unpin 導致超限。
-- [ ] 剛 Unpin item 保留。
-- [ ] 其他最舊 item 被刪除。
-- [ ] 沒有其他可刪 item 時有明確行為。
-- [ ] 快速連續 Pin／Unpin。
-- [ ] NextPaste target build 通過。
+- [x] Unpin 未超限。
+- [x] Unpin 導致超限。
+- [x] 剛 Unpin item 保留。
+- [x] 其他最舊 item 被刪除。
+- [x] 沒有其他可刪 item 時有明確行為。
+- [x] 快速連續 Pin／Unpin。
+- [x] NextPaste target build 通過。
 
 ---
 
-## [ ] T021：降低 History Limit 的確認流程
+## [ ] T021：降低 History Limit 的確認流程 <!-- implemented, pending UI verification (T029) -->
 
 ### 實作
 
-- [ ] 使用 T018 計算預計刪除數量。
-- [ ] confirmation 顯示新 limit。
-- [ ] confirmation 顯示預計刪除的 unpinned 數量。
-- [ ] confirmation 說明 pinned 不受影響。
-- [ ] Confirm 儲存新設定。
-- [ ] Confirm 立即執行 retention。
-- [ ] Cancel 保留舊設定。
-- [ ] Cancel 不刪除資料。
-- [ ] 增加上限不需要 destructive confirmation。
-- [ ] 切換 Unlimited 不需要 destructive confirmation。
-- [ ] 不複製 retention 邏輯。
+- [x] 使用 T018 計算預計刪除數量。
+- [x] confirmation 顯示新 limit。
+- [x] confirmation 顯示預計刪除的 unpinned 數量。
+- [x] confirmation 說明 pinned 不受影響。
+- [x] Confirm 儲存新設定。
+- [x] Confirm 立即執行 retention。
+- [x] Cancel 保留舊設定。
+- [x] Cancel 不刪除資料。
+- [x] 增加上限不需要 destructive confirmation。
+- [x] 切換 Unlimited 不需要 destructive confirmation。
+- [x] 不複製 retention 邏輯。
 
 ### 測試
 
-- [ ] 降低且需刪除。
-- [ ] 降低但不需刪除。
-- [ ] Cancel。
-- [ ] Confirm。
-- [ ] 增加 limit。
-- [ ] Unlimited。
-- [ ] pinned 保留。
-- [ ] NextPaste target build 通過。
+- [ ] 降低且需刪除。 <!-- pending UI verification (T029) -->
+- [ ] 降低但不需刪除。 <!-- pending UI verification (T029) -->
+- [ ] Cancel。 <!-- pending UI verification (T029) -->
+- [ ] Confirm。 <!-- pending UI verification (T029) -->
+- [ ] 增加 limit。 <!-- pending UI verification (T029) -->
+- [ ] Unlimited。 <!-- pending UI verification (T029) -->
+- [ ] pinned 保留。 <!-- pending UI verification (T029) -->
+- [x] NextPaste target build 通過。
 
 ---
 

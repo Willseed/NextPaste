@@ -14,6 +14,7 @@ import AppKit
 @main
 struct NextPasteApp: App {
     let sharedModelContainer: ModelContainer
+    @StateObject private var historyLimitPreference: HistoryLimitPreference
 
     init() {
 #if DEBUG
@@ -22,6 +23,13 @@ struct NextPasteApp: App {
         sharedModelContainer = Self.makeModelContainer(
             isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")
         )
+        let limitPref = HistoryLimitPreference()
+        // T019: wire the history limit provider so post-capture retention
+        // enforces the configured limit.
+        ClipboardMonitorLifecycleController.shared.historyLimitProvider = { [limitPref] in
+            limitPref.limit
+        }
+        _historyLimitPreference = StateObject(wrappedValue: limitPref)
     }
 
     static func makeModelContainer(isStoredInMemoryOnly: Bool = false) -> ModelContainer {
@@ -59,6 +67,7 @@ struct NextPasteApp: App {
         // tasks populate them.
         Settings {
             SettingsView()
+                .environmentObject(historyLimitPreference)
         }
 #endif
     }

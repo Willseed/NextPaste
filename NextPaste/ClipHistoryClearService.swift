@@ -103,3 +103,22 @@ struct ClipHistoryClearService {
         }
     }
 }
+
+// MARK: - Shared image reference (T018 reuses the same structure as T006/T008)
+
+extension ClipHistoryClearService {
+    /// Expose the image asset reference for reuse by the retention service.
+    struct ExposedImageAssetReference: Equatable {
+        let imageFilename: String
+        let thumbnailFilename: String?
+
+        init?(clip: ClipItem) {
+            guard clip.contentType == "image",
+                  let imageFilename = clip.imageFilename else {
+                return nil
+            }
+            self.imageFilename = imageFilename
+            self.thumbnailFilename = clip.thumbnailFilename
+        }
+    }
+}

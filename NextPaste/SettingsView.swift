@@ -272,14 +272,138 @@ private struct AppearanceSettingsTab: View {
     }
 }
 
-// MARK: - History (T010 placeholder; T016-T021 populate)
+// MARK: - History (T017/T021: history limit picker + lower-limit confirmation)
 
 private struct HistorySettingsTab: View {
+    @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
+    @Environment(\.modelContext) private var modelContext
+    @State private var customText: String = ""
+    @State private var customValidationError: String?
+    @State private var pendingLowerLimit: HistoryLimit?
+    @State private var pendingRemovalCount: Int = 0
+
+    private let unlimitedTag = "unlimited"
+    private let customTag = "custom"
+
     var body: some View {
         Form {
-            Text("History settings")
-                .accessibilityIdentifier("settings-history-placeholder")
+            Section("History Limit") {
+                Picker("History Limit", selection: Binding(
+                    get: { selectionTag(for: historyLimitPreference.limit) },
+                    set: { newTag in applySelection(newTag) }
+                )) {
+                    Text("Unlimited").tag(unlimitedTag)
+                    ForEach(HistoryLimit.presets, id: \.self) { value in
+                        Text(String(value)).tag(String(value))
+                    }
+                    Text("Custom").tag(customTag)
+                }
+                .accessibilityIdentifier("history-limit-picker")
+                .accessibilityLabel("History Limit")
+
+                if showsCustomField {
+                    HStack {
+                        TextField("10–\(HistoryLimit.customMax)", text: $customText)
+                            .accessibilityIdentifier("history-limit-custom-field")
+                            .accessibilityLabel("Custom history limit")
+                            .onSubmit { applyCustomText() }
+                        Button("Apply") { applyCustomText() }
+                            .accessibilityIdentifier("history-limit-custom-apply-button")
+                    }
+                    if let customValidationError {
+                        Text(customValidationError)
+                            .foregroundStyle(.red)
+                            .accessibilityIdentifier("history-limit-custom-error")
+                            .accessibilityLabel(customValidationError)
+                    }
+                }
+            }
         }
         .padding()
+        // T021: confirmation when lowering the limit would delete items.
+        .confirmationDialog(
+            "Lower History Limit",
+            isPresented: Binding(
+                get: { pendingLowerLimit != nil },
+                set: { if $0 == false { pendingLowerLimit = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            if let pending = pendingLowerLimit {
+                Button("Delete \(pendingRemovalCount) Items", role: .destructive) {
+                    confirmLowerLimit(pending)
+                }
+                .accessibilityIdentifier("confirm-lower-limit-button")
+            }
+            Button("Cancel", role: .cancel) {
+                pendingLowerLimit = nil
+            }
+            .accessibilityIdentifier("cancel-lower-limit-button")
+        } message: {
+            if let pending = pendingLowerLimit {
+                Text("This will delete \(pendingRemovalCount) unpinned item\(pendingRemovalCount == 1 ? "" : "s") to meet the new limit of \(pending.displayName). Pinned items are not affected. This action cannot be undone.")
+                    .accessibilityIdentifier("lower-limit-confirmation-message")
+            }
+        }
+    }
+
+    private var showsCustomField: Bool {
+        if case .custom = historyLimitPreference.limit { return true }
+        return selectionTag(for: historyLimitPreference.limit) == customTag
+    }
+
+    private func selectionTag(for limit: HistoryLimit) -> String {
+        switch limit {
+        case .unlimited: return unlimitedTag
+        case .preset(let n): return String(n)
+        case .custom: return customTag
+        }
+    }
+
+    private func applySelection(_ tag: String) {
+        customValidationError = nil
+        if tag == unlimitedTag {
+            historyLimitPreference.persist(.unlimited)
+        } else if tag == customTag {
+            // Show the custom field; don't persist until a valid value is entered.
+            if customText.isEmpty { customText = "100" }
+        } else if let value = Int(tag) {
+            // Preset selection. If lowering, check if items would be deleted.
+            let newLimit = HistoryLimit.preset(value)
+            tryLowering(newLimit)
+        }
+    }
+
+    private func applyCustomText() {
+        guard let value = HistoryLimitValidator.validateCustom(customText) else {
+            customValidationError = "Enter a whole number from \(HistoryLimit.customMin) to \(HistoryLimit.customMax)."
+            return
+        }
+        customValidationError = nil
+        let newLimit = HistoryLimit.custom(value)
+        tryLowering(newLimit)
+    }
+
+    /// T021: if the new limit is lower than the current effective count of unpinned
+    /// items, show a confirmation before persisting and trimming. Increasing or
+    /// switching to Unlimited does not need confirmation.
+    private func tryLowering(_ newLimit: HistoryLimit) {
+        let service = HistoryRetentionService(modelContext: modelContext)
+        let toRemove = service.calculateItemsToRemove(limit: newLimit)
+        if toRemove.isEmpty {
+            // No items would be deleted; persist immediately.
+            historyLimitPreference.persist(newLimit)
+        } else {
+            // Defer: show confirmation. The pending limit is stored in state.
+            pendingRemovalCount = toRemove.count
+            pendingLowerLimit = newLimit
+        }
+    }
+
+    private func confirmLowerLimit(_ limit: HistoryLimit) {
+        historyLimitPreference.persist(limit)
+        // T021: immediately execute retention after confirming.
+        try? HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
+        pendingLowerLimit = nil
     }
 }

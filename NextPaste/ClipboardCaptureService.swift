@@ -26,6 +26,11 @@ final class ClipboardCaptureService {
     private let imageFileStore: ImageClipFileStore
     private let thumbnailGenerator: ImageThumbnailGenerator
 
+    /// T019: optional post-capture retention hook. Called after a successful
+    /// save (not on failure or ignore). The closure receives the model context
+    /// so it can enforce the history limit. Wired by the app lifecycle controller.
+    var postCaptureRetention: ((ModelContext) -> Void)?
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         self.imageFileStore = ImageClipFileStore()
@@ -70,6 +75,7 @@ final class ClipboardCaptureService {
             let clip = makeClip(text: text, createdAt: observedAt)
             modelContext.insert(clip)
             try modelContext.save()
+            postCaptureRetention?(modelContext)
             return .captured(text)
         } catch {
             modelContext.rollback()
@@ -81,6 +87,7 @@ final class ClipboardCaptureService {
         let clip = makeClip(text: text, createdAt: createdAt)
         modelContext.insert(clip)
         try modelContext.save()
+        postCaptureRetention?(modelContext)
     }
 
     private func containsDuplicateText(_ text: String) throws -> Bool {
@@ -121,6 +128,7 @@ final class ClipboardCaptureService {
 
             do {
                 try modelContext.save()
+                postCaptureRetention?(modelContext)
                 return .captured(payload.duplicateIdentity.hash)
             } catch {
                 modelContext.rollback()

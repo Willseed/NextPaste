@@ -25,6 +25,11 @@ final class PinStateMutationStore {
     private var sequenceCounter: UInt64 = 0
     private(set) var lastSnapshot: VisibleListSnapshot?
 
+    /// T020: optional post-unpin retention hook. Called after a successful unpin
+    /// save with the just-unpinned item's ID (protected from immediate removal).
+    /// Wired by the app so retention enforces the history limit after Unpin.
+    var postUnpinRetention: ((UUID, ModelContext) -> Void)?
+
     init(
         modelContext: ModelContext,
         projector: PinStateSnapshotProjector = PinStateSnapshotProjector(),
@@ -145,6 +150,12 @@ final class PinStateMutationStore {
                 sequence: sequence,
                 stage: .saveAfter
             ))
+            // T020: after a successful unpin, enforce the history limit with the
+            // just-unpinned item as the protected item (it is not immediately
+            // removed; the oldest other unpinned items are trimmed first).
+            if request.desiredPinnedState == false {
+                postUnpinRetention?(request.itemID, modelContext)
+            }
             let snapshot = regenerateSnapshot(reason: .mutationApplied)
             return publishResult(
                 .applied(itemID: request.itemID, desiredPinnedState: request.desiredPinnedState),
