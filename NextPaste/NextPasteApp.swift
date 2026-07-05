@@ -16,6 +16,10 @@ struct NextPasteApp: App {
     let sharedModelContainer: ModelContainer
     @StateObject private var historyLimitPreference: HistoryLimitPreference
     @StateObject private var appearancePreference: AppearancePreference
+#if os(macOS)
+    @StateObject private var globalShortcutPreference: GlobalShortcutPreference
+    @StateObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
+#endif
 
     init() {
 #if DEBUG
@@ -30,6 +34,12 @@ struct NextPasteApp: App {
         )
         let limitPref = HistoryLimitPreference()
         let appearancePref = AppearancePreference()
+#if os(macOS)
+        let globalShortcutPref = GlobalShortcutPreference()
+        let globalShortcutLifecycleController = GlobalShortcutLifecycleController(
+            preference: globalShortcutPref
+        )
+#endif
         // T019: wire the history limit provider so post-capture retention
         // enforces the configured limit.
         ClipboardMonitorLifecycleController.shared.historyLimitProvider = { [limitPref] in
@@ -37,6 +47,10 @@ struct NextPasteApp: App {
         }
         _historyLimitPreference = StateObject(wrappedValue: limitPref)
         _appearancePreference = StateObject(wrappedValue: appearancePref)
+#if os(macOS)
+        _globalShortcutPreference = StateObject(wrappedValue: globalShortcutPref)
+        _globalShortcutLifecycleController = StateObject(wrappedValue: globalShortcutLifecycleController)
+#endif
     }
 
     static func makeModelContainer(isStoredInMemoryOnly: Bool = false) -> ModelContainer {
@@ -58,6 +72,9 @@ struct NextPasteApp: App {
                 ContentView()
             }
                 .environmentObject(appearancePreference)
+#if os(macOS)
+                .environmentObject(globalShortcutLifecycleController)
+#endif
                 .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
                 .frame(minWidth: 520, minHeight: 380)
         }
@@ -79,6 +96,8 @@ struct NextPasteApp: App {
                 .modelContainer(sharedModelContainer)
                 .environmentObject(historyLimitPreference)
                 .environmentObject(appearancePreference)
+                .environmentObject(globalShortcutPreference)
+                .environmentObject(globalShortcutLifecycleController)
                 .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
         }
 #endif
@@ -88,17 +107,28 @@ struct NextPasteApp: App {
 private struct ClipboardMonitorHostView<Content: View>: View {
     @Environment(\.modelContext) private var modelContext
     let content: () -> Content
+#if os(macOS)
+    @EnvironmentObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
+#endif
+
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.content = content
+    }
 
     var body: some View {
         content()
             .task {
                 await MainActor.run {
                     ClipboardMonitorLifecycleController.shared.startIfNeeded(using: modelContext)
+#if os(macOS)
+                    globalShortcutLifecycleController.startIfNeeded()
+#endif
                 }
             }
 #if os(macOS)
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.willTerminateNotification)) { _ in
                 ClipboardMonitorLifecycleController.shared.stop()
+                globalShortcutLifecycleController.stop()
 #if DEBUG
                 RowActionTraceRuntime.finish(status: .completed)
 #endif

@@ -504,7 +504,7 @@
 
 - Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
 - Summary: `docs/implementation/task-summaries/T015.md`
-- Reconstruction note: committed code includes the transactional service and tests, but production code does not retain an app-level registrar owner or call `restoreAtLaunch`, so active global-hotkey lifecycle is not yet evidenced end-to-end.
+- Reconstruction note: app-level hotkey ownership now lives in `NextPasteApp` via a retained `GlobalShortcutLifecycleController`; launch-time restore is wired from the app lifecycle host, and targeted macOS unit validation passed. Broader phase verification is still pending before this task can be checked off.
 
 ### 更新流程
 

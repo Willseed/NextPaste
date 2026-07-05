@@ -50,8 +50,6 @@ struct GlobalHotKeyRegistrarTests {
             modifiers: [.command]
         )
         _ = registrar.register(shortcut: shortcut) { }
-        // register calls unregister internally to clear any prior registration,
-        // so unregisterCallCount is already 1 here.
         let countBeforeExplicitUnregister = registrar.unregisterCallCount
         registrar.unregister()
 
@@ -70,6 +68,7 @@ struct GlobalHotKeyRegistrarTests {
 
         #expect(registrar.currentShortcut == second)
         #expect(registrar.registerCallCount == 2)
+        #expect(registrar.unregisterCallCount == 1)
     }
 
     @Test func fakeRegistrarSimulateFireInvokesHandler() {

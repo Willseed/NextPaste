@@ -76,7 +76,10 @@ struct GlobalShortcutUpdateServiceTests {
             keyCharacter: "v",
             modifiers: [.command, .shift]
         )
-        _ = service.update(to: old)
+        var oldFired = false
+        _ = service.update(to: old) {
+            oldFired = true
+        }
         #expect(preference.shortcut == old)
 
         // Now simulate a registration failure for a new candidate.
@@ -86,11 +89,18 @@ struct GlobalShortcutUpdateServiceTests {
             keyCharacter: "a",
             modifiers: [.command, .option]
         )
-        let result = service.update(to: newCandidate)
+        var newFired = false
+        let result = service.update(to: newCandidate) {
+            newFired = true
+        }
 
         #expect(result == .registrationFailed)
         // Old shortcut remains registered and stored.
         #expect(preference.shortcut == old)
+        #expect(registrar.currentShortcut == old)
+        registrar.simulateFire()
+        #expect(oldFired)
+        #expect(newFired == false)
     }
 
     // MARK: Clear
@@ -190,5 +200,24 @@ struct GlobalShortcutUpdateServiceTests {
         #expect(result == .success(nil))
         #expect(registrar.isRegistered == false)
         #expect(preference.shortcut == nil)
+    }
+
+    @Test func updateWithAlreadyRegisteredShortcutIsNoOpSuccess() {
+        let defaults = makeDefaults()
+        let (service, registrar, preference) = makeService(defaults: defaults)
+        let shortcut = GlobalShortcut(
+            keyCode: 0x09,
+            keyCharacter: "v",
+            modifiers: [.command, .shift]
+        )
+
+        _ = service.update(to: shortcut)
+        let initialRegisterCallCount = registrar.registerCallCount
+
+        let result = service.update(to: shortcut)
+
+        #expect(result == .success(shortcut))
+        #expect(registrar.registerCallCount == initialRegisterCallCount)
+        #expect(preference.shortcut == shortcut)
     }
 }

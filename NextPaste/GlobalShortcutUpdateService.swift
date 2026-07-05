@@ -34,14 +34,21 @@ final class GlobalShortcutUpdateService {
     /// 2. Register with the real registrar (T012). On failure, keep the old
     ///    shortcut and stored preference; return `.registrationFailed`.
     /// 3. On success, persist to the preference store.
-    /// The old registration is replaced by `register` (which unregisters first).
     @discardableResult
-    func update(to candidate: GlobalShortcut) -> GlobalShortcutUpdateResult {
+    func update(
+        to candidate: GlobalShortcut,
+        handler: @escaping () -> Void = {}
+    ) -> GlobalShortcutUpdateResult {
         if let error = GlobalShortcutValidator.validate(candidate) {
             return .validationFailed(error)
         }
 
-        let handler: () -> Void = { /* wired by the app to show NextPaste */ }
+        if registrar.isRegistered,
+           registrar.currentShortcut == candidate,
+           preference.shortcut == candidate {
+            return .success(candidate)
+        }
+
         let registered = registrar.register(shortcut: candidate, handler: handler)
         guard registered else {
             return .registrationFailed
@@ -62,9 +69,9 @@ final class GlobalShortcutUpdateService {
 
     /// Reset to the repository default, transactionally.
     @discardableResult
-    func reset() -> GlobalShortcutUpdateResult {
+    func reset(handler: @escaping () -> Void = {}) -> GlobalShortcutUpdateResult {
         let defaultShortcut = GlobalShortcutPreference.defaultShortcut
-        return update(to: defaultShortcut)
+        return update(to: defaultShortcut, handler: handler)
     }
 
     /// Restore the stored preference at app launch: if a shortcut is stored,
@@ -74,6 +81,11 @@ final class GlobalShortcutUpdateService {
         guard let stored = preference.shortcut else {
             return false
         }
+
+        if registrar.isRegistered, registrar.currentShortcut == stored {
+            return true
+        }
+
         if let error = GlobalShortcutValidator.validate(stored) {
             // Stored shortcut is invalid (e.g. spec changed); do not register.
             _ = error

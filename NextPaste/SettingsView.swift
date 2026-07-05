@@ -62,7 +62,8 @@ private struct GeneralSettingsTab: View {
 // MARK: - Shortcuts (T014: global shortcut recorder)
 
 private struct ShortcutsSettingsTab: View {
-    @StateObject private var preference = GlobalShortcutPreference()
+    @EnvironmentObject private var preference: GlobalShortcutPreference
+    @EnvironmentObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
     @State private var isRecording = false
     @State private var candidate: GlobalShortcut?
     @State private var validationError: GlobalShortcutValidationError?
@@ -70,12 +71,6 @@ private struct ShortcutsSettingsTab: View {
 
     #if os(macOS)
     @State private var eventMonitor: Any?
-    private var updateService: GlobalShortcutUpdateService {
-        GlobalShortcutUpdateService(
-            registrar: CarbonGlobalHotKeyRegistrar(),
-            preference: preference
-        )
-    }
     #endif
 
     var body: some View {
@@ -136,6 +131,11 @@ private struct ShortcutsSettingsTab: View {
             }
         }
         .padding()
+        .onDisappear {
+            #if os(macOS)
+            stopRecording()
+            #endif
+        }
     }
 
     private var currentShortcutDisplay: String {
@@ -166,21 +166,13 @@ private struct ShortcutsSettingsTab: View {
     private func clearShortcut() {
         validationError = nil
         registrationError = false
-        #if os(macOS)
-        let result = updateService.clear()
-        if case .registrationFailed = result {
-            registrationError = true
-        }
-        #endif
+        applyResult(globalShortcutLifecycleController.clear())
     }
 
     private func resetToDefault() {
         validationError = nil
         registrationError = false
-        #if os(macOS)
-        let result = updateService.reset()
-        applyResult(result)
-        #endif
+        applyResult(globalShortcutLifecycleController.reset())
     }
 
     private func applyResult(_ result: GlobalShortcutUpdateResult) {
@@ -200,7 +192,30 @@ private struct ShortcutsSettingsTab: View {
         removeKeyMonitor()
         let mask: NSEvent.EventTypeMask = [.keyDown]
         eventMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
-            handleKeyEvent(event)
+            let modifierFlags = event.modifierFlags
+            let keyCode = UInt32(event.keyCode)
+            let keyCharacter: String = {
+                switch event.keyCode {
+                case 0x31: return "space"
+                case 0x24: return "return"
+                case 0x33: return "delete"
+                case 0x35: return "escape"
+                case 0x30: return "tab"
+                default:
+                    if let char = event.charactersIgnoringModifiers?.lowercased(), char.count == 1 {
+                        return char
+                    }
+                    return "key\(event.keyCode)"
+                }
+            }()
+
+            Task { @MainActor in
+                handleRecordedKeyEvent(
+                    keyCode: keyCode,
+                    keyCharacter: keyCharacter,
+                    modifierFlags: modifierFlags
+                )
+            }
             return nil // consume the event while recording
         }
     }
@@ -212,11 +227,12 @@ private struct ShortcutsSettingsTab: View {
         }
     }
 
-    private func handleKeyEvent(_ event: NSEvent) {
-        let modifiers = modifierSet(from: event.modifierFlags)
-        let keyCode = UInt32(event.keyCode)
-        let keyCharacter = character(for: event)
-
+    private func handleRecordedKeyEvent(
+        keyCode: UInt32,
+        keyCharacter: String,
+        modifierFlags: NSEvent.ModifierFlags
+    ) {
+        let modifiers = modifierSet(from: modifierFlags)
         let shortcut = GlobalShortcut(
             keyCode: keyCode,
             keyCharacter: keyCharacter,
@@ -230,7 +246,7 @@ private struct ShortcutsSettingsTab: View {
 
         if validationError == nil {
             // T015: apply the candidate transactionally (validate → register → persist).
-            let result = updateService.update(to: shortcut)
+            let result = globalShortcutLifecycleController.update(to: shortcut)
             applyResult(result)
         }
     }
@@ -242,21 +258,6 @@ private struct ShortcutsSettingsTab: View {
         if flags.contains(.control) { set.insert(.control) }
         if flags.contains(.shift) { set.insert(.shift) }
         return set
-    }
-
-    private func character(for event: NSEvent) -> String {
-        switch event.keyCode {
-        case 0x31: return "space"
-        case 0x24: return "return"
-        case 0x33: return "delete"
-        case 0x35: return "escape"
-        case 0x30: return "tab"
-        default:
-            if let char = event.charactersIgnoringModifiers?.lowercased(), char.count == 1 {
-                return char
-            }
-            return "key\(event.keyCode)"
-        }
     }
     #endif
 }

@@ -16,13 +16,14 @@ import Carbon
 
 /// T012: protocol for registering/unregistering a single global hotkey. The
 /// registrar owns one active registration at a time. `register` returns `false`
-/// on registration failure (e.g. conflict with another app). All methods are
-/// MainActor-isolated to respect the project default actor isolation.
+/// on registration failure (e.g. conflict with another app) and keeps any
+/// existing registration active when the replacement cannot be installed. All
+/// methods are MainActor-isolated to respect the project default actor isolation.
 @MainActor
 protocol GlobalHotKeyRegistering: AnyObject {
-    /// Register `shortcut` with `handler`. Unregisters any prior registration
-    /// first. Returns `true` on success, `false` if the system rejects the
-    /// registration (e.g. conflict).
+    /// Register `shortcut` with `handler`. Replaces any prior registration only
+    /// after the new shortcut is accepted. Returns `true` on success, `false` if
+    /// the system rejects the registration (e.g. conflict).
     @discardableResult
     func register(shortcut: GlobalShortcut, handler: @escaping () -> Void) -> Bool
 
@@ -67,7 +68,12 @@ final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
     @discardableResult
     func register(shortcut: GlobalShortcut, handler: @escaping () -> Void) -> Bool {
         installEventHandlerIfNeeded()
-        unregister()
+
+        if hotKeyRef != nil, registeredShortcut == shortcut {
+            currentHandler = handler
+            Self.callbackTarget = self
+            return true
+        }
 
         let carbonModifiers = shortcut.modifiers.reduce(UInt32(0)) { $0 | $1.carbonModifier }
         let hotKeyID = EventHotKeyID(signature: OSType(0x4E505354), id: UInt32(1))
@@ -83,6 +89,10 @@ final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
 
         guard status == noErr, let ref else {
             return false
+        }
+
+        if let existingRef = hotKeyRef {
+            UnregisterEventHotKey(existingRef)
         }
 
         hotKeyRef = ref
@@ -131,9 +141,9 @@ final class CarbonGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
 }
 
 /// Carbon event handler callback. `@convention(c)` — no captures. Dispatches to
-/// the main queue so the MainActor handler runs on the main thread.
+/// the MainActor so UI/state work stays on the correct executor.
 private let nextPasteHotKeyEventHandler: @convention(c) (EventHandlerCallRef?, EventRef?, UnsafeMutableRawPointer?) -> OSStatus = { _, _, _ in
-    DispatchQueue.main.async {
+    Task { @MainActor in
         CarbonGlobalHotKeyRegistrar.callbackTarget?.fireHandler()
     }
     return noErr
@@ -165,7 +175,11 @@ final class FakeGlobalHotKeyRegistrar: GlobalHotKeyRegistering {
             lastRegistrationSucceeded = false
             return false
         }
-        unregister()
+
+        if currentHandler != nil {
+            unregisterCallCount += 1
+        }
+
         lastRegisteredShortcut = shortcut
         currentHandler = handler
         lastRegistrationSucceeded = true
