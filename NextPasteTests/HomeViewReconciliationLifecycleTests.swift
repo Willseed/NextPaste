@@ -83,22 +83,19 @@ extension HomeView: ReconciliationLifecycleProbe {}
 
 // MARK: - Minimal harness scaffold (full harness lands with T073)
 //
-// NOTE (T073 investigation, 2026-07-06): A `NSHostingController(rootView:
-// HomeView())` host was prototyped to make value-type `@State`
-// (`rowActionDisplayOrderSnapshot`, `rowActionDisplayOrderSnapshotGenerationValue`)
-// observable. It does NOT work: `hostingController.rootView` (and any
-// externally-held `HomeView` value) reports `_location: nil` for every
-// `@State` property, because SwiftUI installs `@State` storage only on its
-// internal view-graph copy, never on the `rootView` value read back. Value-type
-// `@State` writes through the external handle are therefore still no-ops, so
-// `hasRowActionDisplayOrderSnapshot` stays false and
-// `rowActionDisplayOrderSnapshotGeneration` stays nil. Reference-type state
-// (`ReconciliationLifecycleStorage`) remains observable via the shared class
-// instance, which is why T011/T012 stay Green. Making value-type snapshot
-// state observable from an external test handle requires a production seam
-// adjustment (e.g. routing snapshot/snapshot-generation observation through a
-// reference-type holder analogous to `ReconciliationLifecycleStorage`); that
-// is out of scope for a test-only harness slice and was not applied here.
+// T073.1 update (2026-07-06): The production seam adjustment described below
+// has now been applied. `HomeView` holds a reference-type
+// `ReconciliationSnapshotObservationStorage` via `@State`, and the read-only
+// seam accessors (`hasRowActionDisplayOrderSnapshot`,
+// `rowActionDisplayOrderSnapshotGeneration`) read that mirror instead of the
+// value-type `@State`. The mirror is written alongside the production writes
+// in `beginRowActionDisplayOrderSnapshot()` / `clearRowActionDisplayOrderSnapshot()`,
+// so snapshot existence / generation are now observable from a bare
+// (unhosted) `HomeView()` value. Production behavior is unchanged: the
+// value-type `rowActionDisplayOrderSnapshot` remains the source of truth that
+// `visibleClips` reads. T013/T014 now progress past "snapshot nil"; their
+// remaining Red is the T026 stale-generation / old-task protection that has
+// not yet been implemented.
 
 @MainActor
 private enum HomeViewReconciliationLifecycleHarness {

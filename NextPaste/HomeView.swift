@@ -35,6 +35,43 @@ private final class ReconciliationLifecycleStorage {
     var priorTaskWasCancelled: Bool = false
 }
 
+// T073.1: read-only observability mirror for the row-action display-order
+// snapshot lifecycle. HomeView is a struct, and the production snapshot state
+// (`rowActionDisplayOrderSnapshot: [UUID]?`,
+// `rowActionDisplayOrderSnapshotGenerationValue: Int?`) is value-type `@State`.
+// On an unhosted view (e.g. the bare `HomeView()` value driven by the lifecycle
+// tests), value-type `@State` writes are no-ops because SwiftUI installs
+// `@State` storage only on its internal view-graph copy, never on an externally
+// held view value. That makes the snapshot existence/generation unobservable
+// from a test handle, so T013/T014 cannot progress past "snapshot nil".
+//
+// This holder is a `@MainActor` reference type held by `@State` on HomeView, so
+// the same shared instance is observable both when HomeView is installed in
+// SwiftUI and when a bare value is probed. It ONLY mirrors read-only
+// observability (snapshot existence, generation token, optional ID order/count);
+// it never drives production behavior. The production source of truth remains
+// the value-type `@State` (`rowActionDisplayOrderSnapshot` /
+// `rowActionDisplayOrderSnapshotGenerationValue`), which `visibleClips` and the
+// real reconciliation mechanism continue to read/write. The mirror is written
+// alongside the production writes in `beginRowActionDisplayOrderSnapshot()` /
+// `clearRowActionDisplayOrderSnapshot()` and read only by the read-only seam
+// accessors (`hasRowActionDisplayOrderSnapshot`,
+// `rowActionDisplayOrderSnapshotGeneration`). Tests cannot mutate the holder
+// (no public setters / internal mutators beyond the two production call sites)
+// and the holder cannot drive production behavior.
+@MainActor
+private final class ReconciliationSnapshotObservationStorage {
+    /// Mirror of `rowActionDisplayOrderSnapshot != nil` (FR-007).
+    var snapshotExists: Bool = false
+    /// Mirror of `rowActionDisplayOrderSnapshotGenerationValue` (FR-010).
+    var snapshotGeneration: Int? = nil
+    /// Optional mirror of the snapshot UUID order/count. Current tests do not
+    /// assert on ID order/count, but the mirror is kept so future T026
+    /// stale-generation coverage can observe the snapshot identity without
+    /// touching production state.
+    var snapshotIDs: [UUID]? = nil
+}
+
 struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
@@ -101,6 +138,15 @@ struct HomeView: View {
     // `scheduleRowActionDisplayOrderReconciliation()` and
     // `beginRowActionDisplayOrderSnapshot()`.
     @State private var reconciliationLifecycle = ReconciliationLifecycleStorage()
+
+    // T073.1: read-only observability mirror holder for the row-action
+    // display-order snapshot lifecycle. See
+    // `ReconciliationSnapshotObservationStorage` for why this is a
+    // reference-type `@State` rather than value-type. Held by `@State` so a
+    // bare `HomeView()` value shares the same instance with the view-graph
+    // copy; the read-only seam accessors read this mirror while production
+    // behavior continues to use the value-type snapshot `@State`.
+    @State private var reconciliationSnapshotObservation = ReconciliationSnapshotObservationStorage()
 
     var body: some View {
         ZStack {
@@ -802,12 +848,21 @@ struct HomeView: View {
     // during AppKit's native row-action teardown. See `rowActionDisplayOrderSnapshot`.
     // Feature 020 (ADR-020): the snapshot stores ID/order-only metadata, not [ClipItem].
     private func beginRowActionDisplayOrderSnapshot() {
-        rowActionDisplayOrderSnapshot = visibleClips.map(\.id)
+        let snapshotIDs = visibleClips.map(\.id)
+        rowActionDisplayOrderSnapshot = snapshotIDs
         // T024: record the generation token this snapshot was opened under, so
         // stale-generation tasks can avoid clearing a snapshot they no longer
         // own (FR-010; Plan § stale-task prevention). The stale-generation
         // cleanup correctness itself lands with T026.
         rowActionDisplayOrderSnapshotGenerationValue = reconciliationLifecycle.generation
+        // T073.1: mirror read-only observability into the reference-type
+        // holder so the seam accessors can observe snapshot existence /
+        // generation from a bare (unhosted) HomeView value, where value-type
+        // `@State` writes are no-ops. This does NOT drive production
+        // behavior; `visibleClips` continues to read the value-type snapshot.
+        reconciliationSnapshotObservation.snapshotExists = true
+        reconciliationSnapshotObservation.snapshotGeneration = reconciliationLifecycle.generation
+        reconciliationSnapshotObservation.snapshotIDs = snapshotIDs
     }
 
     // Reconcile the frozen display order back to the @Query-sorted order on the next
@@ -884,6 +939,12 @@ struct HomeView: View {
             rowActionReconciliationMonitor = nil
         }
         rowActionDisplayOrderSnapshot = nil
+        // T073.1: clear the read-only observability mirror alongside the
+        // production value-type snapshot state. Does NOT drive production
+        // behavior; only keeps the seam accessors consistent.
+        reconciliationSnapshotObservation.snapshotExists = false
+        reconciliationSnapshotObservation.snapshotGeneration = nil
+        reconciliationSnapshotObservation.snapshotIDs = nil
     }
 #endif
 
@@ -901,14 +962,20 @@ struct HomeView: View {
     internal var priorReconciliationTaskWasCancelled: Bool { reconciliationLifecycle.priorTaskWasCancelled }
     internal var hasRowActionDisplayOrderSnapshot: Bool {
         #if os(macOS)
-        return rowActionDisplayOrderSnapshot != nil
+        // T073.1: read the reference-type mirror so the seam is observable from
+        // a bare (unhosted) HomeView value. Production `visibleClips` continues
+        // to read the value-type `rowActionDisplayOrderSnapshot` directly, so
+        // this mirror never drives production behavior.
+        return reconciliationSnapshotObservation.snapshotExists
         #else
         return false
         #endif
     }
     internal var rowActionDisplayOrderSnapshotGeneration: Int? {
         #if os(macOS)
-        return rowActionDisplayOrderSnapshotGenerationValue
+        // T073.1: read the reference-type mirror (see
+        // `hasRowActionDisplayOrderSnapshot`).
+        return reconciliationSnapshotObservation.snapshotGeneration
         #else
         return nil
         #endif
