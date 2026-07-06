@@ -48,6 +48,34 @@ for an unbounded amount of time (until the user performs another input event). F
 "deferred until next explicit input" policy was an accepted temporary behavior; this feature
 replaces it with immediate, safe reconciliation while preserving the teardown-crash protection.
 
+## Superseded Requirements
+
+- **Feature 021 FR-010 is superseded for Pin operations.** The Feature 021 rule that the pinned
+  section is ordered by history time (`createdAt`) no longer governs Pin ordering within the scope
+  of this feature. Pinned ordering MUST use the Pin operation time stored in `sectionSortDate`, so
+  that the most recently pinned clip appears at the top of the pinned section. `PinStateMutationStore`
+  is the single authoritative source of post-mutation ordering state, including the operation-time
+  `sectionSortDate` that drives pinned-section order.
+
+- **Feature 020's "retain the display-order snapshot until the next explicit input event" policy is
+  superseded for Pin and Unpin row actions.** After a Pin/Unpin row-action callback returns,
+  display-order reconciliation MUST occur automatically during the next safe MainActor / RunLoop
+  cycle. The system MUST NOT wait for a subsequent click, scroll, key press, or any other user
+  input event to reconcile. This supersede is scoped to Pin/Unpin row-action display-order
+  reconciliation only; it does not alter Feature 020's other still-effective safety requirements
+  (see below).
+
+- **Other requirements from Features 019, 020, and 021 remain applicable unless explicitly
+  overridden by this specification.** In particular, the following safety requirements from
+  Feature 020 are NOT superseded and MUST be preserved:
+  - UUID identity safety for all mutation and reconciliation lookups.
+  - Teardown safety: the display-order snapshot must continue to protect the acted-on row during
+    AppKit row-action teardown.
+  - Short-lived snapshot protection of the AppKit callback lifecycle.
+  - Safe exit when the target Clip has disappeared, been deleted, or is no longer visible.
+  - No index, row position, `IndexPath`, or positional value may be carried across an async
+    boundary.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Pin Moves The Clip To The Pinned Top Immediately (Priority: P1)
@@ -270,13 +298,21 @@ confirming they still pass.
 - Removing all snapshot protection entirely (the teardown crash would return).
 - Clearing the snapshot synchronously inside the row-action callback immediately after the
   mutation, while still on the AppKit call stack.
+- Performing the UI reorder synchronously inside the row-action callback call stack while teardown
+  may still be in progress.
 - Using a fixed time delay (0.5s, 1s, or any fixed number of seconds) as the reconciliation
-  trigger.
+  trigger, or as a test synchronization strategy in place of bounded retry.
 - Continuing to wait for the next user input event to reconcile.
 - Substituting bounds checks for UUID identity correctness.
 - Disabling animation app-wide or list-wide as the primary fix.
 - Carrying an index, `IndexPath`, or row position across an async/RunLoop boundary as clip
   identity.
+- A UI test actively calling `triggerDisplayOrderReconciliation` or any equivalent reconciliation
+  helper to make Pin/Unpin reordering assertions pass.
+- A UI test synthesizing an additional click, keyboard, mouse, or scroll event to trigger
+  reconciliation.
+- An older reconciliation task clearing a snapshot produced by a newer operation, or applying an
+  ordering result derived from stale state.
 
 ### Key Entities
 
@@ -346,24 +382,44 @@ confirming they still pass.
   operation time, the store's authoritative projection places the acted-on clip at the top of its
   section, idempotent and rollback paths preserve the ordering contract, and rapid serialized
   operations produce a final projection matching the last accepted state per clip.
-- **Display state / generation tests**: Verify a new operation cancels or invalidates a prior
-  pending reconciliation task, an older-generation task cannot overwrite or clear a newer
-  snapshot, a task whose target has been deleted exits safely, and the snapshot and monitors are
-  released after reconciliation and on view teardown.
+- **Display state / generation tests**: This group MUST explicitly cover, at minimum:
+  - **generation/token tests**: a new operation assigns a newer generation/token, and an
+    older-generation reconciliation task cannot overwrite or clear a snapshot produced by a newer
+    operation;
+  - **task cancellation tests**: a new Pin/Unpin operation cancels or invalidates any previously
+    pending reconciliation task for the same view/session;
+  - **stale task prevention tests**: an older reconciliation task cannot apply an ordering result
+    derived from stale state;
+  - **snapshot release tests**: the snapshot and any associated observers, tasks, or monitors are
+  released after reconciliation and on view teardown;
+  - **Clip disappearance tests**: a reconciliation task whose target has been deleted, removed from
+    the visible dataset, or filtered out by the active search query exits safely without crashing
+    or mutating state.
 - **macOS UI tests**: Verify Pin moves the clip to pinned top without further user input, Unpin
   moves the clip to unpinned top without further user input, rapid operations do not crash or
   corrupt state, and the existing Feature 014–020 crash-reproduction tests still pass.
 - **UI test reconciliation contract**: UI tests MUST NOT call
   `triggerDisplayOrderReconciliation(in:)` (or any equivalent explicit-input reconciliation
-  helper) to make Pin/Unpin reordering assertions pass. If a test needs to wait for the safe
-  RunLoop-boundary reconciliation, it must use a bounded polling/retry on the visible order
-  without synthesizing an explicit user input event as the correctness mechanism. Existing tests
-  that rely on `triggerDisplayOrderReconciliation` to assert Pin/Unpin ordering must be updated
-  to assert the new immediate-reconciliation behavior instead (this is a planned test change,
-  not a product-code change in this specify stage).
+  helper) to make Pin/Unpin reordering assertions pass. UI tests MUST NOT synthesize an additional
+  click, keyboard event, mouse move, scroll, or any other explicit user input event to trigger
+  reconciliation. A test that has completed the Pin/Unpin row action MUST wait for the UI to reach
+  the expected order automatically, using a bounded retry that satisfies all of the following:
+  - an explicit, named timeout;
+  - an explicit polling condition expressed in terms of observable UI order (not elapsed time);
+  - a diagnosable failure message that reports the observed order, the expected order, and the
+    elapsed retry count when the condition is not met within the timeout.
+  Fixed-second `sleep` calls MUST NOT be used as a synchronization strategy. Existing tests that
+  rely on `triggerDisplayOrderReconciliation` to assert Pin/Unpin ordering must be updated to
+  assert the new immediate-reconciliation behavior instead (this is a planned test change, not a
+  product-code change in this Specify stage).
+- **Consecutive-run UI tests**: Core Pin/Unpin UI tests MUST be executed at least 50 consecutive
+  times per scenario to verify that the automatic reconciliation does not depend on incidental
+  RunLoop timing. This is distinct from the rapid-operation requirement (SC-003 / SC-004) and is
+  intended to surface intermittent timing-dependent failures across repeated full test runs.
 - **Repeated-operation UI tests**: Core Pin/Unpin UI tests that exercise the same clip or
   multiple clips under rapid operation MUST run at least 50 iterations per scenario to cover the
-  rapid-operation safety contract.
+  rapid-operation safety contract (see SC-003 / SC-004). This rapid-operation requirement is
+  separate from the consecutive-run requirement above.
 
 ## Assumptions
 

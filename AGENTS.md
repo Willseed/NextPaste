@@ -147,3 +147,9 @@ Pending and Verification Pending remain visible follow-up work but are not gover
 
 - 上述治理規則摘要為常駐提示；一般產品 bug fix 或小功能修改，不預設讀完整 `.specify/`、`.github/agents/` 或所有 feature specs。
 - 只有治理、規格、分析、validation ownership 相關任務才讀完整治理文件（`constitution.md`、`speckit.*.agent.md`、validation contracts）。
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/023-immediate-safe-pin-unpin-reordering/plan.md
+<!-- SPECKIT END -->

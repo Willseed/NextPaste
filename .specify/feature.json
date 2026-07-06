@@ -1,3 +1,1 @@
-{
-  "feature_directory": "specs/021-refactor-pin-unpin-safety"
-}
+{"feature_directory":"specs/023-immediate-safe-pin-unpin-reordering"}
