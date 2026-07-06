@@ -103,6 +103,17 @@ private enum HomeViewReconciliationLifecycleHarness {
     }
 }
 
+// MARK: - Lifecycle suite
+// Wrap the four lifecycle tests in a named `@Suite` so the targeted
+// `-only-testing:NextPasteTests/HomeViewReconciliationLifecycleTests` filter
+// actually selects these tests. Without a containing `@Suite`, top-level
+// `@Test` functions resolve under the module suite (`NextPasteTests`), so a
+// suite-name filter for `HomeViewReconciliationLifecycleTests` matched zero
+// tests and the run reported a vacuous `TEST SUCCEEDED`.
+@MainActor
+@Suite("HomeViewReconciliationLifecycleTests")
+struct HomeViewReconciliationLifecycleTests {
+
 // MARK: - T011: a new Pin/Unpin/Delete operation increments reconciliationGeneration
 
 @Test(
@@ -239,3 +250,5 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
         "The newer operation's snapshot must remain held; an older Task must not clear it (FR-009, FR-010; Plan § old-task cannot clear new snapshot)."
     )
 }
+
+} // struct HomeViewReconciliationLifecycleTests
