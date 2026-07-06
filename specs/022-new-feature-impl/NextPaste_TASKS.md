@@ -1009,6 +1009,19 @@
 
 ## [ ] T031：Manual Accessibility Verification 清單
 
+- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+
+### Automated coverage
+
+- [x] Search result accessibility marker (`search-result-count`) reports matching and empty states — verified by `SearchAccessibilityUITests/testSearchResultAccessibilityMarkerReflectsMatchingAndEmptyStates` (passed 2026-07-06).
+- [x] Search Button, Search Field, and Clear Search identifiers are asserted by existing `SearchAccessibilityUITests` cases.
+
+### Manual verification required
+
+The following items require human interaction with VoiceOver, Voice Control, Switch Control, mouse/trackpad-only operation, or system Accessibility settings. They cannot be automated in this environment without triggering system authorization prompts.
+
+- MANUAL VERIFICATION REQUIRED — TOUCH ID / Accessibility authorization: VoiceOver, Voice Control, Switch Control, Increase Contrast, Reduce Transparency, Reduce Motion, Light/Dark/System Mode live toggling, and mouse-only operation must be verified by a human on a configured device.
+
 ### VoiceOver
 
 - [ ] VoiceOver 找得到 Search Button。

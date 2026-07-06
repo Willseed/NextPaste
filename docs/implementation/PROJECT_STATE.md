@@ -15,6 +15,7 @@
 ## Implemented but Unverified Tasks
 
 - `T030`
+- `T031`
 
 ## Current Phase
 
@@ -22,7 +23,7 @@
 
 ## Next Task
 
-- Task: `Run T031 manual accessibility checklist`
+- Task: `Run Phase 8 verifier for T030/T031 phase verification and manual accessibility checklist.`
 
 ## Active Architecture Decisions
 
@@ -44,12 +45,12 @@
 
 ## Existing Uncommitted Changes
 
-- `T030` status synchronization, execution summary, and local `/tmp/nextpaste-022-finish/` evidence generation. No product code changes.
+- `T031` status synchronization, automated coverage notes, task summary, and project-state update. No product code changes.
 
 ## Open Risks
 
 - `T030` awaits phase verification despite green build/test evidence.
-- `T031` manual accessibility evidence is still absent from the repository.
+- `T031` manual accessibility automated coverage (search-result-count marker) is implemented and targeted UI test passed; VoiceOver, mouse-only, and system Accessibility settings remain manual verification pending.
 
 ## Reconstruction Evidence
 
