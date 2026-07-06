@@ -631,8 +631,15 @@ func t020_teardownCancelsInFlightTask() async throws {
         observers.lastExitPath == .teardown,
         "Teardown must record the .teardown exit classification (FR-012; T028/T029)."
     )
+    #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .teardown
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == true,
+        "Teardown must record an owning cleanup trace (FR-012; T029)."
+    )
     // Release any residual waiter so no continuation leaks.
     harness.safeBoundary.releaseAll()
+    // Let the cancelled task finish its teardown exit so no Task leaks.
+    await probe.awaitReconciliationTaskCompletion()
 }
 
 // MARK: - T022: only targetClipID (UUID) and capturedGeneration cross the async hop

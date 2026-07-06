@@ -33,6 +33,10 @@ private final class ReconciliationLifecycleStorage {
     /// Reset to `false` is unnecessary because each new operation records the
     /// fresh cancellation state for the prior task it replaced.
     var priorTaskWasCancelled: Bool = false
+    /// T029: set by `cancelReconciliationForTeardown()` so a task cancelled by
+    /// view teardown records the `.teardown` exit classification (clearing)
+    /// instead of the generic `.cancelled` (non-clearing) classification.
+    var teardownDidOccur: Bool = false
     // T072 § 4 read-only observation storage. These fields are populated only
     // by the production mechanism as the relevant behavior lands; their
     // defaults are real "not yet occurred" state, not placeholder values.
@@ -481,9 +485,36 @@ struct HomeView: View {
             #if DEBUG
             RowActionAppKitObserver.resetObservationSession()
             #endif
+            // T029: cancel the in-flight reconciliation task so it cannot clear a
+            // snapshot or apply order after the view is torn down (FR-012, SC-007),
+            // and record the `.teardown` exit classification + cleanup trace. The
+            // deterministic safe-boundary awaiter resumes the cancelled task so its
+            // continuation does not leak; the task's own post-await guard then
+            // exits `.cancelled` (non-clearing) because it no longer owns the
+            // snapshot after teardown released it.
+            cancelReconciliationForTeardown()
             clearRowActionDisplayOrderSnapshot()
             #endif
         }
+    }
+
+    /// T029: cancel the in-flight `reconciliationTask` for view teardown and
+    /// record the `.teardown` exit path + cleanup ownership trace (FR-012,
+    /// SC-007). Cancelling unblocks a task parked at the safe-boundary awaiter
+    /// (its `withTaskCancellationHandler` resumes the continuation) so the task
+    /// can observe cancellation and exit without leaking. The snapshot itself is
+    /// released by `clearRowActionDisplayOrderSnapshot()` (called by the caller),
+    /// so the `.teardown` trace records `snapshotClearOwned == true`.
+    private func cancelReconciliationForTeardown() {
+        let storage = reconciliationLifecycle
+        storage.teardownDidOccur = true
+        storage.lastExitPath = .teardown
+        storage.lastCleanupTrace = CleanupOwnershipTrace(
+            ownerGeneration: reconciliationSnapshotObservation.snapshotGeneration,
+            clearingDecision: .teardown,
+            snapshotClearOwned: true
+        )
+        storage.task?.cancel()
     }
 
     private func copyClip(_ clip: ClipItem) {
@@ -1316,12 +1347,16 @@ struct HomeView: View {
             }
             if Task.isCancelled {
                 // Cancelled before the await (e.g. view teardown) but not
-                // superseded: early exit without clearing (FR-009, FR-012).
-                storage?.lastExitPath = .cancelled
+                // superseded: early exit without clearing (FR-009, FR-012). If
+                // view teardown caused the cancellation, record `.teardown`
+                // (the teardown path owns the snapshot clear).
+                let isTeardown = storage?.teardownDidOccur == true
+                let decision: ReconciliationOwnershipDecision = isTeardown ? .teardown : .cancelled
+                storage?.lastExitPath = decision
                 storage?.lastCleanupTrace = CleanupOwnershipTrace(
                     ownerGeneration: ownerGeneration,
-                    clearingDecision: .cancelled,
-                    snapshotClearOwned: false
+                    clearingDecision: decision,
+                    snapshotClearOwned: isTeardown
                 )
                 storage?.currentTaskDidFinish = true
                 return
@@ -1336,11 +1371,13 @@ struct HomeView: View {
             // (FR-009, FR-012). T028 records the full cleanup trace.
             if Task.isCancelled {
                 storage?.safeBoundaryAwaitState = .cancelled
-                storage?.lastExitPath = .cancelled
+                let isTeardown = storage?.teardownDidOccur == true
+                let decision: ReconciliationOwnershipDecision = isTeardown ? .teardown : .cancelled
+                storage?.lastExitPath = decision
                 storage?.lastCleanupTrace = CleanupOwnershipTrace(
                     ownerGeneration: ownerGeneration,
-                    clearingDecision: .cancelled,
-                    snapshotClearOwned: false
+                    clearingDecision: decision,
+                    snapshotClearOwned: isTeardown
                 )
                 storage?.currentTaskDidFinish = true
                 return
