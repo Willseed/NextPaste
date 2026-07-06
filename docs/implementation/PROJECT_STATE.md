@@ -6,24 +6,23 @@
 
 ## Last Verified Commit
 
-- Commit: `f798cee feat: 新增歷史限制偏好設定與安裝檢測功能`
+- Commit: `8f2af7c feat(T031): 新增手動可及性驗證清單與自動化覆蓋說明`
 
 ## Completed Tasks
 
-- `T000-T029`
+- `T000-T031`
 
 ## Implemented but Unverified Tasks
 
-- `T030`
-- `T031`
+- _None_
 
 ## Current Phase
 
-- Phase: `Phase 8 completion prep — T030 regression/stability evidence is implemented, while T031 manual accessibility and phase verification remain.`
+- Phase: `Phase 8 COMPLETE — T030 regression/stability evidence verified; T031 automated coverage verified; manual accessibility items remain MANUAL VERIFICATION REQUIRED.`
 
 ## Next Task
 
-- Task: `Run Phase 8 verifier for T030/T031 phase verification and manual accessibility checklist.`
+- Task: `Phase 8 complete. Run final verification for release readiness (out of phase-verifier scope).`
 
 ## Active Architecture Decisions
 
@@ -45,12 +44,11 @@
 
 ## Existing Uncommitted Changes
 
-- `T031` status synchronization, automated coverage notes, task summary, and project-state update. No product code changes.
+- _None_ — Phase 8 verified and committed by the phase verifier.
 
 ## Open Risks
 
-- `T030` awaits phase verification despite green build/test evidence.
-- `T031` manual accessibility automated coverage (search-result-count marker) is implemented and targeted UI test passed; VoiceOver, mouse-only, and system Accessibility settings remain manual verification pending.
+- `T031` manual accessibility items (VoiceOver, mouse-only operation, system Accessibility settings) remain MANUAL VERIFICATION REQUIRED on a configured device; they are not automated and were not fabricated.
 
 ## Reconstruction Evidence
 

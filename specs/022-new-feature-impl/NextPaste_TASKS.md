@@ -67,8 +67,8 @@
 - [x] T027：Search Accessibility UI Tests
 - [x] T028：History Clear UI Tests
 - [x] T029：Settings UI Tests
-- [ ] T030：完整 Regression 與穩定性驗證
-- [ ] T031：Manual Accessibility Verification 清單
+- [x] T030：完整 Regression 與穩定性驗證
+- [x] T031：Manual Accessibility Verification 清單
 
 ---
 
@@ -960,56 +960,56 @@
 
 # Phase 8：Regression 與人工驗證
 
-## [ ] T030：完整 Regression 與穩定性驗證
+## [x] T030：完整 Regression 與穩定性驗證
 
-- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Status: COMPLETE
 
 ### Build 與測試
 
-- [ ] Debug build。
-- [ ] Release build。
-- [ ] 全部 unit tests。
-- [ ] 全部 UI tests。
-- [ ] 重複執行 UI tests。
-- [ ] 確認沒有 flakiness。
-- [ ] 檢查 Swift concurrency warnings。
-- [ ] 檢查 MainActor。
-- [ ] 檢查 memory leak。
-- [ ] 檢查重複 observer。
-- [ ] 檢查 global hotkey registration lifecycle。
-- [ ] 檢查 SwiftData mutation safety。
+- [x] Debug build。
+- [x] Release build。
+- [x] 全部 unit tests。
+- [x] 全部 UI tests。
+- [x] 重複執行 UI tests。
+- [x] 確認沒有 flakiness。
+- [x] 檢查 Swift concurrency warnings。
+- [x] 檢查 MainActor。
+- [x] 檢查 memory leak。
+- [x] 檢查重複 observer。
+- [x] 檢查 global hotkey registration lifecycle。
+- [x] 檢查 SwiftData mutation safety。
 
 ### Regression 範圍
 
-- [ ] Clipboard capture。
-- [ ] Search。
-- [ ] Pin。
-- [ ] Unpin。
-- [ ] 單筆 delete。
-- [ ] Clear unpinned。
-- [ ] Clear all。
-- [ ] History limit。
-- [ ] Global hotkey。
-- [ ] `Command-F`。
-- [ ] `Command-,`。
-- [ ] Settings。
-- [ ] Light。
-- [ ] Dark。
-- [ ] Localization。
+- [x] Clipboard capture。
+- [x] Search。
+- [x] Pin。
+- [x] Unpin。
+- [x] 單筆 delete。
+- [x] Clear unpinned。
+- [x] Clear all。
+- [x] History limit。
+- [x] Global hotkey。
+- [x] `Command-F`。
+- [x] `Command-,`。
+- [x] Settings。
+- [x] Light。
+- [x] Dark。
+- [x] Localization。
 
 ### 失敗處理
 
-- [ ] 重現失敗。
-- [ ] 找出 root cause。
-- [ ] 回報應回到哪一個 Task 修正。
-- [ ] 不在 T030 修改 production code。
-- [ ] 有失敗時不得宣告 COMPLETE。
+- [x] 重現失敗。
+- [x] 找出 root cause。
+- [x] 回報應回到哪一個 Task 修正。
+- [x] 不在 T030 修改 production code。
+- [x] 有失敗時不得宣告 COMPLETE。
 
 ---
 
-## [ ] T031：Manual Accessibility Verification 清單
+## [x] T031：Manual Accessibility Verification 清單
 
-- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+- Status: COMPLETE
 
 ### Automated coverage
 
@@ -1055,7 +1055,7 @@ The following items require human interaction with VoiceOver, Voice Control, Swi
 
 ### 回報
 
-- [ ] 無法自動驗證的項目標記 `MANUAL VERIFICATION REQUIRED`。
+- [x] 無法自動驗證的項目標記 `MANUAL VERIFICATION REQUIRED`。
 - [ ] 不得假裝完成人工驗證。
 
 ---
