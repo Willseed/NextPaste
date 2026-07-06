@@ -121,8 +121,29 @@ Pending and Verification Pending remain visible follow-up work but are not gover
 - `.github/copilot-instructions.md`: Xcode build/test commands, current architecture notes, Apple
   platform conventions, SwiftData usage, and existing validation guidance.
 
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/021-refactor-pin-unpin-safety/plan.md
-<!-- SPECKIT END -->
+## Context Loading Policy
+
+- 默認只讀本檔（`AGENTS.md`）與 `.github/copilot-instructions.md` 這類固定 repo-level 提示詞，以及任務直接相關的檔案。
+- 不預設掃描整個 `specs/`、`docs/`、`.github/`、`.agents/`、`.specify/`。也不掃描 `DerivedData/`、`build/`、`.build/`、`*.xcresult`。
+- 搜尋程式碼時優先限定在 `NextPaste/`、`NextPasteTests/`、`NextPasteUITests/`。
+- 搜尋規格時，先由使用者指定或由任務中提及的 feature 編號推斷對應 `specs/<feature>/`；無法推斷時先用 `rg --files specs` 列出候選目錄，不要全文掃描所有 specs。
+- 舊 feature specs 只在需要歷史決策、相容性或治理追溯時才讀取。
+- 不把預設上下文綁到任何單一活躍 feature 的 spec、plan、tasks 或 contracts。
+
+## Spec Loading Rule
+
+- 只有當使用者明確要求規格工作（specify / clarify / plan / tasks / analyze / implement），或任務需要確認 FR/SC、validation contract、治理追溯時，才讀對應 `specs/<feature>/` 下的檔案。
+- 不要主動讀取或預載任何單一活躍 feature 的 plan.md 作為預設上下文。
+
+## Search / Tool Output Budget
+
+- 使用 `rg` 或 `rg --files`，避免 `find`/`grep` 全 repo 掃描。
+- 搜尋關鍵須具體，避免 `token`、`pin`、`context` 這類會打到大量不相關內容的寬鬆搜尋；必要時加 `path:` 或 `glob:` 限定範圍。
+- 讀大型檔案時優先用行號區間，不要一次讀全文。
+- `xcodebuild` 或測試輸出只摘要失敗重點（錯誤訊息、失敗測試名、檔案行號），不要貼完整 log。
+- 若工具輸出過大，下一步必須縮小搜尋範圍或改用更精確的查詢。
+
+## Governance Loading Scope
+
+- 上述治理規則摘要為常駐提示；一般產品 bug fix 或小功能修改，不預設讀完整 `.specify/`、`.github/agents/` 或所有 feature specs。
+- 只有治理、規格、分析、validation ownership 相關任務才讀完整治理文件（`constitution.md`、`speckit.*.agent.md`、validation contracts）。

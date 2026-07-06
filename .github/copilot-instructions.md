@@ -25,14 +25,15 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 
 ## High-level architecture
 
-- `NextPasteApp.swift` is the app bootstrap. It creates one shared SwiftData `ModelContainer`, currently with `Schema([Item.self])`, and injects it into the root `WindowGroup`.
-- `ContentView.swift` is the main UI and the current feature entry point. It reads persisted data with `@Query`, mutates storage through `@Environment(\.modelContext)`, and depends on SwiftData to keep the list in sync rather than maintaining duplicate view state.
-- `Item.swift` defines the persisted domain model. Right now the data layer is intentionally thin: a single `@Model` type with a `timestamp` field.
+- `NextPasteApp.swift` is the app bootstrap. It creates one shared SwiftData `ModelContainer` with `Schema([ClipItem.self])` and injects it into the root `WindowGroup`.
+- `HomeView.swift` is the main feature entry point. It reads persisted data with `@Query(sort: ClipItem.historySortDescriptors)`, mutates storage through `@Environment(\.modelContext)`, and depends on SwiftData to keep the list in sync rather than maintaining duplicate view state.
+- `ContentView.swift` wraps `HomeView` in a cross-platform `NavigationViewWrapper` (using `#if os(macOS)` / `#if os(iOS)`) and injects shared theme/motion environment values.
+- `ClipItem.swift` defines the persisted domain model (`@Model` type covering text/image clips, pinned state, timestamps, and history sort descriptors).
 - The repo has three Xcode targets: the `NextPaste` app target, `NextPasteTests` for unit tests, and `NextPasteUITests` for UI automation.
 
 ## Key conventions
 
-- Follow the NextPaste constitution in `.specify/memory/constitution.md` and enforce the v2.6 governance pillars:
+- Follow the NextPaste constitution in `.specify/memory/constitution.md` and enforce the v2.7 governance pillars:
   1. Continuous Quality Improvement: Evaluate recurring Analyze findings for promotion to shared governance sources before feature-local fixes.
   2. Apple Platform Consistency: Explicitly declare supported Apple platforms, prefer shared business logic, and preserve native platform interactions.
   3. Spec Traceability Governance: Respect spec.md as the sole authoritative source of FR and SC identifiers. Report orphan identifiers and redefined identifiers as blocking Analyze errors.
@@ -56,7 +57,7 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   release readiness, or for shared infrastructure, persistence, app launch, navigation, or
   cross-cutting interaction changes. When full regression is necessary, document why.
 - Preserve the SwiftData flow already in place: add new persisted types to the schema in `NextPasteApp`, fetch them with `@Query`, and write through `modelContext`.
-- Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms.
+- Keep cross-platform UI differences behind compile-time checks. `ContentView` uses `#if os(macOS)` and `#if os(iOS)` plus a local `NavigationViewWrapper` to keep one source file building across Apple platforms; `HomeView` is the feature entry point rendered inside that wrapper.
 - Unit tests and UI tests use different frameworks on purpose: `NextPasteTests` uses the newer `Testing` module, while `NextPasteUITests` still uses `XCTest`. Follow the existing framework for each target instead of mixing them.
 - The project uses Xcode’s file-system-synchronized groups (`PBXFileSystemSynchronizedRootGroup`). In practice, adding source files inside `NextPaste/`, `NextPasteTests/`, or `NextPasteUITests/` is the expected way to extend each target.
 - App configuration is split across generated build settings and checked-in overrides: `project.pbxproj` enables generated Info.plist entries, while `NextPaste/Info.plist` adds `UIBackgroundModes`, and `NextPaste.entitlements` carries push/iCloud capability settings. Capability changes may need updates in more than one of those places.
@@ -66,8 +67,29 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   Mouse, mouse, context-menu, drag-and-drop, and VoiceOver behavior before considering the work
   done.
 
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/021-refactor-pin-unpin-safety/plan.md
-<!-- SPECKIT END -->
+## Context Loading Policy
+
+- 預設只讀本檔（`.github/copilot-instructions.md`）與 `AGENTS.md` 這類固定 repo-level 提示詞，以及任務直接相關的檔案。
+- 不預設掃描整個 `specs/`、`docs/`、`.github/`、`.agents/`、`.specify/`。也不掃描 `DerivedData/`、`build/`、`.build/`、`*.xcresult`。
+- 搜尋程式碼時優先限定在 `NextPaste/`、`NextPasteTests/`、`NextPasteUITests/`。
+- 搜尋規格時，先由使用者指定或由任務中提及的 feature 編號推斷對應 `specs/<feature>/`；無法推斷時先用 `rg --files specs` 列出候選目錄，不要全文掃描所有 specs。
+- 舊 feature specs 只在需要歷史決策、相容性或治理追溯時才讀取。
+- 不把預設上下文綁到任何單一活躍 feature 的 spec、plan、tasks 或 contracts。
+
+## Spec Loading Rule
+
+- 只有當使用者明確要求規格工作（specify / clarify / plan / tasks / analyze / implement），或任務需要確認 FR/SC、validation contract、治理追溯時，才讀對應 `specs/<feature>/` 下的檔案。
+- 不要主動讀取或預載任何單一活躍 feature 的 plan.md 作為預設上下文。
+
+## Search / Tool Output Budget
+
+- 使用 `rg` 或 `rg --files`，避免 `find`/`grep` 全 repo 掃描。
+- 搜尋關鍵須具體，避免 `token`、`pin`、`context` 這類會打到大量不相關內容的寬鬆搜尋；必要時加 `path:` 或 `glob:` 限定範圍。
+- 讀大型檔案時優先用行號區間，不要一次讀全文。
+- `xcodebuild` 或測試輸出只摘要失敗重點（錯誤訊息、失敗測試名、檔案行號），不要貼完整 log。
+- 若工具輸出過大，下一步必須縮小搜尋範圍或改用更精確的查詢。
+
+## Governance Loading Scope
+
+- 上述治理規則摘要為常駐提示；一般產品 bug fix 或小功能修改，不預設讀完整 `.specify/`、`.github/agents/` 或所有 feature specs。
+- 只有治理、規格、分析、validation ownership 相關任務才讀完整治理文件（`constitution.md`、`speckit.*.agent.md`、validation contracts）。
