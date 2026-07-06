@@ -12,6 +12,20 @@ import SwiftUI
 import AppKit
 #endif
 
+// T024: reference-type backing for the generation-guarded reconciliation
+// lifecycle state. HomeView is a struct, and `@State` value-type writes are
+// no-ops on an unhosted view (e.g. the bare `HomeView()` value driven by the
+// reconciliation lifecycle tests), so the generation counter, in-flight task,
+// and finish flag are held by this `@MainActor` class. The @State wrapper on
+// HomeView retains the instance; mutating the holder's properties is observable
+// both when the view is installed in SwiftUI and when a bare value is probed.
+@MainActor
+private final class ReconciliationLifecycleStorage {
+    var generation: Int = 0
+    var task: Task<Void, Never>? = nil
+    var didFinish: Bool = false
+}
+
 struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
@@ -68,13 +82,16 @@ struct HomeView: View {
     @State private var rowActionDisplayOrderSnapshotGenerationValue: Int? = nil
 #endif
 
-    // T072: generation-guarded reconciliation lifecycle state. Real and
-    // default-initialized — the mechanism body (generation increment, prior-task
-    // cancellation, Task launch, snapshot-generation-token capture) lands with
-    // T024. The seam returns this actual default state, never a placeholder.
-    @State private var reconciliationGenerationValue: Int = 0
-    @State private var reconciliationTask: Task<Void, Never>? = nil
-    @State private var reconciliationTaskDidFinish: Bool = false
+    // T024: generation-guarded reconciliation lifecycle state. Backed by
+    // `ReconciliationLifecycleStorage` (a reference-type holder) so the
+    // generation increment, prior-task cancellation, task launch, and finish
+    // flag are observable both when HomeView is installed in SwiftUI and when a
+    // bare HomeView value is driven by lifecycle tests. The mechanism body
+    // (generation increment, prior-task cancellation, Task launch,
+    // snapshot-generation-token capture) is implemented in
+    // `scheduleRowActionDisplayOrderReconciliation()` and
+    // `beginRowActionDisplayOrderSnapshot()`.
+    @State private var reconciliationLifecycle = ReconciliationLifecycleStorage()
 
     var body: some View {
         ZStack {
@@ -777,6 +794,11 @@ struct HomeView: View {
     // Feature 020 (ADR-020): the snapshot stores ID/order-only metadata, not [ClipItem].
     private func beginRowActionDisplayOrderSnapshot() {
         rowActionDisplayOrderSnapshot = visibleClips.map(\.id)
+        // T024: record the generation token this snapshot was opened under, so
+        // stale-generation tasks can avoid clearing a snapshot they no longer
+        // own (FR-010; Plan § stale-task prevention). The stale-generation
+        // cleanup correctness itself lands with T026.
+        rowActionDisplayOrderSnapshotGenerationValue = reconciliationLifecycle.generation
     }
 
     // Reconcile the frozen display order back to the @Query-sorted order on the next
@@ -797,6 +819,33 @@ struct HomeView: View {
     // public `NSTableView.rowActionsVisible` state — no private API, swizzling, fixed
     // delay, run-loop-hop, or render-cycle assumption.
     private func scheduleRowActionDisplayOrderReconciliation() {
+        // T024: generation-guarded reconciliation lifecycle entry. On every new
+        // Pin/Unpin/Delete row-action reconciliation entry, bump the generation
+        // (FR-010), cancel any prior in-flight reconciliation task (FR-009),
+        // and launch a new generation-tokened task (FR-012). The task body does
+        // not yet perform stale-generation snapshot cleanup correctness — that
+        // is T026's scope; this slice only records task completion so
+        // `reconciliationTaskIsFinished` reflects the active lifecycle.
+        let storage = reconciliationLifecycle
+        storage.generation &+= 1
+        let generation = storage.generation
+        storage.didFinish = false
+        if let prior = storage.task {
+            prior.cancel()
+            // The prior task's lifecycle has concluded (cancelled). Record it
+            // so observers can see the prior task is no longer in flight
+            // (FR-009, FR-012). The new task below owns the active lifecycle.
+            storage.didFinish = true
+        }
+        storage.task = Task { @MainActor [weak storage] in
+            // Captures this operation's generation token. Stale-generation
+            // snapshot cleanup correctness (comparing `generation` against the
+            // live `storage.generation` before touching the snapshot) is T026's
+            // scope; this slice only reflects task completion (FR-012).
+            _ = generation
+            defer { storage?.didFinish = true }
+        }
+
         guard rowActionReconciliationMonitor == nil else {
             return
         }
@@ -824,9 +873,9 @@ struct HomeView: View {
 
     // MARK: - T072 reconciliation lifecycle seam (read-only test observability)
 
-    internal var reconciliationGeneration: Int { reconciliationGenerationValue }
-    internal var reconciliationTaskIsCancelled: Bool { reconciliationTask?.isCancelled ?? false }
-    internal var reconciliationTaskIsFinished: Bool { reconciliationTaskDidFinish }
+    internal var reconciliationGeneration: Int { reconciliationLifecycle.generation }
+    internal var reconciliationTaskIsCancelled: Bool { reconciliationLifecycle.task?.isCancelled ?? false }
+    internal var reconciliationTaskIsFinished: Bool { reconciliationLifecycle.didFinish }
     internal var hasRowActionDisplayOrderSnapshot: Bool {
         #if os(macOS)
         return rowActionDisplayOrderSnapshot != nil
