@@ -314,9 +314,12 @@ row-action callback.
   - `rowActionDisplayOrderSnapshot` presence/absence and, where needed for
     ownership validation, the generation token it was opened under (ID/order
     payload is never asserted as product order — only its lifetime);
-  - a `rowActionsVisible == false` KVO transition signal bridged to the test as
-    an async continuation/`AsyncStream` so the test can await the *real* safe
-    gate, not a synthesized one;
+  - the safe-boundary await state (read-only): whether the production
+    reconciliation Task is currently awaiting the `rowActionsVisible == false`
+    safe boundary. The awaitable boundary contract itself is the
+    dependency-injection surface defined in § Safe-boundary dependency
+    injection surface below; this read-only observation reports wait state
+    only, never the boundary signal;
   - a cleanup-ownership trace recording which exit path (success, stale
     generation, missing target, cancellation, view teardown, early exit)
     released the snapshot and with what generation equality result.
@@ -335,12 +338,14 @@ row-action callback.
   `triggerDisplayOrderReconciliation`-style helper is forbidden in this seam
   (and is already removed from UI tests by the test contract changes below).
 - **No bypassing the generation / UUID re-resolution / `rowActionsVisible ==
-  false` safety gates.** The test observer reads state and awaits the *real*
-  KVO transition continuation; it MUST NOT short-circuit the
-  `capturedGeneration == reconciliationGeneration` check, MUST NOT resolve the
-  target by position, and MUST NOT synthesize the
-  `NSTableView.rowActionsVisible == false` signal. Tests that need the safe
-  boundary await the same bridged KVO continuation the production Task awaits.
+  false` safety gates.** The test observer reads state only. Unit/lifecycle
+  tests await the safe boundary through the injected dependency contract
+  defined in § Safe-boundary dependency injection surface (a test double
+  implementing the same awaitable boundary, never a synthesized KVO signal);
+  AppKit integration/UI tests validate the real KVO-backed adapter. The seam
+  MUST NOT short-circuit the `capturedGeneration == reconciliationGeneration`
+  check, MUST NOT resolve the target by position, and MUST NOT synthesize the
+  `NSTableView.rowActionsVisible == false` KVO signal directly.
 - **No force-unwraps / implicitly-unwrapped optional access** in the seam
   (FR-013); no index / `IndexPath` / row position carried by the probe
   (FR-008); the probe re-resolves targets by UUID exactly as the production
@@ -351,7 +356,8 @@ row-action callback.
   remains owned by the production Task exit paths and view teardown.
 
 **Relationship to the chosen production mechanism:** the seam adds
-read-only observability and a bridged KVO continuation for tests; it does not
+read-only observability and the single safe-boundary dependency injection
+surface defined below for tests; it does not
 alter the generation-guarded `Task { @MainActor in … }` mechanism, the
 `rowActionsVisible == false` gate, the UUID-only re-resolution, the snapshot
 lifetime, or any cleanup exit path. The production reconciliation mechanism
@@ -363,6 +369,141 @@ observes `reconciliationGeneration`, `reconciliationTask`,
 `rowActionsVisible == false` KVO safe-gate transitions, and cleanup ownership
 — i.e. the testability complement to the invariants those tests assert
 (T011–T022, T060, T061).
+
+### Safe-boundary dependency injection surface
+
+This subsection is the T059 drift correction: the read-only observation surface
+above is necessary but not sufficient for deterministic unit/lifecycle tests,
+because the production reconciliation Task can only reach the safe boundary by
+waiting on the real `NSTableView.rowActionsVisible == false` KVO transition,
+which is not controllable from a unit test. To make the lifecycle invariants
+(FR-008, FR-010, FR-011, FR012, FR-013) testable without driving AppKit KVO,
+the plan authorizes exactly one non-read-only test seam: **injection of the
+safe-boundary dependency implementation**. This is lifecycle dependency
+injection, not a product reconciliation trigger, and it is invisible to UI tests.
+
+**1. Production contract (responsibility locked; final symbol names not
+locked here).**
+
+- The production reconciliation lifecycle depends on an internal safe-boundary
+  awaiting dependency (semantics equivalent to `RowActionSafeBoundaryAwaiting`):
+  an awaitable abstraction whose completion represents that the
+  `NSTableView.rowActionsVisible == false` teardown-safe boundary has been
+  reached. The production reconciliation Task MUST obtain the safe boundary
+  solely through this dependency; it MUST NOT observe `rowActionsVisible` KVO,
+  fire input-event monitors, or sleep for a fixed delay directly.
+- The production implementation of this dependency is an adapter that observes
+  the real `NSTableView.rowActionsVisible` KVO transition to `false` and
+  bridges it into the awaitable contract. Production wiring MUST default to
+  this real KVO-backed adapter unconditionally; there is no production code
+  path that substitutes a different implementation.
+- The plan locks responsibility and constraints, not the final Swift symbol
+  names. The dependency is `internal`, owned by the reconciliation code (e.g.
+  `HomeView` or `ReconciliationLifecyclePolicy`), constructed at production
+  wiring time, and never exposed `public`. The adapter is the only thing that
+  touches `rowActionsVisible` KVO; the reconciliation Task only `await`s the
+  dependency.
+
+**2. The only allowed non-read-only test seam.**
+
+- The single non-read-only surface the seam permits is injection of the
+  safe-boundary dependency implementation at test-harness construction time
+  (lifecycle dependency injection). Everything else in the seam is read-only
+  observation (see § Read-only observation surface below).
+- A test double implementing the same awaitable boundary contract may control
+  when the await completes, so unit/lifecycle tests can drive pending,
+  cancellation, stale-generation, and cleanup transitions deterministically
+  without fixed delays and without AppKit.
+- This injection surface is NOT a product reconciliation trigger: it does not
+  start, cancel, bump, or clear the reconciliation task; it only supplies the
+  boundary the production Task awaits. The drivers of reconciliation remain
+  `scheduleTogglePin(_:)` and `deleteClip(_:)`.
+- UI tests (`NextPasteUITests`) MUST NOT obtain or use this injection surface.
+  It is `internal` and reachable only via `@testable import NextPaste` from
+  `NextPasteTests`; `NextPasteUITests` is a separate host with no
+  `@testable` access and must exercise the real KVO-backed adapter.
+
+**3. Boundary between unit/lifecycle tests and AppKit integration/UI tests.**
+
+- Unit/lifecycle tests (`NextPasteTests`, including
+  `ReconciliationLifecyclePolicyTests.swift` and
+  `HomeViewReconciliationLifecycleTests.swift`) MAY inject a deterministic
+  safe-boundary test double that controls only async lifecycle timing. These
+  tests assert lifecycle invariants (generation ownership, stale-generation
+  exit, cancellation cleanup, snapshot release, no-op cleanup) and MUST NOT
+  claim to validate AppKit KVO integration.
+- AppKit integration/UI tests MUST use the real
+  `rowActionsVisible == false` KVO-backed adapter and MUST NOT inject a fake
+  transition. They validate the production path does not depend on click,
+  scroll, keyboard, or mouse input, and that the real KVO adapter releases the
+  snapshot at the safe boundary.
+- Correct semantics (not "tests inject the real KVO transition"): the
+  production adapter observes the real `rowActionsVisible` KVO transition; unit
+  tests inject the same awaitable boundary contract via a test double;
+  integration/UI tests validate the real KVO adapter. The contract is shared;
+  the implementations differ by design.
+
+**4. Explicit prohibitions on the seam.**
+
+The seam (read-only observation plus the single injection surface) MUST NOT:
+- directly set `NSTableView.rowActionsVisible`;
+- synthesize `NSEvent` or any user input event;
+- directly call snapshot clear (`rowActionDisplayOrderSnapshot = nil`);
+- directly increment `reconciliationGeneration`;
+- directly cancel or replace `reconciliationTask`;
+- bypass UUID re-resolution (the probe/dependency carries `targetClipID`,
+  never position);
+- bypass generation ownership validation
+  (`capturedGeneration == reconciliationGeneration`);
+- expose any product-level reconciliation trigger (no
+  `triggerDisplayOrderReconciliation`-style helper);
+- open the injection surface to UI tests;
+- use a fixed delay (`Task.sleep`/`usleep`) as the boundary mechanism;
+- expose a placeholder `nil` accessor for the safe-boundary dependency —
+  production wiring always supplies a real implementation (KVO-backed in
+  production, test-double in unit tests), never an unimplemented `nil`.
+
+**5. Read-only observation surface (unchanged, no mutation permitted).**
+
+The read-only lifecycle observation surface remains exactly as in § Access path
+above and MUST NOT allow mutation of:
+- `reconciliationGeneration` / the generation token;
+- `reconciliationTask` identity and cancellation/finish state;
+- `rowActionDisplayOrderSnapshot` presence and the owner generation it was
+  opened under;
+- the safe-boundary wait state (whether the Task is currently awaiting the
+  boundary);
+- the cleanup-ownership trace (which exit path released the snapshot and the
+  generation-equality result);
+- the generation comparison result (`capturedGeneration ==
+  reconciliationGeneration` outcome).
+The single injection surface in § 2 above is the only non-read-only surface;
+all other probe accessors are get-only.
+
+**6. T070 / T071 handoff (skeleton-to-production-type switch).**
+
+- T070 (Red) MAY compile against test-local skeleton declarations of the pure
+  policy types (`ReconciliationGenerationToken`,
+  `ReconciliationOwnershipDecision`, `ReconciliationCleanupState`) defined
+  inside the test file, so the Red phase produces assertion failures from a
+  compiling-but-wrong policy behavior. No `@testable import NextPaste` is
+  required for this skeleton phase.
+- T071 (Green) adds the production pure-policy types in
+  `NextPaste/ReconciliationLifecyclePolicy.swift`. Once T071 lands, the tests
+  in `ReconciliationLifecyclePolicyTests.swift` MUST remove the test-local
+  skeleton declarations, add `@testable import NextPaste`, and test the
+  production types directly.
+- Same-name test-local skeleton types MUST NOT remain to shadow the production
+  types after T071; the test file MUST NOT carry duplicate declarations that
+  would let a Green pass without exercising the production policy.
+- T071 Green MUST come from the production `ReconciliationLifecyclePolicy.swift`
+  implementation, never from editing the test-local skeleton to satisfy
+  assertions. The skeleton is a one-phase Red crutch, deleted at T071.
+
+This subsection resolves the T059 drift: the plan now defines a minimal,
+long-lived safe-boundary dependency-injection surface that is the only
+non-read-only test seam, keeps production on the real KVO-backed adapter by
+default, and records the T070→T071 skeleton-to-production switch.
 
 ### Component / call-site mapping (`HomeView.swift`)
 
