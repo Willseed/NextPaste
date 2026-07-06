@@ -58,12 +58,12 @@ replaces it with immediate, safe reconciliation while preserving the teardown-cr
   `sectionSortDate` that drives pinned-section order.
 
 - **Feature 020's "retain the display-order snapshot until the next explicit input event" policy is
-  superseded for Pin and Unpin row actions.** After a Pin/Unpin row-action callback returns,
+  superseded for Pin, Unpin, and Delete row actions.** After any row-action callback returns,
   display-order reconciliation MUST occur automatically during the next safe MainActor / RunLoop
   cycle. The system MUST NOT wait for a subsequent click, scroll, key press, or any other user
-  input event to reconcile. This supersede is scoped to Pin/Unpin row-action display-order
-  reconciliation only; it does not alter Feature 020's other still-effective safety requirements
-  (see below).
+  input event to reconcile. This supersede covers all row-action display-order reconciliation paths
+  that previously used the NSEvent input-event monitor; it does not alter Feature 020's other
+  still-effective safety requirements (see below).
 
 - **Other requirements from Features 019, 020, and 021 remain applicable unless explicitly
   overridden by this specification.** In particular, the following safety requirements from
@@ -209,19 +209,25 @@ confirming they still pass.
 
 ### Functional Requirements
 
-- **FR-001**: After every accepted Pin operation, the acted-on clip MUST relocate to the top of
-  the pinned section automatically, with no further user input event required.
-- **FR-002**: After every accepted Unpin operation, the acted-on clip MUST relocate to the top
-  of the unpinned section automatically, with no further user input event required.
+- **FR-001**: After every accepted **state-changing** Pin operation, the acted-on clip MUST
+  relocate to the top of the pinned section automatically, with no further user input event
+  required. An idempotent no-op Pin (clip already pinned, per the Feature 021 idempotency
+  contract) does NOT relocate the clip or update `sectionSortDate`.
+- **FR-002**: After every accepted **state-changing** Unpin operation, the acted-on clip MUST
+  relocate to the top of the unpinned section automatically, with no further user input event
+  required. An idempotent no-op Unpin (clip already unpinned, per the Feature 021 idempotency
+  contract) does NOT relocate the clip or update `sectionSortDate`.
 - **FR-003**: "Immediately" is defined as: the reordering MUST complete within the next safe
   MainActor / RunLoop update cycle after the row-action callback returns. The system MUST NOT
   perform the reordering synchronously inside the AppKit row-action callback call stack while
   teardown may still be in progress.
 - **FR-004**: The system MUST NOT require a subsequent mouse click, scroll, key press, or any
   other user input event to trigger reconciliation.
-- **FR-005**: Pin and Unpin MUST both update the clip's section sort timestamp to the operation
-  time so the acted-on clip becomes the most recent in its section. Pin MUST NOT continue to use
-  `createdAt` as its section sort timestamp.
+- **FR-005**: A **state-changing** Pin or Unpin MUST update the clip's section sort timestamp to
+  the operation time so the acted-on clip becomes the most recent in its section. Pin MUST NOT
+  continue to use `createdAt` as its section sort timestamp. An idempotent no-op (clip already in
+  the requested state, per Feature 021) MUST NOT update `sectionSortDate` and MUST NOT relocate
+  the clip; idempotency supersedes the operation-time refresh for no-ops.
 - **FR-006**: The `PinStateMutationStore` MUST remain the single authoritative ordering source.
   `HomeView.visibleClips` MUST reflect the store's authoritative projection as the final settled
   state.
@@ -231,9 +237,9 @@ confirming they still pass.
 - **FR-008**: All mutations and reconciliation work MUST identify clips by UUID. The system MUST
   NOT carry an index, `IndexPath`, row position, or any positional reference across an async
   boundary or a MainActor / RunLoop hop.
-- **FR-009**: When a new Pin/Unpin operation is accepted, any previously scheduled reconciliation
-  task MUST be cancelled or invalidated so it cannot clear a snapshot or apply an order derived
-  from stale state.
+- **FR-009**: When a new row action (Pin, Unpin, or Delete) is accepted, any previously scheduled
+  reconciliation task MUST be cancelled or invalidated so it cannot clear a snapshot or apply an
+  order derived from stale state.
 - **FR-010**: A reconciliation mechanism (such as a generation counter or token) MUST ensure that
   an older reconciliation task cannot overwrite or clear a snapshot produced by a newer operation.
 - **FR-011**: If the target clip of a reconciliation task has been deleted, removed from the
@@ -331,8 +337,8 @@ confirming they still pass.
 
 ## Interaction Methods & Platform Expectations *(mandatory when interaction changes)*
 
-- **Affected Interaction Methods**: Existing macOS native leading swipe-action Pin and Unpin,
-  plus any existing Pin/Unpin entry point that mutates the same item state. No new gesture,
+- **Affected Interaction Methods**: Existing macOS native leading swipe-action Pin, Unpin, and
+  Delete, plus any existing Pin/Unpin entry point that mutates the same item state. No new gesture,
   shortcut, or control is introduced.
 - **Supported Apple Platforms**: macOS is the corrective target. Other existing Apple-platform
   surfaces that expose Pin/Unpin must not regress.
@@ -346,9 +352,9 @@ confirming they still pass.
 - **Documented Deviations**: (1) Pin now moves the clip to the top of the pinned section
   immediately and uses operation time for its section sort timestamp, instead of leaving the row
   in place and ordering the pinned section by `createdAt`. (2) Reconciliation now happens
-  automatically at a safe MainActor / RunLoop boundary, replacing the Feature 020 "next explicit
-  user input event" boundary. No other user-visible Pin/Unpin behavior change is approved by this
-  specification.
+  automatically at a safe MainActor / RunLoop boundary for all row actions (Pin, Unpin, and
+  Delete), replacing the Feature 020 "next explicit user input event" boundary. No other
+  user-visible Pin/Unpin/Delete behavior change is approved by this specification.
 
 ## Success Criteria *(mandatory)*
 
@@ -400,12 +406,14 @@ confirming they still pass.
   corrupt state, and the existing Feature 014–020 crash-reproduction tests still pass.
 - **UI test reconciliation contract**: UI tests MUST NOT call
   `triggerDisplayOrderReconciliation(in:)` (or any equivalent explicit-input reconciliation
-  helper) to make Pin/Unpin reordering assertions pass. UI tests MUST NOT synthesize an additional
-  click, keyboard event, mouse move, scroll, or any other explicit user input event to trigger
-  reconciliation. A test that has completed the Pin/Unpin row action MUST wait for the UI to reach
-  the expected order automatically, using a bounded retry that satisfies all of the following:
+  helper) to make row-action reordering or removal assertions pass. UI tests MUST NOT synthesize
+  an additional click, keyboard event, mouse move, scroll, or any other explicit user input event
+  to trigger reconciliation. A test that has completed a Pin, Unpin, or Delete row action MUST wait
+  for the UI to reach the expected state automatically, using a bounded retry that satisfies all of
+  the following:
   - an explicit, named timeout;
-  - an explicit polling condition expressed in terms of observable UI order (not elapsed time);
+  - an explicit polling condition expressed in terms of observable UI order or visible removal
+    (not elapsed time);
   - a diagnosable failure message that reports the observed order, the expected order, and the
     elapsed retry count when the condition is not met within the timeout.
   Fixed-second `sleep` calls MUST NOT be used as a synchronization strategy. Existing tests that
@@ -414,8 +422,10 @@ confirming they still pass.
   product-code change in this Specify stage).
 - **Consecutive-run UI tests**: Core Pin/Unpin UI tests MUST be executed at least 50 consecutive
   times per scenario to verify that the automatic reconciliation does not depend on incidental
-  RunLoop timing. This is distinct from the rapid-operation requirement (SC-003 / SC-004) and is
-  intended to surface intermittent timing-dependent failures across repeated full test runs.
+  RunLoop timing. Delete row-action reconciliation tests MUST also be executed at least 50
+  consecutive times to verify the same mechanism. This is distinct from the rapid-operation
+  requirement (SC-003 / SC-004) and is intended to surface intermittent timing-dependent failures
+  across repeated full test runs.
 - **Repeated-operation UI tests**: Core Pin/Unpin UI tests that exercise the same clip or
   multiple clips under rapid operation MUST run at least 50 iterations per scenario to cover the
   rapid-operation safety contract (see SC-003 / SC-004). This rapid-operation requirement is
@@ -427,7 +437,9 @@ confirming they still pass.
   section sort timestamp.
 - The `PinStateMutationStore` introduced by Feature 021 remains the authoritative mutation and
   projection path; this feature changes when the `HomeView` snapshot is reconciled and what
-  timestamp Pin uses, not the store's role.
+  timestamp Pin uses, not the store's role. The Feature 021 idempotency contract (no-op returns
+  before `setPinned`, no duplicate mutation side effect) is preserved: no-op Pin/Unpin does not
+  refresh `sectionSortDate` and does not relocate the clip.
 - The display-order snapshot introduced by Features 019/020 remains the teardown protection
   mechanism; this feature shortens its lifetime to the safe reconciliation boundary instead of
   removing it.
@@ -445,6 +457,30 @@ confirming they still pass.
 - Adding cloud sync, multi-user sync, or remote conflict resolution.
 - Changing clipboard capture, validation, deduplication, or refresh behavior outside the
   Pin/Unpin reordering path.
-- Changing Delete's immediate visible-removal contract.
+- Changing Delete's data-removal contract (the clip is still deleted from SwiftData immediately).
+  The snapshot reconciliation mechanism change applies to Delete as well, but only shortens the
+  snapshot lifetime — it does not alter what Delete does to the clip.
 - Disabling animation app-wide as a fix.
 - Plan, tasks, or implementation artifacts (this stage is Specify only).
+
+## Clarifications
+
+### Session 2026-07-06
+
+- Q: Does an idempotent/no-op Pin/Unpin (clip already in the requested state) count as an
+  "accepted Pin operation" that must refresh `sectionSortDate = operationTime` and relocate
+  the clip to its section top, or does the no-op path leave `sectionSortDate` and position
+  unchanged per Feature 021 idempotency? → A: No-op Pin/Unpin does NOT update `sectionSortDate`
+  and does NOT relocate; FR-001 and FR-005 apply only to state-changing Pin/Unpin operations.
+  A redundant Pin on an already-pinned clip leaves the clip in place, preserving the Feature
+  021 idempotency contract (no duplicate mutation side effect on a no-op).
+- Q: Does the new generation-guarded reconciliation mechanism (replacing the Feature 020
+  NSEvent input-event monitor) apply only to Pin/Unpin row actions, or does it also replace the
+  input-event wait for the Delete row action, given that Delete shares the same
+  `beginRowActionDisplayOrderSnapshot` + `scheduleRowActionDisplayOrderReconciliation` path in
+  `HomeView`? → A: All three row actions (Pin, Unpin, and Delete) use the new generation-guarded
+  reconciliation mechanism. The Feature 020 NSEvent input-event monitor is fully replaced. The
+  supersede scope is broadened from "Pin and Unpin row actions" to "Pin, Unpin, and Delete row
+  actions." Delete's data-removal contract (the clip is deleted from SwiftData immediately) is
+  unchanged; only the snapshot reconciliation mechanism changes — the snapshot now clears at the
+  next safe MainActor / RunLoop boundary instead of waiting for the next user input event.
