@@ -61,7 +61,13 @@ protocol ReconciliationLifecycleProbe {
     /// Whether the current `reconciliationTask` has been cancelled (FR-009).
     var reconciliationTaskIsCancelled: Bool { get }
     /// Whether the current `reconciliationTask` has finished (FR-012).
+    /// Reports only the current task's own lifecycle; does NOT reflect
+    /// prior-task cancellation.
     var reconciliationTaskIsFinished: Bool { get }
+    /// Whether the prior reconciliation task was cancelled when a new
+    /// operation began (FR-009). T024.1 seam cleanup: this is the precise
+    /// prior-cancellation signal, separate from `reconciliationTaskIsFinished`.
+    var priorReconciliationTaskWasCancelled: Bool { get }
     /// Whether a `rowActionDisplayOrderSnapshot` is currently held (FR-007).
     var hasRowActionDisplayOrderSnapshot: Bool { get }
     /// Generation token the current snapshot was opened under, if any (FR-010).
@@ -171,11 +177,14 @@ func t012_newOperationCancelsPriorReconciliationTask() async throws {
 
     probe.scheduleTogglePin(fixture.clip)
     // The first operation launches a reconciliationTask. A second operation
-    // must cancel that prior task before storing its own (FR-009).
+    // must cancel that prior task before storing its own (FR-009). T024.1 seam
+    // cleanup: assert the precise prior-cancellation signal rather than the
+    // ambiguous `isCancelled || isFinished` disjunction (which could pass for
+    // reasons unrelated to prior cancellation, e.g. the new task finishing).
     probe.scheduleTogglePin(fixture.clip)
     #expect(
-        probe.reconciliationTaskIsCancelled || probe.reconciliationTaskIsFinished,
-        "A new operation must cancel (or finish) the prior reconciliationTask before launching its own (FR-009)."
+        probe.priorReconciliationTaskWasCancelled,
+        "A new operation must cancel the prior reconciliationTask before launching its own (FR-009)."
     )
 }
 

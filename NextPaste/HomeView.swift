@@ -23,7 +23,16 @@ import AppKit
 private final class ReconciliationLifecycleStorage {
     var generation: Int = 0
     var task: Task<Void, Never>? = nil
-    var didFinish: Bool = false
+    /// Whether the *current* `task` has finished via its own body/defer. This
+    /// does NOT reflect prior-task cancellation; use `priorTaskWasCancelled`
+    /// for that (T024.1 seam cleanup).
+    var currentTaskDidFinish: Bool = false
+    /// Whether the *prior* task was cancelled when a new operation began. Set
+    /// to `true` only inside `scheduleRowActionDisplayOrderReconciliation()`
+    /// when an in-flight prior task is cancelled before launching the new one.
+    /// Reset to `false` is unnecessary because each new operation records the
+    /// fresh cancellation state for the prior task it replaced.
+    var priorTaskWasCancelled: Bool = false
 }
 
 struct HomeView: View {
@@ -829,13 +838,20 @@ struct HomeView: View {
         let storage = reconciliationLifecycle
         storage.generation &+= 1
         let generation = storage.generation
-        storage.didFinish = false
+        // T024.1: `currentTaskDidFinish` reports only the current task's own
+        // lifecycle (set by the task body/defer below). `priorTaskWasCancelled`
+        // is the separate signal that the previous task was cancelled by this
+        // new operation. They must not contaminate each other so T012 can
+        // assert prior cancellation precisely.
+        storage.currentTaskDidFinish = false
         if let prior = storage.task {
             prior.cancel()
-            // The prior task's lifecycle has concluded (cancelled). Record it
-            // so observers can see the prior task is no longer in flight
-            // (FR-009, FR-012). The new task below owns the active lifecycle.
-            storage.didFinish = true
+            // Record that the prior task was cancelled by this new operation
+            // (FR-009). This is the only place prior cancellation is recorded;
+            // the new task's own finished state is owned by its body/defer.
+            storage.priorTaskWasCancelled = true
+        } else {
+            storage.priorTaskWasCancelled = false
         }
         storage.task = Task { @MainActor [weak storage] in
             // Captures this operation's generation token. Stale-generation
@@ -843,7 +859,7 @@ struct HomeView: View {
             // live `storage.generation` before touching the snapshot) is T026's
             // scope; this slice only reflects task completion (FR-012).
             _ = generation
-            defer { storage?.didFinish = true }
+            defer { storage?.currentTaskDidFinish = true }
         }
 
         guard rowActionReconciliationMonitor == nil else {
@@ -875,7 +891,14 @@ struct HomeView: View {
 
     internal var reconciliationGeneration: Int { reconciliationLifecycle.generation }
     internal var reconciliationTaskIsCancelled: Bool { reconciliationLifecycle.task?.isCancelled ?? false }
-    internal var reconciliationTaskIsFinished: Bool { reconciliationLifecycle.didFinish }
+    /// Whether the *current* `reconciliationTask` has finished via its own
+    /// body/defer (FR-012). This reports only the current task's lifecycle and
+    /// does NOT reflect prior-task cancellation; use
+    /// `priorReconciliationTaskWasCancelled` for that (T024.1).
+    internal var reconciliationTaskIsFinished: Bool { reconciliationLifecycle.currentTaskDidFinish }
+    /// Whether the prior reconciliation task was cancelled when a new
+    /// operation began (FR-009). Read-only test observability seam (T024.1).
+    internal var priorReconciliationTaskWasCancelled: Bool { reconciliationLifecycle.priorTaskWasCancelled }
     internal var hasRowActionDisplayOrderSnapshot: Bool {
         #if os(macOS)
         return rowActionDisplayOrderSnapshot != nil
