@@ -1250,6 +1250,17 @@ struct HomeView: View {
         // `IndexPath` / row position (FR-008) and does not reference `storage` or
         // the task, so strong capture is cycle-free.
         let environmentMirror = reconciliationEnvironmentMirror
+        // T027: capture a release closure that clears the production value-type
+        // `rowActionDisplayOrderSnapshot` and the read-only mirror (and removes
+        // any installed NSEvent monitor until T030), so the success/missing-target
+        // exit paths can release the snapshot at the safe boundary. Captured on
+        // `self` (struct) so the @State write reaches the shared storage; this
+        // mirrors the existing NSEvent-monitor `[self]` capture pattern. The
+        // closure is released when the task completes / is replaced / is cancelled
+        // by teardown (T029), so no permanent reference cycle remains.
+        let releaseSnapshot: @MainActor () -> Void = { [self] in
+            clearRowActionDisplayOrderSnapshot()
+        }
         // T026: align the snapshot ownership token with this task's captured
         // generation. `beginRowActionDisplayOrderSnapshot()` records the
         // pre-bump generation; the snapshot is owned by the task launched here
@@ -1346,13 +1357,24 @@ struct HomeView: View {
             // eventually released) remains Red until T027.
             let resolvedTarget = environmentMirror.resolveTarget(targetClipID)
             if resolvedTarget == nil {
+                // T027: missing-target exit. The target UUID is gone (deleted,
+                // removed, or filtered out). For Delete this is the expected
+                // steady state. `.missingTarget` clears the snapshot (FR-011,
+                // FR-012) so the live `@Query` projection becomes the visible
+                // order; the clear is gated by the generation-ownership guard
+                // above, so a stale task can never reach this clear.
+                releaseSnapshot()
                 storage?.lastExitPath = .missingTarget
                 storage?.currentTaskDidFinish = true
                 return
             }
-            // Target present and visible: success path. T027 clears the
-            // production value-type snapshot and the mirror here, gated by
-            // generation ownership; this slice records the exit classification.
+            // T027: success path. The target is present and visible, and this
+            // task owns the current generation/snapshot. Clear the production
+            // value-type `rowActionDisplayOrderSnapshot` and the mirror so
+            // `visibleClips` returns to the `PinStateMutationStore` authoritative
+            // projection (FR-006, FR-007), at the safe boundary without any user
+            // input (FR-004). The clear is gated by the ownership guard above.
+            releaseSnapshot()
             storage?.lastExitPath = .success
             // FR-012: record task completion last so `reconciliationTaskIsFinished`
             // reflects the active lifecycle after the cleanup ran.

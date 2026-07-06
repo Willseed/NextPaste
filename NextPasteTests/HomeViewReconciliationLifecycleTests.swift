@@ -206,35 +206,47 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     // second operation. The first Task's capturedGeneration no longer matches
     // reconciliationGeneration, so it must exit WITHOUT clearing the snapshot
     // (the newer operation owns the snapshot lifetime).
+    await harness.awaitBodyInstalled()
     harness.driveTogglePin()
     let firstSnapshotGeneration = probe.rowActionDisplayOrderSnapshotGeneration
     harness.driveTogglePin()
 
-    // T073.2: let the stale (prior, cancelled) task run its unguarded cleanup so
-    // the test observes the stale-clear. Without awaiting, the async Task has not
-    // yet executed and the snapshot remains (a false Green). Awaiting the current
-    // task deterministically lets the prior stale task run first (MainActor FIFO)
-    // without sleep. Before T026 the stale task clears the snapshot it no longer
-    // owns, so this expectation is Red; T026's generation guard makes it Green.
-    // T025: the current (second) Task awaits the safe-boundary gate, so release
-    // the deterministic awaiter before awaiting completion.
+    // G1 is stale (generation bumped by G2) and exits .staleGeneration before the
+    // await, without clearing. Observe G1's exit while G2 is still pending at the
+    // safe-boundary await, so the assertion is not contaminated by G2's own
+    // success clear (T027).
     await ReconciliationLifecycleAssertions.awaitCondition(
-        message: "The current reconciliation Task must reach the safe-boundary await (FR-004; T025)."
+        message: "G1 must exit .staleGeneration without clearing G2's snapshot."
     ) {
-        harness.safeBoundary.pendingWaitCount >= 1
+        harness.homeView.lastReconciliationExitPath == .staleGeneration
+            && probe.hasRowActionDisplayOrderSnapshot
     }
-    harness.safeBoundary.releaseNext()
-    await probe.awaitReconciliationTaskCompletion()
-
     #expect(
         probe.reconciliationGeneration != firstSnapshotGeneration,
         "A second operation must bump the generation so the first Task is stale (FR-010)."
     )
+    #expect(
+        harness.homeView.lastReconciliationExitPath == .staleGeneration,
+        "A stale-generation Task must exit .staleGeneration without clearing (FR-010; T026)."
+    )
     // The stale first Task must not have cleared a snapshot it no longer owns.
-    // The snapshot lifetime is now owned by the newer operation.
+    // The snapshot lifetime is now owned by the newer operation (G2).
     #expect(
         probe.hasRowActionDisplayOrderSnapshot,
         "A stale-generation Task must exit without clearing a snapshot it no longer owns (FR-010; Plan § stale-task prevention)."
+    )
+
+    // G2 owns the snapshot and clears it at its safe boundary (T027). Releasing
+    // G2's awaiter and awaiting completion confirms the newer operation releases
+    // its own snapshot (no permanent snapshot remains).
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G2 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The newer operation's task must release its own snapshot at the safe boundary (FR-012; T027)."
     )
 }
 
@@ -255,6 +267,7 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     }
 
     // First operation opens a snapshot under generation G1.
+    await harness.awaitBodyInstalled()
     harness.driveTogglePin()
     let olderGeneration = probe.rowActionDisplayOrderSnapshotGeneration
 
@@ -264,21 +277,16 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     harness.driveTogglePin()
     let newerGeneration = probe.rowActionDisplayOrderSnapshotGeneration
 
-    // T073.2: let the older (cancelled) task run its unguarded cleanup so the test
-    // observes the old-task-clears-new-snapshot failure. Awaiting the current
-    // task deterministically lets the prior older task run first (MainActor FIFO)
-    // without sleep. Before T026 the older task clears the newer snapshot, so the
-    // final expectation is Red; T026's generation guard makes it Green.
-    // T025: the current (second) Task awaits the safe-boundary gate, so release
-    // the deterministic awaiter before awaiting completion.
+    // The older (cancelled, stale) task exits .staleGeneration without clearing.
+    // Observe that while G2 is still pending at the safe-boundary await, so the
+    // newer snapshot remains held (the older task did not clear it) and is not
+    // contaminated by G2's own success clear (T027).
     await ReconciliationLifecycleAssertions.awaitCondition(
-        message: "The current reconciliation Task must reach the safe-boundary await (FR-004; T025)."
+        message: "The older task must exit .staleGeneration without clearing the newer snapshot."
     ) {
-        harness.safeBoundary.pendingWaitCount >= 1
+        harness.homeView.lastReconciliationExitPath == .staleGeneration
+            && probe.hasRowActionDisplayOrderSnapshot
     }
-    harness.safeBoundary.releaseNext()
-    await probe.awaitReconciliationTaskCompletion()
-
     #expect(
         newerGeneration != nil && newerGeneration != olderGeneration,
         "A newer operation must open its snapshot under a strictly greater generation (FR-010)."
@@ -286,6 +294,17 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     #expect(
         probe.hasRowActionDisplayOrderSnapshot,
         "The newer operation's snapshot must remain held; an older Task must not clear it (FR-009, FR-010; Plan § old-task cannot clear new snapshot)."
+    )
+
+    // G2 owns the snapshot and clears it at its safe boundary (T027).
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G2 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The newer operation's task must release its own snapshot at the safe boundary (FR-012; T027)."
     )
 }
 
