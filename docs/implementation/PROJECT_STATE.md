@@ -22,7 +22,7 @@
 
 ## Next Task
 
-- Task: `Phase 8 complete. Run final verification for release readiness (out of phase-verifier scope).`
+- Task: `Phase 8 complete. Run final verification for release readiness (separate final-verification workflow).`
 
 ## Active Architecture Decisions
 

@@ -25,7 +25,7 @@ Phase 8 covers the final regression/stability pass (T030) and the manual accessi
 
 ## T030 evidence (recorded, not re-run)
 
-Per the phase-verifier read budget, T030 build/unit/UI suites were NOT re-run. The recorded evidence in `docs/implementation/task-summaries/T030.md` is treated as authoritative:
+Per the phase verification read budget, T030 build/unit/UI suites were NOT re-run. The recorded evidence in `docs/implementation/task-summaries/T030.md` is treated as authoritative:
 
 - Debug build: pass
 - Release build: pass
@@ -52,7 +52,7 @@ Automated coverage (verified 2026-07-06):
 - `SearchAccessibilityUITests/testSearchResultAccessibilityMarkerReflectsMatchingAndEmptyStates` — passed (1 test, 0 failures). The `search-result-count` accessibility marker reports matching (`"1 search result"`) and empty (`"No search results"`, value `"0"`) states.
 - Existing `SearchAccessibilityUITests` cases assert `search-button`, `search-field`, and `clear-search-button` identifiers, plus `Command-F` focus and Clear Search restore.
 
-The targeted test already has credible PASS evidence dated 2026-07-06, so it was not re-run, consistent with the phase-verifier read budget.
+The targeted test already has credible PASS evidence dated 2026-07-06, so it was not re-run, consistent with the phase verification read budget.
 
 `prepareMainWindow` polling review: deadline-bounded loop using `Date().addingTimeInterval(timeout)` and XCTest `waitForExistence(timeout:)`. No `sleep`, `Task.sleep`, or `asyncAfter`; not an unconditional retry. Retained because all UI tests depend on main-window readiness.
 
@@ -89,7 +89,7 @@ No VoiceOver, Voice Control, Switch Control, keyboard, mouse, or trackpad human 
 - Minimal reads respected: only Phase 8 task section, `PROJECT_STATE.md`, `T030.md`, `T031.md`, and `git status`/`--stat` were inspected.
 - No full git diff or full build/test logs ingested.
 - Manual Touch ID and accessibility items left as `MANUAL VERIFICATION REQUIRED`.
-- Final verification intentionally NOT run (out of phase-verifier scope).
+- Final verification intentionally NOT run (out of phase verification scope).
 
 ## Tasks updated
 
@@ -98,4 +98,4 @@ No VoiceOver, Voice Control, Switch Control, keyboard, mouse, or trackpad human 
 
 ## Next action
 
-Phase 8 verification complete. Run final verification for release readiness (separate workflow; not in phase-verifier scope).
+Phase 8 verification complete. Run final verification for release readiness (separate final-verification workflow).

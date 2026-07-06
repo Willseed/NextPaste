@@ -126,14 +126,3 @@ For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan
 at specs/021-refactor-pin-unpin-safety/plan.md
 <!-- SPECKIT END -->
-
-## NextPaste Agent Skills
-
-Use repository skills for repeatable workflows:
-
-- `$nextpaste-task-worker` for exactly one Task.
-- `$nextpaste-phase-verifier` for one completed Phase.
-- `$nextpaste-final-verifier` for final full regression and merge.
-- `$nextpaste-state-recovery` only for interrupted or inconsistent state.
-
-Do not replace these workflows with a long ad hoc prompt.
