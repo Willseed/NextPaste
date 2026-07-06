@@ -81,6 +81,40 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 - 只有當使用者明確要求規格工作（specify / clarify / plan / tasks / analyze / implement），或任務需要確認 FR/SC、validation contract、治理追溯時，才讀對應 `specs/<feature>/` 下的檔案。
 - 不要主動讀取或預載任何單一活躍 feature 的 plan.md 作為預設上下文。
 
+## Spec Kit Compatibility Boundary
+
+Official Spec Kit commands are allowed and remain the canonical workflow for SDD tasks. However, Spec Kit execution must stay bounded by the current user request and must not silently expand repo-level context.
+
+- Do not run optional post-hooks unless the user explicitly requests them in the current turn.
+- Do not run `/speckit-agent-context-update` unless explicitly requested.
+- Do not modify `AGENTS.md` or `.github/copilot-instructions.md` during normal `/speckit.*` execution.
+- Do not add or update feature-specific `SPECKIT START` pointers in repo-level instruction files.
+- If the official workflow recommends refreshing agent context, report it as a skipped optional step instead of executing it.
+- Current feature artifacts are the product requirement source for that SDD command. Historical specs may be read only when the current artifact explicitly references them or when needed for compatibility, and then only relevant sections should be read.
+- Before completing an SDD command, report:
+  1. Files read beyond the current feature directory
+  2. Files modified
+  3. Optional hooks skipped
+  4. Any deviations from this boundary
+
+### Bounded SDD prompt template
+
+Reusable constraints to paste at the start of a bounded SDD turn:
+
+```text
+Bounded SDD constraints:
+
+- Follow the official Spec Kit / SDD workflow, but keep context loading bounded.
+- Current feature artifact is the only product requirement source unless I explicitly name another source.
+- Do not read historical specs except when the current artifact explicitly references them; if needed, read only relevant sections.
+- Do not run optional post-hooks.
+- Do not run /speckit-agent-context-update.
+- Do not modify AGENTS.md or .github/copilot-instructions.md.
+- Do not add or update any SPECKIT START feature-plan pointer.
+- If the official workflow recommends updating agent context, report it as a skipped optional step instead of executing it.
+- Before completion, report files read beyond the current feature directory, files modified, optional hooks skipped, and deviations from these constraints.
+```
+
 ## Search / Tool Output Budget
 
 - 使用 `rg` 或 `rg --files`，避免 `find`/`grep` 全 repo 掃描。
