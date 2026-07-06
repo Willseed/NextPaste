@@ -280,6 +280,90 @@ FR-010 for all three row actions.
   the deleted clip's UUID and is used only for the stale-task / missing-target safe-exit check;
   no positional reference to the deleted row is carried across the async hop.
 
+### Test seam mechanism
+
+The production reconciliation mechanism defined above is **not** testable by
+black-box UI tests alone: `reconciliationGeneration`, `reconciliationTask`,
+`rowActionDisplayOrderSnapshot`, the `rowActionsVisible` KVO transition, and
+the per-exit-path cleanup ownership are `@MainActor`-isolated, generation-guarded
+internal state of `HomeView`. UI tests can only observe the *outcome* (visible
+order) via bounded retry. To prove the lifecycle invariants (FR-008, FR-010,
+FR-011, FR-012, FR-013) without re-implementing the mechanism, the plan
+authorizes **one** test-only observability seam, owned by
+`NextPasteTests/HomeViewReconciliationLifecycleTests.swift` (created by
+`tasks.md` T059). This seam is **test observability, not a product behavior
+entry point**: it exposes no new public API, no product reconciliation trigger,
+and no way for the app or UI tests to drive reconciliation other than the real
+row-action callback.
+
+**Access path (concrete and fixed):**
+
+- `@testable import NextPaste` from `NextPasteTests`, so `internal` symbols of
+  `HomeView` and its helpers are reachable from the test target only. The seam
+  is `internal`, never `public`; it is invisible to consumers and to
+  `NextPasteUITests` (which is a separate host and must NOT gain any
+  product-level reconciliation trigger).
+- The seam is a single `internal` test-facing observer protocol/struct
+  co-located with the reconciliation code (e.g. an `internal`
+  `ReconciliationLifecycleProbe` / `@testable`-visible read-only accessor set
+  on `HomeView`), exposing **read-only** snapshots of:
+  - `reconciliationGeneration` (current generation counter value);
+  - `reconciliationTask` identity/isCancelled/isFinished state (the `Task`
+    handle is observed for cancellation state, never awaited synchronously by
+    the test in a way that bypasses the safe gate);
+  - `rowActionDisplayOrderSnapshot` presence/absence and, where needed for
+    ownership validation, the generation token it was opened under (ID/order
+    payload is never asserted as product order — only its lifetime);
+  - a `rowActionsVisible == false` KVO transition signal bridged to the test as
+    an async continuation/`AsyncStream` so the test can await the *real* safe
+    gate, not a synthesized one;
+  - a cleanup-ownership trace recording which exit path (success, stale
+    generation, missing target, cancellation, view teardown, early exit)
+    released the snapshot and with what generation equality result.
+- The probe is constructed by the test harness, attached to a real `HomeView`
+  instance in an in-process SwiftData container, and read after driving the
+  real `scheduleTogglePin` / `deleteClip` row-action entry points. No second
+  `HomeView`-like fake is introduced; the seam wraps the production type.
+
+**Hard prohibitions (enforced by the seam design and by T059):**
+
+- **No product-level debug shortcut.** The seam MUST NOT expose a method that
+  forces a snapshot clear, forces a generation bump, forces the KVO signal,
+  or otherwise drives reconciliation outside the real row-action callback. The
+  only drivers of reconciliation remain `scheduleTogglePin(_:)` and
+  `deleteClip(_:)` as wired by `RowActionControlGroup`. Any
+  `triggerDisplayOrderReconciliation`-style helper is forbidden in this seam
+  (and is already removed from UI tests by the test contract changes below).
+- **No bypassing the generation / UUID re-resolution / `rowActionsVisible ==
+  false` safety gates.** The test observer reads state and awaits the *real*
+  KVO transition continuation; it MUST NOT short-circuit the
+  `capturedGeneration == reconciliationGeneration` check, MUST NOT resolve the
+  target by position, and MUST NOT synthesize the
+  `NSTableView.rowActionsVisible == false` signal. Tests that need the safe
+  boundary await the same bridged KVO continuation the production Task awaits.
+- **No force-unwraps / implicitly-unwrapped optional access** in the seam
+  (FR-013); no index / `IndexPath` / row position carried by the probe
+  (FR-008); the probe re-resolves targets by UUID exactly as the production
+  Task does.
+- **No weakening of cleanup ownership.** The probe reports which exit path
+  released the snapshot and the generation-equality result; it MUST NOT itself
+  clear `rowActionDisplayOrderSnapshot` or cancel `reconciliationTask`. Cleanup
+  remains owned by the production Task exit paths and view teardown.
+
+**Relationship to the chosen production mechanism:** the seam adds
+read-only observability and a bridged KVO continuation for tests; it does not
+alter the generation-guarded `Task { @MainActor in … }` mechanism, the
+`rowActionsVisible == false` gate, the UUID-only re-resolution, the snapshot
+lifetime, or any cleanup exit path. The production reconciliation mechanism
+described in § Reconciliation flow, § Snapshot lifetime, § Identity and async
+safety, and § Component / call-site mapping is unchanged. The seam is the
+design-level answer to how `HomeViewReconciliationLifecycleTests.swift`
+observes `reconciliationGeneration`, `reconciliationTask`,
+`rowActionDisplayOrderSnapshot`, cancellation state, the
+`rowActionsVisible == false` KVO safe-gate transitions, and cleanup ownership
+— i.e. the testability complement to the invariants those tests assert
+(T011–T022, T060, T061).
+
 ### Component / call-site mapping (`HomeView.swift`)
 
 All changes are confined to `HomeView.swift` (plus the `ClipItem.setPinned` Pin-branch
