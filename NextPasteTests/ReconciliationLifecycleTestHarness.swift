@@ -144,6 +144,8 @@ final class ReconciliationLifecycleTestHarness {
 
     #if os(macOS)
     private let hostingView: NSHostingView<AnyView>
+    internal var hostingViewPublic: NSHostingView<AnyView> { hostingView }
+    private var hostWindow: NSWindow?
     #endif
 
     enum HarnessError: Error {
@@ -179,6 +181,23 @@ final class ReconciliationLifecycleTestHarness {
         // `@State` storage boxes for the held value.
         host.frame = NSRect(x: 0, y: 0, width: 320, height: 240)
         self.hostingView = host
+        // Install the hosting view in a real off-screen `NSWindow` so SwiftUI
+        // evaluates the body, `@Query` fetches against the in-memory container,
+        // and the shared `@State` reference holders (mirror, observation storage,
+        // safe-boundary cell) are populated from the hosted copy's environment.
+        // Without a window the body never evaluates and the held value's `@Query`
+        // stays empty, so re-resolution / store mutation cannot be driven.
+        let window = NSWindow(
+            contentRect: NSRect(x: -10_000, y: -10_000, width: 320, height: 240),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = host
+        window.isMovableByWindowBackground = false
+        window.isReleasedWhenClosed = false
+        window.orderFrontRegardless()
+        self.hostWindow = window
         #else
         // The reconciliation lifecycle is macOS-only. On other platforms the
         // harness still provides the held value, container, and double, but
@@ -205,6 +224,92 @@ extension ReconciliationLifecycleTestHarness {
     /// `deleteClip(_:)` internal entry point.
     func driveDelete() {
         homeView.deleteClip(clip)
+    }
+
+    /// Refetch the fixture clip from the harness's own `ModelContext` by UUID so
+    /// a test can read fresh `isPinned` / `sectionSortDate` after a mutation that
+    /// was applied through the hosted copy's (different) context. SwiftData
+    /// propagates across contexts of the same container; a refetch observes it.
+    func refetchClip() -> ClipItem? {
+        let id = clip.id
+        return (try? context.fetch(FetchDescriptor<ClipItem>()))?
+            .first { $0.id == id }
+    }
+
+    /// Delete the fixture clip directly from the harness's `ModelContext` and
+    /// save, so a test can simulate "target removed from the visible dataset"
+    /// (FR-011) without going through the row-action entry point. Used to drive
+    /// the missing-target reconciliation path (T018/T019/T060) deterministically.
+    func deleteClipInContext() throws {
+        context.delete(clip)
+        try context.save()
+    }
+
+    /// Wait (bounded, no fixed sleep) until the hosted `@Query` reflects the
+    /// expected presence of the fixture clip, so re-resolution observes the
+    /// post-delete / post-insert dataset. Polls the shared
+    /// `reconciliationMirrorClipIDs` read-only seam via `Task.yield()` until
+    /// SwiftUI re-evaluates the body and the mirror updates.
+    func awaitQueryReflects(clipPresent: Bool) async {
+        let id = clip.id
+        await ReconciliationLifecycleAssertions.awaitCondition(
+            timeout: .seconds(3),
+            message: "Hosted @Query mirror must reflect clipPresent=\(clipPresent) for \(id)."
+        ) { [weak self] in
+            guard let self else { return false }
+            return self.homeView.reconciliationMirrorClipIDs.contains(id) == clipPresent
+        }
+    }
+
+    /// Insert a second clip into the harness context and save, so a test can
+    /// shift the fixture clip's row position between reconciliation launch and
+    /// the safe-boundary release (T022 UUID-only-identity behavioral proxy).
+    /// Returns the inserted clip.
+    @discardableResult
+    func insertClip(text: String = "lifecycle-inserted") throws -> ClipItem {
+        let extra = ClipItem(textContent: text)
+        context.insert(extra)
+        try context.save()
+        return extra
+    }
+
+    /// Wait (bounded, no fixed sleep) until the hosted body has evaluated and
+    /// populated the shared environment mirror with the live `@Query` dataset,
+    /// so production methods that read `effectiveReconciliationModelContext`
+    /// (the store, delete) and the Task-body UUID re-resolution observe the real
+    /// hosted context instead of the held value's empty `@Environment` default.
+    func awaitBodyInstalled() async {
+        let id = clip.id
+        await ReconciliationLifecycleAssertions.awaitCondition(
+            timeout: .seconds(3),
+            message: "Hosted body must install and populate the environment mirror."
+        ) { [weak self] in
+            guard let self else { return false }
+            return self.homeView.reconciliationMirrorClipIDs.contains(id)
+        }
+    }
+
+    /// Refetch the fixture clip from a FRESH `ModelContext` on the same
+    /// container, without touching `harness.context` or the cached `harness.clip`
+    /// object. Used by T061 to read `sectionSortDate`/`isPinned` after a
+    /// state-changing drive WITHOUT causing `harness.context` to auto-refresh
+    /// `harness.clip` (which would make the next `scheduleTogglePin` compute the
+    /// wrong desired state). The fresh context sees committed cross-context
+    /// state but does not merge into `harness.context`.
+    func refetchClipFresh() -> ClipItem? {
+        let fresh = ModelContext(container)
+        let id = clip.id
+        return (try? fresh.fetch(FetchDescriptor<ClipItem>()))?
+            .first { $0.id == id }
+    }
+
+    /// Tear down the hosted view (close the window) so SwiftUI fires `onDisappear`
+    /// for the installed copy, exercising view-teardown cancellation (T020/T029).
+    func teardown() {
+        #if os(macOS)
+        hostWindow?.orderOut(nil)
+        hostWindow?.contentView = nil
+        #endif
     }
 }
 

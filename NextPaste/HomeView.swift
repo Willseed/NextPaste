@@ -178,6 +178,47 @@ private final class SafeBoundaryTableViewCell {
     weak var tableView: NSTableView?
 }
 
+// T026: production-populated read-only mirror of the reconciliation environment.
+// HomeView is a struct; the held (unhosted) value's `@Environment(\.modelContext)`
+// and `@Query` are not shared with the installed copy, so a `Task` launched from a
+// method on the struct value cannot re-resolve a target clip by UUID against the
+// live dataset. This `@MainActor` reference-type `@State` holder is populated by
+// the production body (which runs on the installed copy and carries the real
+// `@Environment`/`@Query`) with the live `modelContext`, `clips`, `searchText`,
+// and current snapshot IDs. Because `@State` storage is shared across the held
+// value and the installed copy, methods and the reconciliation `Task` launched
+// from the held value read the same live mirror.
+//
+// This is a read-only observation holder (production-populated; tests never inject
+// or mutate it), within the plan's authorized observation surface — it is NOT a
+// second non-read-only test seam. In production the mirror simply reflects the
+// same `@Environment`/`@Query` values the body already reads, so using it is
+// behavior-neutral; it only makes the already-live state reachable from the
+// `Task` body and from struct methods that run on the held value.
+@MainActor
+private final class ReconciliationEnvironmentMirror {
+    /// Live `@Environment(\.modelContext)` from the installed copy. `nil` until
+    /// the first body evaluation (production falls back to `@Environment` then).
+    var modelContext: ModelContext?
+    /// Live `@Query` clips from the installed copy.
+    var clips: [ClipItem] = []
+    /// Live search text from the installed copy.
+    var searchText: String = ""
+    /// Live row-action display-order snapshot IDs (production value-type `@State`).
+    var snapshotIDs: [UUID]? = nil
+
+    /// Re-resolve a target clip by UUID (FR-008) against the live dataset and
+    /// confirm it is still visible under the active search query (FR-011).
+    /// Returns `nil` when the clip was deleted, removed from the visible dataset,
+    /// or filtered out by the active search — the caller must safe-exit. No
+    /// index / `IndexPath` / row position is used (FR-008).
+    func resolveTarget(_ id: UUID) -> ClipItem? {
+        guard let clip = clips.first(where: { $0.id == id }) else { return nil }
+        let visible = ClipItem.filteredHistory(clips, matching: searchText)
+        return visible.contains(where: { $0.id == id }) ? clip : nil
+    }
+}
+
 struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
@@ -262,9 +303,15 @@ struct HomeView: View {
     // separate host). No placeholder `nil` dependency is ever stored.
     #if os(macOS)
     @State private var safeBoundaryAwaiterHolder = SafeBoundaryAwaiterHolder()
+    // T026: production-populated live environment mirror. See
+    // `ReconciliationEnvironmentMirror`. Shared across the held value and the
+    // installed copy via `@State`, so the reconciliation `Task` and struct
+    // methods can re-resolve targets by UUID against the live dataset.
+    @State private var reconciliationEnvironmentMirror = ReconciliationEnvironmentMirror()
     #endif
 
     var body: some View {
+        let _ = updateReconciliationEnvironmentMirror()
         ZStack {
             appTheme.canvas.color
                 .ignoresSafeArea()
@@ -829,13 +876,13 @@ struct HomeView: View {
         traceRowViewID: String? = nil
     ) {
         #if DEBUG
-        _ = ClipDeletionAction(modelContext: modelContext).delete(
+        _ = ClipDeletionAction(modelContext: effectiveReconciliationModelContext).delete(
             clip,
             traceRowIndex: traceRowIndex,
             traceRowViewID: traceRowViewID
         )
         #else
-        _ = ClipDeletionAction(modelContext: modelContext).delete(clip)
+        _ = ClipDeletionAction(modelContext: effectiveReconciliationModelContext).delete(clip)
         #endif
     }
 
@@ -879,6 +926,21 @@ struct HomeView: View {
     /// diagnostics into the existing row-action trace when DEBUG tracing is enabled
     /// (T021). The store instance persists for the lifetime of the view so mutation
     /// sequencing and snapshot state are continuous.
+    /// T026: the `ModelContext` used by reconciliation-path mutations. Prefers
+    /// the live `@Environment(\.modelContext)` mirrored by the production body
+    /// into the shared `@State` holder (macOS), so a `Task`/method running on the
+    /// held struct value reaches the same context as the installed copy. Falls
+    /// back to `@Environment` when the mirror has not been populated yet. In
+    /// production both are the same context, so this is behavior-neutral.
+    private var effectiveReconciliationModelContext: ModelContext {
+        #if os(macOS)
+        if let mirrored = reconciliationEnvironmentMirror.modelContext {
+            return mirrored
+        }
+        #endif
+        return modelContext
+    }
+
     private func ensurePinStore() -> PinStateMutationStore {
         if let pinStore {
             return pinStore
@@ -890,7 +952,7 @@ struct HomeView: View {
         diagnostics = PinStateMutationDiagnostics()
 #endif
         let store = PinStateMutationStore(
-            modelContext: modelContext,
+            modelContext: effectiveReconciliationModelContext,
             diagnostics: diagnostics
         )
         // T020: wire post-unpin retention. After a successful unpin, enforce the
@@ -1172,7 +1234,6 @@ struct HomeView: View {
         // capture is cycle-free) so the task body can drive the snapshot
         // lifecycle observable. The value-type `@State` snapshot itself is NOT
         // touched here (see comment in the task body below).
-        let rowActions = rowActionResolverObservation
         let snapshotObservation = reconciliationSnapshotObservation
         // T025: capture the injected safe-boundary awaiter (T072 seam) so the
         // Task body can `await` the `NSTableView.rowActionsVisible == false`
@@ -1181,60 +1242,62 @@ struct HomeView: View {
         // production default is the real KVO-backed adapter; lifecycle tests
         // inject the deterministic `DeterministicSafeBoundaryAwaiter`.
         let awaiter = safeBoundaryAwaiter
+        // T026: capture the live environment mirror so the Task body can
+        // re-resolve the target clip by `targetClipID` (UUID) against the live
+        // dataset after the safe-boundary await (FR-008, FR-011). The mirror is a
+        // `@MainActor` reference-type `@State` holder shared with the installed
+        // copy and populated by the production body; it carries no index /
+        // `IndexPath` / row position (FR-008) and does not reference `storage` or
+        // the task, so strong capture is cycle-free.
+        let environmentMirror = reconciliationEnvironmentMirror
+        // T026: align the snapshot ownership token with this task's captured
+        // generation. `beginRowActionDisplayOrderSnapshot()` records the
+        // pre-bump generation; the snapshot is owned by the task launched here
+        // (captured = post-bump), so the ownership token must equal
+        // `capturedGeneration`. Without this alignment every task would appear
+        // stale (`snapshotGeneration != capturedGeneration`) and the current
+        // task could never clear its own snapshot (FR-009, FR-010).
+        reconciliationSnapshotObservation.snapshotGeneration = capturedGeneration
+        rowActionDisplayOrderSnapshotGenerationValue = capturedGeneration
         // T024 (FR-008): the only identity values carried across the async hop
         // are `capturedGeneration` and `targetClipID` (UUID). No index,
         // `IndexPath`, row position, or array count is captured.
         storage.task = Task { @MainActor [weak storage] in
-            // T025: the Task body hops off the AppKit callback call stack (the
-            // natural `Task { @MainActor }` scheduling) and awaits the
-            // `NSTableView.rowActionsVisible == false` safe boundary through
-            // the injected `safeBoundaryAwaiter` dependency. The await is the
-            // sole teardown-safe gate; no click, scroll, key, or mouse-move
-            // input is observed (FR-003, FR-004). `targetClipID` re-resolution
-            // and missing-target safe-exit remain owned by T026; the
-            // production value-type snapshot clear remains owned by the NSEvent
-            // monitor / T027 success path (not removed here); the NSEvent
-            // monitor is retained (T030 owns removal); Delete remains on
+            // T025/T026: hop off the AppKit callback call stack, await the
+            // `NSTableView.rowActionsVisible == false` safe boundary through the
+            // injected `safeBoundaryAwaiter` dependency (FR-003, FR-004), then
+            // re-validate by generation token (FR-010) and re-resolve the target
+            // clip by `targetClipID` (FR-008, FR-011). No click, scroll, key, or
+            // mouse-move input is observed. The production value-type snapshot
+            // clear is owned by T027's success path (not started here); the
+            // NSEvent monitor is retained (T030 owns removal); Delete remains on
             // `scheduleRowActionDisplayOrderReconciliation()` (T031 rewires).
             //
             // Stale-generation / cancellation guard BEFORE the await. A stale
             // (superseded) or already-cancelled task must not reach the
-            // safe-boundary await. Only `capturedGeneration == currentGeneration`
-            // and `!Task.isCancelled` are checked here; the snapshot-ownership
-            // validation (`snapshotGeneration == capturedGeneration`) runs
-            // AFTER the await, immediately before any snapshot release, so a
-            // task whose snapshot was re-opened by a newer operation during the
-            // await does not clear a snapshot it no longer owns (FR-009,
-            // FR-010; Plan § old-task cannot clear new snapshot). The full
-            // generation/snapshot/cancellation guard is preserved across the
-            // await by running the snapshot-ownership leg after the await.
-            //   1. `capturedGeneration == currentGeneration` — a newer
-            //      operation has not superseded this task (FR-010).
-            //   2. the task has not been cancelled (FR-009).
-            // If either fails the task is stale/older and must early exit
-            // WITHOUT awaiting and WITHOUT clearing the snapshot — the newer
-            // operation owns the snapshot lifetime (Plan § stale-task
-            // prevention). `targetClipID` is captured for T026's UUID
-            // re-resolution / missing-target safe-exit and is intentionally
-            // unused in this slice.
+            // safe-boundary await. The snapshot-ownership validation
+            // (`snapshotGeneration == capturedGeneration`) runs AFTER the await,
+            // immediately before any snapshot release, so a task whose snapshot
+            // was re-opened by a newer operation during the await does not clear
+            // a snapshot it no longer owns (FR-009, FR-010; Plan § old-task
+            // cannot clear new snapshot).
             let currentGeneration = storage?.generation ?? capturedGeneration
-            // T072 § 4 (Generation comparison): record the real captured vs
-            // current generation comparison at the guard. Pure observation of
-            // the already-landed generation guard; does not change behavior.
             storage?.lastGenerationComparison = GenerationComparison(
                 capturedGeneration: capturedGeneration,
                 currentGeneration: currentGeneration
             )
-            let isStaleBefore = (capturedGeneration != currentGeneration)
-                || Task.isCancelled
-            if isStaleBefore {
-                // Stale/older or cancelled task: early exit. Must NOT await and
-                // must NOT clear the snapshot (FR-009, FR-010). The newer
-                // operation owns the snapshot.
-                // T072 § 4 (Exit-path classification): record the stale
-                // early-exit classification. Pure observation of the
-                // already-landed stale guard; does not complete T026/T028.
+            if capturedGeneration != currentGeneration {
+                // Stale (superseded) task: a newer operation bumped the
+                // generation. Early exit without awaiting and without clearing
+                // (FR-010; Plan § stale-task prevention).
                 storage?.lastExitPath = .staleGeneration
+                storage?.currentTaskDidFinish = true
+                return
+            }
+            if Task.isCancelled {
+                // Cancelled before the await (e.g. view teardown) but not
+                // superseded: early exit without clearing (FR-009, FR-012).
+                storage?.lastExitPath = .cancelled
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1244,11 +1307,11 @@ struct HomeView: View {
             // solely through the injected dependency (FR-003, FR-004).
             storage?.safeBoundaryAwaitState = .awaiting
             await awaiter.waitUntilSafeBoundary()
-            // If cancellation was observed after the await, record `.cancelled`
-            // and exit minimally. T028 owns the full cancellation cleanup
-            // trace; this slice only records the await state and finishes.
+            // Cancellation observed after the await: exit without clearing
+            // (FR-009, FR-012). T028 records the full cleanup trace.
             if Task.isCancelled {
                 storage?.safeBoundaryAwaitState = .cancelled
+                storage?.lastExitPath = .cancelled
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1265,32 +1328,32 @@ struct HomeView: View {
             // regressed.
             let currentGenerationAfter = storage?.generation ?? capturedGeneration
             let snapshotGeneration = snapshotObservation.snapshotGeneration
-            let isStaleAfter = (capturedGeneration != currentGenerationAfter)
-                || (snapshotGeneration != capturedGeneration)
-                || Task.isCancelled
-            if isStaleAfter {
-                // Stale/older or cancelled task after the await: early exit.
-                // Must NOT clear the mirror snapshot and must NOT clear the
-                // production snapshot (FR-009, FR-010). The newer operation
-                // owns the snapshot.
+            if capturedGeneration != currentGenerationAfter
+                || snapshotGeneration != capturedGeneration
+                || Task.isCancelled {
                 storage?.lastExitPath = .staleGeneration
                 storage?.currentTaskDidFinish = true
                 return
             }
-            // Current-generation, non-cancelled task owns the snapshot
-            // lifetime and may release it. The release is still gated by the
-            // existing `rowActionsVisible` safe-boundary (the same gate the
-            // NSEvent monitor uses), so production rendering is unchanged:
-            // during the row-action dismiss animation `rowActionsVisible` is
-            // true and this clear is a no-op, leaving the existing NSEvent
-            // monitor as the production snapshot-clear owner (no regression).
-            // T027 moves the production value-type clear into this
-            // generation-guarded success path.
-            if !rowActions.currentRowActionsVisible {
-                snapshotObservation.snapshotExists = false
-                snapshotObservation.snapshotGeneration = nil
-                snapshotObservation.snapshotIDs = nil
+            // T026: re-resolve the target clip by `targetClipID` (UUID) against
+            // the live dataset (FR-008, FR-011). If the clip was deleted, removed
+            // from the visible dataset, or filtered out by the active search
+            // query by the time the task runs, exit safely as `.missingTarget`
+            // (FR-011). For Delete this is the expected steady state, not an
+            // error. The snapshot clear itself is owned by T027 (success path);
+            // this slice records the exit-path classification only, so
+            // stale-task prevention (T013/T014) is preserved and T015 (snapshot
+            // eventually released) remains Red until T027.
+            let resolvedTarget = environmentMirror.resolveTarget(targetClipID)
+            if resolvedTarget == nil {
+                storage?.lastExitPath = .missingTarget
+                storage?.currentTaskDidFinish = true
+                return
             }
+            // Target present and visible: success path. T027 clears the
+            // production value-type snapshot and the mirror here, gated by
+            // generation ownership; this slice records the exit classification.
+            storage?.lastExitPath = .success
             // FR-012: record task completion last so `reconciliationTaskIsFinished`
             // reflects the active lifecycle after the cleanup ran.
             storage?.currentTaskDidFinish = true
@@ -1435,6 +1498,30 @@ struct HomeView: View {
     internal var lastGenerationComparison: GenerationComparison? {
         reconciliationLifecycle.lastGenerationComparison
     }
+
+    // T026: production body hook that mirrors the live reconciliation environment
+    // into the shared `@State` reference holder so the `Task` body and struct
+    // methods can re-resolve targets by UUID against the live dataset. Runs on
+    // every body evaluation (the installed copy's body), so the mirror stays
+    // current as `@Query` / `searchText` / the snapshot change. Behavior-neutral.
+    private func updateReconciliationEnvironmentMirror() {
+        #if os(macOS)
+        reconciliationEnvironmentMirror.modelContext = modelContext
+        reconciliationEnvironmentMirror.clips = clips
+        reconciliationEnvironmentMirror.searchText = searchText
+        reconciliationEnvironmentMirror.snapshotIDs = rowActionDisplayOrderSnapshot
+        #endif
+    }
+
+    #if os(macOS)
+    /// T026 read-only observation accessor: the live clip IDs the hosted `@Query`
+    /// currently reflects, mirrored into the shared holder. Lifecycle tests poll
+    /// this to wait deterministically for `@Query` to reflect a deletion/insertion
+    /// before releasing the safe-boundary awaiter. Read-only; never mutates state.
+    internal var reconciliationMirrorClipIDs: [UUID] {
+        reconciliationEnvironmentMirror.clips.map(\.id)
+    }
+    #endif
 
     private func clipRow(for clip: ClipItem) -> some View {
         ClipRowView(

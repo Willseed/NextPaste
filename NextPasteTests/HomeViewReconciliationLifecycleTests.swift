@@ -352,4 +352,410 @@ func t021_safeBoundaryAwaitIsSoleGate() async throws {
     )
 }
 
+// MARK: - T015: snapshot eventually released after a successful reconciliation
+
+@Test(
+    "T015: the snapshot is eventually released after a successful reconciliation (FR-012)"
+)
+@MainActor
+func t015_snapshotEventuallyReleasedAfterSuccess() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-012).")
+        return
+    }
+
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    // The fixture clip is present and visible, so the task must reach the
+    // success path (T026) and — once T027 lands — release the snapshot at the
+    // safe boundary without any user input.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The reconciliation Task must reach the safe-boundary await (FR-004)."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .success,
+        "A successful reconciliation of a present, visible target must record .success (FR-012; T026)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The snapshot must be released after a successful reconciliation (FR-012; T027)."
+    )
+}
+
+// MARK: - T016: a cancelled task releases its own resources without clearing a newer snapshot
+
+@Test(
+    "T016: a cancelled reconciliationTask releases its own resources without clearing a newer snapshot (FR-012)"
+)
+@MainActor
+func t016_cancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-012).")
+        return
+    }
+
+    // G1 reaches the safe-boundary await, then G2 cancels it (generation bump)
+    // and opens its own snapshot. G1 must release its own resources (exit
+    // .cancelled) WITHOUT clearing G2's snapshot.
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G1 must reach the safe-boundary await before G2 cancels it."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.driveTogglePin()
+
+    // Let G1 run its cancellation exit (MainActor FIFO) while G2 is still
+    // pending at the await.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G1 must finish after cancellation without clearing G2's snapshot."
+    ) { observers.lastExitPath == .cancelled && probe.hasRowActionDisplayOrderSnapshot }
+    #expect(
+        observers.lastExitPath == .cancelled,
+        "A task cancelled mid-await (superseded by a newer operation) must exit .cancelled (FR-009, FR-012; T028)."
+    )
+    #expect(
+        probe.hasRowActionDisplayOrderSnapshot,
+        "A cancelled task must not clear a snapshot owned by the newer operation (FR-009, FR-010)."
+    )
+
+    // G2 now owns the snapshot and clears it at its safe boundary (T027).
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G2 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The newer operation's task must release its own snapshot at the safe boundary (FR-012; T027)."
+    )
+}
+
+// MARK: - T017: a stale-generation early-exit task releases resources without clearing the snapshot
+
+@Test(
+    "T017: a stale-generation early-exit Task releases its own resources without clearing the snapshot (FR-012)"
+)
+@MainActor
+func t017_staleEarlyExitReleasesWithoutClearing() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-012).")
+        return
+    }
+
+    // G2 is launched synchronously right after G1, before G1's Task body runs.
+    // G1's pre-await guard sees the bumped generation and exits .staleGeneration
+    // without ever awaiting (and without clearing).
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    harness.driveTogglePin()
+
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G1 must finish as .staleGeneration without clearing G2's snapshot."
+    ) { observers.lastExitPath == .staleGeneration && probe.hasRowActionDisplayOrderSnapshot }
+    #expect(
+        observers.lastExitPath == .staleGeneration,
+        "A stale (superseded) task must exit .staleGeneration before the await (FR-010; T028)."
+    )
+    #expect(
+        probe.hasRowActionDisplayOrderSnapshot,
+        "A stale-generation task must not clear a snapshot owned by the newer operation (FR-010)."
+    )
+
+    // G2 clears its own snapshot at the safe boundary (T027).
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G2 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The newer operation's task must release its own snapshot at the safe boundary (FR-012; T027)."
+    )
+}
+
+// MARK: - T018: a reconciliation Task whose target was deleted/removed/filtered exits safely
+
+@Test(
+    "T018: a reconciliation Task whose target was deleted/removed/filtered exits safely (FR-011)"
+)
+@MainActor
+func t018_targetDeletedExitsSafely() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-011).")
+        return
+    }
+
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The reconciliation Task must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+
+    // While reconciliation is pending at the safe boundary, the target clip is
+    // removed from the visible dataset (FR-011).
+    try harness.deleteClipInContext()
+    await harness.awaitQueryReflects(clipPresent: false)
+
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .missingTarget,
+        "A task whose target was deleted/removed must safe-exit as .missingTarget (FR-011; T026)."
+    )
+    #expect(
+        !probe.reconciliationTaskIsCancelled,
+        "The missing-target exit is a safe completion, not a cancellation (FR-011)."
+    )
+}
+
+// MARK: - T019: a Delete-after-removal reconciliation Task exits cleanly because its target UUID is gone
+
+@Test(
+    "T019: a Delete-after-removal reconciliation Task exits cleanly because its target UUID is gone (FR-011)"
+)
+@MainActor
+func t019_deleteAfterRemovalExitsCleanly() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-011).")
+        return
+    }
+
+    // Drive the real Delete entry point. After T031 it routes through the
+    // shared automatic reconciliation lifecycle by target UUID; the deleted
+    // UUID is gone from the dataset, so the task must safe-exit .missingTarget.
+    await harness.awaitBodyInstalled()
+    harness.driveDelete()
+    await harness.awaitQueryReflects(clipPresent: false)
+
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The Delete reconciliation Task must reach the safe-boundary await (T031)."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .missingTarget,
+        "A Delete-after-removal task must safe-exit .missingTarget because its target UUID is gone (FR-011; T031)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The Delete reconciliation must release the snapshot so the live @Query projection shows (FR-012; T027)."
+    )
+}
+
+// MARK: - T020: view teardown cancels the in-flight task and releases the snapshot
+
+@Test(
+    "T020: view teardown cancels the in-flight reconciliationTask and releases the snapshot (FR-012, SC-007)"
+)
+@MainActor
+func t020_teardownCancelsInFlightTask() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-012).")
+        return
+    }
+
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The reconciliation Task must reach the safe-boundary await before teardown."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+
+    // Tear down the hosted view (close the window) so SwiftUI fires onDisappear.
+    harness.teardown()
+
+    // T029: onDisappear must cancel the in-flight reconciliationTask and
+    // release the snapshot safely.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "Teardown must cancel the in-flight reconciliationTask (FR-012; T029)."
+    ) { probe.reconciliationTaskIsCancelled }
+    #expect(
+        probe.reconciliationTaskIsCancelled,
+        "View teardown must cancel the in-flight reconciliationTask (FR-012, SC-007; T029)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "View teardown must release the snapshot (FR-012; T029)."
+    )
+    #expect(
+        observers.lastExitPath == .teardown,
+        "Teardown must record the .teardown exit classification (FR-012; T028/T029)."
+    )
+    // Release any residual waiter so no continuation leaks.
+    harness.safeBoundary.releaseAll()
+}
+
+// MARK: - T022: only targetClipID (UUID) and capturedGeneration cross the async hop
+
+@Test(
+    "T022: reconciliation re-resolves by UUID across the async hop; positional shifts do not break it (FR-008)"
+)
+@MainActor
+func t022_uuidOnlyIdentityAcrossAsyncHop() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-008).")
+        return
+    }
+
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The reconciliation Task must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+
+    // While reconciliation is pending, shift the fixture clip's row position by
+    // inserting another clip into the dataset. If the task carried a row index /
+    // IndexPath across the async hop, the shift would break re-resolution. The
+    // task re-resolves by `targetClipID` (UUID), so it still finds the fixture
+    // clip and completes the success path (FR-008).
+    _ = try harness.insertClip(text: "uuid-identity-shift")
+    await harness.awaitQueryReflects(clipPresent: true)
+
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .success,
+        "Re-resolution by UUID must still find the target after a positional shift (FR-008; T026)."
+    )
+    #expect(
+        harness.homeView.reconciliationMirrorClipIDs.contains(harness.clip.id),
+        "The target clip must still be present in the live dataset after the shift (FR-008)."
+    )
+}
+
+// MARK: - T060: rollback while reconciliation pending does not apply stale order / leave a permanent snapshot
+
+@Test(
+    "T060: rollback while reconciliation pending keeps the ordering contract and leaves no permanent snapshot (FR-006, FR-009, FR-010, FR-011, FR-015)"
+)
+@MainActor
+func t060_rollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-009, FR-010).")
+        return
+    }
+
+    // G1 opens a snapshot and reaches the safe-boundary await.
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G1 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+
+    // Simulate a rollback of G1's mutation by removing the target clip from the
+    // dataset while G1 is pending, then accept a newer operation G2 that cancels
+    // G1 and bumps the generation. G1 must not apply stale/uncommitted order and
+    // must not clear G2's snapshot.
+    try harness.deleteClipInContext()
+    harness.driveTogglePin()
+
+    // G1 is cancelled mid-await (superseded by G2's generation bump) and exits
+    // .cancelled without clearing. Observe G1's exit before G2 completes.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G1 must exit .cancelled without clearing G2's snapshot."
+    ) { observers.lastExitPath == .cancelled && probe.hasRowActionDisplayOrderSnapshot }
+    #expect(
+        observers.lastExitPath == .cancelled,
+        "A stale/cancelled task must not apply stale/uncommitted order (FR-009, FR-010; T028)."
+    )
+
+    // G2 re-resolves against the post-rollback dataset; the target UUID is gone,
+    // so it safe-exits .missingTarget and releases the snapshot (no permanent
+    // snapshot remains).
+    await harness.awaitQueryReflects(clipPresent: false)
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "G2 must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .missingTarget,
+        "The newer task must complete against the current valid state (FR-011, FR-015; T026)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "No permanent snapshot must remain after the pending reconciliation settles (FR-012; T027)."
+    )
+}
+
+// MARK: - T061: a no-op Pin/Unpin does not relocate or mutate timestamp; an opened snapshot still clears at the safe boundary
+
+@Test(
+    "T061: a no-op Pin/Unpin does not relocate or mutate timestamp; an opened snapshot still clears at the safe boundary (FR-001, FR-002, FR-004, FR-007, FR-010, FR-012)"
+)
+@MainActor
+func t061_noOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-001, FR-002).")
+        return
+    }
+
+    // Ensure the hosted body has installed so the store uses the real hosted
+    // `ModelContext` (not the held value's empty `@Environment` default).
+    await harness.awaitBodyInstalled()
+
+    // First Pin is state-changing: the store writes `sectionSortDate` and pins
+    // the clip. Read the post-pin timestamp from a FRESH context so the cached
+    // `harness.clip` (used by the next `scheduleTogglePin` to compute the
+    // desired state) is NOT auto-refreshed to `isPinned = true` before the
+    // second drive.
+    harness.driveTogglePin()
+    let pinnedTimestamp = harness.refetchClipFresh()?.sectionSortDate
+
+    // Second Pin is launched synchronously, before `harness.clip` auto-refreshes,
+    // so `scheduleTogglePin` still computes `desired = true` (Pin). The store
+    // re-resolves the clip by UUID and sees `isPinned == true` already, so it
+    // returns the idempotent no-op WITHOUT calling `setPinned` — `sectionSortDate`
+    // must NOT be updated and the clip must NOT relocate (FR-001, FR-002). A
+    // snapshot is still opened for teardown protection and must clear at the
+    // safe boundary without any explicit user input (FR-004, FR-007).
+    harness.driveTogglePin()
+
+    // The second (no-op) drive cancelled the first task and launched G2, which
+    // awaits the safe boundary. Release it and let G2 complete the success path.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The no-op Pin's reconciliation Task must reach the safe-boundary await."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
+
+    let afterNoOpTimestamp = harness.refetchClipFresh()?.sectionSortDate
+    #expect(
+        afterNoOpTimestamp == pinnedTimestamp,
+        "An idempotent no-op Pin/Unpin must NOT update sectionSortDate (FR-001, FR-002)."
+    )
+    #expect(
+        observers.lastExitPath == .success,
+        "An opened snapshot still clears at the safe boundary via the success path (FR-004, FR-007; T027)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The snapshot must be released at the safe boundary without explicit user input (FR-004, FR-012; T027)."
+    )
+}
+
 } // struct HomeViewReconciliationLifecycleTests
