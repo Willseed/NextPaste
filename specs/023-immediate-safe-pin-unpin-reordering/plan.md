@@ -461,20 +461,35 @@ The seam (read-only observation plus the single injection surface) MUST NOT:
 - use a fixed delay (`Task.sleep`/`usleep`) as the boundary mechanism;
 - expose a placeholder `nil` accessor for the safe-boundary dependency —
   production wiring always supplies a real implementation (KVO-backed in
-  production, test-double in unit tests), never an unimplemented `nil`.
+  production, test-double in unit tests), never an unimplemented `nil`;
+- permit skipped or unattached lifecycle tests — a test that is disabled,
+  `XCTSkip`ped, or detached from the real generation-guarded production Task
+  is not a valid Red or Green and MUST NOT be counted toward lifecycle
+  coverage;
+- directly resume the production continuation — the safe-boundary await must
+  complete only through the dependency contract, never by manually resuming
+  the production `Task` continuation or calling its completion handler from
+  the test;
+- use index, row index, or `IndexPath` (FR-008) — the probe and the
+  safe-boundary dependency carry `targetClipID`, never positional
+  identifiers;
+- use force-unwraps or implicitly-unwrapped optional access (FR-013) in the
+  seam, the probe, the dependency, or the test harness.
 
 **5. Read-only observation surface (unchanged, no mutation permitted).**
 
 The read-only lifecycle observation surface remains exactly as in § Access path
 above and MUST NOT allow mutation of:
 - `reconciliationGeneration` / the generation token;
-- `reconciliationTask` identity and cancellation/finish state;
-- `rowActionDisplayOrderSnapshot` presence and the owner generation it was
-  opened under;
+- `reconciliationTask` identity;
+- `reconciliationTask` cancellation / finish state;
+- `rowActionDisplayOrderSnapshot` presence;
+- the owner generation the snapshot was opened under;
 - the safe-boundary wait state (whether the Task is currently awaiting the
   boundary);
-- the cleanup-ownership trace (which exit path released the snapshot and the
-  generation-equality result);
+- the cleanup-ownership trace (which exit path released the snapshot);
+- the exit-path classification (success, stale-generation, missing-target,
+  cancellation, view-teardown, early-exit);
 - the generation comparison result (`capturedGeneration ==
   reconciliationGeneration` outcome).
 The single injection surface in § 2 above is the only non-read-only surface;
@@ -503,7 +518,50 @@ all other probe accessors are get-only.
 This subsection resolves the T059 drift: the plan now defines a minimal,
 long-lived safe-boundary dependency-injection surface that is the only
 non-read-only test seam, keeps production on the real KVO-backed adapter by
-default, and records the T070→T071 skeleton-to-production switch.
+default, records the T070→T071 skeleton-to-production switch, and binds the
+mid-implementation recovery sequence below.
+
+**7. Mid-implementation recovery sequencing.**
+
+The feature is mid-implementation and the task ledger has drifted from the
+plan. The following recovery sequence is binding and MUST be followed in
+order before any further implementation work on T024–T031:
+
+1. **Plan sync complete** — this update: the test seam contract
+   (safe-boundary dependency, read-only observation surface, prohibitions,
+   T070→T071 handoff) is synchronized with the design.
+2. **T071 production policy Green** — `NextPaste/ReconciliationLifecyclePolicy.swift`
+   production types land; test-local skeleton declarations are removed; tests
+   use `@testable import NextPaste`; Green comes from the production
+   implementation, not from a test-local skeleton.
+3. **T059 seam contract validation complete** — the test seam (read-only
+   observation plus the single safe-boundary injection surface) is validated
+   against the contract recorded in this subsection.
+4. **T072 partial implementation re-inventoried** — already-landed partial
+   production behavior is checked against the new seam contract; missing
+   pieces are identified for completion but NOT reverted.
+5. **T073 hosted harness complete** — the in-process SwiftData harness
+   hosting a real `HomeView` with the `ReconciliationLifecycleProbe`
+   attached is operational.
+6. **T011–T014 obtain legitimate behavioral Red** — each test compiles
+   against the real production types, attaches to the real lifecycle, and
+   fails on a real behavioral assertion.
+7. **T074 Recovery Gate passes** — the verification checkpoint confirms the
+   above steps are complete and the ledger is consistent with the plan.
+8. **Only then may T024–T031 proceed.**
+
+**Legitimate Red definition.** A crash, a missing test environment, a compile
+failure, a nil-placeholder accessor, or a skipped (`XCTSkip` / disabled) test
+is NOT a legitimate behavioral Red. A legitimate Red is a test that compiles
+against the real production types (via `@testable import NextPaste`), attaches
+to the real generation-guarded lifecycle, and fails an assertion about
+observable behavior.
+
+**Partial behavior policy.** Already-landed partial production behavior is
+NOT reverted solely to reproduce a historical Red. Existing partial behavior
+MUST be completed and validated after the legitimate Red harness is
+established. The recovery sequence adds coverage; it does not roll back
+working production code.
 
 ### Component / call-site mapping (`HomeView.swift`)
 
