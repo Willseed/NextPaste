@@ -895,7 +895,13 @@ struct HomeView: View {
         // reorder does not recycle the acted-on row during AppKit row-action teardown.
         beginRowActionDisplayOrderSnapshot()
         applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
-        scheduleRowActionDisplayOrderReconciliation()
+        // T031: route Delete through the shared generation-guarded automatic
+        // reconciliation lifecycle by target UUID (FR-009 Delete call site). The
+        // deleted UUID is gone from the dataset, so the Task re-resolves to nil and
+        // safe-exits `.missingTarget`, clearing the snapshot so the live `@Query`
+        // projection (without the deleted clip) becomes the visible order (FR-011,
+        // FR-006, FR-007).
+        scheduleAutomaticReconciliation(for: clip.id)
 #else
         applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
 #endif
@@ -2018,7 +2024,18 @@ struct ClipDeletionAction {
 #endif
 
         do {
-            modelContext.delete(clip)
+            // T031 (FR-008): resolve the live clip by UUID in this context and
+            // delete that instance, so Delete identifies the target by UUID even
+            // when the passed `clip` was fetched from a different `ModelContext`
+            // (e.g. the test harness's context vs the hosted copy's context). In
+            // production the passed clip already belongs to this context, so the
+            // resolved instance is the same object — behavior-neutral.
+            let targetID = clip.id
+            var descriptor = FetchDescriptor<ClipItem>(sortBy: ClipItem.historySortDescriptors)
+            descriptor.predicate = #Predicate { $0.id == targetID }
+            let resolved = try modelContext.fetch(descriptor).first
+            let toDelete = resolved ?? clip
+            modelContext.delete(toDelete)
 #if DEBUG
             RowActionTraceRuntime.emit(
                 category: .swiftData,
