@@ -86,47 +86,16 @@ protocol ReconciliationLifecycleProbe {
 // implemented" Red.
 extension HomeView: ReconciliationLifecycleProbe {}
 
-// MARK: - Minimal harness scaffold (full harness lands with T073)
+// MARK: - T073 hosted harness
 //
-// T073.1 update (2026-07-06): The production seam adjustment described below
-// has now been applied. `HomeView` holds a reference-type
-// `ReconciliationSnapshotObservationStorage` via `@State`, and the read-only
-// seam accessors (`hasRowActionDisplayOrderSnapshot`,
-// `rowActionDisplayOrderSnapshotGeneration`) read that mirror instead of the
-// value-type `@State`. The mirror is written alongside the production writes
-// in `beginRowActionDisplayOrderSnapshot()` / `clearRowActionDisplayOrderSnapshot()`,
-// so snapshot existence / generation are now observable from a bare
-// (unhosted) `HomeView()` value. Production behavior is unchanged: the
-// value-type `rowActionDisplayOrderSnapshot` remains the source of truth that
-// `visibleClips` reads. T013/T014 now progress past "snapshot nil"; their
-// remaining Red is the T026 stale-generation / old-task protection that has
-// not yet been implemented.
-
-@MainActor
-private enum HomeViewReconciliationLifecycleHarness {
-    struct Fixture {
-        let context: ModelContext
-        let clip: ClipItem
-        let homeView: HomeView
-    }
-
-    static func makeFixture() throws -> Fixture {
-        let container = try SwiftDataTestSupport.makeInMemoryContainer(
-            for: Schema([ClipItem.self])
-        )
-        let context = ModelContext(container)
-        let clip = ClipItem(textContent: "lifecycle-fixture")
-        context.insert(clip)
-        try context.save()
-        // `HomeView` reads `modelContext` from `@Environment`; the full
-        // SwiftUI-host driving harness (T073) injects it. For the lifecycle
-        // invariant probes here, the probe cast does not depend on the
-        // environment being wired, so a bare value is sufficient to express
-        // the Red state until T072.
-        let homeView = HomeView()
-        return Fixture(context: context, clip: clip, homeView: homeView)
-    }
-}
+// T073 update (2026-07-06): The bare `HomeView()` fixture has been replaced by
+// the hosted `ReconciliationLifecycleTestHarness` (see
+// `ReconciliationLifecycleTestHarness.swift`). It installs a real `HomeView`
+// in a SwiftUI `NSHostingView` with `@Environment(\.modelContext)` injected via
+// `.modelContainer`, injects a deterministic safe-boundary test double through
+// the single T072 `safeBoundaryAwaiter` seam, and exposes real
+// `scheduleTogglePin` / `deleteClip` drivers plus read-only observers and
+// bounded assertion helpers. No bare `HomeView()` lifecycle path remains.
 
 // MARK: - Lifecycle suite
 // Wrap the four lifecycle tests in a named `@Suite` so the targeted
@@ -146,9 +115,9 @@ struct HomeViewReconciliationLifecycleTests {
 )
 @MainActor
 func t011_newOperationIncrementsReconciliationGeneration() async throws {
-    let fixture = try HomeViewReconciliationLifecycleHarness.makeFixture()
+    let harness = try ReconciliationLifecycleTestHarness()
 
-    guard let probe = fixture.homeView as? ReconciliationLifecycleProbe else {
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
         Issue.record(
             "Red: T072 reconciliation lifecycle seam not implemented on HomeView — reconciliationGeneration is not observable (FR-010; Plan § generation/token ownership)."
         )
@@ -156,21 +125,21 @@ func t011_newOperationIncrementsReconciliationGeneration() async throws {
     }
 
     let before = probe.reconciliationGeneration
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     let afterPin = probe.reconciliationGeneration
     #expect(
         afterPin > before,
         "A state-changing Pin/Unpin must increment reconciliationGeneration (FR-010)."
     )
 
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     let afterSecond = probe.reconciliationGeneration
     #expect(
         afterSecond > afterPin,
         "A second operation must further increment reconciliationGeneration (FR-010)."
     )
 
-    probe.deleteClip(fixture.clip)
+    harness.driveDelete()
     let afterDelete = probe.reconciliationGeneration
     #expect(
         afterDelete > afterSecond,
@@ -185,22 +154,22 @@ func t011_newOperationIncrementsReconciliationGeneration() async throws {
 )
 @MainActor
 func t012_newOperationCancelsPriorReconciliationTask() async throws {
-    let fixture = try HomeViewReconciliationLifecycleHarness.makeFixture()
+    let harness = try ReconciliationLifecycleTestHarness()
 
-    guard let probe = fixture.homeView as? ReconciliationLifecycleProbe else {
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
         Issue.record(
             "Red: T072 reconciliation lifecycle seam not implemented on HomeView — reconciliationTask cancellation state is not observable (FR-009; Plan § previous-task cancellation)."
         )
         return
     }
 
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     // The first operation launches a reconciliationTask. A second operation
     // must cancel that prior task before storing its own (FR-009). T024.1 seam
     // cleanup: assert the precise prior-cancellation signal rather than the
     // ambiguous `isCancelled || isFinished` disjunction (which could pass for
     // reasons unrelated to prior cancellation, e.g. the new task finishing).
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     #expect(
         probe.priorReconciliationTaskWasCancelled,
         "A new operation must cancel the prior reconciliationTask before launching its own (FR-009)."
@@ -214,9 +183,9 @@ func t012_newOperationCancelsPriorReconciliationTask() async throws {
 )
 @MainActor
 func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
-    let fixture = try HomeViewReconciliationLifecycleHarness.makeFixture()
+    let harness = try ReconciliationLifecycleTestHarness()
 
-    guard let probe = fixture.homeView as? ReconciliationLifecycleProbe else {
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
         Issue.record(
             "Red: T072 reconciliation lifecycle seam not implemented on HomeView — snapshot generation token is not observable (FR-010; Plan § stale-task prevention)."
         )
@@ -227,9 +196,9 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     // second operation. The first Task's capturedGeneration no longer matches
     // reconciliationGeneration, so it must exit WITHOUT clearing the snapshot
     // (the newer operation owns the snapshot lifetime).
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     let firstSnapshotGeneration = probe.rowActionDisplayOrderSnapshotGeneration
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
 
     // T073.2: let the stale (prior, cancelled) task run its unguarded cleanup so
     // the test observes the stale-clear. Without awaiting, the async Task has not
@@ -258,9 +227,9 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
 )
 @MainActor
 func t014_olderTaskCannotClearNewerSnapshot() async throws {
-    let fixture = try HomeViewReconciliationLifecycleHarness.makeFixture()
+    let harness = try ReconciliationLifecycleTestHarness()
 
-    guard let probe = fixture.homeView as? ReconciliationLifecycleProbe else {
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
         Issue.record(
             "Red: T072 reconciliation lifecycle seam not implemented on HomeView — snapshot ownership by generation is not observable (FR-009, FR-010; Plan § old-task cannot clear new snapshot)."
         )
@@ -268,13 +237,13 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     }
 
     // First operation opens a snapshot under generation G1.
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     let olderGeneration = probe.rowActionDisplayOrderSnapshotGeneration
 
     // A newer operation cancels the prior task and opens its own snapshot under
     // generation G2 > G1. The older Task (captured G1) must never clear the
     // snapshot opened under G2.
-    probe.scheduleTogglePin(fixture.clip)
+    harness.driveTogglePin()
     let newerGeneration = probe.rowActionDisplayOrderSnapshotGeneration
 
     // T073.2: let the older (cancelled) task run its unguarded cleanup so the test
