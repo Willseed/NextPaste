@@ -355,14 +355,19 @@ struct ClipItemTests {
         #expect(saved.effectiveSectionSortDate == createdAt)
     }
 
-    @Test("pin sets pinned ordering and section sort date to createdAt without changing clipboard createdAt")
-    func pinSetsPinnedOrderingAndSectionSortDateToCreatedAt() throws {
+    // T002 (FR-001, FR-005): a state-changing Pin MUST set `sectionSortDate` to the
+    // Pin operation time (not `createdAt`) so the most recently pinned item appears
+    // at the top of the pinned section. Clipboard `createdAt` is unchanged.
+    @Test("state-changing pin sets section sort date to operation time without changing clipboard createdAt")
+    func stateChangingPinSetsSectionSortDateToOperationTime() throws {
         let createdAt = Date(timeIntervalSince1970: 1_780_000_030)
+        let operationTime = Date(timeIntervalSince1970: 1_780_000_999)
         let clip = ClipItem(textContent: "pin target", createdAt: createdAt)
-        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 1_780_000_999))
+        clip.setPinned(true, operationTime: operationTime)
         #expect(clip.isPinned == true)
         #expect(clip.pinnedSortOrder == 1)
-        #expect(clip.sectionSortDate == createdAt)
+        #expect(clip.sectionSortDate == operationTime)
+        #expect(clip.effectiveSectionSortDate == operationTime)
         #expect(clip.createdAt == createdAt)
     }
 
@@ -379,27 +384,198 @@ struct ClipItemTests {
         #expect(clip.effectiveSectionSortDate == operationTime)
     }
 
-    @Test("pin after unpin resets section sort date to createdAt so pinned section stays newest-first")
-    func pinAfterUnpinResetsSectionSortDateToCreatedAt() throws {
+    // T002 (FR-005): re-Pin after Unpin MUST set `sectionSortDate` to the re-Pin
+    // operation time (not reset to `createdAt`), so the re-pinned item rises to the
+    // pinned-section top.
+    @Test("pin after unpin sets section sort date to the re-pin operation time")
+    func pinAfterUnpinSetsSectionSortDateToRepinOperationTime() throws {
         let createdAt = Date(timeIntervalSince1970: 100)
         let clip = ClipItem(textContent: "re-pin target", createdAt: createdAt, isPinned: true)
         clip.setPinned(false, operationTime: Date(timeIntervalSince1970: 500))
         #expect(clip.sectionSortDate == Date(timeIntervalSince1970: 500))
-        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 900))
+        let rePinOperationTime = Date(timeIntervalSince1970: 900)
+        clip.setPinned(true, operationTime: rePinOperationTime)
         #expect(clip.isPinned == true)
         #expect(clip.pinnedSortOrder == 1)
-        #expect(clip.sectionSortDate == createdAt)
+        #expect(clip.sectionSortDate == rePinOperationTime)
+        #expect(clip.effectiveSectionSortDate == rePinOperationTime)
     }
 
-    @Test("setPinned with same desired state is idempotent on ordering metadata")
-    func setPinnedSameDesiredStateIsIdempotentOnOrderingMetadata() {
-        let createdAt = Date(timeIntervalSince1970: 100)
-        let clip = ClipItem(textContent: "idempotent", createdAt: createdAt)
-        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 200))
-        let firstSortDate = clip.sectionSortDate
-        clip.setPinned(true, operationTime: Date(timeIntervalSince1970: 300))
-        #expect(clip.isPinned == true)
-        #expect(clip.sectionSortDate == firstSortDate)
+    // T004/T005/T006 (FR-001, FR-002, FR-005): idempotent no-op Pin/Unpin (clip already
+    // in the requested state, per the Feature 021 idempotency contract) is enforced by
+    // `PinStateMutationStore`, which returns before `setPinned` is called. These tests
+    // exercise the authoritative no-op path and assert `sectionSortDate` is NOT updated,
+    // the clip is NOT relocated, and no duplicate-mutation side effect occurs.
+    @MainActor
+    @Test("no-op pin does not update section sort date or relocate the clip")
+    func noOpPinDoesNotUpdateSectionSortDateOrRelocate() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let clip = ClipItem(textContent: "no-op pin target", createdAt: Date(timeIntervalSince1970: 1_000))
+        context.insert(clip)
+        try context.save()
+
+        let store = PinStateMutationStore(modelContext: context)
+        // Establish the pinned state with a state-changing Pin.
+        let applied = store.setPinned(true, for: clip.id, source: .testHarness)
+        #expect(applied == .applied(itemID: clip.id, desiredPinnedState: true))
+        let establishedSortDate = try SwiftDataTestSupport.fetchHistory(in: context).first { $0.id == clip.id }?.sectionSortDate
+        let orderBefore = orderedIDs(in: context)
+
+        // No-op Pin: clip is already pinned. MUST NOT update sectionSortDate or relocate.
+        let noOp = store.setPinned(true, for: clip.id, source: .testHarness)
+        #expect(noOp == .noOp(itemID: clip.id, desiredPinnedState: true))
+        let reloaded = try SwiftDataTestSupport.fetchHistory(in: context).first { $0.id == clip.id }
+        let orderAfter = orderedIDs(in: context)
+        #expect(reloaded?.isPinned == true)
+        #expect(reloaded?.sectionSortDate == establishedSortDate)
+        #expect(orderAfter == orderBefore)
+    }
+
+    @MainActor
+    @Test("no-op unpin does not update section sort date or relocate the clip")
+    func noOpUnpinDoesNotUpdateSectionSortDateOrRelocate() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let clip = ClipItem(textContent: "no-op unpin target", createdAt: Date(timeIntervalSince1970: 1_000), isPinned: true)
+        context.insert(clip)
+        try context.save()
+
+        let store = PinStateMutationStore(modelContext: context)
+        // Establish the unpinned state with a state-changing Unpin.
+        let applied = store.setPinned(false, for: clip.id, source: .testHarness)
+        #expect(applied == .applied(itemID: clip.id, desiredPinnedState: false))
+        let establishedSortDate = try SwiftDataTestSupport.fetchHistory(in: context).first { $0.id == clip.id }?.sectionSortDate
+        let orderBefore = orderedIDs(in: context)
+
+        // No-op Unpin: clip is already unpinned. MUST NOT update sectionSortDate or relocate.
+        let noOp = store.setPinned(false, for: clip.id, source: .testHarness)
+        #expect(noOp == .noOp(itemID: clip.id, desiredPinnedState: false))
+        let reloaded = try SwiftDataTestSupport.fetchHistory(in: context).first { $0.id == clip.id }
+        let orderAfter = orderedIDs(in: context)
+        #expect(reloaded?.isPinned == false)
+        #expect(reloaded?.sectionSortDate == establishedSortDate)
+        #expect(orderAfter == orderBefore)
+    }
+
+    @MainActor
+    @Test("no-op pin and unpin produce no duplicate mutation side effect")
+    func noOpPinAndUnpinProduceNoDuplicateMutationSideEffect() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let clip = ClipItem(textContent: "duplicate side effect target", createdAt: Date(timeIntervalSince1970: 1_000), isPinned: true)
+        context.insert(clip)
+        try context.save()
+
+        let store = PinStateMutationStore(modelContext: context)
+        // Repeated no-op requests against an already-pinned clip.
+        for _ in 0..<5 {
+            _ = store.setPinned(true, for: clip.id, source: .testHarness)
+        }
+        let history = try SwiftDataTestSupport.fetchHistory(in: context)
+        let matching = history.filter { $0.id == clip.id }
+        #expect(matching.count == 1)
+        #expect(matching.first?.isPinned == true)
+    }
+
+    @MainActor
+    private func orderedIDs(in context: ModelContext) -> [UUID] {
+        let clips = (try? SwiftDataTestSupport.fetchHistory(in: context)) ?? []
+        return PinStateSnapshotProjector.order(clips).map(\.id)
+    }
+
+    // T007 (Plan § Pin timestamp change / Delete): Delete removes the clip from
+    // SwiftData and MUST NOT read or update `sectionSortDate` on the delete path.
+    // Surviving clips retain their `sectionSortDate` unchanged; the deleted clip is
+    // gone (its `sectionSortDate` is removed with it, not reassigned).
+    @MainActor
+    @Test("delete does not read or update section sort date on survivors")
+    func deleteDoesNotReadOrUpdateSectionSortDate() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let survivor = ClipItem(textContent: "survivor", createdAt: Date(timeIntervalSince1970: 1_000))
+        let toDelete = ClipItem(textContent: "delete target", createdAt: Date(timeIntervalSince1970: 2_000))
+        context.insert(survivor)
+        context.insert(toDelete)
+        // Give the survivor a non-nil sectionSortDate so a stray delete-path write is detectable.
+        survivor.setPinned(true, operationTime: Date(timeIntervalSince1970: 1_500))
+        let survivorSortDateBefore = survivor.sectionSortDate
+        try context.save()
+
+        let deleted = ClipDeletionAction(modelContext: context).delete(toDelete)
+        #expect(deleted == true)
+
+        let history = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(history.contains { $0.id == toDelete.id } == false)
+        let reloadedSurvivor = try #require(history.first { $0.id == survivor.id })
+        #expect(reloadedSurvivor.sectionSortDate == survivorSortDateBefore)
+        #expect(reloadedSurvivor.isPinned == true)
+    }
+
+    // T062 (FR-001, FR-002, FR-005, FR-014; Plan § Pin timestamp change / model
+    // boundary states): model/order boundary states — empty visible collection after
+    // the only clip is deleted; no duplicate UUID after a state-changing Pin/Unpin on
+    // a single-clip collection; the acted-on clip is the only item in the pinned
+    // section after a state-changing Pin and the only item in the unpinned section
+    // after a state-changing Unpin; correct sectionSortDate and section placement;
+    // no-op Pin/Unpin produces no relocation or timestamp mutation.
+    @MainActor
+    @Test("model and order boundary states for pin unpin delete")
+    func modelAndOrderBoundaryStatesForPinUnpinDelete() throws {
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(for: Schema([ClipItem.self]))
+        let context = ModelContext(container)
+        let store = PinStateMutationStore(modelContext: context)
+
+        // (a) the model-backed visible collection is empty after the only clip is Deleted.
+        let onlyClip = ClipItem(textContent: "only", createdAt: Date(timeIntervalSince1970: 1_000))
+        context.insert(onlyClip)
+        try context.save()
+        _ = ClipDeletionAction(modelContext: context).delete(onlyClip)
+        #expect(try SwiftDataTestSupport.fetchHistoryTexts(in: context).isEmpty)
+
+        // (b) a single-clip collection produces no duplicate UUID after a state-changing
+        //     Pin or Unpin.
+        let clip = ClipItem(textContent: "solo", createdAt: Date(timeIntervalSince1970: 2_000))
+        context.insert(clip)
+        try context.save()
+        _ = store.setPinned(true, for: clip.id, source: .testHarness)
+        var pinnedHistory = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(pinnedHistory.filter { $0.id == clip.id }.count == 1)
+        // (c)+(d) the acted-on clip is the only item in the pinned section after a
+        //        state-changing Pin and writes the correct sectionSortDate/section placement.
+        let pinnedClip = try #require(pinnedHistory.first { $0.id == clip.id })
+        #expect(pinnedClip.isPinned == true)
+        // (d) state-changing Pin writes sectionSortDate == operationTime (newer than
+        //     clipboard createdAt), driving pinned-section ordering.
+        #expect(pinnedClip.sectionSortDate != nil)
+        #expect(pinnedClip.sectionSortDate! > clip.createdAt)
+        #expect(pinnedClip.effectiveSectionSortDate == pinnedClip.sectionSortDate)
+        let pinnedOrder = PinStateSnapshotProjector.order(pinnedHistory).map(\.id)
+        #expect(pinnedOrder == [clip.id])
+
+        // (c) the acted-on clip is the only item in the unpinned section after a
+        //     state-changing Unpin.
+        _ = store.setPinned(false, for: clip.id, source: .testHarness)
+        var unpinnedHistory = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(unpinnedHistory.filter { $0.id == clip.id }.count == 1)
+        let unpinnedClip = try #require(unpinnedHistory.first { $0.id == clip.id })
+        #expect(unpinnedClip.isPinned == false)
+        // (d) state-changing Unpin writes sectionSortDate == operationTime (newer than
+        //     the prior pinned sectionSortDate and clipboard createdAt).
+        #expect(unpinnedClip.sectionSortDate != nil)
+        #expect(unpinnedClip.sectionSortDate! > clip.createdAt)
+        let unpinnedOrder = PinStateSnapshotProjector.order(unpinnedHistory).map(\.id)
+        #expect(unpinnedOrder == [clip.id])
+
+        // (e) no-op Pin/Unpin produces no unexpected relocation or timestamp mutation.
+        let sortDateBeforeNoOp = unpinnedClip.sectionSortDate
+        let orderBeforeNoOp = PinStateSnapshotProjector.order(unpinnedHistory).map(\.id)
+        _ = store.setPinned(false, for: clip.id, source: .testHarness)
+        unpinnedHistory = try SwiftDataTestSupport.fetchHistory(in: context)
+        let noOpClip = try #require(unpinnedHistory.first { $0.id == clip.id })
+        #expect(noOpClip.sectionSortDate == sortDateBeforeNoOp)
+        #expect(PinStateSnapshotProjector.order(unpinnedHistory).map(\.id) == orderBeforeNoOp)
+        #expect(unpinnedHistory.map(\.id).filter { $0 == clip.id }.count == 1)
     }
 
     private func assertNilImageMetadata(on clip: ClipItem) {

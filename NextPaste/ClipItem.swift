@@ -51,11 +51,13 @@ final class ClipItem {
     var updatedAt: Date
     var isPinned: Bool = false
     var pinnedSortOrder: Int = 0
-    // Feature 021: optional persisted section-order metadata. Defaults to nil for
+    // Feature 021/023: optional persisted section-order metadata. Defaults to nil for
     // existing rows; ordering falls back to `createdAt` (see
-    // `effectiveSectionSortDate`). Pin sets it to `createdAt`; Unpin sets it to the
-    // operation time so the most recently unpinned item appears at the top of the
-    // unpinned section (FR-010 part 3). Non-destructive migration (data-model.md).
+    // `effectiveSectionSortDate`). A state-changing Pin sets it to the Pin operation
+    // time; a state-changing Unpin sets it to the Unpin operation time, so the most
+    // recently acted-on item appears at the top of its section (FR-005). Idempotent
+    // no-op Pin/Unpin is guarded by `PinStateMutationStore` and never reaches this
+    // field (FR-001, FR-002). Non-destructive migration (data-model.md).
     var sectionSortDate: Date? = nil
     var imageHash: String? = nil
     var imageWidth: Int? = nil
@@ -108,21 +110,27 @@ final class ClipItem {
         pinnedSortOrder = Self.sortOrder(for: isPinned)
     }
 
-    /// Feature 021 — deterministic desired-state setter. Sets `isPinned`,
-    /// `pinnedSortOrder`, and `sectionSortDate` to satisfy FR-010 ordering without
-    /// changing clipboard `createdAt`. Pin sets `sectionSortDate = createdAt` so the
-    /// pinned section stays newest-first by history time. Unpin sets
+    /// Feature 021 / Feature 023 — deterministic desired-state setter. Sets
+    /// `isPinned`, `pinnedSortOrder`, and `sectionSortDate` to satisfy FR-005 ordering
+    /// without changing clipboard `createdAt`. A state-changing Pin sets
+    /// `sectionSortDate = operationTime` so the most recently pinned item appears at
+    /// the top of the pinned section (FR-001, FR-005). A state-changing Unpin sets
     /// `sectionSortDate = operationTime` so the most recently unpinned item appears at
-    /// the top of the unpinned section. Idempotent when the desired state already
-    /// holds and `sectionSortDate` is already consistent. Non-destructive: existing
-    /// rows with `sectionSortDate == nil` continue to fall back to `createdAt`.
+    /// the top of the unpinned section (FR-002, FR-005). Idempotent no-op Pin/Unpin is
+    /// enforced by `PinStateMutationStore`, which returns before this setter is called,
+    /// so a no-op MUST NOT update `sectionSortDate` or relocate the clip (FR-001, FR-002,
+    /// FR-005). Non-destructive: existing rows with `sectionSortDate == nil` continue
+    /// to fall back to `createdAt`.
     func setPinned(_ desired: Bool, operationTime: Date = Date()) {
         let alreadyInDesiredState = isPinned == desired
         isPinned = desired
         pinnedSortOrder = Self.sortOrder(for: isPinned)
         if desired {
-            // Pinned section orders by history time (createdAt).
-            sectionSortDate = createdAt
+            // Pinned section orders by the Pin operation time so the most recently
+            // pinned item rises to the top (FR-005). The Pin branch always writes the
+            // authoritative operation time; idempotent no-op Pin is guarded upstream
+            // by `PinStateMutationStore`, which never reaches this branch for a no-op.
+            sectionSortDate = operationTime
         } else if !alreadyInDesiredState || sectionSortDate == nil {
             // Unpin advances section order to the operation time so the item appears at
             // the top of the unpinned section. Re-unpinning the same already-unpinned
