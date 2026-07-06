@@ -53,7 +53,6 @@ final class HistoryClearUITests: UITestCase {
             confirmationStaticText(in: app, containing: "1 pinned item will be preserved"),
             "Expected clear-unpinned pinned-preservation warning"
         )
-
         let cancelButton = UITestAssertions.assertExists(
             app.buttons["cancel-clear-unpinned-button"],
             "Expected clear-unpinned cancel button"
@@ -113,7 +112,6 @@ final class HistoryClearUITests: UITestCase {
             confirmationStaticText(in: app, containing: "including 1 pinned item"),
             "Expected clear-all pinned warning"
         )
-
         let confirmButton = UITestAssertions.assertExists(
             app.buttons["confirm-clear-all-button"],
             "Expected clear-all confirm button"

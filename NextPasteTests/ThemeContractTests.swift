@@ -68,4 +68,15 @@ struct ThemeContractTests {
             #expect(theme.controlBorder.hex != theme.controlSurface.hex)
         }
     }
+
+    @Test("reduce motion disables design-system animations")
+    func reduceMotionDisablesDesignSystemAnimations() {
+        let reducedMotion = AppMotion(reduceMotion: true)
+        let defaultMotion = AppMotion(reduceMotion: false)
+
+        #expect(reducedMotion.duration(0.25) == 0)
+        #expect(reducedMotion.animation(0.25) == nil)
+        #expect(defaultMotion.duration(0.25) == 0.25)
+        #expect(defaultMotion.animation(0.25) != nil)
+    }
 }

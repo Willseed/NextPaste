@@ -14,15 +14,15 @@
 
 ## Implemented but Unverified Tasks
 
-- None
+- `T030`
 
 ## Current Phase
 
-- Phase: `Phase 8 completion prep — Phase 4 (T016-T021) is verified and final regression/manual accessibility remain.`
+- Phase: `Phase 8 completion prep — T030 regression/stability evidence is implemented, while T031 manual accessibility and phase verification remain.`
 
 ## Next Task
 
-- Task: `Run T030 full regression/stability verification and T031 manual accessibility checklist`
+- Task: `Run T031 manual accessibility checklist`
 
 ## Active Architecture Decisions
 
@@ -44,11 +44,12 @@
 
 ## Existing Uncommitted Changes
 
-- None at Phase 4 verification start; the worktree was clean before verifier warning cleanup and status synchronization.
+- `T030` status synchronization, execution summary, and local `/tmp/nextpaste-022-finish/` evidence generation. No product code changes.
 
 ## Open Risks
 
-- `T030` and `T031` remain open; no final regression pass or manual accessibility checklist evidence is stored in the repository.
+- `T030` awaits phase verification despite green build/test evidence.
+- `T031` manual accessibility evidence is still absent from the repository.
 
 ## Reconstruction Evidence
 
@@ -57,6 +58,7 @@
 - Git diff
 - Source files
 - Test files
+- `docs/implementation/task-summaries/T030.md`
 - `docs/implementation/phase-reports/phase-4.md`
 - `docs/implementation/phase-reports/phase-3.md`
 - `docs/implementation/phase-00-inspection-and-baseline.md`

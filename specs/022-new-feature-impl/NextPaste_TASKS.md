@@ -962,6 +962,8 @@
 
 ## [ ] T030：完整 Regression 與穩定性驗證
 
+- Status: IMPLEMENTED_PENDING_PHASE_VERIFICATION
+
 ### Build 與測試
 
 - [ ] Debug build。

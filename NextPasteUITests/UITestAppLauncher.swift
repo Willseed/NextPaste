@@ -118,12 +118,19 @@ enum UITestAppLauncher {
     ) {
         ensureForeground(app, timeout: timeout)
 
-        if app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: 1) {
-            return
+        let readyButton = app.buttons[mainWindowReadyIdentifier]
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if readyButton.waitForExistence(timeout: 1) {
+                return
+            }
+
+            openMainWindowIfNeeded(in: app)
+            ensureForeground(app, timeout: 1)
         }
 
-        openMainWindowIfNeeded(in: app)
-        _ = app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: timeout)
+        _ = readyButton.waitForExistence(timeout: 1)
     }
 
     static func openMainWindowIfNeeded(in app: XCUIApplication) {

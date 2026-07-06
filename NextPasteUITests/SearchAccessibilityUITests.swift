@@ -35,6 +35,39 @@ final class SearchAccessibilityUITests: UITestCase {
     }
 
     @MainActor
+    func testSearchResultAccessibilityMarkerReflectsMatchingAndEmptyStates() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+
+        try history.createTextClips([
+            UITestFixtures.Search.matchingText,
+            UITestFixtures.Search.nonMatchingText
+        ])
+
+        history.enterSearchQuery(UITestFixtures.Search.textQuery)
+            .assertRowExists(withText: UITestFixtures.Search.matchingText)
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
+
+        let matchingMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)["search-result-count"],
+            "Expected search result accessibility marker while filtering"
+        )
+        UITestAssertions.assertAccessibleTextEquals(matchingMarker, "1 search result")
+        XCTAssertEqual(matchingMarker.value as? String, "1")
+
+        history.clearSearch()
+        history.enterSearchQuery(UITestFixtures.Search.noMatchQuery)
+            .assertSearchEmptyState()
+
+        let emptyMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)["search-result-count"],
+            "Expected empty search-result accessibility marker"
+        )
+        UITestAssertions.assertAccessibleTextEquals(emptyMarker, "No search results")
+        XCTAssertEqual(emptyMarker.value as? String, "0")
+    }
+
+    @MainActor
     func testSearchButtonFocusesSearchFieldAndClearButtonRestoresFullHistory() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
