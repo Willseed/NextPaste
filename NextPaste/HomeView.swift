@@ -62,7 +62,19 @@ struct HomeView: View {
     // so it captures `modelContext` from the environment. The store is `@MainActor`
     // and serializes mutations on the MainActor (FR-005, FR-006).
     @State private var pinStore: PinStateMutationStore? = nil
+    // T072: generation token the current row-action display-order snapshot was
+    // opened under, if any. Default nil; captured by the mechanism (T024) when
+    // `beginRowActionDisplayOrderSnapshot()` records the active generation.
+    @State private var rowActionDisplayOrderSnapshotGenerationValue: Int? = nil
 #endif
+
+    // T072: generation-guarded reconciliation lifecycle state. Real and
+    // default-initialized — the mechanism body (generation increment, prior-task
+    // cancellation, Task launch, snapshot-generation-token capture) lands with
+    // T024. The seam returns this actual default state, never a placeholder.
+    @State private var reconciliationGenerationValue: Int = 0
+    @State private var reconciliationTask: Task<Void, Never>? = nil
+    @State private var reconciliationTaskDidFinish: Bool = false
 
     var body: some View {
         ZStack {
@@ -595,7 +607,7 @@ struct HomeView: View {
     }
 #endif
 
-    private func deleteClip(_ clip: ClipItem) {
+    func deleteClip(_ clip: ClipItem) {
 #if DEBUG
         let rowIdentity = traceRowIdentity(for: clip)
         let traceRowIndex = rowIdentity.rowIndex
@@ -639,7 +651,7 @@ struct HomeView: View {
         #endif
     }
 
-    private func scheduleTogglePin(_ clip: ClipItem) {
+    func scheduleTogglePin(_ clip: ClipItem) {
         let targetPinnedState = !clip.isPinned
 #if DEBUG
         let action = tracePinActionName(targetPinnedState: targetPinnedState)
@@ -809,6 +821,26 @@ struct HomeView: View {
         rowActionDisplayOrderSnapshot = nil
     }
 #endif
+
+    // MARK: - T072 reconciliation lifecycle seam (read-only test observability)
+
+    internal var reconciliationGeneration: Int { reconciliationGenerationValue }
+    internal var reconciliationTaskIsCancelled: Bool { reconciliationTask?.isCancelled ?? false }
+    internal var reconciliationTaskIsFinished: Bool { reconciliationTaskDidFinish }
+    internal var hasRowActionDisplayOrderSnapshot: Bool {
+        #if os(macOS)
+        return rowActionDisplayOrderSnapshot != nil
+        #else
+        return false
+        #endif
+    }
+    internal var rowActionDisplayOrderSnapshotGeneration: Int? {
+        #if os(macOS)
+        return rowActionDisplayOrderSnapshotGenerationValue
+        #else
+        return nil
+        #endif
+    }
 
     private func clipRow(for clip: ClipItem) -> some View {
         ClipRowView(
