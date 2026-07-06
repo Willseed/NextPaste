@@ -17,86 +17,18 @@
 //       path), FR-013 (no force-unwraps).
 //
 //  These are PURE-LOGIC policy tests. No `HomeView`, no AppKit, no SwiftUI, no
-//  `@MainActor`-only coupling, no `@testable import NextPaste`. They assert the
-//  value-type policy that governs the generation token, the per-exit-path
-//  ownership decision, and the cleanup-state reducer for the shared
-//  reconciliation lifecycle.
+//  `@MainActor`-only coupling. They assert the value-type policy that governs
+//  the generation token, the per-exit-path ownership decision, and the
+//  cleanup-state reducer for the shared reconciliation lifecycle.
 //
-//  Red-phase scaffold (per tasks.md Tier 1: "a minimal compiling-but-wrong
-//  skeleton is acceptable; a nil-returning placeholder that lets the test
-//  spuriously pass is NOT"):
-//    The three policy types are declared BELOW in this test file as
-//    deliberately-incomplete skeletons with the correct API SHAPE but WRONG
-//    substantive behavior, so the tests compile and fail on assertion (Red).
-//    T071 (Green) replaces these skeletons with the real, correct pure-Swift
-//    value types in `NextPaste/ReconciliationLifecyclePolicy.swift` and switches
-//    these tests to `@testable import NextPaste`. No production code is modified
-//    by this file; the skeletons exist only so the Red phase is an assertion
-//    failure and not a compile failure (which tasks.md explicitly rejects as
-//    a valid Red).
+//  T071 (Green): the production pure-Swift value types live in
+//  `NextPaste/ReconciliationLifecyclePolicy.swift` and are exercised here via
+//  `@testable import NextPaste`. No test-local skeleton declarations remain;
+//  the tests directly exercise the production policy types.
 //
 
 import Testing
-
-// MARK: - Red-phase skeletons (T071 replaces with production types)
-//
-// Intentionally WRONG substantive behavior:
-//   - `ReconciliationGenerationToken.bumped()` returns `self` instead of
-//     generation &+ 1.
-//   - `ReconciliationOwnershipDecision.clearsSnapshot` returns `false` for
-//     every case, so the current-generation owners + teardown fail to clear.
-//   - `ReconciliationCleanupState.reducing(_:)` returns `self`, so clearing
-//     decisions never release the snapshot and release is not idempotent.
-// Equality (mechanical) and the enum case set are correct so the suite compiles
-// and the contract-shape assertions document the surface; the substantive
-// semantics assertions drive the Red.
-
-/// Generation token captured across the async reconciliation hop. Equality is
-/// by generation value (FR-010). A stale task's captured token compared against
-/// the current token decides whether the task may clear the snapshot.
-struct ReconciliationGenerationToken: Equatable {
-    let generation: UInt64
-    init(generation: UInt64) { self.generation = generation }
-
-    /// Returns the next-generation token. SKELETON (WRONG): returns self.
-    func bumped() -> ReconciliationGenerationToken { return self }
-}
-
-/// Decision for a single reconciliation exit path. Covers every exit path of
-/// the shared generation-guarded Task plus view teardown (FR-012) and
-/// stale-generation early exit (FR-009/FR-010).
-enum ReconciliationOwnershipDecision: CaseIterable {
-    case success
-    case staleGeneration
-    case missingTarget
-    case cancelled
-    case teardown
-    case earlyExit
-
-    /// Whether this exit path is responsible for clearing
-    /// `rowActionDisplayOrderSnapshot`. SKELETON (WRONG): always false.
-    var clearsSnapshot: Bool { return false }
-}
-
-/// Pure value-type reducer over the snapshot-lifecycle state. Models whether
-/// the snapshot is currently held and how each exit decision transitions it.
-struct ReconciliationCleanupState: Equatable {
-    var snapshotHeld: Bool
-    init(snapshotHeld: Bool) { self.snapshotHeld = snapshotHeld }
-
-    static let initial = ReconciliationCleanupState(snapshotHeld: false)
-
-    /// Mark a snapshot as opened (held). Correct in the skeleton so the
-    /// reducer transitions are meaningfully testable.
-    func openingSnapshot() -> ReconciliationCleanupState {
-        return ReconciliationCleanupState(snapshotHeld: true)
-    }
-
-    /// Apply an exit-path decision. SKELETON (WRONG): returns self (never
-    /// releases).
-    func reducing(_ decision: ReconciliationOwnershipDecision)
-        -> ReconciliationCleanupState { return self }
-}
+@testable import NextPaste
 
 // MARK: - Suite
 
