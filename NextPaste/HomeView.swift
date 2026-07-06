@@ -916,29 +916,48 @@ struct HomeView: View {
         let rowActions = rowActionResolverObservation
         let snapshotObservation = reconciliationSnapshotObservation
         storage.task = Task { @MainActor [weak storage] in
-            // Captures this operation's generation token. Stale-generation
-            // snapshot cleanup correctness (comparing `generation` against the
-            // live `storage.generation` before touching the snapshot) is T026's
-            // scope; this slice only reflects task completion (FR-012) plus the
-            // pre-T026 unguarded observable cleanup (T073.2).
-            _ = generation
-            // T073.2 pre-T026 baseline: unguarded snapshot cleanup observable.
-            // This is the "stale-clear" path T013/T014 must catch: WITHOUT the
-            // T026 generation guard, a stale or older task can wrongly clear a
-            // snapshot it no longer owns. The cleanup is gated only by the
+            // T026: generation/token guard. The task captures its own
+            // generation token (`generation`). Before touching the snapshot it
+            // must re-validate that it is still the authoritative owner:
+            //   1. `capturedGeneration == currentReconciliationGeneration` — a
+            //      newer operation has not superseded this task (FR-010).
+            //   2. `capturedGeneration == snapshotGeneration` — the live
+            //      snapshot was opened under this task's generation, not by a
+            //      newer operation (FR-009, FR-010; Plan § old-task cannot
+            //      clear new snapshot).
+            //   3. the task has not been cancelled (FR-009).
+            // If any condition fails the task is stale/older and must early
+            // exit WITHOUT clearing the snapshot — the newer operation owns
+            // the snapshot lifetime (Plan § stale-task prevention). Only the
+            // current-generation, non-cancelled task may release the snapshot
+            // lifecycle ownership. Mirror and production snapshot cleanup are
+            // gated by the same guard so semantics stay consistent; the
+            // production value-type `@State` clear remains owned by the NSEvent
+            // monitor / T027 success path (not removed here), and this task only
+            // releases the read-only observability mirror it has direct access
+            // to, under the identical generation guard.
+            let currentGeneration = storage?.generation ?? generation
+            let snapshotGeneration = snapshotObservation.snapshotGeneration
+            let isStale = (generation != currentGeneration)
+                || (snapshotGeneration != generation)
+                || Task.isCancelled
+            if isStale {
+                // Stale/older or cancelled task: early exit. Must NOT clear the
+                // mirror snapshot and must NOT clear the production snapshot
+                // (FR-009, FR-010). The newer operation owns the snapshot.
+                storage?.currentTaskDidFinish = true
+                return
+            }
+            // Current-generation, non-cancelled task owns the snapshot
+            // lifetime and may release it. The release is still gated by the
             // existing `rowActionsVisible` safe-boundary (the same gate the
             // NSEvent monitor uses), so production rendering is unchanged:
             // during the row-action dismiss animation `rowActionsVisible` is
             // true and this clear is a no-op, leaving the existing NSEvent
             // monitor as the production snapshot-clear owner (no regression).
-            // The value-type `@State` snapshot is intentionally NOT touched
-            // here; T024–T029 move the real value-type clear into the
-            // generation-guarded task at the KVO boundary. Only the
-            // read-only observability mirror is cleared, which is exactly
-            // what the lifecycle tests observe, restoring the stale-clear Red
-            // gate without altering production rendering. T025 replaces this
-            // synchronous gate with the async KVO-boundary await; T026 adds
-            // the `capturedGeneration == reconciliationGeneration` guard.
+            // T025 replaces this synchronous gate with the async KVO-boundary
+            // await; T027 moves the production value-type clear into this
+            // generation-guarded success path.
             if !rowActions.currentRowActionsVisible {
                 snapshotObservation.snapshotExists = false
                 snapshotObservation.snapshotGeneration = nil
