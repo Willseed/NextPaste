@@ -33,6 +33,24 @@ private final class ReconciliationLifecycleStorage {
     /// Reset to `false` is unnecessary because each new operation records the
     /// fresh cancellation state for the prior task it replaced.
     var priorTaskWasCancelled: Bool = false
+    // T072 § 4 read-only observation storage. These fields are populated only
+    // by the production mechanism as the relevant behavior lands; their
+    // defaults are real "not yet occurred" state, not placeholder values.
+    /// Monotonic launch sequence backing `ReconciliationTaskIdentity` (T072 § 4
+    /// Task identity). Increments each time a reconciliation Task is launched.
+    var taskLaunchSequence: UInt64 = 0
+    /// Safe-boundary await state (T072 § 4). `.idle` until T025 wires the real
+    /// await into the Task body.
+    var safeBoundaryAwaitState: SafeBoundaryAwaitState = .idle
+    /// Last exit-path classification recorded by an exit path (T072 § 4).
+    /// `nil` until an exit path runs and records its classification.
+    var lastExitPath: ReconciliationOwnershipDecision? = nil
+    /// Last cleanup ownership trace (T072 § 4). `.initial` until a cleanup
+    /// exit path records owner generation / clearing decision / ownership.
+    var lastCleanupTrace: CleanupOwnershipTrace = .initial
+    /// Last generation comparison result (T072 § 4). `nil` until the
+    /// generation guard runs and records captured vs current generation.
+    var lastGenerationComparison: GenerationComparison? = nil
 }
 
 // T073.1: read-only observability mirror for the row-action display-order
@@ -70,6 +88,94 @@ private final class ReconciliationSnapshotObservationStorage {
     /// stale-generation coverage can observe the snapshot identity without
     /// touching production state.
     var snapshotIDs: [UUID]? = nil
+}
+
+// T072 § 4: read-only observation value types for the lifecycle seam.
+// These are pure value types (no AppKit/SwiftUI imports, no force-unwraps,
+// no index/IndexPath carry). They are the formal, non-placeholder observation
+// surface; their default values represent "not yet occurred" real state, not
+// placeholder accessors. The production mechanism populates them as the
+// T024–T028 exit paths land; T072 only establishes the surface and wires
+// observation of already-landed partial behavior.
+
+/// Stable, read-only task identity (T072 § 4 Task identity). Distinguishes
+/// new vs old reconciliation tasks without exposing the cancellable `Task`
+/// instance. The launch sequence increments each time a reconciliation Task is
+/// launched; `.none` represents "no task launched yet".
+struct ReconciliationTaskIdentity: Equatable {
+    let launchSequence: UInt64
+    static let none = ReconciliationTaskIdentity(launchSequence: 0)
+}
+
+/// Read-only safe-boundary await state (T072 § 4 Safe-boundary awaiting
+/// observation). Reports whether the production reconciliation Task is
+/// currently awaiting the `rowActionsVisible == false` boundary. `idle` is the
+/// default until T025 wires the real await into the Task body.
+enum SafeBoundaryAwaitState: Equatable {
+    case idle
+    case awaiting
+    case resumed
+    case cancelled
+}
+
+/// Read-only cleanup ownership trace (T072 § 4 Cleanup ownership trace).
+/// Records the owner generation the snapshot was opened under, the clearing
+/// decision of the exit path, and whether the snapshot clear was owned or
+/// denied. `nil` fields represent "no cleanup has run yet" — a real initial
+/// state, not a placeholder.
+struct CleanupOwnershipTrace: Equatable {
+    let ownerGeneration: Int?
+    let clearingDecision: ReconciliationOwnershipDecision?
+    let snapshotClearOwned: Bool?
+
+    static let initial = CleanupOwnershipTrace(
+        ownerGeneration: nil,
+        clearingDecision: nil,
+        snapshotClearOwned: nil
+    )
+}
+
+/// Read-only generation comparison result (T072 § 4 Generation comparison
+/// result). Records the captured generation, the current generation at the
+/// comparison point, and the equality / ownership outcome. `nil` represents
+/// "no comparison has run yet".
+struct GenerationComparison: Equatable {
+    let capturedGeneration: Int
+    let currentGeneration: Int
+    var isEqual: Bool { capturedGeneration == currentGeneration }
+
+    static let none: GenerationComparison? = nil
+}
+
+// T072 § 3: injection holder for the safe-boundary dependency. This is the
+// ONLY non-read-only test seam authorized by Plan § Safe-boundary dependency
+// injection surface. It holds a settable `awaiter` (the dependency
+// implementation) and a weak table-view cell that the production KVO adapter
+// reads at await time. Tests inject a deterministic `RowActionSafeBoundaryAwaiting`
+// via `HomeView.safeBoundaryAwaiter`; production defaults to the real
+// `RowActionSafeBoundaryKVOAdapter` unconditionally — there is no placeholder
+// `nil` dependency.
+@MainActor
+private final class SafeBoundaryAwaiterHolder {
+    /// Weak cell updated when SwiftUI resolves the real `NSTableView`. The
+    /// production adapter captures this cell so it can reach the table view
+    /// without holding a strong reference to it or to HomeView.
+    let tableViewCell: SafeBoundaryTableViewCell
+    /// The single settable dependency implementation. `internal`-reachable
+    /// through `HomeView.safeBoundaryAwaiter`; production default is the
+    /// KVO-backed adapter.
+    var awaiter: RowActionSafeBoundaryAwaiting
+
+    init() {
+        let cell = SafeBoundaryTableViewCell()
+        self.tableViewCell = cell
+        self.awaiter = RowActionSafeBoundaryKVOAdapter(tableViewProvider: { cell.tableView })
+    }
+}
+
+@MainActor
+private final class SafeBoundaryTableViewCell {
+    weak var tableView: NSTableView?
 }
 
 struct HomeView: View {
@@ -147,6 +253,16 @@ struct HomeView: View {
     // copy; the read-only seam accessors read this mirror while production
     // behavior continues to use the value-type snapshot `@State`.
     @State private var reconciliationSnapshotObservation = ReconciliationSnapshotObservationStorage()
+
+    // T072 § 3: safe-boundary dependency injection holder. The ONLY non-read-only
+    // test seam. Production defaults to the real KVO-backed adapter; lifecycle
+    // tests inject a deterministic `RowActionSafeBoundaryAwaiting` through the
+    // `safeBoundaryAwaiter` accessor. UI tests cannot reach this surface
+    // (`internal` + `@testable import NextPaste` only; `NextPasteUITests` is a
+    // separate host). No placeholder `nil` dependency is ever stored.
+    #if os(macOS)
+    @State private var safeBoundaryAwaiterHolder = SafeBoundaryAwaiterHolder()
+    #endif
 
     var body: some View {
         ZStack {
@@ -814,6 +930,10 @@ struct HomeView: View {
         observation.observedRowActionsTableView = tableView
         observation.observedRowActionsTableViewID = tableViewID
         observation.areRowActionsVisible = tableView.rowActionsVisible
+        // T072 § 3: publish the resolved table view to the safe-boundary
+        // dependency cell so the production KVO adapter can observe it at
+        // await time. This is wiring only; it does not trigger reconciliation.
+        safeBoundaryAwaiterHolder.tableViewCell.tableView = tableView
 #if DEBUG
         RowActionAppKitObserver.replaceObservation(
             for: tableView,
@@ -893,6 +1013,11 @@ struct HomeView: View {
         let storage = reconciliationLifecycle
         storage.generation &+= 1
         let generation = storage.generation
+        // T072 § 4 (Task identity): observe the already-landed Task launch by
+        // incrementing the monotonic launch sequence. This is pure observation
+        // of existing partial behavior (the Task launch landed with T024's
+        // partial body); it does not add new mechanism behavior.
+        storage.taskLaunchSequence &+= 1
         // T024.1: `currentTaskDidFinish` reports only the current task's own
         // lifecycle (set by the task body/defer below). `priorTaskWasCancelled`
         // is the separate signal that the previous task was cancelled by this
@@ -938,6 +1063,13 @@ struct HomeView: View {
             // to, under the identical generation guard.
             let currentGeneration = storage?.generation ?? generation
             let snapshotGeneration = snapshotObservation.snapshotGeneration
+            // T072 § 4 (Generation comparison): record the real captured vs
+            // current generation comparison at the guard. Pure observation of
+            // the already-landed generation guard; does not change behavior.
+            storage?.lastGenerationComparison = GenerationComparison(
+                capturedGeneration: generation,
+                currentGeneration: currentGeneration
+            )
             let isStale = (generation != currentGeneration)
                 || (snapshotGeneration != generation)
                 || Task.isCancelled
@@ -945,6 +1077,10 @@ struct HomeView: View {
                 // Stale/older or cancelled task: early exit. Must NOT clear the
                 // mirror snapshot and must NOT clear the production snapshot
                 // (FR-009, FR-010). The newer operation owns the snapshot.
+                // T072 § 4 (Exit-path classification): record the stale
+                // early-exit classification. Pure observation of the
+                // already-landed stale guard; does not complete T026/T028.
+                storage?.lastExitPath = .staleGeneration
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1039,6 +1175,73 @@ struct HomeView: View {
     /// not mutate state, force a reconciliation, or expose a debug trigger.
     internal func awaitReconciliationTaskCompletion() async {
         await reconciliationLifecycle.task?.value
+    }
+
+    // MARK: - T072 § 3/4 safe-boundary dependency injection + read-only
+    //          observation surface.
+    //
+    // The injection accessor below is the ONLY non-read-only seam surface
+    // (Plan § Safe-boundary dependency injection surface). It controls only
+    // the dependency implementation; it does NOT trigger reconciliation, clear
+    // the snapshot, bump generation, cancel/replace the task, mutate the
+    // target UUID, or resume the production continuation directly. All other
+    // accessors in this section are get-only.
+
+    /// The single non-read-only test seam: injection of the safe-boundary
+    /// dependency implementation. Production defaults to the real
+    /// `RowActionSafeBoundaryKVOAdapter`; lifecycle tests inject a
+    /// deterministic `RowActionSafeBoundaryAwaiting` test double. Reachable
+    /// only via `@testable import NextPaste` from `NextPasteTests`;
+    /// `NextPasteUITests` is a separate host with no `@testable` access.
+    #if os(macOS)
+    internal var safeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
+        get { safeBoundaryAwaiterHolder.awaiter }
+        set { safeBoundaryAwaiterHolder.awaiter = newValue }
+    }
+    #else
+    internal var safeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
+        get { NoOpSafeBoundaryAwaiter.shared }
+        set { /* no-op on non-macOS; reconciliation is macOS-only */ }
+    }
+    #endif
+
+    // T072 § 4 Task identity: stable, read-only task identity that
+    // distinguishes new vs old reconciliation tasks without exposing the
+    // cancellable `Task` instance.
+    internal var reconciliationTaskIdentity: ReconciliationTaskIdentity {
+        ReconciliationTaskIdentity(launchSequence: reconciliationLifecycle.taskLaunchSequence)
+    }
+
+    // T072 § 4 Safe-boundary awaiting observation: read-only await state
+    // (idle / awaiting / resumed / cancelled). `.idle` is the real default
+    // until T025 wires the await into the Task body; tests cannot set this.
+    internal var safeBoundaryAwaitState: SafeBoundaryAwaitState {
+        reconciliationLifecycle.safeBoundaryAwaitState
+    }
+
+    // T072 § 4 Cleanup ownership trace: read-only trace of owner generation,
+    // clearing decision, and whether the snapshot clear was owned / denied.
+    // `.initial` is the real default until a cleanup exit path records its
+    // trace (T028); tests cannot set this.
+    internal var cleanupOwnershipTrace: CleanupOwnershipTrace {
+        reconciliationLifecycle.lastCleanupTrace
+    }
+
+    // T072 § 4 Exit-path classification: read-only classification of the last
+    // exit path (success / staleGeneration / missingTarget / cancelled /
+    // teardown / earlyExit). Reuses `ReconciliationOwnershipDecision` as the
+    // formal mapping. `nil` is the real default until an exit path records its
+    // classification; tests cannot set this.
+    internal var lastReconciliationExitPath: ReconciliationOwnershipDecision? {
+        reconciliationLifecycle.lastExitPath
+    }
+
+    // T072 § 4 Generation comparison result: read-only captured vs current
+    // generation comparison with the equality / ownership outcome. `nil` is
+    // the real default until the generation guard runs (T024/T026); tests
+    // cannot set this.
+    internal var lastGenerationComparison: GenerationComparison? {
+        reconciliationLifecycle.lastGenerationComparison
     }
 
     private func clipRow(for clip: ClipItem) -> some View {
