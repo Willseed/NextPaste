@@ -73,7 +73,7 @@ struct RowActionDisplayOrderPolicyTests {
         let snapshotDeclarations = try fragment(
             in: source,
             from: "@State private var rowActionDisplayOrderSnapshot",
-            to: "@State private var rowActionReconciliationMonitor"
+            to: "@State private var pinStore"
         )
         // The declaration line itself must be the only @State in this fragment; it must not
         // introduce persisted content, image payload, preview text, or interaction history.
@@ -114,38 +114,42 @@ struct RowActionDisplayOrderPolicyTests {
         #expect(source.contains("swipeActions(edge: .leading"), "Native `.swipeActions` for Pin/Unpin must be preserved.")
     }
 
-    @Test("reconciliation monitor is cleared on reconciliation and on HomeView disappearance")
+    @Test("reconciliation uses no NSEvent input-event monitor; snapshot is cleared on disappear")
     func reconciliationMonitorLifecycleIsExplicit() throws {
         let source = try homeViewSource()
+        // Feature 023 (T030) removed the Feature 020 `NSEvent` input-event monitor
+        // entirely; the safe boundary is the KVO/awaiter gate only (FR-004).
         #expect(
-            source.contains("NSEvent.removeMonitor(monitor)"),
-            "Reconciliation monitor must be removed via NSEvent.removeMonitor on reconciliation."
+            source.contains("NSEvent.addLocalMonitorForEvents") == false,
+            "Feature 023 removes the NSEvent input-event monitor; reconciliation must not install one."
+        )
+        #expect(
+            source.contains("NSEvent.removeMonitor") == false,
+            "Feature 023 removes the NSEvent monitor lifecycle entirely."
         )
         #expect(
             source.contains("clearRowActionDisplayOrderSnapshot()"),
-            "Snapshot/monitor must be cleared on HomeView disappearance and on reconciliation."
+            "Snapshot must still be cleared on HomeView disappearance and on the success/missing-target exit paths."
         )
     }
 
     // MARK: - T025: Final source-policy regression coverage
 
-    /// T025 [US4]: the deferred-reconciliation monitor includes the edge-case guard that
-    /// prevents clearing the display-order snapshot while the native row-action dismiss
-    /// animation may still be active. The `areRowActionsVisible` flag is updated
-    /// synchronously in the KVO callback (no Task hop) so the guard always has accurate
-    /// visibility state. This reads only the public `NSTableView.rowActionsVisible`
-    /// state — no private API, swizzling, fixed delay, run-loop hop, or render-cycle
-    /// assumption.
-    @Test("reconciliation monitor gates snapshot clearing on rowActionsVisible == false")
+    /// Feature 023 (T025/T030): the safe boundary is the
+    /// `NSTableView.rowActionsVisible == false` KVO transition bridged through the
+    /// injected `safeBoundaryAwaiter` dependency — NOT a click/scroll/key/mouse
+    /// `NSEvent` input-event monitor. The reconciliation Task awaits the boundary
+    // through the awaiter; no input event is observed (FR-003, FR-004).
+    @Test("reconciliation gates on the safe-boundary awaiter, not an NSEvent input monitor")
     func reconciliationMonitorGatesOnRowActionsVisible() throws {
         let reconciliation = try reconciliationSectionSource()
         #expect(
-            reconciliation.contains("if rowActionResolverObservation.currentRowActionsVisible"),
-            "Reconciliation monitor must gate clearing the snapshot on currentRowActionsVisible == false so an explicit input delivered during the native dismiss animation does not reintroduce the rowActionsGroupView crash."
+            reconciliation.contains("await awaiter.waitUntilSafeBoundary()"),
+            "Feature 023 reconciliation must gate on the injected safe-boundary awaiter (FR-003, FR-004)."
         )
         #expect(
-            reconciliation.contains("return event") == true,
-            "Reconciliation monitor must pass the event through unchanged while row actions are still visible."
+            reconciliation.contains("NSEvent.addLocalMonitorForEvents") == false,
+            "Reconciliation must not install an NSEvent input-event monitor (FR-004)."
         )
     }
 
