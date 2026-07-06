@@ -908,13 +908,45 @@ struct HomeView: View {
         } else {
             storage.priorTaskWasCancelled = false
         }
+        // T073.2: capture the read-only observability holders (reference types
+        // held by `@State`; they do not reference `storage`/the task, so strong
+        // capture is cycle-free) so the task body can drive the snapshot
+        // lifecycle observable. The value-type `@State` snapshot itself is NOT
+        // touched here (see comment in the defer below).
+        let rowActions = rowActionResolverObservation
+        let snapshotObservation = reconciliationSnapshotObservation
         storage.task = Task { @MainActor [weak storage] in
             // Captures this operation's generation token. Stale-generation
             // snapshot cleanup correctness (comparing `generation` against the
             // live `storage.generation` before touching the snapshot) is T026's
-            // scope; this slice only reflects task completion (FR-012).
+            // scope; this slice only reflects task completion (FR-012) plus the
+            // pre-T026 unguarded observable cleanup (T073.2).
             _ = generation
-            defer { storage?.currentTaskDidFinish = true }
+            // T073.2 pre-T026 baseline: unguarded snapshot cleanup observable.
+            // This is the "stale-clear" path T013/T014 must catch: WITHOUT the
+            // T026 generation guard, a stale or older task can wrongly clear a
+            // snapshot it no longer owns. The cleanup is gated only by the
+            // existing `rowActionsVisible` safe-boundary (the same gate the
+            // NSEvent monitor uses), so production rendering is unchanged:
+            // during the row-action dismiss animation `rowActionsVisible` is
+            // true and this clear is a no-op, leaving the existing NSEvent
+            // monitor as the production snapshot-clear owner (no regression).
+            // The value-type `@State` snapshot is intentionally NOT touched
+            // here; T024–T029 move the real value-type clear into the
+            // generation-guarded task at the KVO boundary. Only the
+            // read-only observability mirror is cleared, which is exactly
+            // what the lifecycle tests observe, restoring the stale-clear Red
+            // gate without altering production rendering. T025 replaces this
+            // synchronous gate with the async KVO-boundary await; T026 adds
+            // the `capturedGeneration == reconciliationGeneration` guard.
+            if !rowActions.currentRowActionsVisible {
+                snapshotObservation.snapshotExists = false
+                snapshotObservation.snapshotGeneration = nil
+                snapshotObservation.snapshotIDs = nil
+            }
+            // FR-012: record task completion last so `reconciliationTaskIsFinished`
+            // reflects the active lifecycle after the cleanup ran.
+            storage?.currentTaskDidFinish = true
         }
 
         guard rowActionReconciliationMonitor == nil else {
@@ -979,6 +1011,15 @@ struct HomeView: View {
         #else
         return nil
         #endif
+    }
+    /// T073.2 read-only test observability hook: awaits the current
+    /// `reconciliationTask`'s completion so lifecycle tests can deterministically
+    /// observe the (stale/older) task's cleanup WITHOUT sleep and WITHOUT the
+    /// test directly clearing the snapshot. Awaiting the current task lets the
+    /// prior stale task run first (MainActor FIFO). This is read-only: it does
+    /// not mutate state, force a reconciliation, or expose a debug trigger.
+    internal func awaitReconciliationTaskCompletion() async {
+        await reconciliationLifecycle.task?.value
     }
 
     private func clipRow(for clip: ClipItem) -> some View {

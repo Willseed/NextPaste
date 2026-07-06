@@ -72,6 +72,11 @@ protocol ReconciliationLifecycleProbe {
     var hasRowActionDisplayOrderSnapshot: Bool { get }
     /// Generation token the current snapshot was opened under, if any (FR-010).
     var rowActionDisplayOrderSnapshotGeneration: Int? { get }
+    /// T073.2 read-only test observability hook: awaits the current
+    /// `reconciliationTask`'s completion so lifecycle tests can deterministically
+    /// observe a stale/older task's cleanup WITHOUT sleep and WITHOUT the test
+    /// directly clearing the snapshot. Read-only; not a debug trigger.
+    func awaitReconciliationTaskCompletion() async
 }
 
 // MARK: - T072 retroactive conformance
@@ -226,6 +231,14 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     let firstSnapshotGeneration = probe.rowActionDisplayOrderSnapshotGeneration
     probe.scheduleTogglePin(fixture.clip)
 
+    // T073.2: let the stale (prior, cancelled) task run its unguarded cleanup so
+    // the test observes the stale-clear. Without awaiting, the async Task has not
+    // yet executed and the snapshot remains (a false Green). Awaiting the current
+    // task deterministically lets the prior stale task run first (MainActor FIFO)
+    // without sleep. Before T026 the stale task clears the snapshot it no longer
+    // owns, so this expectation is Red; T026's generation guard makes it Green.
+    await probe.awaitReconciliationTaskCompletion()
+
     #expect(
         probe.reconciliationGeneration != firstSnapshotGeneration,
         "A second operation must bump the generation so the first Task is stale (FR-010)."
@@ -263,6 +276,13 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     // snapshot opened under G2.
     probe.scheduleTogglePin(fixture.clip)
     let newerGeneration = probe.rowActionDisplayOrderSnapshotGeneration
+
+    // T073.2: let the older (cancelled) task run its unguarded cleanup so the test
+    // observes the old-task-clears-new-snapshot failure. Awaiting the current
+    // task deterministically lets the prior older task run first (MainActor FIFO)
+    // without sleep. Before T026 the older task clears the newer snapshot, so the
+    // final expectation is Red; T026's generation guard makes it Green.
+    await probe.awaitReconciliationTaskCompletion()
 
     #expect(
         newerGeneration != nil && newerGeneration != olderGeneration,
