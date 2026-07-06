@@ -82,6 +82,23 @@ protocol ReconciliationLifecycleProbe {
 extension HomeView: ReconciliationLifecycleProbe {}
 
 // MARK: - Minimal harness scaffold (full harness lands with T073)
+//
+// NOTE (T073 investigation, 2026-07-06): A `NSHostingController(rootView:
+// HomeView())` host was prototyped to make value-type `@State`
+// (`rowActionDisplayOrderSnapshot`, `rowActionDisplayOrderSnapshotGenerationValue`)
+// observable. It does NOT work: `hostingController.rootView` (and any
+// externally-held `HomeView` value) reports `_location: nil` for every
+// `@State` property, because SwiftUI installs `@State` storage only on its
+// internal view-graph copy, never on the `rootView` value read back. Value-type
+// `@State` writes through the external handle are therefore still no-ops, so
+// `hasRowActionDisplayOrderSnapshot` stays false and
+// `rowActionDisplayOrderSnapshotGeneration` stays nil. Reference-type state
+// (`ReconciliationLifecycleStorage`) remains observable via the shared class
+// instance, which is why T011/T012 stay Green. Making value-type snapshot
+// state observable from an external test handle requires a production seam
+// adjustment (e.g. routing snapshot/snapshot-generation observation through a
+// reference-type holder analogous to `ReconciliationLifecycleStorage`); that
+// is out of scope for a test-only harness slice and was not applied here.
 
 @MainActor
 private enum HomeViewReconciliationLifecycleHarness {
