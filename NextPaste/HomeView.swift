@@ -264,11 +264,11 @@ struct HomeView: View {
     // previews, image data, trace payloads, or interaction history. Deleted rows drop out
     // of `visibleClips` naturally because the snapshot is reconciled against the live @Query
     // `clips`, so Delete remains immediate visible removal. The snapshot is reconciled
-    // (cleared) on the next explicit user input event (click, scroll, or key), which is
-    // guaranteed to occur after the teardown animation completes. This is event-driven, not
-    // a timing delay, KVO signal, or sleep.
+    // (cleared) by the generation-guarded reconciliation Task at the
+    // `NSTableView.rowActionsVisible == false` safe boundary (Feature 023,
+    // FR-003/FR-004), not by an input-event monitor. This is a RunLoop-internal
+    // lifecycle signal, not a fixed delay or sleep.
     @State private var rowActionDisplayOrderSnapshot: [UUID]? = nil
-    @State private var rowActionReconciliationMonitor: Any? = nil
     // Feature 021: ID-first Pin/Unpin mutation store. Created lazily on first action
     // so it captures `modelContext` from the environment. The store is `@MainActor`
     // and serializes mutations on the MainActor (FR-005, FR-006).
@@ -1201,21 +1201,8 @@ struct HomeView: View {
             // reflects the active lifecycle after the cleanup ran.
             storage?.currentTaskDidFinish = true
         }
-
-        guard rowActionReconciliationMonitor == nil else {
-            return
-        }
-
-        let eventMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel]
-        let monitor = NSEvent.addLocalMonitorForEvents(matching: eventMask) { [self] event in
-            if rowActionResolverObservation.currentRowActionsVisible {
-                return event
-            }
-            clearRowActionDisplayOrderSnapshot()
-            return event
-        }
-
-        rowActionReconciliationMonitor = monitor
+        // T030: the Feature 020 NSEvent input-event monitor is fully removed;
+        // the safe boundary is the KVO/awaiter gate only (FR-004).
     }
 
     /// T024: formal generation-guarded automatic reconciliation entry for
@@ -1451,28 +1438,15 @@ struct HomeView: View {
             // reflects the active lifecycle after the cleanup ran.
             storage?.currentTaskDidFinish = true
         }
-
-        guard rowActionReconciliationMonitor == nil else {
-            return
-        }
-
-        let eventMask: NSEvent.EventTypeMask = [.leftMouseDown, .rightMouseDown, .otherMouseDown, .keyDown, .scrollWheel]
-        let monitor = NSEvent.addLocalMonitorForEvents(matching: eventMask) { [self] event in
-            if rowActionResolverObservation.currentRowActionsVisible {
-                return event
-            }
-            clearRowActionDisplayOrderSnapshot()
-            return event
-        }
-
-        rowActionReconciliationMonitor = monitor
+        // T030: the Feature 020 NSEvent input-event monitor is fully removed;
+        // the safe boundary is the KVO/awaiter gate only (FR-004). The
+        // production snapshot clear is owned by the generation-guarded Task
+        // success/missing-target exit paths (T027) and view teardown (T029).
     }
 
     private func clearRowActionDisplayOrderSnapshot() {
-        if let monitor = rowActionReconciliationMonitor {
-            NSEvent.removeMonitor(monitor)
-            rowActionReconciliationMonitor = nil
-        }
+        // T030: the NSEvent input-event monitor is gone; this helper now only
+        // clears the production value-type snapshot and the read-only mirror.
         rowActionDisplayOrderSnapshot = nil
         // T073.1: clear the read-only observability mirror alongside the
         // production value-type snapshot state. Does NOT drive production
