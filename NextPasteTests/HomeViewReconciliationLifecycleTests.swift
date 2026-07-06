@@ -401,6 +401,11 @@ func t015_snapshotEventuallyReleasedAfterSuccess() async throws {
         "A successful reconciliation of a present, visible target must record .success (FR-012; T026)."
     )
     #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .success
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == true,
+        "The success exit must record a cleanup trace owning the clear (FR-012; T028)."
+    )
+    #expect(
         !probe.hasRowActionDisplayOrderSnapshot,
         "The snapshot must be released after a successful reconciliation (FR-012; T027)."
     )
@@ -438,6 +443,11 @@ func t016_cancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
     #expect(
         observers.lastExitPath == .cancelled,
         "A task cancelled mid-await (superseded by a newer operation) must exit .cancelled (FR-009, FR-012; T028)."
+    )
+    #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .cancelled
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == false,
+        "A cancelled task must record a non-clearing cleanup trace (FR-012; T028)."
     )
     #expect(
         probe.hasRowActionDisplayOrderSnapshot,
@@ -483,6 +493,11 @@ func t017_staleEarlyExitReleasesWithoutClearing() async throws {
     #expect(
         observers.lastExitPath == .staleGeneration,
         "A stale (superseded) task must exit .staleGeneration before the await (FR-010; T028)."
+    )
+    #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .staleGeneration
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == false,
+        "A stale-generation task must record a non-clearing cleanup trace (FR-012; T028)."
     )
     #expect(
         probe.hasRowActionDisplayOrderSnapshot,
@@ -698,6 +713,11 @@ func t060_rollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
         observers.lastExitPath == .cancelled,
         "A stale/cancelled task must not apply stale/uncommitted order (FR-009, FR-010; T028)."
     )
+    #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .cancelled
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == false,
+        "The rolled-back/stale task must record a non-clearing cleanup trace (FR-012; T028)."
+    )
 
     // G2 re-resolves against the post-rollback dataset; the target UUID is gone,
     // so it safe-exits .missingTarget and releases the snapshot (no permanent
@@ -770,6 +790,11 @@ func t061_noOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async thr
     #expect(
         observers.lastExitPath == .success,
         "An opened snapshot still clears at the safe boundary via the success path (FR-004, FR-007; T027)."
+    )
+    #expect(
+        observers.cleanupOwnershipTrace.clearingDecision == .success
+            && observers.cleanupOwnershipTrace.snapshotClearOwned == true,
+        "The no-op snapshot clear must record an owning cleanup trace (FR-012; T028)."
     )
     #expect(
         !probe.hasRowActionDisplayOrderSnapshot,

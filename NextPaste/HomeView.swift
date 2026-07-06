@@ -1297,11 +1297,20 @@ struct HomeView: View {
                 capturedGeneration: capturedGeneration,
                 currentGeneration: currentGeneration
             )
+            // T028: owner generation of the currently-held snapshot, recorded with
+            // every exit-path cleanup trace so tests can verify which exit cleared
+            // (or did not clear) the snapshot and under what ownership (FR-012).
+            let ownerGeneration = snapshotObservation.snapshotGeneration
             if capturedGeneration != currentGeneration {
                 // Stale (superseded) task: a newer operation bumped the
                 // generation. Early exit without awaiting and without clearing
                 // (FR-010; Plan § stale-task prevention).
                 storage?.lastExitPath = .staleGeneration
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: ownerGeneration,
+                    clearingDecision: .staleGeneration,
+                    snapshotClearOwned: false
+                )
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1309,6 +1318,11 @@ struct HomeView: View {
                 // Cancelled before the await (e.g. view teardown) but not
                 // superseded: early exit without clearing (FR-009, FR-012).
                 storage?.lastExitPath = .cancelled
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: ownerGeneration,
+                    clearingDecision: .cancelled,
+                    snapshotClearOwned: false
+                )
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1323,6 +1337,11 @@ struct HomeView: View {
             if Task.isCancelled {
                 storage?.safeBoundaryAwaitState = .cancelled
                 storage?.lastExitPath = .cancelled
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: ownerGeneration,
+                    clearingDecision: .cancelled,
+                    snapshotClearOwned: false
+                )
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1343,6 +1362,11 @@ struct HomeView: View {
                 || snapshotGeneration != capturedGeneration
                 || Task.isCancelled {
                 storage?.lastExitPath = .staleGeneration
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: snapshotGeneration,
+                    clearingDecision: .staleGeneration,
+                    snapshotClearOwned: false
+                )
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1365,6 +1389,11 @@ struct HomeView: View {
                 // above, so a stale task can never reach this clear.
                 releaseSnapshot()
                 storage?.lastExitPath = .missingTarget
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: capturedGeneration,
+                    clearingDecision: .missingTarget,
+                    snapshotClearOwned: true
+                )
                 storage?.currentTaskDidFinish = true
                 return
             }
@@ -1376,6 +1405,11 @@ struct HomeView: View {
             // input (FR-004). The clear is gated by the ownership guard above.
             releaseSnapshot()
             storage?.lastExitPath = .success
+            storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                ownerGeneration: capturedGeneration,
+                clearingDecision: .success,
+                snapshotClearOwned: true
+            )
             // FR-012: record task completion last so `reconciliationTaskIsFinished`
             // reflects the active lifecycle after the cleanup ran.
             storage?.currentTaskDidFinish = true
