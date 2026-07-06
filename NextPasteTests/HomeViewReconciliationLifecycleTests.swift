@@ -174,6 +174,16 @@ func t012_newOperationCancelsPriorReconciliationTask() async throws {
         probe.priorReconciliationTaskWasCancelled,
         "A new operation must cancel the prior reconciliationTask before launching its own (FR-009)."
     )
+    // T025: the current (second) reconciliation Task now awaits the
+    // safe-boundary gate. Release the deterministic awaiter and await the
+    // task's completion so no continuation leaks.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The current reconciliation Task must reach the safe-boundary await (FR-004; T025)."
+    ) {
+        harness.safeBoundary.pendingWaitCount >= 1
+    }
+    harness.safeBoundary.releaseNext()
+    await probe.awaitReconciliationTaskCompletion()
 }
 
 // MARK: - T013: a stale-generation Task exits without clearing the snapshot
@@ -206,6 +216,14 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     // task deterministically lets the prior stale task run first (MainActor FIFO)
     // without sleep. Before T026 the stale task clears the snapshot it no longer
     // owns, so this expectation is Red; T026's generation guard makes it Green.
+    // T025: the current (second) Task awaits the safe-boundary gate, so release
+    // the deterministic awaiter before awaiting completion.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The current reconciliation Task must reach the safe-boundary await (FR-004; T025)."
+    ) {
+        harness.safeBoundary.pendingWaitCount >= 1
+    }
+    harness.safeBoundary.releaseNext()
     await probe.awaitReconciliationTaskCompletion()
 
     #expect(
@@ -251,6 +269,14 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     // task deterministically lets the prior older task run first (MainActor FIFO)
     // without sleep. Before T026 the older task clears the newer snapshot, so the
     // final expectation is Red; T026's generation guard makes it Green.
+    // T025: the current (second) Task awaits the safe-boundary gate, so release
+    // the deterministic awaiter before awaiting completion.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The current reconciliation Task must reach the safe-boundary await (FR-004; T025)."
+    ) {
+        harness.safeBoundary.pendingWaitCount >= 1
+    }
+    harness.safeBoundary.releaseNext()
     await probe.awaitReconciliationTaskCompletion()
 
     #expect(
@@ -260,6 +286,69 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     #expect(
         probe.hasRowActionDisplayOrderSnapshot,
         "The newer operation's snapshot must remain held; an older Task must not clear it (FR-009, FR-010; Plan § old-task cannot clear new snapshot)."
+    )
+}
+
+// MARK: - T021/T025: the safe-boundary await is the sole gate (FR-003, FR-004)
+//
+// T021 is the Red safe-boundary failing test that T025 turns Green. It drives
+// only the real row-action entry point (`harness.driveTogglePin()`) through the
+// T073 hosted harness and the T072 `safeBoundaryAwaiter` seam. It does NOT
+// synthesize click, scroll, key, mouse, or any input event. The
+// `NSTableView.rowActionsVisible == false` safe boundary is reached solely
+// through the injected deterministic `RowActionSafeBoundaryAwaiting` double.
+//
+// T021 remains unchecked in tasks.md until T030 removes the NSEvent input-event
+// monitor (the monitor is still present after T025). The T025 mechanism (Task
+// body hop + await) is what turns this test Green.
+
+@Test(
+    "T021: safe-boundary await is the sole gate; reconciliation awaits rowActionsVisible==false via the T072 seam (FR-003, FR-004)"
+)
+@MainActor
+func t021_safeBoundaryAwaitIsSoleGate() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record(
+            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — safeBoundaryAwaitState is not observable (FR-004; Plan § KVO safety gate)."
+        )
+        return
+    }
+
+    // Drive only the real Pin/Unpin row-action entry point. No click, scroll,
+    // key, mouse, or other input is synthesized.
+    harness.driveTogglePin()
+
+    // The reconciliation Task must hop off the AppKit callback call stack and
+    // enter the safe-boundary await (T025) before any snapshot release. The
+    // deterministic awaiter is the sole gate.
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        timeout: .seconds(2),
+        message: "The reconciliation Task must enter the safe-boundary await (FR-004; T025)."
+    ) {
+        observers.safeBoundaryAwaitState == .awaiting
+    }
+    #expect(
+        observers.safeBoundaryAwaitState == .awaiting,
+        "The reconciliation Task must enter the safe-boundary await before any snapshot release (FR-003, FR-004; T025)."
+    )
+    #expect(
+        harness.safeBoundary.pendingWaitCount == 1,
+        "Exactly one safe-boundary waiter must be pending before release (FR-004; T025)."
+    )
+
+    // Release the deterministic awaiter: the safe boundary is reached.
+    harness.safeBoundary.releaseNext()
+
+    // Await the reconciliation Task's completion so the post-await state is
+    // observable without sleep and without synthesized input.
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.safeBoundaryAwaitState == .resumed,
+        "After the safe-boundary await resumes, the await state must be .resumed (FR-004; T025)."
     )
 }
 

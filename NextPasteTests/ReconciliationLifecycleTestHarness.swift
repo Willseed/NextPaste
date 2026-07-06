@@ -101,12 +101,16 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 
     /// Remove a cancelled waiter so its continuation does not leak and the
     /// pending count reflects the cancellation. Called by
-    /// `withTaskCancellationHandler.onCancel`; never resumes the continuation
-    /// (the cancellation handler already unwinds the awaiting Task).
+    /// `withTaskCancellationHandler.onCancel`. Resumes the continuation so the
+    /// cancelled Task unblocks and can observe `Task.isCancelled` after the
+    /// await (the production `RowActionSafeBoundaryKVOAdapter` resumes on
+    /// cancellation too; this keeps the deterministic double consistent with
+    /// the `RowActionSafeBoundaryAwaiting` contract).
     private func cancelWaiter(id: UUID) {
         if let index = waiters.firstIndex(where: { $0.id == id }) {
-            waiters.remove(at: index)
+            let waiter = waiters.remove(at: index)
             cancelledCount += 1
+            waiter.continuation.resume()
         }
     }
 }

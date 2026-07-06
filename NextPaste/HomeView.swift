@@ -1174,35 +1174,50 @@ struct HomeView: View {
         // touched here (see comment in the task body below).
         let rowActions = rowActionResolverObservation
         let snapshotObservation = reconciliationSnapshotObservation
+        // T025: capture the injected safe-boundary awaiter (T072 seam) so the
+        // Task body can `await` the `NSTableView.rowActionsVisible == false`
+        // teardown-safe boundary without re-resolving the dependency or
+        // touching `rowActionsVisible` KVO directly (FR-003, FR-004). The
+        // production default is the real KVO-backed adapter; lifecycle tests
+        // inject the deterministic `DeterministicSafeBoundaryAwaiter`.
+        let awaiter = safeBoundaryAwaiter
         // T024 (FR-008): the only identity values carried across the async hop
         // are `capturedGeneration` and `targetClipID` (UUID). No index,
         // `IndexPath`, row position, or array count is captured.
         storage.task = Task { @MainActor [weak storage] in
-            // T026: generation/token guard. The task captures its own
-            // generation token (`capturedGeneration`). Before touching the
-            // snapshot it must re-validate that it is still the authoritative
-            // owner:
-            //   1. `capturedGeneration == currentReconciliationGeneration` — a
-            //      newer operation has not superseded this task (FR-010).
-            //   2. `capturedGeneration == snapshotGeneration` — the live
-            //      snapshot was opened under this task's generation, not by a
-            //      newer operation (FR-009, FR-010; Plan § old-task cannot
-            //      clear new snapshot).
-            //   3. the task has not been cancelled (FR-009).
-            // If any condition fails the task is stale/older and must early
-            // exit WITHOUT clearing the snapshot — the newer operation owns
-            // the snapshot lifetime (Plan § stale-task prevention). Only the
-            // current-generation, non-cancelled task may release the snapshot
-            // lifecycle ownership. Mirror and production snapshot cleanup are
-            // gated by the same guard so semantics stay consistent; the
-            // production value-type `@State` clear remains owned by the NSEvent
-            // monitor / T027 success path (not removed here), and this task
-            // only releases the read-only observability mirror it has direct
-            // access to, under the identical generation guard. `targetClipID`
-            // is captured for T026's UUID re-resolution / missing-target
-            // safe-exit and is intentionally unused in this slice.
+            // T025: the Task body hops off the AppKit callback call stack (the
+            // natural `Task { @MainActor }` scheduling) and awaits the
+            // `NSTableView.rowActionsVisible == false` safe boundary through
+            // the injected `safeBoundaryAwaiter` dependency. The await is the
+            // sole teardown-safe gate; no click, scroll, key, or mouse-move
+            // input is observed (FR-003, FR-004). `targetClipID` re-resolution
+            // and missing-target safe-exit remain owned by T026; the
+            // production value-type snapshot clear remains owned by the NSEvent
+            // monitor / T027 success path (not removed here); the NSEvent
+            // monitor is retained (T030 owns removal); Delete remains on
+            // `scheduleRowActionDisplayOrderReconciliation()` (T031 rewires).
+            //
+            // Stale-generation / cancellation guard BEFORE the await. A stale
+            // (superseded) or already-cancelled task must not reach the
+            // safe-boundary await. Only `capturedGeneration == currentGeneration`
+            // and `!Task.isCancelled` are checked here; the snapshot-ownership
+            // validation (`snapshotGeneration == capturedGeneration`) runs
+            // AFTER the await, immediately before any snapshot release, so a
+            // task whose snapshot was re-opened by a newer operation during the
+            // await does not clear a snapshot it no longer owns (FR-009,
+            // FR-010; Plan § old-task cannot clear new snapshot). The full
+            // generation/snapshot/cancellation guard is preserved across the
+            // await by running the snapshot-ownership leg after the await.
+            //   1. `capturedGeneration == currentGeneration` — a newer
+            //      operation has not superseded this task (FR-010).
+            //   2. the task has not been cancelled (FR-009).
+            // If either fails the task is stale/older and must early exit
+            // WITHOUT awaiting and WITHOUT clearing the snapshot — the newer
+            // operation owns the snapshot lifetime (Plan § stale-task
+            // prevention). `targetClipID` is captured for T026's UUID
+            // re-resolution / missing-target safe-exit and is intentionally
+            // unused in this slice.
             let currentGeneration = storage?.generation ?? capturedGeneration
-            let snapshotGeneration = snapshotObservation.snapshotGeneration
             // T072 § 4 (Generation comparison): record the real captured vs
             // current generation comparison at the guard. Pure observation of
             // the already-landed generation guard; does not change behavior.
@@ -1210,16 +1225,54 @@ struct HomeView: View {
                 capturedGeneration: capturedGeneration,
                 currentGeneration: currentGeneration
             )
-            let isStale = (capturedGeneration != currentGeneration)
-                || (snapshotGeneration != capturedGeneration)
+            let isStaleBefore = (capturedGeneration != currentGeneration)
                 || Task.isCancelled
-            if isStale {
-                // Stale/older or cancelled task: early exit. Must NOT clear the
-                // mirror snapshot and must NOT clear the production snapshot
-                // (FR-009, FR-010). The newer operation owns the snapshot.
+            if isStaleBefore {
+                // Stale/older or cancelled task: early exit. Must NOT await and
+                // must NOT clear the snapshot (FR-009, FR-010). The newer
+                // operation owns the snapshot.
                 // T072 § 4 (Exit-path classification): record the stale
                 // early-exit classification. Pure observation of the
                 // already-landed stale guard; does not complete T026/T028.
+                storage?.lastExitPath = .staleGeneration
+                storage?.currentTaskDidFinish = true
+                return
+            }
+            // T025: enter the safe-boundary await. The task hops off the AppKit
+            // callback call stack and obtains the
+            // `NSTableView.rowActionsVisible == false` teardown-safe boundary
+            // solely through the injected dependency (FR-003, FR-004).
+            storage?.safeBoundaryAwaitState = .awaiting
+            await awaiter.waitUntilSafeBoundary()
+            // If cancellation was observed after the await, record `.cancelled`
+            // and exit minimally. T028 owns the full cancellation cleanup
+            // trace; this slice only records the await state and finishes.
+            if Task.isCancelled {
+                storage?.safeBoundaryAwaitState = .cancelled
+                storage?.currentTaskDidFinish = true
+                return
+            }
+            storage?.safeBoundaryAwaitState = .resumed
+            // Generation / snapshot-ownership guard AFTER the await. The
+            // snapshot-ownership validation leg (`snapshotGeneration ==
+            // capturedGeneration`) runs here, immediately before any snapshot
+            // release, so a task superseded or whose snapshot was re-opened by
+            // a newer operation during the await does not clear a snapshot it
+            // no longer owns (FR-009, FR-010; Plan § old-task cannot clear new
+            // snapshot). Snapshot-ownership validation semantics remain
+            // partially landed (T026 closes the gaps); the check is preserved
+            // here unchanged from the pre-await guard so behavior is not
+            // regressed.
+            let currentGenerationAfter = storage?.generation ?? capturedGeneration
+            let snapshotGeneration = snapshotObservation.snapshotGeneration
+            let isStaleAfter = (capturedGeneration != currentGenerationAfter)
+                || (snapshotGeneration != capturedGeneration)
+                || Task.isCancelled
+            if isStaleAfter {
+                // Stale/older or cancelled task after the await: early exit.
+                // Must NOT clear the mirror snapshot and must NOT clear the
+                // production snapshot (FR-009, FR-010). The newer operation
+                // owns the snapshot.
                 storage?.lastExitPath = .staleGeneration
                 storage?.currentTaskDidFinish = true
                 return
@@ -1231,8 +1284,7 @@ struct HomeView: View {
             // during the row-action dismiss animation `rowActionsVisible` is
             // true and this clear is a no-op, leaving the existing NSEvent
             // monitor as the production snapshot-clear owner (no regression).
-            // T025 replaces this synchronous gate with the async KVO-boundary
-            // await; T027 moves the production value-type clear into this
+            // T027 moves the production value-type clear into this
             // generation-guarded success path.
             if !rowActions.currentRowActionsVisible {
                 snapshotObservation.snapshotExists = false
