@@ -386,6 +386,63 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    /// T042 [US3, FR-014]: 50-iteration rapid Delete operations complete with no crash and no
+    /// stale row referencing a removed clip. Uses the shared `BoundedRetryUITestHelper`
+    /// `assertVisibleRemoval` to verify each deleted clip's row disappears (no stale row).
+    @MainActor
+    func testT042RapidDeleteStress() throws {
+        let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .tall)
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Create one clip per delete iteration plus a survivor that stays present so the list
+        // is never empty.
+        var clips: [String] = []
+        for index in 0..<Self.feature023StressRepeatCount {
+            clips.append("T042 rapid delete target \(index)")
+        }
+        let survivor = "T042 rapid delete survivor"
+        try history.createTextClips(clips + [survivor])
+        history.assertClipRowIdentifierExists()
+
+        var actionOutcomes: [String] = []
+        for (index, clip) in clips.enumerated() {
+            let deleteButton = row.revealDeleteActionWithLeftSwipe(for: clip)
+            deleteButton.tap()
+            XCTAssertEqual(
+                app.state,
+                .runningForeground,
+                "App crashed on T042 delete iteration \(index)"
+            )
+            actionOutcomes.append("delete-\(index): \(app.state)")
+
+            // No stale row referencing the removed clip: the deleted clip's row must disappear.
+            BoundedRetryUITestHelper.assertVisibleRemoval(
+                of: app.staticTexts[clip],
+                timeout: 5,
+                context: "T042 deleted clip \(clip) row removed (no stale row)",
+                app: app
+            )
+        }
+
+        // The survivor is never deleted and must remain present.
+        XCTAssertTrue(
+            app.staticTexts[survivor].waitForExistence(timeout: UITestAssertions.defaultTimeout),
+            "T042: expected survivor clip to remain present after rapid deletes"
+        )
+
+        attachStressOutcome(
+            scenario: "T042",
+            actionOutcomes: actionOutcomes,
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
     // MARK: - Helpers
 
     @MainActor
