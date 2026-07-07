@@ -2096,4 +2096,44 @@ final class ClipRowActionsUITests: UITestCase {
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
+
+    /// T054 UI test: CONSECUTIVE-RUN 50 executions of the Delete automatic
+    /// reconciliation UI test (fresh app state per execution). Each iteration
+    /// launches a fresh app, performs ONE Delete, and asserts via the shared
+    /// `BoundedRetryUITestHelper.assertVisibleRemoval` that the deleted clip
+    /// disappears with no further user input. Distinct from the rapid
+    /// 50-iteration burst (T042): each Delete runs in its own app lifecycle.
+    /// No `triggerDisplayOrderReconciliation`, no synthesized reconciliation
+    /// input, no fixed-duration sleep.
+    @MainActor
+    func testT054ConsecutiveRunDeleteAutomaticReconciliationFreshAppStatePerExecution() throws {
+        var outcomes: [String] = []
+        for iteration in 1...Self.feature023ConsecutiveRunCount {
+            let app = launchFreshAppForConsecutiveRun()
+            defer { closeApp(app) }
+
+            let history = historyRobot(for: app)
+            let row = rowRobot(for: app)
+            let deleteTarget = "T054 consecutive delete target #\(iteration)"
+            let survivor = "T054 consecutive delete survivor #\(iteration)"
+            try history.createTextClip(deleteTarget)
+            try history.createTextClip(survivor)
+            history.assertClipRowIdentifierExists()
+
+            let deleteButton = row.revealDeleteActionWithLeftSwipe(for: deleteTarget)
+            UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+            deleteButton.tap()
+
+            BoundedRetryUITestHelper.assertVisibleRemoval(
+                of: app.staticTexts[deleteTarget],
+                timeout: 5,
+                context: "T054 iteration \(iteration): Delete removes target with no further input",
+                app: app
+            )
+            XCTAssertTrue(app.staticTexts[survivor].exists, "T054 iteration \(iteration): survivor missing")
+            UITestAssertions.assertAppRunningWithoutCrash(app)
+            outcomes.append("delete-\(iteration): \(app.state)")
+        }
+        attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
+    }
 }
