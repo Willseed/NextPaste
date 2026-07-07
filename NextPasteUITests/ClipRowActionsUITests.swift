@@ -1919,4 +1919,54 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAppRunningWithoutCrash(app)
         attachRowActionWarningAssertionOutcome(["delete-\(deleteTarget)", "reconcile-missing-target"], app: app)
     }
+
+    /// T051 UI regression assertion: after T055 removed
+    /// `triggerDisplayOrderReconciliation` and all equivalent helpers, the
+    /// Delete scenario still completes automatic reconciliation without any
+    /// trigger, without synthesizing any click/scroll/key/mouse input after the
+    /// single Delete tap, and without any fixed-duration sleep. The only
+    /// synchronization is the shared `BoundedRetryUITestHelper`, which polls an
+    /// observable removal condition. If a future change reintroduces a trigger,
+    /// synthesized-input requirement, or fixed sleep as the Delete
+    /// reconciliation mechanism, this assertion's bounded-retry-only contract
+    /// would no longer hold and the test documents the regression. Removal
+    /// observed with no further input proves FR-004 for the Delete call site.
+    @MainActor
+    func testT051DeleteReconcilesWithoutTriggerSynthesizedInputOrFixedSleep() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let deleteTarget = "T051 no-trigger delete target"
+        let survivor = "T051 no-trigger delete survivor"
+        try history.createTextClip(deleteTarget)
+        try history.createTextClip(survivor)
+        history.assertClipRowIdentifierExists()
+        let deleteTargetIdentifier = assertTextRowIdentifier(for: deleteTarget, in: app).identifier
+
+        // Single state-changing Delete tap. No further click/scroll/key/mouse
+        // input is synthesized after this point — only the bounded-retry
+        // observable-removal poll.
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: deleteTarget)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+
+        // Regression contract: removal completes with no trigger and no further input.
+        BoundedRetryUITestHelper.assertVisibleRemoval(
+            of: app.staticTexts[deleteTarget],
+            timeout: 5,
+            context: "T051 Delete reconciles with no trigger, no synthesized input, no fixed sleep",
+            app: app
+        )
+        UITestAssertions.assertDoesNotExist(
+            app.descendants(matching: .any)[deleteTargetIdentifier],
+            "Expected deleted clip row identifier to be removed",
+            timeout: 2
+        )
+        XCTAssertTrue(app.staticTexts[survivor].exists)
+
+        // FR-004 regression evidence: no subsequent input event was required to reconcile.
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(["delete-\(deleteTarget)", "regression-reconcile"], app: app)
+    }
 }
