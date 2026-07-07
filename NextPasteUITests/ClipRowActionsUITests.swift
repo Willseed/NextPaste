@@ -1314,4 +1314,55 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAppRunningWithoutCrash(app)
         attachRowActionWarningAssertionOutcome(["pin-\(anchor)", "pin-\(target)", "reconcile"], app: app)
     }
+
+    /// T033 [US1, FR-004] UI regression assertion: the Pin automatic-reconciliation scenario
+    /// completes without any `triggerDisplayOrderReconciliation` (or equivalent product
+    /// trigger), without synthesizing any click/scroll/key/mouse input after the single
+    /// state-changing Pin tap, and without any fixed-duration sleep. The only
+    /// synchronization is the shared `BoundedRetryUITestHelper`, which polls an observable
+    /// order condition. If a future change reintroduces a trigger, synthesized-input
+    /// requirement, or fixed sleep as the reconciliation mechanism, this assertion's
+    /// bounded-retry-only contract would no longer hold and the test documents the
+    /// regression. Relocation observed with no further input proves FR-004.
+    @MainActor
+    func testT033PinReconcilesWithoutTriggerSynthesizedInputOrFixedSleep() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let anchor = "T033 regression pinned anchor"
+        let target = "T033 regression pin target"
+        let filler = "T033 regression unpinned filler"
+        try history.createTextClips([anchor, target, filler])
+        history.assertClipRowIdentifierExists()
+
+        // Establish one existing pinned clip.
+        let pinAnchor = row.revealPinActionWithRightSwipe(for: anchor)
+        UITestAssertions.assertAccessibleTextContains(pinAnchor, "Pin")
+        pinAnchor.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: anchor, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        // Single state-changing Pin tap. No further click/scroll/key/mouse input is
+        // synthesized after this point — only the bounded-retry observable-order poll.
+        let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+        UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
+        pinTarget.tap()
+
+        // Regression contract: relocation completes with no trigger and no further input.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[anchor],
+            timeout: 5,
+            context: "T033 Pin reconciles with no trigger, no synthesized input, no fixed sleep",
+            app: app
+        )
+
+        // FR-004 regression evidence: no subsequent input event was required to reconcile.
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(["pin-\(anchor)", "pin-\(target)", "regression-reconcile"], app: app)
+    }
 }
