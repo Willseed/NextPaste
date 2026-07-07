@@ -2040,4 +2040,60 @@ final class ClipRowActionsUITests: UITestCase {
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
+
+    /// T053 UI test: CONSECUTIVE-RUN 50 executions of the Unpin automatic
+    /// reconciliation UI test (fresh app state per execution). Each iteration
+    /// launches a fresh app, pins then unpins ONE clip, and asserts via the
+    /// shared `BoundedRetryUITestHelper` that the acted-on clip becomes the
+    /// first row of the unpinned section with no further user input. Distinct
+    /// from the rapid 50-iteration burst: each Unpin runs in its own app
+    /// lifecycle. No `triggerDisplayOrderReconciliation`, no synthesized
+    /// reconciliation input, no fixed-duration sleep.
+    @MainActor
+    func testT053ConsecutiveRunUnpinAutomaticReconciliationFreshAppStatePerExecution() throws {
+        var outcomes: [String] = []
+        for iteration in 1...Self.feature023ConsecutiveRunCount {
+            let app = launchFreshAppForConsecutiveRun()
+            defer { closeApp(app) }
+
+            let history = historyRobot(for: app)
+            let row = rowRobot(for: app)
+            let pinAnchor = "T053 consecutive unpin pin anchor #\(iteration)"
+            let target = "T053 consecutive unpin target #\(iteration)"
+            let unpinnedAnchor = "T053 consecutive unpin unpinned anchor #\(iteration)"
+            try history.createTextClips([pinAnchor, target, unpinnedAnchor])
+            history.assertClipRowIdentifierExists()
+
+            let pinPinAnchor = row.revealPinActionWithRightSwipe(for: pinAnchor)
+            pinPinAnchor.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: pinAnchor, in: app),
+                "Pinned",
+                timeout: 2
+            )
+
+            let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+            pinTarget.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: target, in: app),
+                "Pinned",
+                timeout: 2
+            )
+
+            let unpinTarget = row.revealPinActionWithRightSwipe(for: target, expectedLabel: "Unpin")
+            UITestAssertions.assertAccessibleTextContains(unpinTarget, "Unpin")
+            unpinTarget.tap()
+
+            BoundedRetryUITestHelper.assertOrder(
+                upperElement: app.staticTexts[target],
+                appearsAbove: app.staticTexts[unpinnedAnchor],
+                timeout: 5,
+                context: "T053 iteration \(iteration): Unpin relocates target above existing unpinned anchor",
+                app: app
+            )
+            UITestAssertions.assertAppRunningWithoutCrash(app)
+            outcomes.append("unpin-\(iteration): \(app.state)")
+        }
+        attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
+    }
 }
