@@ -514,6 +514,78 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    /// T044 [US3, FR-009, FR-010]: when a new Pin/Unpin operation starts before a previous
+    /// reconciliation Task has run, the previous Task is cancelled or invalidated so it cannot
+    /// apply an order based on stale state. The observable consequence is that, after several
+    /// rapid consecutive toggles on the same clip, the final state matches ONLY the last
+    /// accepted request — a stale task that applied an earlier request would leave the wrong
+    /// final pinned state or a lost/duplicate row.
+    @MainActor
+    func testT044PriorReconciliationTaskCancelledBeforeStaleApply() throws {
+        let trace = UITestAppLauncher.makeTraceApp()
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let target = "T044 stale-task target"
+        let unpinnedAnchor = "T044 stale-task unpinned anchor"
+        try history.createTextClips([target, unpinnedAnchor])
+        history.assertClipRowIdentifierExists()
+
+        // Fire several rapid consecutive toggles without waiting for reconciliation between
+        // them: Pin, Unpin, Pin, Unpin, Pin (5 taps). The prior reconciliation Task for each
+        // earlier tap must be cancelled/invalidated so only the final Pin request is applied.
+        let sequence: [String] = ["Pin", "Unpin", "Pin", "Unpin", "Pin"]
+        for (index, expectedLabel) in sequence.enumerated() {
+            let button = row.revealPinActionWithRightSwipe(for: target, expectedLabel: expectedLabel)
+            button.tap()
+            XCTAssertEqual(
+                app.state,
+                .runningForeground,
+                "App crashed on T044 toggle \(index) (\(expectedLabel))"
+            )
+        }
+
+        // The last accepted request is Pin, so the final state must be Pinned and the target
+        // must be the first row of the pinned section. A stale task applying an earlier Unpin
+        // would leave the target unpinned or in the wrong section.
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: target, in: app),
+            "Pinned",
+            timeout: 3
+        )
+
+        // No lost row / no duplicate: the target appears exactly once.
+        let targetRows = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "clip-row-", target)
+        )
+        XCTAssertEqual(
+            targetRows.count,
+            1,
+            "T044: expected exactly one row for the target clip (no stale-task duplicate/loss)"
+        )
+
+        // The target must be above the unpinned anchor (pinned section precedes unpinned
+        // section), proving the final order reflects the last accepted Pin, not a stale Unpin.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[unpinnedAnchor],
+            timeout: 5,
+            context: "T044 final Pin reflects last request; prior stale task did not apply",
+            app: app
+        )
+
+        attachStressOutcome(
+            scenario: "T044",
+            actionOutcomes: sequence.enumerated().map { "\($0.offset): \($0.element)" },
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
     // MARK: - Helpers
 
     @MainActor
