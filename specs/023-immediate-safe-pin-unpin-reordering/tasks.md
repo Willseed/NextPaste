@@ -226,7 +226,7 @@ All US2 UI tests edit `NextPasteUITests/ClipRowActionsUITests.swift` and depend 
 
 ### Implementation for User Story 2
 
-- [ ] T039 [US2] Replace the Unpin branch's `scheduleRowActionDisplayOrderReconciliation()` call inside `scheduleTogglePin(_:)` (~line 642) with `scheduleAutomaticReconciliation(for: clip.id)` in `NextPaste/HomeView.swift` (FR-002; Plan § component/call-site mapping)
+- [X] T039 [US2] Replace the Unpin branch's `scheduleRowActionDisplayOrderReconciliation()` call inside `scheduleTogglePin(_:)` (~line 642) with `scheduleAutomaticReconciliation(for: clip.id)` in `NextPaste/HomeView.swift` (FR-002; Plan § component/call-site mapping). Evidence: verified pre-existing satisfied — `scheduleTogglePin(_:)` in `NextPaste/HomeView.swift` is the single toggle entry for both Pin and Unpin and already calls `scheduleAutomaticReconciliation(for: clip.id)` at line 956; `targetPinnedState` is derived from `!clip.isPinned`, so the Unpin direction flows through the same generation-guarded reconciliation lifecycle as Pin. No `scheduleRowActionDisplayOrderReconciliation` call site remains in `scheduleTogglePin`. No code churn needed. Related UI tests T036–T038 are authored and compile-verified; runtime Green could not be re-confirmed in this non-GUI session (see T036–T038 evidence).
 
 **Checkpoint**: US2 functional and independently testable. Unpin auto-relocates with no user input.
 
