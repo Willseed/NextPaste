@@ -1631,7 +1631,15 @@ final class ClipRowActionsUITests: UITestCase {
     /// and no fixed-duration sleep.
     @MainActor
     func testT046Feature014020CrashReproductionFlowsRemainRunningNoCrash() throws {
-        let app = launchApp()
+        // Feature 023 T046 accumulates six rows across both crash-reproduction
+        // flows (three pinned in flow 1, three unpinned in flow 2). The flow 2
+        // `recentlyActiveDismissed` clip is the oldest overall and lands at the
+        // bottom of the list; at the default 640×480 window size it is scrolled
+        // out of view, so its row is not hittable and the native left swipe that
+        // reveals the Delete action never synthesizes. Use the `.tall` preset so
+        // every row stays onscreen and hittable throughout the test (same pattern
+        // as `testTenConsecutiveNativeRowActionFlowsRemainRunning...`).
+        let app = launchApp(windowSizePreset: .tall)
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
 
