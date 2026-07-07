@@ -47,9 +47,6 @@ final class RowActionStressTests: UITestCase {
             )
         }
 
-        // Reconcile ordering after the initial pin burst.
-        triggerDisplayOrderReconciliation(in: app)
-
         // Stress loop: unpin the middle clip, then re-pin it, 20 times.
         // Each unpin is one Scenario A execution. The re-pin resets state so the
         // scenario can repeat from the same 3-pinned starting point.
@@ -62,18 +59,12 @@ final class RowActionStressTests: UITestCase {
             XCTAssertEqual(app.state, .runningForeground, "App crashed on Scenario A unpin iteration \(iteration)")
             actionOutcomes.append("unpin-\(iteration): \(app.state)")
 
-            // Reconcile the frozen display order so the row snaps to correct position.
-            triggerDisplayOrderReconciliation(in: app)
-
             // Reset: re-pin the middle clip so the next iteration starts from 3 pinned.
             let rePinButton = row.revealPinActionWithRightSwipe(for: clips[1], expectedLabel: "Pin")
             rePinButton.tap()
 
             XCTAssertEqual(app.state, .runningForeground, "App crashed on Scenario A re-pin iteration \(iteration)")
             actionOutcomes.append("repin-\(iteration): \(app.state)")
-
-            // Reconcile after re-pin.
-            triggerDisplayOrderReconciliation(in: app)
         }
 
         // Final ordering check: all three should be pinned, newest-first.
@@ -134,9 +125,6 @@ final class RowActionStressTests: UITestCase {
             )
         }
 
-        // Reconcile ordering after the initial pin burst.
-        triggerDisplayOrderReconciliation(in: app)
-
         // Stress loop: scroll away, pin the target, unpin to reset, 20 times.
         var actionOutcomes: [String] = []
         for iteration in 1...Self.stressRepeatCount {
@@ -151,7 +139,6 @@ final class RowActionStressTests: UITestCase {
                 let unpinButton = row.revealPinActionWithRightSwipe(for: pinTarget, expectedLabel: "Unpin")
                 unpinButton.tap()
                 XCTAssertEqual(app.state, .runningForeground, "App crashed on Scenario B reset-unpin iteration \(iteration)")
-                triggerDisplayOrderReconciliation(in: app)
             }
 
             // Scroll about five rows away so the pinned rows leave the viewport.
@@ -171,14 +158,10 @@ final class RowActionStressTests: UITestCase {
             XCTAssertEqual(app.state, .runningForeground, "App crashed on Scenario B pin iteration \(iteration)")
             actionOutcomes.append("pin-\(iteration): \(app.state)")
 
-            // Reconcile the frozen display order.
-            triggerDisplayOrderReconciliation(in: app)
-
             // Scroll back to the top.
             for _ in 0..<6 {
                 list.swipeDown(velocity: .fast)
             }
-            triggerDisplayOrderReconciliation(in: app)
         }
 
         attachStressOutcome(
@@ -227,7 +210,6 @@ final class RowActionStressTests: UITestCase {
                     "App crashed on Scenario C \(expectedLabel) clip\(index) iteration \(iteration)"
                 )
                 actionOutcomes.append("\(expectedLabel)-\(index)-\(iteration): \(app.state)")
-                triggerDisplayOrderReconciliation(in: app)
             }
         }
 
@@ -251,16 +233,6 @@ final class RowActionStressTests: UITestCase {
     }
 
     // MARK: - Helpers
-
-    /// Triggers the display-order reconciliation by delivering a user interaction
-    /// event. The Feature 019 display-order snapshot is reconciled on the next
-    /// intentional NSEvent (leftMouseDown, rightMouseDown, keyDown, scrollWheel).
-    /// In XCUITest, pressing a harmless key delivers a keyDown event.
-    @MainActor
-    private func triggerDisplayOrderReconciliation(in app: XCUIApplication) {
-        app.typeKey(.escape, modifierFlags: [])
-        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
-    }
 
     @MainActor
     private func assertTextRowIdentifier(
