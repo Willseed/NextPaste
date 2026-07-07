@@ -1617,4 +1617,79 @@ final class ClipRowActionsUITests: UITestCase {
             app: app
         )
     }
+
+    // MARK: - Feature 023 Phase 7 (US4) — teardown crash protection preserved
+
+    /// T046 [US4, SC-007, FR-016] regression: the existing Feature 014–020
+    /// crash-reproduction UI flows still complete with no crash after Feature 023
+    /// immediate automatic reconciliation landed. Exercises the two canonical
+    /// text-side crash-reproduction scenarios (pin the third clip after native
+    /// swipe actions, and pin after a recently dismissed native row action) and
+    /// asserts the app stays `runningForeground` throughout. Uses only the shared
+    /// bounded-retry helper for the post-action pinned-state assertion; no
+    /// `triggerDisplayOrderReconciliation`, no synthesized reconciliation input,
+    /// and no fixed-duration sleep.
+    @MainActor
+    func testT046Feature014020CrashReproductionFlowsRemainRunningNoCrash() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Crash-reproduction flow 1 (Feature 019): pin the third clip after the
+        // first two already reveal/dismiss native swipe actions.
+        let thirdClips = [
+            UITestFixtures.RowActions.thirdPinOlder,
+            UITestFixtures.RowActions.thirdPinMiddle,
+            UITestFixtures.RowActions.thirdPinNewest
+        ]
+        try history.createTextClips(thirdClips)
+        history.assertClipRowIdentifierExists()
+
+        for clip in thirdClips {
+            let pinButton = row.revealPinActionWithRightSwipe(for: clip)
+            pinButton.tap()
+            XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 third-clip pin of \(clip)")
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: clip, in: app),
+                "Pinned",
+                timeout: 2
+            )
+        }
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+
+        // Crash-reproduction flow 2 (Feature 019): reveal then dismiss a native
+        // row action on one clip, then immediately pin a different clip — the
+        // recently-dismissed-teardown hazard window.
+        try history.createTextClips([
+            UITestFixtures.RowActions.recentlyActiveDismissed,
+            "T046 dismiss-then-pin older",
+            "T046 dismiss-then-pin newer"
+        ])
+        history.assertClipRowIdentifierExists()
+
+        _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.recentlyActiveDismissed)
+        row.dismissRevealedSwipeActions()
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: "T046 dismiss-then-pin older")
+        pinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 pin-after-dismissed-action")
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: "T046 dismiss-then-pin older", in: app),
+            "Pinned",
+            timeout: 2
+        )
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        history.assertRowExists(withText: UITestFixtures.RowActions.recentlyActiveDismissed)
+
+        attachRowActionWarningAssertionOutcome(
+            [
+                "pin-\(thirdClips[0])",
+                "pin-\(thirdClips[1])",
+                "pin-\(thirdClips[2])",
+                "dismiss-\(UITestFixtures.RowActions.recentlyActiveDismissed)",
+                "pin-T046 dismiss-then-pin older"
+            ],
+            app: app
+        )
+    }
 }

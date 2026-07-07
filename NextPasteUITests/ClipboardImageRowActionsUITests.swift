@@ -280,6 +280,63 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         return app
     }
 
+    // MARK: - Feature 023 Phase 7 (US4) — teardown crash protection preserved
+
+    /// T046 [US4, SC-007, FR-016] image-side regression: the existing Feature
+    /// 014–020 image row-action crash-reproduction flows still complete with no
+    /// crash after Feature 023 immediate automatic reconciliation landed.
+    /// Exercises the canonical image-side crash surface: reveal the Pin action
+    /// on an image row, pin it, then reveal the Unpin action on the now-pinned
+    /// image row and toggle back, plus a Delete on a second image row — the
+    /// combination that previously crashed during AppKit row-action teardown.
+    /// Asserts the app stays `runningForeground` throughout. No
+    /// `triggerDisplayOrderReconciliation`, no synthesized reconciliation input,
+    /// and no fixed-duration sleep.
+    @MainActor
+    func testT046ImageCrashReproductionFlowsRemainRunningNoCrash() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let pinTarget = UITestFixtures.ImageClipboard.olderPinTarget
+        let deleteTarget = UITestFixtures.ImageClipboard.deleteTarget
+
+        clipboard.captureImage(pinTarget)
+        clipboard.captureImage(deleteTarget)
+        clipboard.assertImageRow(for: pinTarget)
+        clipboard.assertImageRow(for: deleteTarget)
+
+        // Pin the image row, then immediately unpin it — exercises the
+        // reveal/teardown hazard on the same image row back-to-back.
+        let pinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: pinTarget.thumbnailDescription
+        )
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image pin")
+        UITestAssertions.assertImagePinnedIconExists(in: app)
+
+        let unpinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: pinTarget.thumbnailDescription,
+            expectedLabel: "Unpin"
+        )
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+        unpinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image unpin")
+        UITestAssertions.assertImagePinnedIconDisappears(in: app)
+
+        // Delete a different image row while the unpin teardown is still
+        // settling — the cross-row teardown crash surface.
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: deleteTarget.thumbnailDescription
+        )
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image delete")
+        UITestAssertions.assertImageRowDoesNotExist(for: deleteTarget, in: app)
+        clipboard.assertImageRow(for: pinTarget)
+    }
+
 }
 
 private extension ClipboardRobot {
