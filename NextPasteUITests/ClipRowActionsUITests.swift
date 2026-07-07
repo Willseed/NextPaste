@@ -1365,4 +1365,63 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAppRunningWithoutCrash(app)
         attachRowActionWarningAssertionOutcome(["pin-\(anchor)", "pin-\(target)", "regression-reconcile"], app: app)
     }
+
+    /// T034 [US1, FR-001, FR-005]: when multiple pinned clips already exist, a newly pinned
+    /// clip appears above all previously pinned clips (first row of the pinned section) via
+    /// the shared bounded-retry helper. Pin updates the section sort timestamp to operation
+    /// time, so the most recently pinned clip is the most recent in its section.
+    @MainActor
+    func testT034NewlyPinnedClipAppearsAboveAllExistingPinnedClips() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Created oldest-first. Visible newest-first: filler, target, anchor2, anchor1.
+        let anchor1 = "T034 pinned anchor oldest"
+        let anchor2 = "T034 pinned anchor newer"
+        let target = "T034 pin target"
+        let filler = "T034 unpinned filler newest"
+        try history.createTextClips([anchor1, anchor2, target, filler])
+        history.assertClipRowIdentifierExists()
+
+        // Establish two existing pinned clips. anchor2 is pinned last, so it is the
+        // current first row of the pinned section (newest-by-section-sort-timestamp).
+        for clip in [anchor1, anchor2] {
+            let pinButton = row.revealPinActionWithRightSwipe(for: clip)
+            UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+            pinButton.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: clip, in: app),
+                "Pinned",
+                timeout: 2
+            )
+        }
+
+        // State-changing Pin on the target with no further user input.
+        let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+        UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
+        pinTarget.tap()
+
+        // Bounded-retry: the newly pinned target appears above every previously pinned clip.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[anchor2],
+            timeout: 5,
+            context: "T034 newly pinned target above newer existing pinned anchor",
+            app: app
+        )
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[anchor1],
+            timeout: 5,
+            context: "T034 newly pinned target above oldest existing pinned anchor",
+            app: app
+        )
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(anchor1)", "pin-\(anchor2)", "pin-\(target)", "reconcile"],
+            app: app
+        )
+    }
 }
