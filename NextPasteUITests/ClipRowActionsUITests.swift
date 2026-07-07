@@ -1776,4 +1776,96 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAppRunningWithoutCrash(app)
         attachRowActionWarningAssertionOutcome(["pin-\(older)", "teardown-freeze", "reconcile"], app: app)
     }
+
+    /// T048 [US4, FR-003] UI test: the snapshot clear/replace happens at a safe
+    /// MainActor / RunLoop boundary, NOT synchronously inside the AppKit
+    /// row-action callback call stack. The Feature 023 reconciliation clears the
+    /// `rowActionDisplayOrderSnapshot` only inside the generation-guarded Task
+    /// after `await`-ing the `NSTableView.rowActionsVisible == false` safe
+    /// boundary, so the @Query reorder cannot relocate the acted-on row while
+    /// AppKit is still tearing down the row action. The observable contract:
+    ///   1. Pin an older clip whose newer unpinned neighbor is above it.
+    ///   2. Immediately after the Pin tap — still on the AppKit row-action
+    ///      callback tail / teardown window — the acted-on row is STILL at its
+    ///      stale position (newer neighbor still above it). If the snapshot
+    ///      were cleared synchronously inside the callback, the @Query reorder
+    ///      would already have relocated the pinned older row above the newer
+    ///      unpinned neighbor before the test could observe the stale position.
+    ///      The stale position being observable proves the clear is NOT
+    ///      synchronous in the callback.
+    ///   3. After the safe-boundary bounded retry (no synthesized input), the
+    ///      snapshot clears and the row relocates above the neighbor — proving
+    ///      the clear happens at the safe boundary. A back-to-back second Pin
+    ///      on a different clip exercises overlapping teardowns without crash,
+    ///      confirming the safe-boundary clear handles concurrent teardown
+    ///      windows. No `triggerDisplayOrderReconciliation`, no synthesized
+    ///      reconciliation input, no fixed-duration sleep.
+    @MainActor
+    func testT048SnapshotClearHappensAtSafeBoundaryNotSynchronouslyInRowActionCallback() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let older = "T048 safe-boundary pin older target"
+        let newer = "T048 safe-boundary pin newer unpinned"
+        let secondTarget = "T048 safe-boundary second pin target"
+        try history.createTextClip(older)
+        try history.createTextClip(newer)
+        try history.createTextClip(secondTarget)
+        history.assertClipRowIdentifierExists()
+
+        // Baseline newest-first: newer above older (older is the pin target).
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+
+        // Pin older. The snapshot is armed synchronously in the row-action
+        // callback; the clear must NOT be.
+        let pinButton = row.revealPinActionWithRightSwipe(for: older)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+
+        // Immediately after the tap — still on the AppKit callback tail — the
+        // snapshot is still active, so the @Query reorder has NOT relocated the
+        // acted-on row yet. The newer unpinned neighbor is still above the
+        // now-pinned older row. This stale position being observable is the
+        // negative proof that the clear is NOT synchronous inside the callback.
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        let olderRow = assertTextRowIdentifier(for: older, in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 2)
+
+        // A back-to-back second Pin on a different clip exercises overlapping
+        // AppKit teardown windows. The safe-boundary, generation-guarded clear
+        // must handle both without crash and without losing either row.
+        let secondPinButton = row.revealPinActionWithRightSwipe(for: secondTarget)
+        UITestAssertions.assertAccessibleTextContains(secondPinButton, "Pin")
+        secondPinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T048 overlapping teardown second pin")
+
+        // After the safe boundary, both pinned rows relocate above the newer
+        // unpinned neighbor (bounded retry, no synthesized input).
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[older],
+            appearsAbove: app.staticTexts[newer],
+            timeout: 5,
+            context: "T048 older relocates above newer only after the safe boundary",
+            app: app
+        )
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[secondTarget],
+            appearsAbove: app.staticTexts[newer],
+            timeout: 5,
+            context: "T048 second target relocates above newer only after the safe boundary",
+            app: app
+        )
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: secondTarget, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(older)", "stale-position-observed", "pin-\(secondTarget)", "safe-boundary-clear"],
+            app: app
+        )
+    }
 }
