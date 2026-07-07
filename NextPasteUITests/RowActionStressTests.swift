@@ -15,6 +15,11 @@ final class RowActionStressTests: UITestCase {
     /// The Feature 019 success criteria require 20 consecutive passes.
     static let stressRepeatCount = 20
 
+    /// Feature 023 Phase 6 (US3) rapid-operation iteration count. The success
+    /// criteria require at least 50 rapid iterations on the same clip and at
+    /// least 50 rapid interleaved iterations across different clips.
+    static let feature023StressRepeatCount = 50
+
     // MARK: - Scenario A stress: 3 pinned -> native swipe Unpin one pinned clip (x20)
 
     @MainActor
@@ -226,6 +231,85 @@ final class RowActionStressTests: UITestCase {
 
         attachStressOutcome(
             scenario: "C",
+            actionOutcomes: actionOutcomes,
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
+    // MARK: - Feature 023 Phase 6 (US3) — rapid repeated operations stay safe
+
+    /// T040 [US3, SC-003, FR-014]: 50-iteration rapid Pin/Unpin on the SAME clip completes
+    /// with no crash, no duplicate UUID (the clip row appears exactly once), no lost row,
+    /// and the clip's final pinned state and position match the last accepted request. Uses
+    /// the shared `BoundedRetryUITestHelper` only for the final settled-state assertion; the
+    /// rapid loop performs only the native row-action taps and a no-crash check per iteration.
+    @MainActor
+    func testT040RapidSameClipPinUnpinStress() throws {
+        let trace = UITestAppLauncher.makeTraceApp()
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let target = "T040 rapid same-clip target"
+        let unpinnedAnchor = "T040 rapid unpinned anchor"
+        let pinnedAnchor = "T040 rapid pinned anchor"
+        try history.createTextClips([pinnedAnchor, target, unpinnedAnchor])
+        history.assertClipRowIdentifierExists()
+
+        // Establish one existing pinned clip so the pinned section is non-empty.
+        let pinPinnedAnchor = row.revealPinActionWithRightSwipe(for: pinnedAnchor)
+        pinPinnedAnchor.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: pinnedAnchor, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        var actionOutcomes: [String] = []
+        // Iteration 1 = Pin (target starts unpinned). Even iterations = Unpin.
+        for iteration in 1...Self.feature023StressRepeatCount {
+            let desiredPinned = (iteration % 2) == 1
+            let expectedLabel = desiredPinned ? "Pin" : "Unpin"
+            let button = row.revealPinActionWithRightSwipe(for: target, expectedLabel: expectedLabel)
+            button.tap()
+            XCTAssertEqual(
+                app.state,
+                .runningForeground,
+                "App crashed on T040 \(expectedLabel) iteration \(iteration)"
+            )
+            actionOutcomes.append("\(expectedLabel)-\(iteration): \(app.state)")
+        }
+
+        // No lost row / no duplicate UUID: the target row appears exactly once.
+        let targetRows = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "clip-row-", target)
+        )
+        XCTAssertEqual(
+            targetRows.count,
+            1,
+            "T040: expected exactly one row for the target clip (no duplicate UUID, no lost row)"
+        )
+
+        // Final state matches the last accepted request. feature023StressRepeatCount is even,
+        // so the last iteration was an Unpin → the target must be unpinned and must be the
+        // first row of the unpinned section (above the existing unpinned anchor).
+        let targetRow = assertTextRowIdentifier(for: target, in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(targetRow, "Unpinned", timeout: 3)
+
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[unpinnedAnchor],
+            timeout: 5,
+            context: "T040 final unpin places target above existing unpinned anchor",
+            app: app
+        )
+
+        attachStressOutcome(
+            scenario: "T040",
             actionOutcomes: actionOutcomes,
             app: app,
             traceURL: trace.traceURL
