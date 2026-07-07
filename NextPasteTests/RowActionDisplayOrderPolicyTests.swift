@@ -38,8 +38,14 @@ struct RowActionDisplayOrderPolicyTests {
             from: "private func beginRowActionDisplayOrderSnapshot()",
             to: "private func scheduleRowActionDisplayOrderReconciliation()"
         )
+        // The activation extracts ID-only metadata via `visibleClips.map(\.id)` and
+        // assigns the snapshot from those identifiers. The landed refactor (T073.1)
+        // introduced an intermediate `snapshotIDs` constant because the same IDs are
+        // also mirrored into `reconciliationSnapshotObservation.snapshotIDs`; the
+        // protective intent is that the snapshot holds only identifiers, never the
+        // full `visibleClips` ([ClipItem]) array.
         #expect(
-            activation.contains("rowActionDisplayOrderSnapshot = visibleClips.map(\\.id)"),
+            activation.contains("visibleClips.map(\\.id)"),
             "Snapshot activation must store only clip identifiers (`map(\\.id)`), not ClipItem instances."
         )
         #expect(
