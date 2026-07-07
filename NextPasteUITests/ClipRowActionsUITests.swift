@@ -1969,4 +1969,75 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAppRunningWithoutCrash(app)
         attachRowActionWarningAssertionOutcome(["delete-\(deleteTarget)", "regression-reconcile"], app: app)
     }
+
+    // MARK: - Feature 023 Phase 8 (Polish) — consecutive-run 50 executions
+
+    /// Consecutive-run iteration count. The validation contract requires at
+    /// least 50 consecutive executions per scenario with fresh app state per
+    /// execution, distinct from the rapid 50-iteration burst (T040–T042),
+    /// to surface intermittent teardown/snapshot-lifetime failures across
+    /// independent app lifecycles.
+    static let feature023ConsecutiveRunCount = 50
+
+    /// Launches a fresh app instance for one consecutive-run iteration and
+    /// returns it. Each iteration gets its own app lifecycle so
+    /// teardown/snapshot-lifetime hazards are exercised across 50 independent
+    /// app states rather than within one. The caller is responsible for
+    /// closing the app at the end of each iteration via `closeApp`.
+    @MainActor
+    private func launchFreshAppForConsecutiveRun() -> XCUIApplication {
+        let app = UITestAppLauncher.makeApp()
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+        return app
+    }
+
+    /// T052 UI test: CONSECUTIVE-RUN 50 executions of the Pin automatic
+    /// reconciliation UI test (fresh app state per execution). Each iteration
+    /// launches a fresh app, performs ONE Pin, and asserts via the shared
+    /// `BoundedRetryUITestHelper` that the acted-on clip becomes the first row
+    /// of the pinned section with no further user input. This is distinct from
+    /// the rapid 50-iteration burst (T040): here each Pin runs in its own app
+    /// lifecycle, surfacing intermittent teardown/snapshot-lifetime failures
+    /// across independent app states. No `triggerDisplayOrderReconciliation`,
+    /// no synthesized reconciliation input, no fixed-duration sleep.
+    @MainActor
+    func testT052ConsecutiveRunPinAutomaticReconciliationFreshAppStatePerExecution() throws {
+        var outcomes: [String] = []
+        for iteration in 1...Self.feature023ConsecutiveRunCount {
+            let app = launchFreshAppForConsecutiveRun()
+            defer { closeApp(app) }
+
+            let history = historyRobot(for: app)
+            let row = rowRobot(for: app)
+            let anchor = "T052 consecutive pin anchor #\(iteration)"
+            let target = "T052 consecutive pin target #\(iteration)"
+            let filler = "T052 consecutive pin filler #\(iteration)"
+            try history.createTextClips([anchor, target, filler])
+            history.assertClipRowIdentifierExists()
+
+            let pinAnchor = row.revealPinActionWithRightSwipe(for: anchor)
+            pinAnchor.tap()
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: anchor, in: app),
+                "Pinned",
+                timeout: 2
+            )
+
+            let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+            UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
+            pinTarget.tap()
+
+            BoundedRetryUITestHelper.assertOrder(
+                upperElement: app.staticTexts[target],
+                appearsAbove: app.staticTexts[anchor],
+                timeout: 5,
+                context: "T052 iteration \(iteration): Pin relocates target above existing pinned anchor",
+                app: app
+            )
+            UITestAssertions.assertAppRunningWithoutCrash(app)
+            outcomes.append("pin-\(iteration): \(app.state)")
+        }
+        attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
+    }
 }
