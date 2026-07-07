@@ -337,6 +337,87 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         clipboard.assertImageRow(for: pinTarget)
     }
 
+    // MARK: - Feature 023 Phase 8 (Polish) — FR-017 image row-action UX regression
+
+    /// T064 [FR-017] image-side regression: the existing image row-action labels,
+    /// icons, accessibility identifiers, accessibility traits, and native
+    /// swipe-action affordances are preserved unchanged by Feature 023.
+    /// Extends the T046 image crash-reproduction regression with explicit
+    /// assertions that the image row-action UI surface is identical to the
+    /// pre-feature baseline:
+    ///   - Identifiers: `pin-clip-button`, `delete-clip-button`.
+    ///   - Labels: Pin (Unpin after pin), Delete.
+    ///   - Accessibility traits: each action is hittable; the pinned-icon
+    ///     identifier `pinned-image-clip-icon` appears after Pin and disappears
+    ///     after Unpin.
+    ///   - Native swipe affordances: right-swipe reveals the Pin/Unpin action;
+    ///     left-swipe reveals the Delete action; a full right-swipe reveals the
+    ///     action WITHOUT auto-executing; a sub-threshold swipe and a vertical
+    ///     gesture reveal nothing.
+    /// No `triggerDisplayOrderReconciliation`, no synthesized reconciliation
+    /// input, no fixed-duration sleep.
+    @MainActor
+    func testT064ImageRowActionUXBaselinePreservedLabelsIconsAccessibilitySwipe() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.olderPinTarget
+        let deleteFixture = UITestFixtures.ImageClipboard.deleteTarget
+
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        clipboard.captureImage(fixture)
+        clipboard.captureImage(deleteFixture)
+        clipboard.assertImageRow(for: fixture)
+        clipboard.assertImageRow(for: deleteFixture)
+
+        // FR-017 identifiers + labels + accessibility traits (image side).
+        let pinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button", "FR-017: image pin button identifier preserved")
+        XCTAssertTrue(pinButton.isHittable, "FR-017: image pin action hittable")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: deleteFixture.thumbnailDescription
+        )
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button", "FR-017: image delete button identifier preserved")
+        XCTAssertTrue(deleteButton.isHittable, "FR-017: image delete action hittable")
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+
+        // FR-017 native swipe affordances: full right-swipe reveals WITHOUT
+        // auto-executing or copying; sub-threshold and vertical gestures
+        // reveal nothing (preserved native swipe thresholds).
+        let fullPinButton = row.performFullRightSwipe(onImageRow: fixture.thumbnailDescription)
+        XCTAssertEqual(fullPinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(fullPinButton, "Pin")
+        UITestAssertions.assertNoImageCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
+
+        row.performSubThresholdRightSwipe(onImageRow: fixture.thumbnailDescription)
+            .assertNoSwipeActionsRevealed()
+        row.performVerticalScrollGesture(onImageRow: fixture.thumbnailDescription)
+            .assertNoSwipeActionsRevealed()
+
+        // FR-017 pinned-state icon + label toggle (image side).
+        let pinToggle = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+        pinToggle.tap()
+        UITestAssertions.assertImagePinnedIconExists(in: app)
+
+        let unpinToggle = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription,
+            expectedLabel: "Unpin"
+        )
+        XCTAssertEqual(unpinToggle.identifier, "pin-clip-button", "FR-017: image unpin reuses pin button identifier")
+        UITestAssertions.assertAccessibleTextContains(unpinToggle, "Unpin")
+        unpinToggle.tap()
+        UITestAssertions.assertImagePinnedIconDisappears(in: app)
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+    }
+
 }
 
 private extension ClipboardRobot {

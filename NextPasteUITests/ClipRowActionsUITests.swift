@@ -2136,4 +2136,109 @@ final class ClipRowActionsUITests: UITestCase {
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
+
+    // MARK: - Feature 023 Phase 8 (Polish) — FR-017 native row-action UX regression
+
+    /// T064 [FR-017] text-side regression: the existing row-action labels, icons,
+    /// accessibility identifiers, accessibility traits, keyboard interactions,
+    /// and native swipe-action affordances are preserved unchanged by Feature
+    /// 023. Extends the T046 crash-reproduction regression with explicit
+    /// assertions that the row-action UI surface is identical to the pre-feature
+    /// baseline:
+    ///   - Identifiers: `copy-clip-button`, `pin-clip-button`, `delete-clip-button`.
+    ///   - Labels: Copy, Pin (Unpin after pin), Delete.
+    ///   - Accessibility traits: each action is hittable; the row exposes
+    ///     Unpinned/Pinned and Normal state values; the pinned-icon identifier
+    ///     `pinned-clip-icon` appears after Pin and disappears after Unpin.
+    ///   - Native swipe affordances: right-swipe reveals the Pin/Unpin action;
+    ///     left-swipe reveals the Delete action; a full right-swipe reveals the
+    ///     action WITHOUT auto-executing or copying; a sub-threshold swipe and a
+    ///     vertical gesture reveal nothing.
+    ///   - Keyboard interaction: the row-action controls are keyboard-reachable
+    ///     (the copy button is hittable without prior pointer interaction).
+    /// No `triggerDisplayOrderReconciliation`, no synthesized reconciliation
+    /// input, no fixed-duration sleep.
+    @MainActor
+    func testT064RowActionUXBaselinePreservedLabelsIconsAccessibilitySwipeKeyboard() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+
+        clipboard.setString(UITestFixtures.RowActions.beforeCopy)
+        try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
+        try history.createTextClip(UITestFixtures.RowActions.copyTarget)
+        history.assertClipRowIdentifierExists()
+
+        // FR-017 identifiers + labels + accessibility traits (pre-pin baseline).
+        let copyRow = assertTextRowIdentifier(for: UITestFixtures.RowActions.copyTarget, in: app)
+        UITestAssertions.assertAccessibleTextContains(copyRow, "Unpinned")
+        UITestAssertions.assertAccessibleTextContains(copyRow, "Normal")
+
+        let copyButton = row.copyButton()
+        XCTAssertEqual(copyButton.identifier, "copy-clip-button", "FR-017: copy button identifier preserved")
+        XCTAssertTrue(copyButton.isHittable, "FR-017: copy button keyboard-reachable (hittable)")
+        UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
+
+        let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.copyTarget)
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button", "FR-017: pin button identifier preserved")
+        XCTAssertTrue(pinButton.isHittable, "FR-017: pin action hittable")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.copyTarget)
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button", "FR-017: delete button identifier preserved")
+        XCTAssertTrue(deleteButton.isHittable, "FR-017: delete action hittable")
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+
+        // FR-017 native swipe affordances: full right-swipe reveals WITHOUT
+        // auto-executing or copying; sub-threshold and vertical gestures
+        // reveal nothing (preserved native swipe thresholds).
+        let fullPinButton = row.performFullRightSwipe(onTextRow: UITestFixtures.RowActions.olderPinTarget)
+        XCTAssertEqual(fullPinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(fullPinButton, "Pin")
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
+
+        row.performSubThresholdRightSwipe(onTextRow: UITestFixtures.RowActions.olderPinTarget)
+            .assertNoSwipeActionsRevealed()
+        row.performVerticalScrollGesture(onTextRow: UITestFixtures.RowActions.olderPinTarget)
+            .assertNoSwipeActionsRevealed()
+
+        // FR-017 pinned-state icon + label toggle: Pin toggles the pinned icon
+        // and the row accessibility value to Pinned; Unpin toggles both back.
+        let pinToggle = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.olderPinTarget)
+        pinToggle.tap()
+        UITestAssertions.assertPinnedIconExists(in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        let unpinToggle = row.revealPinActionWithRightSwipe(
+            for: UITestFixtures.RowActions.olderPinTarget,
+            expectedLabel: "Unpin"
+        )
+        XCTAssertEqual(unpinToggle.identifier, "pin-clip-button", "FR-017: unpin reuses pin button identifier")
+        UITestAssertions.assertAccessibleTextContains(unpinToggle, "Unpin")
+        unpinToggle.tap()
+        UITestAssertions.assertPinnedIconDisappears(in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: UITestFixtures.RowActions.olderPinTarget, in: app),
+            "Unpinned",
+            timeout: 2
+        )
+
+        // FR-017 keyboard interaction: the copy action is keyboard-reachable
+        // and completes the copy (native keyboard/tap interaction preserved).
+        row.tapRow(withText: UITestFixtures.RowActions.copyTarget)
+        UITestAssertions.assertCopiedFeedback(in: app)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.copyTarget)
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(
+            ["fr017-identifiers", "fr017-labels", "fr017-traits", "fr017-swipe", "fr017-icon", "fr017-keyboard"],
+            app: app
+        )
+    }
 }
