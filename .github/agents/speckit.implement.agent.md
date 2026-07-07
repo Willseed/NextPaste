@@ -42,6 +42,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     
     Wait for the result of the hook command before proceeding to the Outline.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -87,10 +88,6 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **IF EXISTS**: Read research.md for technical decisions and constraints
    - **IF EXISTS**: Read .specify/memory/constitution.md for governance constraints
    - **IF EXISTS**: Read quickstart.md for integration scenarios
-   - **Required when present**: Read `contracts/validation-and-sonar-contract.md` as the
-     canonical validation source and do not invent a separate validation lifecycle here
-   - Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates`
-     → `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`
 
 4. **Project Setup Verification**:
    - **REQUIRED**: Create/verify ignore files based on actual project setup:
@@ -147,9 +144,6 @@ You **MUST** consider the user input before proceeding (if not empty).
    - **Respect dependencies**: Run sequential tasks in order, parallel tasks [P] can run together  
    - **Follow TDD approach**: Execute test tasks before their corresponding implementation tasks
    - **File-based coordination**: Tasks affecting the same files must run sequentially
-   - **Preserve native interaction behavior**: Keep existing Apple-native interaction behavior
-     unless the specification explicitly changes it, and prefer Apple-native APIs over custom
-     gesture or event models whenever technically feasible
    - **Validation checkpoints**: Verify each phase completion before proceeding
 
 7. Implementation execution rules:
@@ -172,17 +166,6 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Check that implemented features match the original specification
    - Validate that tests pass and coverage meets requirements
    - Confirm the implementation follows the technical plan
-   - For governance features, do not close Sync Impact until the contract-owned representative
-     validation explicitly verifies inheritance for `speckit.constitution`, `speckit.specify`,
-     `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
-     `speckit.implement`
-   - For governance features, preserve Analyze classification accuracy: every finding must be
-     recorded as exactly one of Governance Defect, Implementation Pending, or Verification Pending
-   - For governance features, block implementation readiness only on Governance Defect or Governance
-     Inconsistency findings; keep Implementation Pending and Verification Pending open without
-     misclassifying them as governance failure
-   - Confirm applicable keyboard, VoiceOver, trackpad, Magic Mouse, mouse, context-menu,
-     drag-and-drop, focus, scrolling, and multi-selection behaviors remain native and consistent
 
 Note: This command assumes a complete task breakdown exists in tasks.md. If tasks are incomplete or missing, suggest running `/speckit.tasks` first to regenerate the task list.
 
@@ -207,6 +190,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
   - **Optional hook** (`optional: true`):
     ```
     ## Extension Hooks

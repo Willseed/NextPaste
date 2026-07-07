@@ -51,6 +51,7 @@ You **MUST** consider the user input before proceeding (if not empty).
     
     Wait for the result of the hook command before proceeding to the Outline.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -60,13 +61,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 2. **Load design documents**: Read from FEATURE_DIR:
    - **Required**: plan.md (tech stack, libraries, structure), spec.md (user stories with priorities)
    - **Optional**: data-model.md (entities), contracts/ (interface contracts), research.md (decisions), quickstart.md (test scenarios)
-   - **Required when present**: `contracts/validation-and-sonar-contract.md` as the canonical
-     validation source
    - **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints
-   - Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates`
-     → `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`. Generate
-     `tasks.md` only as part of the `Generated Feature Artifacts` layer, and keep validation lifecycle
-     ownership in `contracts/validation-and-sonar-contract.md` instead of recreating it locally.
    - Note: Not all projects have all documents. Generate tasks based on what's available.
 
 3. **Execute task generation workflow**:
@@ -89,27 +84,6 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Final Phase: Polish & cross-cutting concerns
    - All tasks must follow the strict checklist format (see Task Generation Rules below)
    - Clear file paths for each task
-   - Generate a tiered validation strategy that orders targeted unit, targeted integration,
-     targeted UI, final-gate full regression, then SonarQube evidence
-   - For user-facing interaction changes, include automated interaction tests where reliable,
-     manual validation tasks for native platform interactions automation cannot faithfully
-     simulate, and regression validation for affected existing interaction methods
-   - Reference template-owned validation through `contracts/validation-and-sonar-contract.md`
-     instead of recreating validation matrices, Sonar rules, or review checklists inside `tasks.md`
-   - For governance features, include execution tasks that reference the contract-owned
-     representative validation and Sync Impact closure, and ensure representative validation
-     explicitly verifies inheritance for `speckit.constitution`, `speckit.specify`,
-     `speckit.clarify`, `speckit.plan`, `speckit.tasks`, `speckit.analyze`, and
-     `speckit.implement`
-   - For governance features, include propagation-ordered execution tasks for
-     `Templates -> Agents -> Copilot Instructions -> Generated Governance Artifacts`
-   - For governance features, include Analyze Checkpoints A/B/C tasks and require each finding to
-     be classified as exactly one of Governance Defect, Implementation Pending, or Verification
-     Pending, with readiness blocked only by Governance Defect/Governance Inconsistency
-   - For governance features, preserve incremental synchronization and migration-by-exception tasks
-     instead of blanket historical rewrites
-   - Put targeted validation commands before any full-suite command and document the reason for
-     any required full regression
    - Dependencies section showing story completion order
    - Parallel execution examples per story
    - Implementation strategy section (MVP first, incremental delivery)
@@ -135,6 +109,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
   - **Optional hook** (`optional: true`):
     ```
     ## Extension Hooks
@@ -165,7 +140,7 @@ The tasks.md should be immediately executable - each task must be specific enoug
 
 **CRITICAL**: Tasks MUST be organized by user story to enable independent implementation and testing.
 
-**Tests are REQUIRED when behavior changes**: Generate automated tests when behavior or interaction changes are introduced. Validation must be tiered and proportional, with targeted tests specified before full regression commands. Full regression is reserved for defined gates and must include a documented reason.
+**Tests are OPTIONAL**: Only generate test tasks if explicitly requested in the feature specification or if user requests TDD approach.
 
 ### Checklist Format (REQUIRED)
 
@@ -223,19 +198,13 @@ Every task MUST strictly follow this format:
    - Shared infrastructure → Setup phase (Phase 1)
    - Foundational/blocking tasks → Foundational phase (Phase 2)
    - Story-specific setup → within that story's phase
-   - Shared validation ownership stays in the Validation Contract; tasks only reference and
-     execute it
-   - Full regression tasks appear only at feature completion, release readiness, or when shared
-     infrastructure, persistence, app launch, navigation, or cross-cutting interaction behavior is
-     affected; include the reason in the task
 
 ### Phase Structure
 
 - **Phase 1**: Setup (project initialization)
 - **Phase 2**: Foundational (blocking prerequisites - MUST complete before user stories)
 - **Phase 3+**: User Stories in priority order (P1, P2, P3...)
-  - Within each story: Targeted unit tests → targeted integration tests → targeted UI tests only
-    where required → Models → Services → Endpoints → Integration
+  - Within each story: Tests (if requested) → Models → Services → Endpoints → Integration
   - Each phase should be a complete, independently testable increment
 - **Final Phase**: Polish & Cross-Cutting Concerns
 

@@ -42,35 +42,18 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Goal.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Goal
 
-Identify inconsistencies, duplications, ambiguities, underspecified items, and documentation drift
-across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This
-command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
+Identify inconsistencies, duplications, ambiguities, and underspecified items across the three core artifacts (`spec.md`, `plan.md`, `tasks.md`) before implementation. This command MUST run only after `/speckit.tasks` has successfully produced a complete `tasks.md`.
 
 ## Operating Constraints
 
 **STRICTLY READ-ONLY**: Do **not** modify any files. Output a structured analysis report. Offer an optional remediation plan (user must explicitly approve before any follow-up editing commands would be invoked manually).
 
 **Constitution Authority**: The project constitution (`.specify/memory/constitution.md`) is **non-negotiable** within this analysis scope. Constitution conflicts are automatically CRITICAL and require adjustment of the spec, plan, or tasks—not dilution, reinterpretation, or silent ignoring of the principle. If a principle itself needs to change, that must occur in a separate, explicit constitution update outside `/speckit.analyze`.
-
-**Governance inheritance model**: Analyze governance as the dependency-ordered chain
-`Constitution` → `Templates` → `Agents` → `Generated Feature Artifacts` → `Representative Validation` →
-`Sync Impact`. This agent operates at the `Agents` layer and evaluates generated-feature artifacts
-plus downstream proof signals. It MUST verify inheritance and drift without redefining the
-validation lifecycle; when present, `contracts/validation-and-sonar-contract.md` remains the
-canonical lifecycle owner.
-
-**Governance Analysis Accuracy (Constitution v2.6)**:
-
-- Every finding MUST be classified as exactly one of: `Governance Defect`, `Implementation Pending`,
-  or `Verification Pending`.
-- Governance readiness may be blocked only by `Governance Defect` and
-  `Governance Inconsistency`.
-- `Implementation Pending` and `Verification Pending` findings MUST remain visible follow-up work but
-  MUST NOT be treated as governance-readiness blockers.
 
 ## Execution Steps
 
@@ -149,18 +132,6 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 
 - Any requirement or plan element conflicting with a MUST principle
 - Missing mandated sections or quality gates from constitution
-- Any interaction-changing spec, plan, or task set that omits affected interaction methods,
-  Apple-native API/behavior expectations, justified HIG deviations, or automated/manual native
-  interaction regression validation
-- Any duplicated validation ownership, duplicated template-owned section, inconsistent template
-  inheritance, or feature-local redefinition of template-owned structures
-- Any spec/plan/tasks/checklist behavior that reproduces Validation Contract ownership instead of
-  referencing `contracts/validation-and-sonar-contract.md`
-- Any governance feature whose representative validation evidence does not explicitly verify
-  inheritance for `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,
-  `speckit.tasks`, `speckit.analyze`, and `speckit.implement` before Sync Impact closure
-- Any unnecessary full-regression requirement, duplicated UI test coverage, or overly broad
-  validation command that bypasses the tiered test strategy
 
 #### E. Coverage Gaps
 
@@ -174,37 +145,15 @@ Focus on high-signal findings. Limit to 50 findings total; aggregate remainder i
 - Data entities referenced in plan but absent in spec (or vice versa)
 - Task ordering contradictions (e.g., integration tasks before foundational setup tasks without dependency note)
 - Conflicting requirements (e.g., one requires Next.js while other specifies Vue)
-- Validation ordering contradictions (e.g., full regression required before targeted commands, or
-  UI tests standing in for pure-logic validation without justification)
 
-#### G. Classification Rules (mandatory)
-
-- Assign exactly one governance classification to each finding:
-  - **Governance Defect**: constitutional conflict, governance inversion, competing lifecycle owner,
-    blocking inconsistency, or mandatory propagation/readiness rule violation
-  - **Implementation Pending**: required governance implementation change not yet completed
-  - **Verification Pending**: required representative validation, checkpoint execution, or evidence
-    collection not yet executed
-- Do not assign multiple governance classifications to a single finding.
-
-### 5. Governance Classification and Severity Assignment
+### 5. Severity Assignment
 
 Use this heuristic to prioritize findings:
 
-- **CRITICAL**: Violates constitution MUST, duplicates Validation Contract ownership, duplicates a
-  template-owned structure, missing core spec artifact, missing governance-agent propagation proof
-  in representative validation for a governance feature, or requirement with zero coverage that
-  blocks baseline functionality
-- **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute,
-  untestable acceptance criterion, or unjustified broad validation scope
+- **CRITICAL**: Violates constitution MUST, missing core spec artifact, or requirement with zero coverage that blocks baseline functionality
+- **HIGH**: Duplicate or conflicting requirement, ambiguous security/performance attribute, untestable acceptance criterion
 - **MEDIUM**: Terminology drift, missing non-functional task coverage, underspecified edge case
 - **LOW**: Style/wording improvements, minor redundancy not affecting execution order
-
-Then apply governance-readiness mapping:
-
-- Readiness **blocked** when a finding is classified as `Governance Defect` or
-  `Governance Inconsistency`.
-- Readiness **not blocked** by `Implementation Pending` or `Verification Pending`.
 
 ### 6. Produce Compact Analysis Report
 
@@ -212,9 +161,9 @@ Output a Markdown report (no file writes) with the following structure:
 
 ## Specification Analysis Report
 
-| ID | Category | Governance Classification | Severity | Location(s) | Summary | Recommendation |
-|----|----------|---------------------------|----------|-------------|---------|----------------|
-| A1 | Duplication | Governance Defect | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
+| ID | Category | Severity | Location(s) | Summary | Recommendation |
+|----|----------|----------|-------------|---------|----------------|
+| A1 | Duplication | HIGH | spec.md:L120-134 | Two similar requirements ... | Merge phrasing; keep clearer version |
 
 (Add one row per finding; generate stable IDs prefixed by category initial.)
 
@@ -224,9 +173,6 @@ Output a Markdown report (no file writes) with the following structure:
 |-----------------|-----------|----------|-------|
 
 **Constitution Alignment Issues:** (if any)
-
-**Documentation Drift:** (if any duplicated template-owned structure or Validation Contract
-redefinition is found)
 
 **Unmapped Tasks:** (if any)
 
@@ -238,25 +184,13 @@ redefinition is found)
 - Ambiguity Count
 - Duplication Count
 - Critical Issues Count
-- Governance Defect Count
-- Implementation Pending Count
-- Verification Pending Count
-
-**Governance Readiness Decision:**
-
-- `BLOCKED` when any Governance Defect or Governance Inconsistency remains open.
-- `READY` when no Governance Defect or Governance Inconsistency remains open, even if
-  Implementation Pending or Verification Pending findings still exist.
 
 ### 7. Provide Next Actions
 
 At end of report, output a concise Next Actions block:
 
-- If Governance Defect/Governance Inconsistency findings exist: Recommend resolving before
-  `/speckit.implement`
-- If only Implementation Pending/Verification Pending findings remain: User may proceed while keeping
-  those items tracked as follow-up work
-- If only LOW/MEDIUM non-blocking findings remain: User may proceed, but provide improvement suggestions
+- If CRITICAL issues exist: Recommend resolving before `/speckit.implement`
+- If only LOW/MEDIUM: User may proceed, but provide improvement suggestions
 - Provide explicit command suggestions: e.g., "Run /speckit.specify with refinement", "Run /speckit.plan to adjust architecture", "Manually edit tasks.md to add coverage for 'performance-metrics'"
 
 ### 8. Offer Remediation
@@ -292,6 +226,7 @@ After reporting, check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Operating Principles

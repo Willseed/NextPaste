@@ -50,6 +50,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Outline.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -58,34 +59,10 @@ You **MUST** consider the user input before proceeding (if not empty).
 
 2. **Load context**: Read FEATURE_SPEC and `.specify/memory/constitution.md`. Load IMPL_PLAN template (already copied).
 
-2a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
-   `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`. The plan and its
-   generated artifacts populate the `Generated Feature Artifacts` layer and MUST prepare downstream
-   Representative Validation and Sync Impact without moving lifecycle ownership out of
-   `contracts/validation-and-sonar-contract.md`.
-
 3. **Execute plan workflow**: Follow the structure in IMPL_PLAN template to:
    - Fill Technical Context (mark unknowns as "NEEDS CLARIFICATION")
    - Fill Constitution Check section from constitution
    - Evaluate gates (ERROR if violations unjustified)
-   - Create or update `contracts/validation-and-sonar-contract.md` from the shared template as the
-     canonical validation source for the feature
-   - For governance features, encode governance evolution workflow as
-     `Constitution -> Specification -> Plan -> Tasks -> Analyze -> Implement`
-   - For governance features, encode governance propagation order as
-     `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`
-   - For governance features, define Analyze Checkpoints A/B/C and enforce classification of each
-     finding as exactly one of Governance Defect, Implementation Pending, or Verification Pending,
-     where only Governance Defect/Governance Inconsistency blocks readiness
-   - Preserve incremental synchronization and migration-by-exception strategy for historical
-     artifacts
-   - When the feature updates shared governance, ensure the generated validation contract and
-     quickstart require representative validation to explicitly verify inheritance for
-     `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,
-     `speckit.tasks`, `speckit.analyze`, and `speckit.implement` before Sync Impact closure
-   - For user-facing interaction changes, identify impacted interaction models, reused
-     Apple-native APIs and behaviors, required automated/manual validation, and any justified HIG
-     deviations
    - Phase 0: Generate research.md (resolve all NEEDS CLARIFICATION)
    - Phase 1: Generate data-model.md, contracts/, quickstart.md
    - Phase 1: Update agent context by running the agent script
@@ -112,6 +89,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
   - **Optional hook** (`optional: true`):
     ```
     ## Extension Hooks
@@ -167,29 +145,19 @@ Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generate
    - Document the contract format appropriate for the project type
    - Examples: public APIs for libraries, command schemas for CLI tools, endpoints for web services, grammars for parsers, UI contracts for applications
    - Skip if project is purely internal (build scripts, one-off tools, etc.)
-   - Always create or refresh `contracts/validation-and-sonar-contract.md` from the template and
-     keep all shared validation ownership there instead of in plan/spec/tasks/checklists
 
-3. **Create quickstart execution guide** → `quickstart.md`:
-   - Keep this artifact execution-only
-   - Include only build commands, test commands, execution instructions, and references to
-     `contracts/validation-and-sonar-contract.md`
-   - Order commands by tiered validation scope: targeted unit, targeted integration, targeted UI,
-     and full regression only as the final gate when applicable
-   - If full regression is required, document why the gate applies
-   - Do not duplicate validation matrices, regression definitions, evidence requirements, or
-     expected-outcome checklists from the Validation Contract
+3. **Create quickstart validation guide** → `quickstart.md`:
+   - Document runnable validation scenarios that prove the feature works end-to-end
+   - Include prerequisites, setup commands, test/run commands, and expected outcomes
+   - Use links or references to contracts and data model details instead of duplicating them
    - Do not include full implementation code, model/service/controller bodies, migrations, or complete test suites
+   - Keep this artifact as a validation/run guide; implementation details belong in `tasks.md` and the implementation phase
 
-4. **Agent context update**:
-   - Update the plan reference between the `<!-- SPECKIT START -->` and `<!-- SPECKIT END -->` markers in `.github/copilot-instructions.md` to point to the plan file created in step 1 (the IMPL_PLAN path)
-
-**Output**: data-model.md, /contracts/* (including `validation-and-sonar-contract.md`),
-quickstart.md, updated agent context file
+**Output**: data-model.md, /contracts/*, quickstart.md
 
 ## Key rules
 
-- Use absolute paths for filesystem operations; use project-relative paths for references in documentation and agent context files
+- Use absolute paths for filesystem operations; use project-relative paths for references in documentation
 - ERROR on gate failures or unresolved clarifications
 
 ## Done When

@@ -46,6 +46,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Outline.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -53,14 +54,6 @@ You **MUST** consider the user input before proceeding (if not empty).
 You are updating the project constitution at `.specify/memory/constitution.md`. This file is a TEMPLATE containing placeholder tokens in square brackets (e.g. `[PROJECT_NAME]`, `[PRINCIPLE_1_NAME]`). Your job is to (a) collect/derive concrete values, (b) fill the template precisely, and (c) propagate any amendments across dependent artifacts.
 
 **Note**: If `.specify/memory/constitution.md` does not exist yet, it should have been initialized from `.specify/templates/constitution-template.md` during project setup. If it's missing, copy the template first.
-
-**Governance inheritance order**: Treat governance propagation as a dependency-ordered chain:
-`Constitution` → `Templates` → `Agents` → `Generated Feature Artifacts` → `Representative Validation`
-→ `Sync Impact`. This agent operates at the Constitution layer. Downstream propagation and
-completion claims MUST preserve that order. If the active feature includes
-`contracts/validation-and-sonar-contract.md`, that contract remains the sole owner of validation
-lifecycle execution details; do not recreate that lifecycle in the Constitution text or in this
-agent file.
 
 Follow this execution flow:
 
@@ -88,18 +81,6 @@ Follow this execution flow:
    - Read `.specify/templates/plan-template.md` and ensure any "Constitution Check" or rules align with updated principles.
    - Read `.specify/templates/spec-template.md` for scope/requirements alignment—update if constitution adds/removes mandatory sections or constraints.
    - Read `.specify/templates/tasks-template.md` and ensure task categorization reflects new or removed principle-driven task types (e.g., observability, versioning, testing discipline).
-   - Read `.specify/templates/checklist-template.md`, `.specify/templates/quickstart-template.md`, and
-     `.specify/templates/contracts/validation-and-sonar-contract.md` to confirm lifecycle ownership,
-     governance-analysis classification, and propagation-order expectations remain aligned.
-   - Read `.github/agents/speckit.constitution.agent.md`, `.github/agents/speckit.specify.agent.md`,
-     `.github/agents/speckit.clarify.agent.md`, `.github/agents/speckit.plan.agent.md`,
-     `.github/agents/speckit.tasks.agent.md`, `.github/agents/speckit.analyze.agent.md`, and
-     `.github/agents/speckit.implement.agent.md` and ensure each explicitly inherits the v2.6
-     governance chain from Constitution through Templates and Agents into Generated Feature
-     Artifacts, Representative Validation, and Sync Impact.
-   - Ensure Analyze-oriented shared instructions enforce exact one-of-three finding classification:
-     Governance Defect, Implementation Pending, Verification Pending; only Governance Defect and
-     Governance Inconsistency may block governance readiness.
    - Read each command file in `.specify/templates/commands/*.md` (including this one) to verify no outdated references (agent-specific names like CLAUDE only) remain when generic guidance is required.
    - Read any runtime guidance docs (e.g., `README.md`, `docs/quickstart.md`, or agent-specific guidance files if present). Update references to principles changed.
 
@@ -116,12 +97,6 @@ Follow this execution flow:
    - Version line matches report.
    - Dates ISO format YYYY-MM-DD.
    - Principles are declarative, testable, and free of vague language ("should" → replace with MUST/SHOULD rationale where appropriate).
-   - Representative-validation instructions, when applicable, explicitly verify inheritance for
-     `speckit.constitution`, `speckit.specify`, `speckit.clarify`, `speckit.plan`,
-     `speckit.tasks`, `speckit.analyze`, and `speckit.implement`.
-   - Validation lifecycle ownership remains in `contracts/validation-and-sonar-contract.md` when
-     that artifact exists; neither the Constitution nor these agent instructions create a
-     competing lifecycle owner.
 
 7. Write the completed constitution back to `.specify/memory/constitution.md` (overwrite).
 
@@ -173,4 +148,5 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently

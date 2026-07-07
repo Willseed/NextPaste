@@ -50,6 +50,7 @@ You **MUST** consider the user input before proceeding (if not empty).
 
     Wait for the result of the hook command before proceeding to the Outline.
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
 - If no hooks are registered or `.specify/extensions.yml` does not exist, skip silently
 
 ## Outline
@@ -112,13 +113,6 @@ Given that feature description, do this:
 4. Load the resolved active `spec-template` file to understand required sections.
 
 5. **IF EXISTS**: Load `.specify/memory/constitution.md` for project principles and governance constraints.
-
-5a. Treat this agent as the `Agents` layer in the governance chain `Constitution` → `Templates` →
-    `Agents` → `Generated Feature Artifacts` → `Representative Validation` → `Sync Impact`. Inherit shared
-    governance from the Constitution and resolved template, generate the specification as the
-    `Generated Feature Artifacts` layer, and preserve downstream traceability for Representative Validation
-    and Sync Impact without creating a separate validation lifecycle owner. When present,
-    `contracts/validation-and-sonar-contract.md` remains the lifecycle owner.
 
 6. Follow this execution flow:
     1. Parse user description from arguments
@@ -260,6 +254,7 @@ Check if `.specify/extensions.yml` exists in the project root.
     Executing: `/{command}`
     EXECUTE_COMMAND: {command}
     ```
+    After emitting the block above you MUST actually invoke the hook and wait for it to finish before continuing. Run it the same way you would run the command yourself in this agent/session (the invocation may differ from the literal `{command}` id shown above, e.g. a skills-mode agent runs it as `/skill:speckit-...` or `$speckit-...`). Emitting the block alone does not run the hook.
   - **Optional hook** (`optional: true`):
     ```
     ## Extension Hooks
