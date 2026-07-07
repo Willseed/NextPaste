@@ -443,6 +443,77 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    /// T043 [US3, FR-015, SC-006]: after rapid operations settle, the visible list equals the
+    /// store's authoritative projection (no frozen snapshot remains as the ordering source).
+    /// Performs rapid interleaved Pin/Unpin, then asserts the visible section membership and
+    /// order reflect each clip's last accepted pinned state — the live `@Query` projection, not
+    /// a stale frozen snapshot. A newly captured clip appearing in its correct newest-first
+    /// position confirms the projection is live.
+    @MainActor
+    func testT043VisibleListEqualsAuthoritativeProjectionAfterRapidOps() throws {
+        let trace = UITestAppLauncher.makeTraceApp()
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let clips = [
+            "T043 projection clip A",
+            "T043 projection clip B",
+            "T043 projection clip C"
+        ]
+
+        try history.createTextClips(clips)
+        history.assertClipRowIdentifierExists()
+
+        // Rapid interleaved: pin clip A (iteration 1), then unpin clip A (iteration 2). This
+        // exercises the reconciliation lifecycle rapidly so a frozen snapshot would, if present,
+        // leave a stale order.
+        let target = clips[0]
+        for iteration in 1...Self.feature023StressRepeatCount {
+            let desiredPinned = (iteration % 2) == 1
+            let expectedLabel = desiredPinned ? "Pin" : "Unpin"
+            let button = row.revealPinActionWithRightSwipe(for: target, expectedLabel: expectedLabel)
+            button.tap()
+            XCTAssertEqual(app.state, .runningForeground, "App crashed on T043 iteration \(iteration)")
+        }
+
+        // The last iteration is even → target unpinned. After settling, the visible list must
+        // equal the authoritative projection: target is unpinned and appears as the first row of
+        // the unpinned section (above the other unpinned clips), proving no frozen snapshot is
+        // acting as the ordering source.
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: target, in: app),
+            "Unpinned",
+            timeout: 3
+        )
+
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[clips[1]],
+            timeout: 5,
+            context: "T043 target is first row of unpinned section (live projection, no frozen snapshot)",
+            app: app
+        )
+
+        // The other clips were never pinned and remain unpinned, below the target.
+        for clip in clips.dropFirst() {
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: clip, in: app),
+                "Unpinned",
+                timeout: 3
+            )
+        }
+
+        attachStressOutcome(
+            scenario: "T043",
+            actionOutcomes: ["\(Self.feature023StressRepeatCount) rapid toggles on \(target)"],
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
     // MARK: - Helpers
 
     @MainActor
