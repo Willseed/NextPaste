@@ -177,8 +177,14 @@ struct LocalizationCatalogTests {
         }
 
         for locale in locales {
+            // Skip comment-only/metadata catalog entries (keys with no
+            // `localizations` field, e.g. the app name, an illustration label,
+            // and an auto-generated format-string comment). These are not
+            // translatable strings; the completeness contract applies only to
+            // entries that actually declare localizations.
             let missingKeys = catalog.strings.compactMap { key, entry -> String? in
-                guard let localization = entry.localizations?[locale],
+                guard let localizations = entry.localizations else { return nil }
+                guard let localization = localizations[locale],
                       let stringUnit = localization.stringUnit,
                       stringUnit.state == "translated",
                       stringUnit.value.isEmpty == false
