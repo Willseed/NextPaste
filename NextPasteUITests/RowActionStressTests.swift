@@ -316,6 +316,76 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    /// T041 [US3, SC-004, FR-014]: 50-iteration rapid interleaved Pin/Unpin across DIFFERENT
+    /// clips completes with no crash, each clip reflecting only its own last accepted request,
+    /// and no clip identity appearing more than once. Uses the shared `BoundedRetryUITestHelper`
+    /// only for the final settled-state assertions; the rapid loop performs only the native
+    /// row-action taps and a no-crash check per action.
+    @MainActor
+    func testT041RapidInterleavedPinUnpinAcrossClipsStress() throws {
+        let trace = UITestAppLauncher.makeTraceApp()
+        let app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let clips = [
+            "T041 rapid interleaved clip A",
+            "T041 rapid interleaved clip B",
+            "T041 rapid interleaved clip C"
+        ]
+
+        try history.createTextClips(clips)
+        history.assertClipRowIdentifierExists()
+
+        var actionOutcomes: [String] = []
+        // Odd iterations pin all three (currently unpinned); even iterations unpin all three.
+        for iteration in 1...Self.feature023StressRepeatCount {
+            let desiredPinned = (iteration % 2) == 1
+            let expectedLabel = desiredPinned ? "Pin" : "Unpin"
+            for (index, clip) in clips.enumerated() {
+                let button = row.revealPinActionWithRightSwipe(for: clip, expectedLabel: expectedLabel)
+                button.tap()
+                XCTAssertEqual(
+                    app.state,
+                    .runningForeground,
+                    "App crashed on T041 \(expectedLabel) clip\(index) iteration \(iteration)"
+                )
+                actionOutcomes.append("\(expectedLabel)-\(index)-\(iteration): \(app.state)")
+            }
+        }
+
+        // No duplicate identity: each clip row appears exactly once.
+        for clip in clips {
+            let rows = app.descendants(matching: .any).matching(
+                NSPredicate(format: "identifier BEGINSWITH %@ AND label CONTAINS %@", "clip-row-", clip)
+            )
+            XCTAssertEqual(
+                rows.count,
+                1,
+                "T041: expected exactly one row for \(clip) (no duplicate identity)"
+            )
+        }
+
+        // Each clip reflects only its own last accepted request. The last iteration is even
+        // (unpin), so every clip must be unpinned.
+        for clip in clips {
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: clip, in: app),
+                "Unpinned",
+                timeout: 3
+            )
+        }
+
+        attachStressOutcome(
+            scenario: "T041",
+            actionOutcomes: actionOutcomes,
+            app: app,
+            traceURL: trace.traceURL
+        )
+    }
+
     // MARK: - Helpers
 
     @MainActor
