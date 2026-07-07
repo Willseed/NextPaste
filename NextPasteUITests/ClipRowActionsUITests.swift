@@ -1424,4 +1424,66 @@ final class ClipRowActionsUITests: UITestCase {
             app: app
         )
     }
+
+    // MARK: - Feature 023 Phase 5 — Unpin relocates to the unpinned top automatically (US2)
+
+    /// T036 [US2, SC-002, FR-002]: after an accepted state-changing Unpin with no further user
+    /// input, the acted-on clip becomes the first row of the unpinned section within a bounded
+    /// retry using the shared `BoundedRetryUITestHelper` (T065). No synthesized input, no
+    /// `triggerDisplayOrderReconciliation`, and no fixed-duration sleep is used — the only
+    /// synchronization is the observable order polling inside the helper.
+    @MainActor
+    func testT036UnpinBecomesFirstRowOfUnpinnedSectionViaBoundedRetry() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Created oldest-first. Visible newest-first: unpinnedAnchor, target, pinAnchor.
+        let pinAnchor = "T036 pinned anchor clip"
+        let target = "T036 unpin target clip"
+        let unpinnedAnchor = "T036 unpinned anchor newest"
+        try history.createTextClips([pinAnchor, target, unpinnedAnchor])
+        history.assertClipRowIdentifierExists()
+
+        // Establish one existing pinned clip so the pinned section is non-empty.
+        let pinPinAnchor = row.revealPinActionWithRightSwipe(for: pinAnchor)
+        UITestAssertions.assertAccessibleTextContains(pinPinAnchor, "Pin")
+        pinPinAnchor.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: pinAnchor, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        // Pin the target so it is in the pinned section before the state-changing Unpin.
+        let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+        UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
+        pinTarget.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: target, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        // State-changing Unpin on the target. No further user input is synthesized after this.
+        let unpinTarget = row.revealPinActionWithRightSwipe(for: target, expectedLabel: "Unpin")
+        UITestAssertions.assertAccessibleTextContains(unpinTarget, "Unpin")
+        unpinTarget.tap()
+
+        // Bounded-retry order assertion: the acted-on clip becomes the first row of the
+        // unpinned section (above the previously unpinned anchor) with no further input.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[unpinnedAnchor],
+            timeout: 5,
+            context: "T036 Unpin relocates target above existing unpinned anchor",
+            app: app
+        )
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(pinAnchor)", "pin-\(target)", "unpin-\(target)", "reconcile"],
+            app: app
+        )
+    }
 }
