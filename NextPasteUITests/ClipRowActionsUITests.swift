@@ -1264,4 +1264,54 @@ final class ClipRowActionsUITests: UITestCase {
         XCTAssertEqual(app.state, .runningForeground)
         attachRowActionWarningAssertionOutcome(["pin-\(older)", "reconcile"], app: app)
     }
+
+    // MARK: - Feature 023 Phase 4 — Pin relocates to the pinned top automatically (US1)
+
+    /// T032 [US1, SC-001, FR-001]: after an accepted state-changing Pin with no further user
+    /// input, the acted-on clip becomes the first row of the pinned section within a bounded
+    /// retry using the shared `BoundedRetryUITestHelper` (T065). No synthesized input, no
+    /// `triggerDisplayOrderReconciliation`, and no fixed-duration sleep is used — the only
+    /// synchronization is the observable order polling inside the helper.
+    @MainActor
+    func testT032PinBecomesFirstRowOfPinnedSectionViaBoundedRetry() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // Created oldest-first. Visible newest-first: filler, target, anchor.
+        let anchor = "T032 pinned anchor clip"
+        let target = "T032 pin target clip"
+        let filler = "T032 unpinned filler newest"
+        try history.createTextClips([anchor, target, filler])
+        history.assertClipRowIdentifierExists()
+
+        // Establish one existing pinned clip so the pinned section is non-empty and the
+        // acted-on clip must relocate above it to be the first pinned row.
+        let pinAnchor = row.revealPinActionWithRightSwipe(for: anchor)
+        UITestAssertions.assertAccessibleTextContains(pinAnchor, "Pin")
+        pinAnchor.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: anchor, in: app),
+            "Pinned",
+            timeout: 2
+        )
+
+        // State-changing Pin on the target. No further user input is synthesized after this.
+        let pinTarget = row.revealPinActionWithRightSwipe(for: target)
+        UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
+        pinTarget.tap()
+
+        // Bounded-retry order assertion: the acted-on clip becomes the first row of the
+        // pinned section (above the previously pinned anchor) with no further input.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[target],
+            appearsAbove: app.staticTexts[anchor],
+            timeout: 5,
+            context: "T032 Pin relocates target above existing pinned anchor",
+            app: app
+        )
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(["pin-\(anchor)", "pin-\(target)", "reconcile"], app: app)
+    }
 }

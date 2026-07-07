@@ -198,7 +198,7 @@ last, after T031.
 
 All US1 UI tests edit `NextPasteUITests/ClipRowActionsUITests.swift` and depend on the shared bounded-retry helper (T065). No `[P]` markers — same file, shared helper. Executed sequentially by a single author.
 
-- [ ] T032 [US1] UI test: after an accepted state-changing Pin with no further user input, the acted-on clip is the first row of the pinned section within a bounded retry using the shared bounded-retry helper (T065) in `NextPasteUITests/ClipRowActionsUITests.swift` (SC-001, FR-001). Depends on T065.
+- [X] T032 [US1] UI test: after an accepted state-changing Pin with no further user input, the acted-on clip is the first row of the pinned section within a bounded retry using the shared bounded-retry helper (T065) in `NextPasteUITests/ClipRowActionsUITests.swift` (SC-001, FR-001). Depends on T065. Evidence: pre-existing Green — `testT032PinBecomesFirstRowOfPinnedSectionViaBoundedRetry` passed (44.7s) on first run; Phase 3 production `scheduleAutomaticReconciliation(for: clip.id)` already satisfies FR-001 so the bounded-retry order assertion is satisfied without implementation changes.
 - [ ] T033 [US1] UI regression assertion: after T055 removed `triggerDisplayOrderReconciliation` and all equivalent helpers, the Pin scenario still completes automatic reconciliation without any trigger, without synthesizing any click/scroll/key/mouse input, and without any fixed-duration sleep in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-004). Depends on T055, T065, T032.
 - [ ] T034 [US1] UI test: when multiple pinned clips already exist, a newly pinned clip appears above all previously pinned clips using the shared bounded-retry helper (T065) in `NextPasteUITests/ClipRowActionsUITests.swift` (FR-001, FR-005). Depends on T065.
 
