@@ -1868,4 +1868,55 @@ final class ClipRowActionsUITests: UITestCase {
             app: app
         )
     }
+
+    // MARK: - Feature 023 Phase 8 (Polish) — Delete automatic reconciliation
+
+    /// T050 UI test: Delete automatic reconciliation — after an accepted Delete
+    /// with no further user input, the deleted clip disappears from the visible
+    /// list within a bounded retry (explicit timeout + observable removal
+    /// polling + diagnosable failure) using the shared `BoundedRetryUITestHelper`
+    /// (T065). Delete routes through the generation-guarded reconciliation
+    /// lifecycle; the deleted UUID re-resolves to nil inside the Task and the
+    /// `.missingTarget` exit clears the snapshot so the live `@Query` projection
+    /// (without the deleted clip) becomes the visible order. No
+    /// `triggerDisplayOrderReconciliation`, no synthesized reconciliation input,
+    /// no fixed-duration sleep — only the native Delete tap and the
+    /// `BoundedRetryUITestHelper.assertVisibleRemoval` observable-removal poll.
+    @MainActor
+    func testT050DeleteAutomaticReconciliationRemovesClipViaBoundedRetry() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let deleteTarget = "T050 delete reconciliation target"
+        let survivor = "T050 delete reconciliation survivor"
+        try history.createTextClip(deleteTarget)
+        try history.createTextClip(survivor)
+        history.assertClipRowIdentifierExists()
+        let deleteTargetIdentifier = assertTextRowIdentifier(for: deleteTarget, in: app).identifier
+
+        // Single Delete tap. No further click/scroll/key/mouse input is
+        // synthesized after this — only the bounded-retry observable-removal poll.
+        let deleteButton = row.revealDeleteActionWithLeftSwipe(for: deleteTarget)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+
+        // Bounded-retry visible-removal: the deleted clip disappears from the
+        // visible list with no further user input (FR-009 Delete call site).
+        BoundedRetryUITestHelper.assertVisibleRemoval(
+            of: app.staticTexts[deleteTarget],
+            timeout: 5,
+            context: "T050 deleted clip disappears via automatic reconciliation with no further input",
+            app: app
+        )
+        UITestAssertions.assertDoesNotExist(
+            app.descendants(matching: .any)[deleteTargetIdentifier],
+            "Expected deleted clip row identifier to be removed",
+            timeout: 2
+        )
+        XCTAssertTrue(app.staticTexts[survivor].exists, "Expected survivor clip to remain present")
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(["delete-\(deleteTarget)", "reconcile-missing-target"], app: app)
+    }
 }
