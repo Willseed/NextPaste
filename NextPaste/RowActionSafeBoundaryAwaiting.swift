@@ -58,8 +58,18 @@ internal protocol RowActionSafeBoundaryAwaiting: AnyObject {
 @MainActor
 internal final class NoOpSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
     static let shared = NoOpSafeBoundaryAwaiter()
-    private init() {}
-    func waitUntilSafeBoundary() async {}
+    // Singleton initializer has no state to construct: the awaiter is a pure
+    // semantic no-op whose only behavior is completing the boundary instantly.
+    private init() {
+        // No instance state is required: every await returns immediately
+        // because non-macOS platforms have no row-action visibility transition.
+    }
+    func waitUntilSafeBoundary() async {
+        // Non-macOS platforms have no `NSTableView.rowActionsVisible` surface,
+        // so the teardown-safe boundary is already reached at call time; there
+        // is no transition to observe and nothing to await. Returning without
+        // suspending is the correct semantic completion of the contract.
+    }
 }
 #endif
 

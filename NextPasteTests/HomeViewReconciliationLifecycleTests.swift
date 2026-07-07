@@ -114,7 +114,7 @@ struct HomeViewReconciliationLifecycleTests {
     "T011: a new Pin/Unpin/Delete operation increments reconciliationGeneration (FR-010)"
 )
 @MainActor
-func t011_newOperationIncrementsReconciliationGeneration() async throws {
+func t011NewOperationIncrementsReconciliationGeneration() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
 
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -153,7 +153,7 @@ func t011_newOperationIncrementsReconciliationGeneration() async throws {
     "T012: a new operation cancels the prior reconciliationTask before launching its own (FR-009)"
 )
 @MainActor
-func t012_newOperationCancelsPriorReconciliationTask() async throws {
+func t012NewOperationCancelsPriorReconciliationTask() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
 
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -192,7 +192,7 @@ func t012_newOperationCancelsPriorReconciliationTask() async throws {
     "T013: a stale-generation Task exits without clearing the snapshot (FR-010)"
 )
 @MainActor
-func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
+func t013StaleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
 
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -256,7 +256,7 @@ func t013_staleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     "T014: an older Task cannot clear a snapshot produced by a newer operation (FR-009, FR-010)"
 )
 @MainActor
-func t014_olderTaskCannotClearNewerSnapshot() async throws {
+func t014OlderTaskCannotClearNewerSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
 
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -325,7 +325,7 @@ func t014_olderTaskCannotClearNewerSnapshot() async throws {
     "T021: safe-boundary await is the sole gate; reconciliation awaits rowActionsVisible==false via the T072 seam (FR-003, FR-004)"
 )
 @MainActor
-func t021_safeBoundaryAwaitIsSoleGate() async throws {
+func t021SafeBoundaryAwaitIsSoleGate() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
 
@@ -377,7 +377,7 @@ func t021_safeBoundaryAwaitIsSoleGate() async throws {
     "T015: the snapshot is eventually released after a successful reconciliation (FR-012)"
 )
 @MainActor
-func t015_snapshotEventuallyReleasedAfterSuccess() async throws {
+func t015SnapshotEventuallyReleasedAfterSuccess() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -417,7 +417,7 @@ func t015_snapshotEventuallyReleasedAfterSuccess() async throws {
     "T016: a cancelled reconciliationTask releases its own resources without clearing a newer snapshot (FR-012)"
 )
 @MainActor
-func t016_cancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
+func t016CancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -472,7 +472,7 @@ func t016_cancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
     "T017: a stale-generation early-exit Task releases its own resources without clearing the snapshot (FR-012)"
 )
 @MainActor
-func t017_staleEarlyExitReleasesWithoutClearing() async throws {
+func t017StaleEarlyExitReleasesWithoutClearing() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -522,7 +522,7 @@ func t017_staleEarlyExitReleasesWithoutClearing() async throws {
     "T018: a reconciliation Task whose target was deleted/removed/filtered exits safely (FR-011)"
 )
 @MainActor
-func t018_targetDeletedExitsSafely() async throws {
+func t018TargetDeletedExitsSafely() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -560,7 +560,7 @@ func t018_targetDeletedExitsSafely() async throws {
     "T019: a Delete-after-removal reconciliation Task exits cleanly because its target UUID is gone (FR-011)"
 )
 @MainActor
-func t019_deleteAfterRemovalExitsCleanly() async throws {
+func t019DeleteAfterRemovalExitsCleanly() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -597,7 +597,7 @@ func t019_deleteAfterRemovalExitsCleanly() async throws {
     "T020: view teardown cancels the in-flight reconciliationTask and releases the snapshot (FR-012, SC-007)"
 )
 @MainActor
-func t020_teardownCancelsInFlightTask() async throws {
+func t020TeardownCancelsInFlightTask() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -648,7 +648,7 @@ func t020_teardownCancelsInFlightTask() async throws {
     "T022: reconciliation re-resolves by UUID across the async hop; positional shifts do not break it (FR-008)"
 )
 @MainActor
-func t022_uuidOnlyIdentityAcrossAsyncHop() async throws {
+func t022UuidOnlyIdentityAcrossAsyncHop() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -689,7 +689,7 @@ func t022_uuidOnlyIdentityAcrossAsyncHop() async throws {
     "T060: rollback while reconciliation pending keeps the ordering contract and leaves no permanent snapshot (FR-006, FR-009, FR-010, FR-011, FR-015)"
 )
 @MainActor
-func t060_rollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
+func t060RollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -752,7 +752,7 @@ func t060_rollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
     "T061: a no-op Pin/Unpin does not relocate or mutate timestamp; an opened snapshot still clears at the safe boundary (FR-001, FR-002, FR-004, FR-007, FR-010, FR-012)"
 )
 @MainActor
-func t061_noOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async throws {
+func t061NoOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {

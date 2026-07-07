@@ -96,7 +96,12 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 
     /// Release every pending waiter. Idempotent.
     func releaseAll() {
-        while releaseNext() {}
+        // The loop body is intentionally empty: `releaseNext()` performs all
+        // the work (dequeues and resumes one waiter) and returns `false` once
+        // no waiters remain, which terminates the loop.
+        while releaseNext() {
+            // No per-iteration body needed; each call releases exactly one.
+        }
     }
 
     /// Remove a cancelled waiter so its continuation does not leak and the
@@ -347,7 +352,20 @@ struct ReconciliationLifecycleObservers {
 
     // Snapshot presence + owner generation
     var hasSnapshot: Bool { probe.hasRowActionDisplayOrderSnapshot }
-    var snapshotOwnerGeneration: Int? { probe.rowActionDisplayOrderSnapshotGeneration }
+    /// Generation token the current snapshot was opened under, if any. On the
+    /// current probe this is the same value as `snapshotGeneration` because
+    /// `HomeView` stores a single snapshot-generation token (the generation
+    /// captured when the snapshot was opened), which simultaneously serves as
+    /// the snapshot's owner-generation identity. The two accessors are kept
+    /// distinct so lifecycle assertions can phrase owner-vs-current
+    /// comparisons against a stable semantic name even if the underlying
+    /// storage later splits into separate owner/generation fields.
+    var snapshotOwnerGeneration: Int? {
+        // Delegates to the same probe token as `snapshotGeneration`; see the
+        // accessor's documentation above for why the values intentionally
+        // coincide today.
+        probe.rowActionDisplayOrderSnapshotGeneration
+    }
 
     // Safe-boundary awaiting state
     var safeBoundaryAwaitState: SafeBoundaryAwaitState { homeView.safeBoundaryAwaitState }
