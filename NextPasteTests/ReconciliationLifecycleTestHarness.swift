@@ -340,7 +340,6 @@ struct ReconciliationLifecycleObservers {
 
     // Generation / token
     var generation: Int { probe.reconciliationGeneration }
-    var snapshotGeneration: Int? { probe.rowActionDisplayOrderSnapshotGeneration }
 
     // Task identity (stable, read-only; does not expose the cancellable Task)
     var taskIdentity: ReconciliationTaskIdentity { homeView.reconciliationTaskIdentity }
@@ -350,22 +349,16 @@ struct ReconciliationLifecycleObservers {
     var taskIsFinished: Bool { probe.reconciliationTaskIsFinished }
     var priorTaskWasCancelled: Bool { probe.priorReconciliationTaskWasCancelled }
 
-    // Snapshot presence + owner generation
+    // Snapshot presence + generation token
     var hasSnapshot: Bool { probe.hasRowActionDisplayOrderSnapshot }
-    /// Generation token the current snapshot was opened under, if any. On the
-    /// current probe this is the same value as `snapshotGeneration` because
-    /// `HomeView` stores a single snapshot-generation token (the generation
-    /// captured when the snapshot was opened), which simultaneously serves as
-    /// the snapshot's owner-generation identity. The two accessors are kept
-    /// distinct so lifecycle assertions can phrase owner-vs-current
-    /// comparisons against a stable semantic name even if the underlying
-    /// storage later splits into separate owner/generation fields.
-    var snapshotOwnerGeneration: Int? {
-        // Delegates to the same probe token as `snapshotGeneration`; see the
-        // accessor's documentation above for why the values intentionally
-        // coincide today.
-        probe.rowActionDisplayOrderSnapshotGeneration
-    }
+    /// Generation token the current snapshot was opened under, if any (FR-010).
+    /// This is the single source of truth for both snapshot presence and
+    /// owner-generation identity; `HomeView` stores one snapshot-generation
+    /// token (the generation captured when the snapshot was opened). A separate
+    /// `snapshotOwnerGeneration` accessor was removed because it duplicated this
+    /// value; owner-vs-current comparisons should phrase against
+    /// `snapshotGeneration` plus `generation` instead.
+    var snapshotGeneration: Int? { probe.rowActionDisplayOrderSnapshotGeneration }
 
     // Safe-boundary awaiting state
     var safeBoundaryAwaitState: SafeBoundaryAwaitState { homeView.safeBoundaryAwaitState }
