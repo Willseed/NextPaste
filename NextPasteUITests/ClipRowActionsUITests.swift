@@ -1692,4 +1692,88 @@ final class ClipRowActionsUITests: UITestCase {
             app: app
         )
     }
+
+    /// T047 [US4, FR-016] UI test: while a Pin/Unpin action is in flight during
+    /// AppKit row-action teardown, the acted-on row is NOT relocated or recycled
+    /// by the underlying `@Query` history reorder during the teardown window.
+    /// The Feature 019/020 display-order snapshot (`rowActionDisplayOrderSnapshot`)
+    /// freezes the visible order so the AppKit teardown never observes a row
+    /// relocation/recycle mid-teardown. The observable contract:
+    ///   1. Before the Pin tap, capture the acted-on row's stable clip-row
+    ///      accessibility identifier.
+    ///   2. Immediately after the Pin tap (still inside the teardown window,
+    ///      before the safe-boundary reconciliation Task clears the snapshot),
+    ///      the SAME clip-row identifier still resolves to the acted-on row —
+    ///      the row was not recycled to a different clip identity — and the row
+    ///      has NOT relocated: the newer unpinned neighbor is still above it
+    ///      (the snapshot holds the stale position through teardown).
+    ///   3. After reconciliation (bounded retry, no synthesized input), the SAME
+    ///      identifier still resolves and the row has relocated above the
+    ///      neighbor — proving the relocation happens at the safe boundary, not
+    ///      during teardown. No `triggerDisplayOrderReconciliation`, no
+    ///      synthesized reconciliation input, no fixed-duration sleep.
+    @MainActor
+    func testT047ActedOnRowNotRelocatedOrRecycledDuringRowActionTeardownWindow() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let older = "T047 teardown pin older target"
+        let newer = "T047 teardown pin newer unpinned"
+        try history.createTextClip(older)
+        try history.createTextClip(newer)
+        history.assertClipRowIdentifierExists()
+
+        // Baseline newest-first: newer above older.
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+
+        // Capture the acted-on row's stable identifier BEFORE the Pin tap.
+        let preTapOlderIdentifier = assertTextRowIdentifier(for: older, in: app).identifier
+
+        // Pin older. The display-order snapshot is armed synchronously in the
+        // row-action callback, so the teardown window opens with the row frozen.
+        let pinButton = row.revealPinActionWithRightSwipe(for: older)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+
+        // Immediately after the tap — still inside the AppKit teardown window —
+        // the acted-on row is NOT recycled: the same pre-tap identifier still
+        // resolves to a row whose label contains the acted-on clip text.
+        let immediateOlderRow = app.descendants(matching: .any)[preTapOlderIdentifier]
+        XCTAssertTrue(
+            immediateOlderRow.waitForExistence(timeout: UITestAssertions.defaultTimeout),
+            "T047: acted-on row identifier was recycled/lost during teardown window"
+        )
+        UITestAssertions.assertAccessibleTextContains(immediateOlderRow, older)
+
+        // The acted-on row is NOT relocated during teardown: the newer unpinned
+        // neighbor is still above the now-pinned older row (stale position held
+        // by the snapshot through the teardown window). The pinned-state
+        // feedback is already visible (FR-016 teardown-safe pinned state).
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            immediateOlderRow,
+            "Pinned",
+            timeout: 2
+        )
+
+        // After the safe-boundary reconciliation (bounded retry, no further
+        // input), the SAME identifier still resolves — no recycle across the
+        // full cycle — and the row has now relocated above the newer neighbor.
+        BoundedRetryUITestHelper.assertOrder(
+            upperElement: app.staticTexts[older],
+            appearsAbove: app.staticTexts[newer],
+            timeout: 5,
+            context: "T047 acted-on row relocates above newer neighbor only after the safe boundary",
+            app: app
+        )
+        XCTAssertEqual(
+            assertTextRowIdentifier(for: older, in: app).identifier,
+            preTapOlderIdentifier,
+            "T047: acted-on row identifier changed across reconciliation (recycled)"
+        )
+
+        UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachRowActionWarningAssertionOutcome(["pin-\(older)", "teardown-freeze", "reconcile"], app: app)
+    }
 }
