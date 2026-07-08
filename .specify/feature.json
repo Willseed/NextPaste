@@ -1,1 +1,3 @@
-{"feature_directory":"specs/024-swipe-pin-validation-reliability"}
+{
+  "feature_directory": "specs/025-pin-relaunch-stability"
+}
