@@ -151,10 +151,21 @@ enum UITestAppLauncher {
     }
 
     static func makeOnDiskStore() throws -> OnDiskStore {
-        let rootURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+        // The on-disk store must live where the sandboxed app (pylot.NextPaste,
+        // ENABLE_APP_SANDBOX = YES) can read and write. A path inside the test
+        // runner's own container (NSTemporaryDirectory() here) is denied to the
+        // app by the sandbox, which forces ModelContainer load failure and an
+        // in-memory fallback — so captures never survive relaunch. The app's
+        // own container tmp is writable by the app; the UI test runner is not
+        // app-sandboxed, so it can create and tear down the directory here too.
+        // This mirrors makeTraceURL()'s app-container temp location.
+        let appContainerTemporaryDirectory = URL(fileURLWithPath: "/Users/\(NSUserName())", isDirectory: true)
+            .appendingPathComponent("Library/Containers/pylot.NextPaste/Data/tmp", isDirectory: true)
+            .standardizedFileURL
+        let rootURL = appContainerTemporaryDirectory
             .appendingPathComponent("NextPaste-025-ui-store-\(UUID().uuidString)", isDirectory: true)
             .standardizedFileURL
-        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        try? FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         return OnDiskStore(
             rootURL: rootURL,
             storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
