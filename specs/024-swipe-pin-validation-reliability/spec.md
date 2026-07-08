@@ -180,7 +180,9 @@ previously pinned anchor after the safe boundary.
 - **FR-001**: The native right-swipe Pin UI test (T032) MUST classify every failure into exactly
   one of five diagnosable categories: *Product Crash Regression*, *Native Swipe Synthesis Failure*,
   *Setup Failure*, *External Interruption / Focus Failure*, or *Environment-Blocked*, and emit a
-  human-readable result naming the category and the observable evidence that produced it.
+  human-readable result naming the category and the observable evidence that produced it. If the
+  evidence fits none of the five categories, the test MUST emit a fail-closed *Unclassified*
+  diagnostic that is not a passing result and is not treated as a sixth diagnosable category.
 
 - **FR-002**: Before issuing any native swipe gesture, the test MUST verify that every expected
   fixture row is present and hittable in the rendered list. If any expected fixture row is absent,
@@ -239,7 +241,9 @@ previously pinned anchor after the safe boundary.
 - **Failure Classification**: A categorized test result with exactly one category (*Product Crash
   Regression*, *Native Swipe Synthesis Failure*, *Setup Failure*, *External Interruption / Focus
   Failure*, or *Environment-Blocked*) and an attached evidence record describing the observable
-  signals that produced the classification.
+  signals that produced the classification. A fail-closed *Unclassified* diagnostic may be emitted
+  only when evidence fits none of those categories; it is not a passing result and not a sixth
+  diagnosable category.
 - **Fixture Row Verification Record**: A pre-swipe record of expected fixture row identifiers,
   rows found present, rows found absent, and hittability status, used to attribute setup failures
   before any swipe is attempted.
@@ -259,9 +263,11 @@ previously pinned anchor after the safe boundary.
   product crash regression, distinguishable from every other failure category, with the observed
   crash signal quoted in the result.
 
-- **SC-002**: When native swipe synthesis is limited by the test environment (swipeRight/swipeLeft
-  times out before the action button appears), the test result clearly attributes the failure to
-  environment-blocked native swipe synthesis, and does not report a product bug.
+- **SC-002**: When a GUI-capable environment issues native `swipeRight`/`swipeLeft` but the action
+  button does not appear within the bounded retry, the test result clearly attributes the failure
+  to *Native Swipe Synthesis Failure*. When the environment lacks GUI capability before a swipe is
+  attempted, the test result clearly attributes the outcome to *Environment-Blocked*. Neither case
+  reports a product bug.
 
 - **SC-003**: When a fixture row is not established or an external window interferes before the
   swipe, the test result clearly attributes the failure to setup or focus failure, and does not
