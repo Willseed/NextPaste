@@ -40,8 +40,9 @@ scaffold, T001 asserts behavior).
 
 Create `NextPasteUITests/NativeSwipeFailureClassifier.swift` defining:
 
-- `NativeSwipeFailureCategory` — exhaustive enum with the five categories plus an
-  `unclassified` case, each carrying its evidence record (FR-001).
+- `NativeSwipeFailureCategory` — exhaustive enum with the five diagnosable categories plus a
+  fail-closed `unclassified` diagnostic case (not a sixth diagnosable category), each carrying
+  its evidence record (FR-001).
 - Evidence record value types: `CrashSignalRecord`, `EnvironmentCapabilityRecord`,
   `FixtureRowVerificationRecord` (expected IDs, found present, found absent, hittable status,
   off-screen distinction), `WindowFocusState` (frontmost window ID, belongs to NextPaste?,
