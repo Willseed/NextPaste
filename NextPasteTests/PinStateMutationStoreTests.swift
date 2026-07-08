@@ -467,8 +467,103 @@ final class PinStateMutationStoreUS2Tests: XCTestCase {
         XCTAssertEqual(final.orderedItemIDs, projected.orderedItemIDs, "Store and SwiftData ordering must agree (seed=\(seed))")
     }
 
+    func testHundredRepetitionSingleItemPinUnpinIncludesImageClipVariant() throws {
+        let textTarget = clips[0]
+        let imageTarget = makeImageClip(index: 0, isPinned: false)
+        context.insert(imageTarget)
+        try context.save()
+
+        for target in [textTarget, imageTarget] {
+            let runner = PinStateMutationSerialRunner { [store] req in store.process(req) }
+            for iteration in 1...100 {
+                let desiredPinned = iteration.isMultiple(of: 2) == false
+                let result = runner.run(.init(itemID: target.id, desiredPinnedState: desiredPinned, source: .testHarness))
+                XCTAssertEqual(result, .applied(itemID: target.id, desiredPinnedState: desiredPinned))
+            }
+
+            let reloaded = try fetchClip(target.id)
+            XCTAssertFalse(reloaded.isPinned, "100 toggles must converge to the final unpin request.")
+            XCTAssertEqual(reloaded.id, target.id)
+            if target.contentType == "image" {
+                XCTAssertEqual(reloaded.contentType, "image")
+                XCTAssertEqual(reloaded.imageFilename, target.imageFilename)
+                XCTAssertEqual(reloaded.thumbnailFilename, target.thumbnailFilename)
+            }
+        }
+    }
+
+    func testTwentyItemInterleavedPinUnpinIncludesTextAndImageClips() throws {
+        let storeURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
+        defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: storeURL) }
+
+        let diskContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let diskContext = ModelContext(diskContainer)
+        var mixedClips: [ClipItem] = []
+        for index in 0..<10 {
+            let textClip = ClipItem(
+                id: PinStateMutationTestFixtures.deterministicID(seed: 0x2500, index: index),
+                textContent: "mixed text clip \(index)",
+                createdAt: Date(timeIntervalSince1970: 2_000 + Double(index))
+            )
+            let imageClip = makeImageClip(index: index, isPinned: false)
+            mixedClips.append(textClip)
+            mixedClips.append(imageClip)
+            diskContext.insert(textClip)
+            diskContext.insert(imageClip)
+        }
+        try diskContext.save()
+
+        let diskStore = PinStateMutationStore(modelContext: diskContext)
+        for (index, clip) in mixedClips.enumerated() {
+            let desiredPinned = index.isMultiple(of: 3)
+            _ = diskStore.process(.init(itemID: clip.id, desiredPinnedState: desiredPinned, source: .testHarness))
+        }
+        for (index, clip) in mixedClips.enumerated().reversed() {
+            let desiredPinned = index.isMultiple(of: 2)
+            _ = diskStore.process(.init(itemID: clip.id, desiredPinnedState: desiredPinned, source: .testHarness))
+        }
+
+        let reloadedContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let reloadedContext = ModelContext(reloadedContainer)
+        let reloaded = try SwiftDataTestSupport.fetchHistory(in: reloadedContext)
+        XCTAssertEqual(reloaded.count, 20)
+        XCTAssertEqual(Set(reloaded.map(\.id)).count, 20)
+
+        for (index, original) in mixedClips.enumerated() {
+            let clip = try XCTUnwrap(reloaded.first { $0.id == original.id })
+            XCTAssertEqual(clip.isPinned, index.isMultiple(of: 2))
+            XCTAssertEqual(clip.contentType, original.contentType)
+            if original.contentType == "image" {
+                XCTAssertEqual(clip.imageFilename, original.imageFilename)
+                XCTAssertEqual(clip.thumbnailFilename, original.thumbnailFilename)
+            }
+        }
+    }
+
     private func fetchClip(_ id: UUID) throws -> ClipItem {
         try XCTUnwrap(try SwiftDataTestSupport.fetchHistory(in: context).first { $0.id == id })
+    }
+
+    private func makeImageClip(index: Int, isPinned: Bool) -> ClipItem {
+        let id = PinStateMutationTestFixtures.deterministicID(seed: 0x2501, index: index)
+        return ClipItem.imageClip(
+            ImageClipInitialization(
+                id: id,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-mixed-image-\(index)",
+                    dimensions: .init(width: 20, height: 20),
+                    byteCount: 128,
+                    utType: "public.png",
+                    filename: "\(id.uuidString).png",
+                    thumbnail: .init(
+                        filename: "\(id.uuidString).thumb.png",
+                        description: "Mixed image clip \(index)"
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 3_000 + Double(index)),
+                isPinned: isPinned
+            )
+        )
     }
 }
 

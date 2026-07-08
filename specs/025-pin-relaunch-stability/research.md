@@ -35,7 +35,7 @@
 | FR-008 | Auto Capture can continuously add multiple items | `ClipboardMonitor` polls, `ClipboardCaptureService` captures | Covered by `ClipboardAutoCaptureUITests`. |
 | FR-009 | Auto Capture data uses same persistence/relaunch rules as manual data | Same `ClipboardCaptureService` → `ClipItem` → SwiftData | **GAP**: No relaunch test for Auto Capture data. |
 | FR-010 | Avoid duplicating existing Auto Capture data on relaunch | Dedup at capture time; changeCount resets per process (no re-capture on relaunch) | Covered by design; no explicit relaunch dedup test. |
-| FR-011 | Single unrestorable item must not crash app; omit from list, keep others, log diagnostic | `fatalError` on container failure; no per-item recovery; no load-failure diagnostics | **MAJOR GAP**: Requires product code change. |
+| FR-011 | Distinguish item-level content unrestorable from container-level store unopenable; omit one item + keep others + `image-file-missing` diagnostic; container-level launches clean store + `store-load-failed` diagnostic | `fatalError` on container failure; no per-item recovery; no load-failure diagnostics | **MAJOR GAP**: Requires product code change (T012 container-level, T014 item-level). |
 | FR-012 | During data loading, prevent incomplete pin/unpin from corrupting persistence | MainActor serialization; `ensurePinStore` lazy creation; no explicit load-complete guard | **GAP**: No explicit guard against acting before load completes. |
 | FR-013 | Displayed pin state matches saved data state | `PinStateSnapshotProjector` projects from authoritative state; `visibleClips` uses store snapshot | Covered. |
 | FR-014 | Support multi-round Auto Capture + add + pin/unpin + close + relaunch | No multi-round relaunch test exists | **GAP**: Test coverage. |
@@ -66,11 +66,12 @@
 | SC-004 | Interleaved pin/unpin on ≥20 items, 100% state accuracy | **GAP**: No 20-item interleaved test. |
 | SC-005 | Relaunch data integrity: no unexpected loss or duplication | **GAP**: No relaunch integrity test. |
 | SC-006 | Immediate close + relaunch after operation: complete consistent state | **GAP**: No such test. |
-| SC-007 | Single corrupt item doesn't crash app; others accessible | **GAP**: Requires FR-011. |
+| SC-007 | Item-level image-file-missing doesn't crash app; others accessible (item-level); container-level launches clean store without crash | **GAP**: Requires FR-011 (both surfaces). |
 | SC-008 | All new test scenarios independently executable, repeatable, comparable | **GAP**: Test infrastructure for relaunch. |
 | SC-009 | 500 items, successful close + relaunch, 0 crashes, 100% accuracy | **GAP**: No 500-item test. |
-| SC-010 | Single corrupt item: app starts, others accessible, corrupt hidden, diagnostic observable | **GAP**: Requires FR-011/RR-005. |
+| SC-010 | Item-level `image-file-missing`: app starts, others accessible, item hidden, content-free `image-file-missing` diagnostic observable | **GAP**: Requires FR-011 item-level/RR-005. |
 | SC-011 | 500 items, launch to list loaded ≤3 seconds, 0 crashes | **GAP**: No launch performance test. |
+| SC-012 | Container-level `store-load-failed`: app launches clean store, 0 crashes, content-free `store-load-failed` diagnostic | **GAP**: Requires FR-011 container-level/RR-005. |
 
 ## Root-Cause Hypothesis (Constitution Principle XII)
 
@@ -85,11 +86,11 @@
 **Investigation strategy**:
 - Introduce an on-disk UI-test store mode (new launch argument) so relaunch UI tests exercise true SwiftData persistence.
 - Reproduce the crash path: seed ≥500 mixed items (text/image/pinned/unpinned), terminate, relaunch, then repeat pin/unpin 100× on one item and interleave across 20 items.
-- Separately, inject a single unrestorable item (corrupt the on-disk store or remove a required image file) and verify the app starts without crashing and logs a content-free diagnostic.
+- Separately, inject item-level corruption (a `ClipItem` row whose referenced image file has been deleted) and verify the app starts without crashing, that item is omitted while others remain accessible, and a content-free `image-file-missing` diagnostic is observable. Container-level corruption (a store that cannot be opened) is verified separately: the app must launch with a clean store and emit a content-free `store-load-failed` diagnostic. The two surfaces are not mixed in one test.
 
 **Confirmation criteria**:
 - The app starts and remains in `.runningForeground` after relaunch with 500 persisted items (SC-009).
-- A single corrupt item is omitted from the list while other items remain accessible and a diagnostic event is observable (SC-010).
+- A single item whose referenced image file is missing is omitted from the list while other items remain accessible and a content-free `image-file-missing` diagnostic event is observable (SC-010). Separately, a store that cannot be opened launches with a clean store, 0 crashes, and a content-free `store-load-failed` diagnostic (SC-012).
 - 100 consecutive pin/unpin on one item and 20-item interleaved pin/unpin after relaunch produce 0 crashes and 100% state accuracy (SC-003, SC-004).
 - Launch-to-list-loaded with 500 items completes within 3 seconds (SC-011).
 
@@ -101,16 +102,18 @@
 - **Rationale**: The current `isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")` (NextPasteApp.swift:29) is the single blocker preventing relaunch persistence UI tests. The on-disk container pattern is already proven in unit tests (`ClipHistoryTests.pinStateAndUnpinToTopOrderingSurviveReloadFromLocalStore`).
 - **Alternatives considered**: (a) Unit-test-only restart verification — rejected because the spec (FR-018, SC-001, SC-006) requires relaunch flow coverage including terminate + relaunch + UI interaction. (b) External process that writes to the real app container — rejected as fragile and outside existing test infrastructure.
 
-### NC-2: How is "single unrestorable item" (FR-011) realized in the current persistence model?
+### NC-2: How are the two FR-011 failure surfaces realized in the current persistence model?
 
-- **Decision**: Two realistic corruption surfaces exist in the current code: (1) the SwiftData store file itself fails to open (handled today by `fatalError`), and (2) an image clip's referenced image/thumbnail file is missing on disk (already handled gracefully by `ImageClipboardRow` returning nil). The primary hardening target is surface (1): replace `fatalError` in `makeModelContainer` with a recovery path that logs a content-free diagnostic (RR-005) and starts the app with an empty or recovered store so other data — if any — remains accessible. Surface (2) should additionally emit a diagnostic when an image file is missing at load time.
-- **Rationale**: SwiftData's `ModelContainer(for:configurations:)` is the all-or-nothing boundary. Per-item row corruption inside a valid store is not directly exposed by the SwiftData API; the observable failure is container creation failure. The spec's "單筆無法還原的資料" is best mapped to the container-load failure + missing-image-file surfaces that the current code actually has.
-- **Alternatives considered**: (a) Per-row try/catch during `@Query` fetch — not supported by SwiftData; `@Query` is declarative. (b) Migrating to a custom SQLite layer — rejected; violates Constitution Technical Constraints (SwiftData is the mandated local persistence).
+- **Decision**: FR-011 covers **two distinct failure surfaces** that must not be conflated:
+  1. **Container-level (`PersistentStoreUnavailable`)** — the SwiftData `ModelContainer` cannot be created/opened. SwiftData container load failure does **not** provide reliable per-row recovery, so container-level failure adopts a **clean store fallback**: start a fresh usable store so the app remains launchable. This must **not** be claimed to preserve other data from the original store — the original store is unavailable by definition.
+  2. **Item-level (`ItemContentUnavailable`)** — a single item's external content (image/thumbnail file) cannot be restored even though persistence metadata is still readable. This is **not** a container load failure; it is handled by `ImageClipFileStore` on the item restoration/read path, omitting that one item while keeping other valid items.
+- **Rationale**: `image-file-missing` (item-level) and `store-load-failed` (container-level) are different failure surfaces and must **not** be mixed in the same test or the same acceptance criterion. SwiftData's `ModelContainer(for:configurations:)` is the all-or-nothing boundary; per-row try/catch during `@Query` fetch is not supported (`@Query` is declarative). The observable container failure is creation failure, which is why the container-level path uses a clean store fallback rather than per-row omission.
+- **Alternatives considered**: (a) Per-row try/catch during `@Query` fetch — not supported by SwiftData; `@Query` is declarative. (b) Migrating to a custom SQLite layer — rejected; violates Constitution Technical Constraints (SwiftData is the mandated local persistence). (c) Claiming container-level fallback preserves other original-store items — rejected; the original store is unavailable, so this is not achievable and must not be asserted.
 
 ### NC-3: How is the 3-second launch budget (FR-020/SC-011) measured?
 
-- **Decision**: Measure from `XCUIApplication.launch()` to the main-window ready signal (`new-clip-button` accessibility identifier, already used by `UITestAppLauncher.prepareMainWindow`) with 500 seeded items in the on-disk store. Use `CFAbsoluteTimeGetCurrent()` before launch and after the ready signal appears. This reuses the existing `prepareMainWindow` readiness check rather than inventing a new signal.
-- **Rationale**: `prepareMainWindow` already waits for `mainWindowReadyIdentifier` ("new-clip-button"), which indicates the history list is loaded. Measuring the elapsed wall time around this existing gate directly validates "啟動後 3 秒內完成重開及全部可還原資料的載入".
+- **Decision**: Measure from app process launch begin to (a) the main-window ready signal (`new-clip-button` accessibility identifier, already used by `UITestAppLauncher.prepareMainWindow`) **and** (b) all 500 restorable items finished loading into the list, with 500 seeded items (400 text + 100 image, pinned + unpinned) in the on-disk store. Use `CFAbsoluteTimeGetCurrent()` before launch and after both conditions are satisfied. Dataset generation time is excluded from the timing. This reuses the existing `prepareMainWindow` readiness check rather than inventing a new signal, but the completion point also requires the 500-item list load to be complete, not merely the readiness signal appearing with a partial list.
+- **Rationale**: `prepareMainWindow` already waits for `mainWindowReadyIdentifier` ("new-clip-button"), which indicates the history list is loaded. Measuring the elapsed wall time around this existing gate directly validates "啟動後 3 秒內完成重開及全部可還原資料的載入". The completion point explicitly requires the 500 restorable items to be loaded, matching the spec wording.
 - **Alternatives considered**: `XCTMetric`/`XCTOSSignpostMetric` — heavier and not used elsewhere in the repo; the spec asks for a wall-clock budget, not a statistical benchmark.
 
 ### NC-4: Which testing framework do new tests use?
@@ -129,7 +132,7 @@
 
 | Mismatch | Spec (target) | Code (current) | Resolution |
 |----------|--------------|----------------|------------|
-| Container failure handling | FR-011: single unrestorable item must not crash app | `NextPasteApp.makeModelContainer`: `fatalError` on any container creation failure | Plan hardening task: replace `fatalError` with recovery + diagnostic. Spec is the target behavior. |
+| Container failure handling | FR-011: distinguish item-level content unrestorable from container-level store unopenable; item-level omits one item + keeps others; container-level launches a clean store | `NextPasteApp.makeModelContainer`: `fatalError` on any container creation failure | Plan hardening tasks: T012 replaces `fatalError` with clean-store fallback + `store-load-failed` diagnostic (container-level); T014 emits `image-file-missing` + omits the item at the image load path (item-level). Spec is the target behavior. |
 | Load-failure diagnostics | RR-005: unrestorable data leaves identifiable diagnostic, no sensitive content | No load-failure diagnostic mechanism exists | Plan task: add content-free load-failure diagnostic sink. |
 | UI-test persistence | FR-018/SC-001: relaunch flow with data | `-ui-testing` forces in-memory store; no UI relaunch persistence | Plan task: on-disk UI-test store mode. |
 | Stress scale | SC-003: 100 reps; SC-004: 20 items | `RowActionStressTests`: 20–50 reps | Plan task: extend stress counts + relaunch stress. |
@@ -137,3 +140,13 @@
 | Launch budget | FR-020/SC-011: ≤3s with 500 items | No launch timing measurement | Plan task: launch performance test. |
 
 No mismatches were found that contradict the spec. All gaps are **implementation pending** (missing code/tests), not spec-code conflicts.
+
+## Feasibility Note: 3-Second Relaunch Budget (FR-020/SC-011)
+
+This is a planning-stage feasibility observation only. It records the current baseline understanding and possible bottlenecks. **The 3-second spec threshold must not be modified at the plan stage.**
+
+- **Measurement boundary**: timing starts at app process launch begin and completes when the main window is ready **and** all 500 restorable items have finished loading into the list (not merely the readiness signal appearing with an incomplete list).
+- **Standard dataset**: 400 text clips + 100 image clips, with both pinned and unpinned items present; image clips use representative test assets and their actual byte size is recorded (no undefined "small images"). Dataset generation time must not be counted into the relaunch timing.
+- **Current baseline**: no launch performance measurement exists today, so a baseline must be captured first (T011 step 3) before asserting the `<= 3 seconds` gate.
+- **Possible bottlenecks**: `@Query` fetch + `ImageClipFileStore` thumbnail reads for 100 image clips; `PinStateSnapshotProjector` projection over 500 items; on-disk SwiftData store open cost. These are hypotheses to confirm via the baseline measurement, not reasons to relax the spec.
+- **Gate discipline**: if the current implementation exceeds 3 seconds, the test must fail and the implementation must be improved; the spec threshold must not be widened at the plan stage.

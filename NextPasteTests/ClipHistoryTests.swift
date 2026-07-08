@@ -598,4 +598,74 @@ struct ClipHistoryTests {
         #expect(snapshot.orderedItemIDs == [reloadedOlder.id, reloadedNewer.id])
     }
 
+    @MainActor
+    @Test("text and image clip content identity and pin state survive reload from local SwiftData store")
+    func textAndImageClipContentIdentityAndPinStateSurviveReloadFromLocalStore() throws {
+        let storeURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
+        defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: storeURL) }
+
+        let fileManager = FileManager.default
+        let imageRoot = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "text-image-relaunch-reload",
+            fileManager: fileManager
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(imageRoot, fileManager: fileManager) }
+
+        let container = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let context = ModelContext(container)
+        let imageStore = ImageClipFileStore(rootURL: imageRoot.rootURL, fileManager: fileManager)
+        let imageID = try #require(UUID(uuidString: "25000000-0000-0000-0000-000000000005"))
+        let fixture = ImageTestFixtures.png
+        let asset = try imageStore.persistImageAsset(
+            clipID: imageID,
+            sourceExtension: fixture.fileExtension,
+            fullImageData: fixture.data,
+            thumbnailData: ImageTestFixtures.screenshotStyle.data
+        )
+        let textClip = ClipItem(
+            id: try #require(UUID(uuidString: "25000000-0000-0000-0000-000000000006")),
+            textContent: "Relaunch reload text payload",
+            createdAt: Date(timeIntervalSince1970: 1_000),
+            isPinned: false
+        )
+        let imageClip = ClipItem.imageClip(
+            ImageClipInitialization(
+                id: imageID,
+                metadata: ImageClipInitialization.Metadata(
+                    hash: "sha256-relaunch-reload-image",
+                    dimensions: .init(width: fixture.width, height: fixture.height),
+                    byteCount: fixture.byteCount,
+                    utType: fixture.typeIdentifier,
+                    filename: asset.imageFilename,
+                    thumbnail: .init(
+                        filename: asset.thumbnailFilename,
+                        description: fixture.thumbnailDescription
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 1_100),
+                isPinned: true
+            )
+        )
+
+        context.insert(textClip)
+        context.insert(imageClip)
+        try context.save()
+
+        let reloadedContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let reloadedContext = ModelContext(reloadedContainer)
+        let reloadedClips = try SwiftDataTestSupport.fetchHistory(in: reloadedContext)
+
+        #expect(reloadedClips.count == 2)
+        let reloadedText = try #require(reloadedClips.first { $0.id == textClip.id })
+        let reloadedImage = try #require(reloadedClips.first { $0.id == imageClip.id })
+        #expect(reloadedText.textContent == "Relaunch reload text payload")
+        #expect(reloadedText.isPinned == false)
+        #expect(reloadedImage.contentType == "image")
+        #expect(reloadedImage.isPinned == true)
+        #expect(reloadedImage.imageFilename == asset.imageFilename)
+        #expect(reloadedImage.thumbnailFilename == asset.thumbnailFilename)
+        #expect(reloadedImage.thumbnailDescription == fixture.thumbnailDescription)
+        #expect(try SwiftDataTestSupport.imageFileExists(for: SwiftDataTestSupport.imageMetadata(for: reloadedImage), in: imageRoot))
+    }
+
 }

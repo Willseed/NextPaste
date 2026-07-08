@@ -18,9 +18,10 @@ class UITestCase: XCTestCase {
     @discardableResult
     func launchApp(
         extraArguments: [String] = [],
+        onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
-        let app = UITestAppLauncher.makeApp(windowSizePreset: windowSizePreset)
+        let app = UITestAppLauncher.makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
         app.launchArguments.append(contentsOf: extraArguments)
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
@@ -34,10 +35,12 @@ class UITestCase: XCTestCase {
     @discardableResult
     func launchCaptureApp(
         pollInterval: TimeInterval = 0.1,
+        onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
         let app = UITestAppLauncher.launchAutoCaptureApp(
             pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
             windowSizePreset: windowSizePreset
         )
         addTeardownBlock {
@@ -50,10 +53,12 @@ class UITestCase: XCTestCase {
     @discardableResult
     func launchOfflineCaptureApp(
         pollInterval: TimeInterval = 0.1,
+        onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
         let app = UITestAppLauncher.makeOfflineAutoCaptureApp(
             pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
             windowSizePreset: windowSizePreset
         )
         app.launch()
@@ -68,6 +73,15 @@ class UITestCase: XCTestCase {
     @discardableResult
     func launchClipboardFailureApp() -> XCUIApplication {
         launchApp(extraArguments: ["-simulate-clipboard-failure"])
+    }
+
+    @MainActor
+    func makeOnDiskStore() throws -> UITestAppLauncher.OnDiskStore {
+        let store = try UITestAppLauncher.makeOnDiskStore()
+        addTeardownBlock {
+            store.remove()
+        }
+        return store
     }
 
     @MainActor

@@ -30,6 +30,12 @@ enum ImageClipFileStoreError: Error, Equatable {
     case pathEscapesRoot(String)
 }
 
+enum ImageClipRestorationState: Equatable {
+    case restorable
+    case missingImageFile
+    case missingThumbnailFile
+}
+
 struct ImageClipFileStore {
     private let rootURL: URL
     private let fileManager: FileManager
@@ -123,7 +129,31 @@ struct ImageClipFileStore {
         try Data(contentsOf: imageURL(for: filename))
     }
 
+    func restorationState(
+        imageFilename: String?,
+        thumbnailFilename: String?
+    ) -> ImageClipRestorationState {
+        guard let imageFilename,
+              (try? fileExists(for: imageFilename, in: imagesDirectory)) == true else {
+            return .missingImageFile
+        }
+
+        if let thumbnailFilename,
+           (try? fileExists(for: thumbnailFilename, in: thumbnailsDirectory)) != true {
+            return .missingThumbnailFile
+        }
+
+        return .restorable
+    }
+
     private static func defaultRootURL(fileManager: FileManager) -> URL {
+        if let testStoreURL = NextPasteApp.uiTestOnDiskStoreURL(arguments: ProcessInfo.processInfo.arguments) {
+            return testStoreURL
+                .deletingLastPathComponent()
+                .appendingPathComponent("ImageStore", isDirectory: true)
+                .standardizedFileURL
+        }
+
         let applicationSupport = fileManager
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
@@ -183,6 +213,11 @@ struct ImageClipFileStore {
         let directoryPath = directory.standardizedFileURL.path
         let urlPath = url.standardizedFileURL.path
         return urlPath == directoryPath || urlPath.hasPrefix(directoryPath + "/")
+    }
+
+    private func fileExists(for filename: String, in directory: URL) throws -> Bool {
+        let url = try resolveRelativeFilename(filename, in: directory)
+        return fileManager.fileExists(atPath: url.path)
     }
 
     private func removeFileIfPresent(at url: URL) throws {

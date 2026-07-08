@@ -19,6 +19,7 @@ final class RowActionStressTests: UITestCase {
     /// criteria require at least 50 rapid iterations on the same clip and at
     /// least 50 rapid interleaved iterations across different clips.
     static let feature023StressRepeatCount = 50
+    static let feature025StressRepeatCount = 100
 
     // MARK: - Scenario A stress: 3 pinned -> native swipe Unpin one pinned clip (x20)
 
@@ -586,7 +587,126 @@ final class RowActionStressTests: UITestCase {
         )
     }
 
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchIncludesImageVariant() throws {
+        let store = try makeOnDiskStore()
+        var app = launchFeature025SeededRelaunchApp(store: store)
+        closeApp(app)
+
+        let trace = UITestAppLauncher.makeTraceApp(onDiskStore: store, windowSizePreset: .tall)
+        app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+        addTeardownBlock { self.closeApp(app) }
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let textTarget = "Relaunch dataset text 399"
+        let imageTarget = "Relaunch dataset image 099"
+        var outcomes: [String] = []
+
+        history.enterSearchQuery(textTarget)
+        for iteration in 1...Self.feature025StressRepeatCount {
+            let expectedLabel = iteration.isMultiple(of: 2) ? "Unpin" : "Pin"
+            row.revealPinActionWithRightSwipe(for: textTarget, expectedLabel: expectedLabel).tap()
+            XCTAssertEqual(app.state, .runningForeground)
+            outcomes.append("text-\(expectedLabel)-\(iteration): \(app.state)")
+        }
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: textTarget, in: app),
+            "Unpinned",
+            timeout: 5
+        )
+
+        history.clearSearch().enterSearchQuery(imageTarget)
+        for iteration in 1...Self.feature025StressRepeatCount {
+            let expectedLabel = iteration.isMultiple(of: 2) ? "Unpin" : "Pin"
+            row.revealImagePinActionWithRightSwipe(
+                forThumbnailDescription: imageTarget,
+                expectedLabel: expectedLabel
+            ).tap()
+            XCTAssertEqual(app.state, .runningForeground)
+            outcomes.append("image-\(expectedLabel)-\(iteration): \(app.state)")
+        }
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            row.imageRowElement(withThumbnailDescription: imageTarget),
+            "Unpinned",
+            timeout: 5
+        )
+
+        attachStressOutcome(scenario: "Feature025-100", actionOutcomes: outcomes, app: app, traceURL: trace.traceURL)
+    }
+
+    @MainActor
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImages() throws {
+        let store = try makeOnDiskStore()
+        var app = launchFeature025SeededRelaunchApp(store: store)
+        closeApp(app)
+
+        let trace = UITestAppLauncher.makeTraceApp(onDiskStore: store, windowSizePreset: .tall)
+        app = trace.app
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+        addTeardownBlock { self.closeApp(app) }
+
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let textTargets = [381, 382, 383, 385, 386, 387, 389, 390, 391, 393]
+            .map { String(format: "Relaunch dataset text %03d", $0) }
+        let imageTargets = [91, 92, 93, 94, 96, 97, 98, 99, 86, 87]
+            .map { String(format: "Relaunch dataset image %03d", $0) }
+        var outcomes: [String] = []
+
+        for pair in zip(textTargets, imageTargets) {
+            history.clearSearch().enterSearchQuery(pair.0)
+            row.revealPinActionWithRightSwipe(for: pair.0, expectedLabel: "Pin").tap()
+            XCTAssertEqual(app.state, .runningForeground)
+            outcomes.append("pin-text-\(pair.0): \(app.state)")
+
+            history.clearSearch().enterSearchQuery(pair.1)
+            row.revealImagePinActionWithRightSwipe(forThumbnailDescription: pair.1, expectedLabel: "Pin").tap()
+            XCTAssertEqual(app.state, .runningForeground)
+            outcomes.append("pin-image-\(pair.1): \(app.state)")
+        }
+
+        for text in textTargets {
+            history.clearSearch().enterSearchQuery(text)
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: text, in: app),
+                "Pinned",
+                timeout: 5
+            )
+        }
+        for image in imageTargets {
+            history.clearSearch().enterSearchQuery(image)
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                row.imageRowElement(withThumbnailDescription: image),
+                "Pinned",
+                timeout: 5
+            )
+        }
+
+        attachStressOutcome(scenario: "Feature025-20", actionOutcomes: outcomes, app: app, traceURL: trace.traceURL)
+    }
+
     // MARK: - Helpers
+
+    @MainActor
+    private func launchFeature025SeededRelaunchApp(store: UITestAppLauncher.OnDiskStore) -> XCUIApplication {
+        let app = launchApp(
+            extraArguments: [UITestAppLauncher.relaunchDatasetSeedArgument],
+            onDiskStore: store,
+            windowSizePreset: .tall
+        )
+        historyRobot(for: app).assertVisibleDatasetCounts(
+            total: 500,
+            text: 400,
+            image: 100,
+            pinned: 120,
+            timeout: 10
+        )
+        return app
+    }
 
     @MainActor
     private func assertTextRowIdentifier(

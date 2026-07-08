@@ -233,6 +233,7 @@ struct HomeView: View {
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
+    @State private var hasCompletedInitialLoad = false
     @State private var isPresentingNewClip = false
     @State private var searchText = ""
     // T002: single search presentation authority. `isSearchPresented` drives the
@@ -478,6 +479,9 @@ struct HomeView: View {
             traceVisibleClipSnapshot(reason: "visible-clips.changed")
         }
 #endif
+        .task {
+            hasCompletedInitialLoad = true
+        }
 #if os(macOS)
         .task {
             await applyLaunchWindowSizeIfNeeded()
@@ -546,7 +550,7 @@ struct HomeView: View {
             // are retained by the snapshot itself.
             let clipsByID = Dictionary(uniqueKeysWithValues: clips.map { ($0.id, $0) })
             let ordered = snapshotIDs.compactMap { clipsByID[$0] }
-            return ClipItem.filteredHistory(ordered, matching: searchText)
+            return restorableVisibleClips(ClipItem.filteredHistory(ordered, matching: searchText))
         }
         #endif
         // Feature 021 (T037): consume the store-generated visible ID snapshot so the
@@ -558,9 +562,38 @@ struct HomeView: View {
         if let pinStore {
             let snapshot = pinStore.projectVisible(clips: clips, searchQuery: searchText)
             let clipsByID = Dictionary(uniqueKeysWithValues: clips.map { ($0.id, $0) })
-            return snapshot.orderedItemIDs.compactMap { clipsByID[$0] }
+            return restorableVisibleClips(snapshot.orderedItemIDs.compactMap { clipsByID[$0] })
         }
-        return ClipItem.filteredHistory(clips, matching: searchText)
+        return restorableVisibleClips(ClipItem.filteredHistory(clips, matching: searchText))
+    }
+
+    private func restorableVisibleClips(_ candidateClips: [ClipItem]) -> [ClipItem] {
+        let imageFileStore = ImageClipFileStore()
+        return candidateClips.filter { clip in
+            guard clip.contentType == "image" else {
+                return true
+            }
+
+            let state = imageFileStore.restorationState(
+                imageFilename: clip.imageFilename,
+                thumbnailFilename: clip.thumbnailFilename
+            )
+            guard state == .restorable else {
+                emitImageFileMissingDiagnostic(for: clip)
+                return false
+            }
+            return true
+        }
+    }
+
+    private func emitImageFileMissingDiagnostic(for clip: ClipItem) {
+        let diagnostics: PersistenceLoadDiagnostics
+#if DEBUG
+        diagnostics = PersistenceLoadDiagnostics(sink: RowActionTraceBridgePersistenceDiagnosticsSink())
+#else
+        diagnostics = PersistenceLoadDiagnostics()
+#endif
+        diagnostics.imageFileMissing(itemID: clip.id)
     }
 
     private var fixedHeaderBottom: CGFloat {
@@ -929,6 +962,10 @@ struct HomeView: View {
     }
 
     func scheduleTogglePin(_ clip: ClipItem) {
+        guard Self.canProcessPinMutation(hasCompletedInitialLoad: hasCompletedInitialLoad) else {
+            return
+        }
+
         let targetPinnedState = !clip.isPinned
 #if DEBUG
         let action = tracePinActionName(targetPinnedState: targetPinnedState)
@@ -962,6 +999,10 @@ struct HomeView: View {
 #else
         ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
 #endif
+    }
+
+    static func canProcessPinMutation(hasCompletedInitialLoad: Bool) -> Bool {
+        hasCompletedInitialLoad
     }
 
     /// Lazily creates the ID-first Pin/Unpin mutation store, bridging content-free
@@ -1685,6 +1726,15 @@ struct HomeView: View {
             accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
             accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
             accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
+#if os(macOS)
+            if isUITesting {
+                accessibilityMarker(identifier: "history-visible-count", value: "\(visibleClips.count)", label: "Visible clip count")
+                accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
+                accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
+                accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
+                accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
+            }
+#endif
             // T004: announce the search result count for VoiceOver when a search is
             // active so the no-results / result-count state is readable.
             if searchText.isEmpty == false {
@@ -1698,6 +1748,18 @@ struct HomeView: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    private var visibleTextClipCount: Int {
+        visibleClips.filter { $0.contentType == "text" }.count
+    }
+
+    private var visibleImageClipCount: Int {
+        visibleClips.filter { $0.contentType == "image" }.count
+    }
+
+    private var visiblePinnedClipCount: Int {
+        visibleClips.filter(\.isPinned).count
     }
 
     @ViewBuilder

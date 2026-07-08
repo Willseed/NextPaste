@@ -9,27 +9,27 @@
 
 | Layer | What is Validated | Framework | Target |
 |-------|-------------------|-----------|--------|
-| Unit | Load-failure recovery logic, load-complete guard, content-free diagnostic records, on-disk restart-equivalent pin state/ordering, 100-rep single-item mutation, 20-item interleaved mutation, determinism | Swift `Testing` (`@Test`/`#expect`); XCTest for `PinStateMutationStore` direct tests | `NextPasteTests` |
-| UI | Relaunch with persisted data, Auto Capture + relaunch, 500-item dataset load, 3-second launch budget, single-corrupt-item recovery, 10-round relaunch cycles, 100-rep native pin/unpin, 20-item interleaved native pin/unpin | XCTest | `NextPasteUITests` |
+| Unit | Container-level load-failure clean-store recovery, load-complete guard, content-free diagnostic records (`store-load-failed`, `image-file-missing`), on-disk restart-equivalent pin state/ordering, 100-rep single-item mutation (incl. image clip), 20-item interleaved mutation (text + image), determinism | Swift `Testing` (`@Test`/`#expect`); XCTest for `PinStateMutationStore` direct tests | `NextPasteTests` |
+| UI | Relaunch with persisted data, Auto Capture + relaunch, 500-item dataset load, 3-second launch budget, item-level `image-file-missing` recovery, 10-round relaunch cycles (per-round comparison), 100-rep native pin/unpin (incl. image clip), 20-item interleaved native pin/unpin (text + image) | XCTest | `NextPasteUITests` |
 | Build | Project compiles for macOS; no new diagnostics | `xcodebuild` | `NextPaste` scheme |
 
 ## Automated Validation Matrix
 
 | Test | FR/SC Covered | Scope | Command (see quickstart.md) |
 |------|---------------|-------|------------------------------|
-| Load-failure recovery unit test | FR-011, RR-005, SC-007, SC-010 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
-| Load-complete guard unit test | FR-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
-| Content-free diagnostic unit test | RR-005 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| Container load-failure recovery unit test (T006) | FR-011 (container-level), SC-007 (container-level), SC-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| `store-load-failed` diagnostic content-free unit test (T007) | RR-005, SC-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| Load-complete guard unit test (T017) | FR-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
 | On-disk restart pin state/ordering | FR-002, FR-003, FR-007, RR-004 | Unit (Targeted) | `-only-testing:NextPasteTests/ClipHistoryTests` |
-| 100-rep single-item mutation | FR-004, FR-005, SC-003 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
-| 20-item interleaved mutation | FR-006, SC-004 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
+| 100-rep single-item mutation (incl. image-clip variant) (T015) | FR-004, FR-005, SC-003 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
+| 20-item interleaved mutation (text + image clips) (T016) | FR-006, SC-004 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
 | Relaunch + pin/unpin UI test | FR-001, FR-002, FR-003, FR-007, FR-018, SC-005, SC-006, SC-008 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
 | Auto Capture + relaunch UI test | FR-008, FR-009, FR-010, FR-014, SC-001, SC-002 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
 | 500-item relaunch UI test | FR-019, SC-009 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
-| 3-second launch budget UI test | FR-020, SC-011 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
-| Single-corrupt-item recovery UI test | FR-011, RR-005, SC-007, SC-010 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
-| 100-rep native pin/unpin stress | FR-004, FR-016, SC-003 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
-| 20-item interleaved native stress | FR-006, FR-016, SC-004 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
+| 3-second launch budget UI test (T011) | FR-020, SC-011 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| Item-level `image-file-missing` recovery UI test (T010) | FR-011 (item-level), RR-003, RR-005, SC-007 (item-level), SC-010 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| 100-rep native pin/unpin stress (incl. image-clip variant) (T018) | FR-004, FR-016, SC-003 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
+| 20-item interleaved native stress (text + image clips) (T019) | FR-006, FR-016, SC-004 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
 
 ## Manual Validation Matrix
 
@@ -63,7 +63,7 @@ No new UI surfaces are introduced (spec assumption: "不新增新的使用者操
 
 | Platform | Scope | Justification |
 |----------|-------|---------------|
-| macOS | Relaunch stress, row-action freeze/reconciliation, 500-item load, launch budget, corrupt-item recovery | The observed crash is macOS-specific (AppKit row-action teardown + on-disk relaunch). `closeApp`/`launchApp` and `rowActionDisplayOrderSnapshot` are macOS-only. |
+| macOS | Relaunch stress, row-action freeze/reconciliation, 500-item load, launch budget, item-level `image-file-missing` recovery (UI), container-level `store-load-failed` recovery (unit) | The observed crash is macOS-specific (AppKit row-action teardown + on-disk relaunch). `closeApp`/`launchApp` and `rowActionDisplayOrderSnapshot` are macOS-only. |
 | iOS / visionOS | Shared business logic (model, store, projector, capture, retention) validated via unit tests | Pin/unpin mutation, dedup, and retention are cross-platform. The relaunch/stress UI tests are macOS-specific because the crash surface and terminate/relaunch UI infrastructure are macOS-only. |
 
 Shared behavior is validated once at the unit layer; divergent platform behavior is validated where needed (Constitution Principle X).
@@ -72,9 +72,9 @@ Shared behavior is validated once at the unit layer; divergent platform behavior
 
 | Budget | Operation | Validation Method | FR/SC |
 |--------|-----------|-------------------|-------|
-| ≤ 3 seconds | Relaunch + load all restorable data with 500 mixed items | Wall-clock from `XCUIApplication.launch()` to `new-clip-button` readiness signal; assert elapsed ≤ 3.0s | FR-020, SC-011 |
+| ≤ 3 seconds | Relaunch + load all restorable data with the standard 500-item dataset | Wall-clock from app process launch begin to main window ready **and** all 500 restorable items loaded into the list; assert elapsed ≤ 3.0s. Dataset generation time excluded. | FR-020, SC-011 |
 
-The measurement reuses the existing `UITestAppLauncher.prepareMainWindow` readiness gate (`mainWindowReadyIdentifier = "new-clip-button"`). The 500-item dataset is seeded via the extended `UITestHistorySeeder` in on-disk store mode. The budget is measurable, scoped, and validated (Constitution Principle XIII).
+**Standard 500-item dataset composition**: 400 text clips + 100 image clips, with both pinned and unpinned items present. Image clips use representative test assets produced by the seeder; the actual byte size of the test image fixtures is recorded (no undefined "small images"). The measurement reuses the existing `UITestAppLauncher.prepareMainWindow` readiness gate (`mainWindowReadyIdentifier = "new-clip-button"`), but the completion point also requires the 500 restorable items to be loaded, not merely the readiness signal appearing with a partial list. If the current implementation exceeds 3 seconds, the test must fail; the threshold is not relaxed. The budget is measurable, scoped, and validated (Constitution Principle XIII).
 
 ## Release-Readiness Validation
 
@@ -83,8 +83,9 @@ The measurement reuses the existing `UITestAppLauncher.prepareMainWindow` readin
 | All automated validation matrix tests pass | `xcodebuild` test run report (0 failures) |
 | SC-001 (10 rounds, 0 crashes) | UI test run report |
 | SC-009 (500 items, 0 crashes, 100% accuracy) | UI test run report |
-| SC-010 (corrupt item, diagnostic observable) | UI test run report + diagnostic event capture |
+| SC-010 (item-level `image-file-missing`, item omitted, diagnostic observable) | UI test run report + diagnostic event capture |
 | SC-011 (≤3s launch) | UI test timing assertion |
+| SC-012 (container-level `store-load-failed`, clean store launch, 0 crashes) | Unit test run report + diagnostic event capture |
 | No `fatalError` on recoverable load failure | Code review + unit test |
 | Full regression passes | `xcodebuild … -scheme NextPaste test` report |
 
@@ -120,6 +121,6 @@ States: `Pending` → `Executing` → `Passed` / `Failed`.
 | `quickstart.md` | Yes | Execution guide references this contract; does not redefine validation ownership. |
 | `data-model.md` | Yes | Entity/state model aligns with validation targets. |
 | `research.md` | Yes | Root-cause and NEEDS CLARIFICATION resolved; referenced by this contract. |
-| `tasks.md` | Pending | Created by `/speckit.tasks`; must reference this contract for validation steps. |
+| `tasks.md` | Yes | Created by `/speckit.tasks`; references this contract for validation steps. |
 
 Propagation Progress is owned by this contract (Constitution Principle XVIII).

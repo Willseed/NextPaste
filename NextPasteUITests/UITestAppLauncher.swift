@@ -25,7 +25,18 @@ enum UITestAppLauncher {
         let traceURL: URL
     }
 
+    struct OnDiskStore {
+        let rootURL: URL
+        let storeURL: URL
+
+        func remove() {
+            try? FileManager.default.removeItem(at: rootURL)
+        }
+    }
+
     static let uiTestingArgument = "-ui-testing"
+    static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
+    static let relaunchDatasetSeedArgument = "-ui-test-seed-relaunch-dataset"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
     static let rowActionTraceEnabledArgument = "-row-action-trace-enabled"
@@ -36,6 +47,7 @@ enum UITestAppLauncher {
 
     static func makeApp(
         enableClipboardMonitor: Bool = false,
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
         let app = XCUIApplication()
@@ -49,16 +61,23 @@ enum UITestAppLauncher {
         if enableClipboardMonitor == false {
             app.launchArguments.append(clipboardMonitorDisabledArgument)
         }
+        if let onDiskStore {
+            app.launchArguments.append(contentsOf: [
+                uiTestOnDiskStoreArgument,
+                onDiskStore.storeURL.path
+            ])
+        }
         return app
     }
 
     static func makeTraceApp(
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> TraceLaunch {
         let traceURL = makeTraceURL()
         try? FileManager.default.removeItem(at: traceURL)
 
-        let app = makeApp(windowSizePreset: windowSizePreset)
+        let app = makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
         app.launchArguments.append(rowActionTraceEnabledArgument)
         app.launchEnvironment["NEXTPASTE_UI_TESTING"] = "1"
         app.launchEnvironment[rowActionTraceFileEnvironmentKey] = traceURL.path
@@ -66,16 +85,20 @@ enum UITestAppLauncher {
     }
 
     static func launchTraceApp(
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> TraceLaunch {
-        let launch = makeTraceApp(windowSizePreset: windowSizePreset)
+        let launch = makeTraceApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
         launch.app.launch()
         prepareMainWindow(in: launch.app)
         return launch
     }
 
-    static func launchApp(windowSizePreset: WindowSizePreset = .defaultSize) -> XCUIApplication {
-        let app = makeApp(windowSizePreset: windowSizePreset)
+    static func launchApp(
+        onDiskStore: OnDiskStore? = nil,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> XCUIApplication {
+        let app = makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
         app.launch()
         prepareMainWindow(in: app)
         return app
@@ -83,9 +106,14 @@ enum UITestAppLauncher {
 
     static func makeAutoCaptureApp(
         pollInterval: TimeInterval = 0.1,
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
-        let app = makeApp(enableClipboardMonitor: true, windowSizePreset: windowSizePreset)
+        let app = makeApp(
+            enableClipboardMonitor: true,
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
         app.launchArguments.append(contentsOf: [
             clipboardMonitorPollIntervalArgument,
             String(pollInterval)
@@ -95,21 +123,42 @@ enum UITestAppLauncher {
 
     static func makeOfflineAutoCaptureApp(
         pollInterval: TimeInterval = 0.1,
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
-        let app = makeAutoCaptureApp(pollInterval: pollInterval, windowSizePreset: windowSizePreset)
+        let app = makeAutoCaptureApp(
+            pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
         app.launchArguments.append(UITestFixtures.Search.offlineLaunchArgument)
         return app
     }
 
     static func launchAutoCaptureApp(
         pollInterval: TimeInterval = 0.1,
+        onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
-        let app = makeAutoCaptureApp(pollInterval: pollInterval, windowSizePreset: windowSizePreset)
+        let app = makeAutoCaptureApp(
+            pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
         app.launch()
         prepareMainWindow(in: app)
         return app
+    }
+
+    static func makeOnDiskStore() throws -> OnDiskStore {
+        let rootURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            .appendingPathComponent("NextPaste-025-ui-store-\(UUID().uuidString)", isDirectory: true)
+            .standardizedFileURL
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        return OnDiskStore(
+            rootURL: rootURL,
+            storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
+        )
     }
 
     static func prepareMainWindow(

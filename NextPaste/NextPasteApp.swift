@@ -13,6 +13,10 @@ import AppKit
 
 @main
 struct NextPasteApp: App {
+    typealias ModelContainerFactory = (Schema, [ModelConfiguration]) throws -> ModelContainer
+
+    nonisolated static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
+
     let sharedModelContainer: ModelContainer
     @StateObject private var historyLimitPreference: HistoryLimitPreference
     @StateObject private var appearancePreference: AppearancePreference
@@ -25,9 +29,7 @@ struct NextPasteApp: App {
 #if DEBUG
         RowActionTraceRuntime.startIfEnabled()
 #endif
-        sharedModelContainer = Self.makeModelContainer(
-            isStoredInMemoryOnly: ProcessInfo.processInfo.arguments.contains("-ui-testing")
-        )
+        sharedModelContainer = Self.makeModelContainer(arguments: ProcessInfo.processInfo.arguments)
         UITestHistorySeeder.seedIfNeeded(
             arguments: ProcessInfo.processInfo.arguments,
             container: sharedModelContainer
@@ -60,17 +62,107 @@ struct NextPasteApp: App {
 #endif
     }
 
-    static func makeModelContainer(isStoredInMemoryOnly: Bool = false) -> ModelContainer {
+    static func makeModelContainer(
+        isStoredInMemoryOnly: Bool? = nil,
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        diagnostics: PersistenceLoadDiagnostics = Self.defaultPersistenceLoadDiagnostics(),
+        primaryContainerFactory: ModelContainerFactory = Self.createModelContainer,
+        recoveryContainerFactory: ModelContainerFactory = Self.createModelContainer
+    ) -> ModelContainer {
         let schema = Schema([
             ClipItem.self,
         ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: isStoredInMemoryOnly)
+        let modelConfiguration: ModelConfiguration
+        if let storeURL = uiTestOnDiskStoreURL(arguments: arguments) {
+            createDirectoryIfNeeded(forStoreAt: storeURL)
+            modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
+        } else {
+            let storesInMemory = isStoredInMemoryOnly ?? arguments.contains("-ui-testing")
+            modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: storesInMemory)
+        }
 
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            return try primaryContainerFactory(schema, [modelConfiguration])
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            diagnostics.storeLoadFailed()
+            return recoveredModelContainer(
+                schema: schema,
+                failedStoreURL: uiTestOnDiskStoreURL(arguments: arguments),
+                recoveryContainerFactory: recoveryContainerFactory
+            )
         }
+    }
+
+    nonisolated static func uiTestOnDiskStoreURL(arguments: [String]) -> URL? {
+        guard let argumentIndex = arguments.firstIndex(of: uiTestOnDiskStoreArgument),
+              arguments.indices.contains(argumentIndex + 1) else {
+            return nil
+        }
+
+        let path = arguments[argumentIndex + 1]
+        guard path.isEmpty == false else {
+            return nil
+        }
+        return URL(fileURLWithPath: path).standardizedFileURL
+    }
+
+    nonisolated private static func createModelContainer(
+        schema: Schema,
+        configurations: [ModelConfiguration]
+    ) throws -> ModelContainer {
+        try ModelContainer(for: schema, configurations: configurations)
+    }
+
+    private static func recoveredModelContainer(
+        schema: Schema,
+        failedStoreURL: URL?,
+        recoveryContainerFactory: ModelContainerFactory
+    ) -> ModelContainer {
+        if let recoveryURL = recoveredStoreURL(for: failedStoreURL) {
+            createDirectoryIfNeeded(forStoreAt: recoveryURL)
+            let configuration = ModelConfiguration(schema: schema, url: recoveryURL)
+            if let container = try? recoveryContainerFactory(schema, [configuration]) {
+                return container
+            }
+        }
+
+        let fallbackConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        if let container = try? recoveryContainerFactory(schema, [fallbackConfiguration]) {
+            return container
+        }
+
+        // If both recovery strategies fail, this is no longer a recoverable load
+        // failure. Keep the fatal boundary only for the impossible "no usable clean
+        // store can be created" case.
+        fatalError("Could not create a recovered ModelContainer")
+    }
+
+    private static func recoveredStoreURL(for failedStoreURL: URL?) -> URL? {
+        guard let failedStoreURL else {
+            let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            return temporaryDirectory
+                .appendingPathComponent("NextPaste-recovered-\(UUID().uuidString)", isDirectory: true)
+                .appendingPathComponent("NextPaste.store", isDirectory: false)
+                .standardizedFileURL
+        }
+
+        return failedStoreURL
+            .deletingLastPathComponent()
+            .appendingPathComponent("Recovered-\(UUID().uuidString).store", isDirectory: false)
+            .standardizedFileURL
+    }
+
+    private static func createDirectoryIfNeeded(forStoreAt storeURL: URL) {
+        let directory = storeURL.deletingLastPathComponent()
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    }
+
+    private static func defaultPersistenceLoadDiagnostics() -> PersistenceLoadDiagnostics {
+#if DEBUG
+        PersistenceLoadDiagnostics(sink: RowActionTraceBridgePersistenceDiagnosticsSink())
+#else
+        PersistenceLoadDiagnostics()
+#endif
     }
 
     static func resolveHistoryLimitNewInstallState(

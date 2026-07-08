@@ -9,7 +9,7 @@
 
 ## Summary
 
-The app may crash after reopening with existing data and repeatedly pinning/unpinning. This feature hardens the relaunch-with-persisted-data path and adds comprehensive stability test coverage. The existing `PinStateMutationStore` already satisfies FR-004/FR-005/FR-006/FR-013/FR-015 (ID-first, serialized, rollback-capable, idempotent, snapshot-projected mutations), so the product-code changes are narrowly scoped to two gaps: (1) replacing the `fatalError` in `NextPasteApp.makeModelContainer` with graceful load-failure recovery plus content-free diagnostics (FR-011, RR-005), and (2) adding a load-complete guard so pin/unpin cannot corrupt persistence before `@Query` finishes loading (FR-012). The remaining requirements are test-coverage expansion: on-disk UI-test relaunch mode, a 500-item mixed dataset seeder, 100-rep single-item stress, 20-item interleaved stress, 10-round Auto Capture + relaunch cycles, single-corrupt-item recovery tests, and a 3-second launch budget measurement with 500 items.
+The app may crash after reopening with existing data and repeatedly pinning/unpinning. This feature hardens the relaunch-with-persisted-data path and adds comprehensive stability test coverage. The existing `PinStateMutationStore` already satisfies FR-004/FR-005/FR-006/FR-013/FR-015 (ID-first, serialized, rollback-capable, idempotent, snapshot-projected mutations), so the product-code changes are narrowly scoped to three gaps: (1) **container-level** recovery — replacing the `fatalError` in `NextPasteApp.makeModelContainer` with a clean-store fallback plus a content-free `store-load-failed` diagnostic, corresponding to the `PersistentStoreUnavailable` failure surface (FR-011, SC-012, RR-005; T012, with failing tests T006/T007); (2) **item-level** recovery — emitting a content-free `image-file-missing` diagnostic and omitting the affected item at the `ImageClipFileStore` load path when a referenced image file is absent, corresponding to the `ItemContentUnavailable` failure surface (FR-011, SC-010, RR-005; T014, with failing test T010); and (3) adding a load-complete guard so pin/unpin cannot corrupt persistence before `@Query` finishes loading (FR-012). FR-011 is covered jointly by T012 and T014, which handle two distinct failure surfaces and must not be conflated. T012 is **not** the implementation of FR-011's single-item omission; single-item omission is T014. The remaining requirements are test-coverage expansion: on-disk UI-test relaunch mode, a 500-item mixed dataset seeder (400 text + 100 image), 100-rep single-item stress, 20-item interleaved stress, 10-round Auto Capture + relaunch cycles, container-level and item-level corruption recovery tests, and a 3-second launch budget measurement with 500 items.
 
 ## Technical Context
 
@@ -25,11 +25,24 @@ The app may crash after reopening with existing data and repeatedly pinning/unpi
 
 **Project Type**: Apple-platform desktop/mobile app (Xcode app project, not a Swift Package). Build/test via `xcodebuild -project NextPaste.xcodeproj -scheme NextPaste`.
 
-**Performance Goals**: FR-020/SC-011 — with 500 mixed items (text + image, pinned + unpinned), relaunch and full load of all restorable data must complete within 3 seconds of app launch (wall-clock, measured to the existing `new-clip-button` readiness signal).
+**Performance Goals**: FR-020/SC-011 — with the standard 500-item dataset (400 text + 100 image, pinned + unpinned), relaunch and full load of all restorable data must complete within 3 seconds of app process launch (wall-clock, measured from process launch begin to main window ready **and** 500 restorable items loaded into the list). Dataset generation time is excluded from the timing. If the current implementation exceeds 3 seconds, the test must fail; the threshold is not relaxed at the plan stage.
 
 **Constraints**: Local-first; no network. Clipboard content must remain on-device. Diagnostics must be content-free (no clipboard text, image data, or search query) per `PinStateMutationDiagnostics` contract. No new third-party dependencies. Preserve existing `PinStateMutationStore` mutation pipeline (Constitution Principle XVI). No `fatalError` on recoverable load failures (FR-011).
 
-**Scale/Scope**: Up to 500+ persisted `ClipItem` rows (text and image). 10 relaunch rounds. 100 consecutive pin/unpin on one item. 20-item interleaved pin/unpin. One injected corrupt item. No new UI screens (assumption: "不新增新的使用者操作介面").
+**Scale/Scope**: Up to 500+ persisted `ClipItem` rows (standard dataset: 400 text + 100 image). 10 relaunch rounds. 100 consecutive pin/unpin on one item (including an image-clip variant). 20-item interleaved pin/unpin (including text and image clips). One injected item-level corruption (image file deleted, metadata retained) and one container-level corruption (store cannot open), verified in **separate** tests. No new UI screens (assumption: "不新增新的使用者操作介面").
+
+## Recovery Architecture (FR-011)
+
+FR-011 distinguishes two failure surfaces. Each maps to its own implementation task and its own failing test(s); they are never mixed in one test or one acceptance criterion.
+
+| Failure Surface | State | Implementation Task | Failing Test(s) | Diagnostic | Success Criterion |
+|-----------------|-------|---------------------|------------------|------------|-------------------|
+| Container cannot open | `PersistentStoreUnavailable` | T012 (clean-store fallback in `NextPasteApp.makeModelContainer`) | T006 (launches clean store, no abort), T007 (diagnostic content-free) | `store-load-failed` | SC-012 |
+| Single item's image file missing | `ItemContentUnavailable` | T014 (omit item + diagnostic in `ImageClipFileStore`) | T010 (item omitted, others retained) | `image-file-missing` | SC-010 |
+
+- **T012 corresponds to `PersistentStoreUnavailable`** only. It replaces `fatalError` with a clean-store fallback. It does **not** perform per-item omission and is **not** described as implementing FR-011's single-item omission.
+- **T014 corresponds to `ItemContentUnavailable`** only. It omits the one affected item and emits `image-file-missing`. It is preceded by the failing test T010.
+- **FR-011 is covered jointly by T012 and T014**, each handling a distinct failure surface. T013 defines the shared content-free diagnostic records used by both.
 
 ## Constitution Check
 
@@ -41,7 +54,7 @@ The app may crash after reopening with existing data and repeatedly pinning/unpi
 | II. Local-First | ✅ Pass | All changes use on-device SwiftData + file store. No network. |
 | III. Privacy by Default | ✅ Pass | New load-failure diagnostics are content-free (RR-005: "不得暴露敏感內容"), reusing the existing `PinStateMutationDiagnostics` content-free record pattern. |
 | IV. Automatic Capture | ✅ Pass | Auto Capture logic unchanged; tests verify it under relaunch. |
-| V. Test-First Development | ✅ Pass | Every new requirement (FR-016–FR-020, SC-001–SC-011) defines automated validation before completion. |
+| V. Test-First Development | ✅ Pass | Every new requirement (FR-016–FR-020, SC-001–SC-012) defines automated validation before completion. |
 | VI. Validation Governance | ✅ Pass | Validation ownership centralized in `contracts/validation-and-sonar-contract.md`; `quickstart.md` is execution-only. |
 | VII. Template-First Governance | ✅ Pass | No repeated structure promoted yet; feature-local contracts follow the constitution-mandated validation contract ownership. |
 | VIII. Test Execution Efficiency | ✅ Pass | Targeted unit tests for load-failure recovery logic; targeted UI tests for relaunch/stress; full regression only at feature completion. |

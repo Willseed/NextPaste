@@ -397,6 +397,55 @@ struct HistoryRobot {
         return app.descendants(matching: .any).matching(predicate).count
     }
 
+    func visibleClipCount() -> Int? {
+        markerValue(identifier: "history-visible-count")
+    }
+
+    func visibleTextClipCount() -> Int? {
+        markerValue(identifier: "history-visible-text-count")
+    }
+
+    func visibleImageClipCount() -> Int? {
+        markerValue(identifier: "history-visible-image-count")
+    }
+
+    func visiblePinnedClipCount() -> Int? {
+        markerValue(identifier: "history-visible-pinned-count")
+    }
+
+    func visibleUniqueClipCount() -> Int? {
+        markerValue(identifier: "history-visible-unique-count")
+    }
+
+    @discardableResult
+    func assertVisibleClipCount(
+        _ expectedCount: Int,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        assertMarkerValue("history-visible-count", equals: expectedCount, timeout: timeout, file: file, line: line)
+        return self
+    }
+
+    @discardableResult
+    func assertVisibleDatasetCounts(
+        total: Int,
+        text: Int,
+        image: Int,
+        pinned: Int,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        assertMarkerValue("history-visible-count", equals: total, timeout: timeout, file: file, line: line)
+        assertMarkerValue("history-visible-text-count", equals: text, timeout: timeout, file: file, line: line)
+        assertMarkerValue("history-visible-image-count", equals: image, timeout: timeout, file: file, line: line)
+        assertMarkerValue("history-visible-pinned-count", equals: pinned, timeout: timeout, file: file, line: line)
+        assertMarkerValue("history-visible-unique-count", equals: total, timeout: timeout, file: file, line: line)
+        return self
+    }
+
     func assertClipRowIdentifierExists(
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
@@ -414,6 +463,42 @@ struct HistoryRobot {
         XCTAssertFalse(
             app.staticTexts.matching(fullTextPredicate).element.exists,
             "Expected full text label to be absent",
+            file: file,
+            line: line
+        )
+    }
+
+    private func markerValue(identifier: String) -> Int? {
+        let marker = app.descendants(matching: .any)[identifier]
+        guard marker.exists else {
+            return nil
+        }
+        if let rawValue = marker.value as? String {
+            return Int(rawValue)
+        }
+        return Int(marker.label)
+    }
+
+    private func assertMarkerValue(
+        _ identifier: String,
+        equals expectedValue: Int,
+        timeout: TimeInterval,
+        file: StaticString,
+        line: UInt
+    ) {
+        let deadline = Date().addingTimeInterval(timeout)
+
+        while Date() < deadline {
+            if markerValue(identifier: identifier) == expectedValue {
+                return
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        }
+
+        XCTAssertEqual(
+            markerValue(identifier: identifier),
+            expectedValue,
+            "Expected \(identifier) to equal \(expectedValue)",
             file: file,
             line: line
         )

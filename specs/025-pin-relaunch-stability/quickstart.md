@@ -23,7 +23,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 ### Targeted unit tests (run first)
 
 ```bash
-# Load-failure recovery, load-complete guard, content-free diagnostics, on-disk restart
+# Load-failure clean-store recovery, store-load-failed diagnostic, load-complete guard, on-disk restart
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
   -only-testing:NextPasteTests/RelaunchStabilityTests test
 
@@ -39,7 +39,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 ### Targeted UI tests (run next)
 
 ```bash
-# Relaunch stability, Auto Capture + relaunch, 500-item load, launch budget, corrupt-item recovery
+# Relaunch stability, Auto Capture + relaunch, 500-item load, launch budget, item-level image-file-missing recovery
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
   -only-testing:NextPasteUITests/RelaunchStabilityUITests test
 
@@ -84,8 +84,9 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 - All targeted tests pass with 0 failures.
 - UI relaunch tests: `app.state` remains `.runningForeground` after every `closeApp` + `launchApp` cycle (0 crashes).
 - 500-item test: row count and pin-badge state match the seeded dataset after relaunch.
-- Launch budget test: elapsed time from launch to `new-clip-button` readiness ≤ 3.0 seconds.
-- Corrupt-item test: app starts; other items accessible; corrupt item absent from list; a diagnostic event is observable.
+- Launch budget test: elapsed time from app process launch begin to main window ready + 500 restorable items loaded ≤ 3.0 seconds (dataset generation excluded).
+- Item-level `image-file-missing` test: app starts; the item whose image file is missing is absent from the list; other items accessible; a content-free `image-file-missing` diagnostic event is observable.
+- Container-level `store-load-failed` test: app launches a clean store; 0 crashes; a content-free `store-load-failed` diagnostic event is observable.
 - 100-rep stress: app remains operational; final pin state matches the last operation.
 
 ### Reading results
