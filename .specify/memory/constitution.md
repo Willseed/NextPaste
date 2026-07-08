@@ -345,10 +345,13 @@ Every specification follows one lifecycle:
 organized for traceability. Implementation completion does NOT equal archival; a SPEC may not move
 to `archive/` until its acceptance contract is formally closed.
 
-Specifications MUST be organized under `specs/active/`, `specs/archive/YYYY/`, and
-`specs/deprecated/`, with `specs/README.md` as the authoritative index. All moves MUST use Git-tracked
-operations (for example `git mv`); specifications MUST NOT be deleted, compressed into archives,
-moved out of the repository, or renamed to fuzzy names such as `old-spec`, `backup`, or `legacy`.
+In-progress specifications (`draft`, `active`, `blocked`) MUST live directly under `specs/` at the
+repository root. There is no `specs/active/` directory. Completed-and-accepted specifications MUST
+live under `specs/archive/YYYY/`, and rejected, superseded, or cancelled specifications MUST live
+under `specs/deprecated/`, with `specs/README.md` as the authoritative index. All moves MUST use
+Git-tracked operations (for example `git mv`); specifications MUST NOT be deleted, compressed into
+archives, moved out of the repository, or renamed to fuzzy names such as `old-spec`, `backup`, or
+`legacy`.
 Original `spec.md`, `plan.md`, `tasks.md`, `research.md`, `contracts/`, and related files MUST be
 preserved on archival.
 

@@ -45,8 +45,9 @@ Constitution principle XIX governs this section. The full lifecycle is
 means acceptance is finished; `archive` means the specification and its history are organized for
 traceability. Implementation completion does NOT equal archival.
 
-- Layout: `specs/active/` (in development, blocked, or not yet closed), `specs/archive/YYYY/`
-  (completed and accepted), `specs/deprecated/` (rejected, superseded, or cancelled).
+- Layout: in-progress specs (`draft`, `active`, `blocked`) live directly under `specs/` at the
+  repository root (there is no `specs/active/` directory); `specs/archive/YYYY/` (completed and
+  accepted); `specs/deprecated/` (rejected, superseded, or cancelled).
   `specs/README.md` is the authoritative index of every SPEC.
 - Status vocabulary (only these): `draft`, `active`, `blocked`, `completed`, `deprecated`,
   `superseded`, `cancelled`. Do NOT use `done`, `finished`, `closed`, `complete`, or `implemented`

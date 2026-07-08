@@ -8,7 +8,7 @@
 #  4. Status values use the allowed vocabulary only.
 #  5. Superseded specs declare **Superseded By**.
 #  6. Archived tasks.md have no open checkbox items without a recorded disposition.
-#  7. README status is consistent with directory location (active/archive/deprecated).
+#  7. README status is consistent with directory location (root/archive/deprecated).
 #
 # Usage: .specify/scripts/bash/spec-archive-check.sh [specs-path]
 # Exit: 0 if clean, 1 if any check fails.
@@ -32,7 +32,7 @@ status_of() { # dir -> status value (lowercased)
 
 allowed_status() { local s="$1"; for a in $ALLOWED; do [ "$s" = "$a" ] && return 0; done; return 1; }
 
-# Enumerate spec directories (active, archive/*, deprecated) and ensure each is in README.
+# Enumerate spec directories (root-level active, archive/*, deprecated) and ensure each is in README.
 count_indexed=0
 while IFS= read -r d; do
   dn="$(basename "$d")"
@@ -46,9 +46,9 @@ while IFS= read -r d; do
   fi
   loc=""
   case "$d" in
-    */active/*) loc=active;;
     */archive/*) loc=archive;;
     */deprecated/*) loc=deprecated;;
+    *) loc=active;;
   esac
   if [ "$loc" = "archive" ]; then
     [ -f "$d/completion.md" ] || err "SPEC $id: archived spec missing completion.md"
@@ -71,11 +71,11 @@ while IFS= read -r d; do
   fi
   # README vs location consistency
   case "$loc" in
-    active) echo "$s" | grep -qE '^(active|draft|blocked)$' || err "SPEC $id: active/ dir but status '$s'";;
+    active) echo "$s" | grep -qE '^(active|draft|blocked)$' || err "SPEC $id: root (active) location but status '$s'";;
     archive) echo "$s" | grep -qE '^(completed|deprecated|superseded|cancelled)$' || err "SPEC $id: archive/ dir but status '$s'";;
     deprecated) echo "$s" | grep -qE '^(deprecated|superseded|cancelled)$' || err "SPEC $id: deprecated/ dir but status '$s'";;
   esac
-done < <(find "$SPECS" -mindepth 2 -maxdepth 3 -type d \( -path '*/active/*' -o -path '*/archive/*/*' -o -path '*/deprecated/*' \) 2>/dev/null | grep -E '/[0-9]{3}-')
+done < <(find "$SPECS" -mindepth 1 -maxdepth 3 -type d -name '[0-9][0-9][0-9]-*' 2>/dev/null | grep -E '/[0-9]{3}-')
 
 ok "Indexed $count_indexed spec director(ies) against README.md"
 [ "$FAIL" -eq 0 ] && { echo "spec-archive-check: PASS"; exit 0; }
