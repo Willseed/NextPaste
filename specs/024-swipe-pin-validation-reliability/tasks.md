@@ -1,7 +1,7 @@
 # Tasks: Swipe Pin Validation Reliability
 
 **Feature**: 024-swipe-pin-validation-reliability
-**Source**: [spec.md](spec.md) · [plan.md](plan.md)
+**Source**: [spec.md](spec.md) · [plan.md](plan.md) · [validation contract](contracts/validation-and-sonar-contract.md)
 **Created**: 2026-07-08
 
 > Tasks are dependency-ordered. Test-first tasks precede their implementation counterpart.
@@ -237,6 +237,11 @@ to `CrashSignalDetector`.
 
 ## Phase 4 — Validation
 
+Validation execution and evidence ownership are defined by
+[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md). The
+tasks below provide the implementation execution points and must record evidence according to that
+contract.
+
 ### T012 — Test: classified UI smoke for T032 flow
 
 Add a targeted UI smoke test in `NextPasteUITests/` that runs the full T032 classified flow and
@@ -262,7 +267,8 @@ In a GUI-capable environment with no external windows, run T032 and T046 and con
   throughout and emits a passing classified result.
 - Both emit a categorized result naming the category and observable evidence (SC-005).
 
-**Environment-blocked handling**: if the current session lacks GUI capability, record the
+**Environment-blocked handling**: per the validation contract, if the current session lacks GUI
+capability, record the
 *Environment-Blocked* result as validation evidence (the classifier + unit tests from T001
 remain fully runnable and serve as the non-environment-blocked evidence). Do NOT report UI
 Green when the environment blocked the swipe synthesis — record the blocked classification as
@@ -272,15 +278,16 @@ the evidence instead (per the user's planning directive).
 
 ### T014 — Validate: targeted unit and source-policy suite
 
-Run the targeted suite (no full regression; no production code changed):
+Run the targeted suite and record evidence as required by the validation contract (no full
+regression while no production code changed):
 
 - `NativeSwipeFailureClassifierTests` (T001) — all category selection and priority cases pass.
 - `NativeSwipeTestSupportPolicyTests` (T003) — no prohibited mechanisms reintroduced; native
   swipe preserved; production reconciliation symbols unchanged.
 - The targeted UI smoke (T012) and, if GUI-capable, T013.
 
-Document the reason no full regression is required: this feature changes only test-layer code;
-production HomeView reconciliation is untouched (FR-006).
+Document the reason no full regression is required in validation evidence: this feature changes
+only test-layer code; production HomeView reconciliation is untouched (FR-006).
 
 **Dependencies**: T001, T003, T012, T013.
 
@@ -307,15 +314,15 @@ T004 + T005 + T006 + T008 + T009 ─ T010 (T032 integrate) ─ T011 (T046 integr
 
 | Task | FR / SC covered |
 |---|---|
-| T001, T002 | FR-001 (four+one categories), classification priority |
+| T001, T002 | FR-001 (five diagnosable categories), classification priority |
 | T003 | FR-006, FR-007, FR-008, FR-009 (policy prohibition) |
 | T004 | FR-002, SC-003 (setup failure) |
 | T005 | FR-003, SC-003 (focus failure) |
 | T006 | FR-005, SC-001 (crash regression) |
 | T007, T008 | FR-004, FR-007, SC-002 (synthesis failure) |
 | T009 | FR-011, SC-002 (environment-blocked) |
-| T010 | FR-001–FR-005, FR-008, FR-012, SC-004, SC-005 (T032) |
-| T011 | FR-010 (T046 parity) |
+| T010 | FR-001–FR-005, FR-008, FR-011, FR-012, SC-001–SC-005 (T032) |
+| T011 | FR-001–FR-005, FR-008, FR-010, FR-011, FR-012, SC-001–SC-005 (T046 parity) |
 | T012 | FR-011, SC-002, SC-005 (smoke) |
 | T013 | FR-012, SC-004, SC-005 (positive path) |
 | T014 | SC-005 (triage-without-rerun evidence) |

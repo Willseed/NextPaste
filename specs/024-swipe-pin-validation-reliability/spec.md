@@ -21,7 +21,7 @@ intercepting the swipe event. This forces engineers to manually re-read logs, re
 environment, and guess whether they are looking at a product regression or a flaky environment
 condition.
 
-The test must classify every failure into one of four diagnosable categories and emit a
+The test must classify every failure into one of five diagnosable categories and emit a
 human-readable result that names the category and the observable evidence that produced it, so
 that triage can happen without re-running the test or attaching a debugger.
 
@@ -29,8 +29,9 @@ that triage can happen without re-running the test or attaching a debugger.
 indistinguishable from a product crash and blocks release confidence. This is the root problem the
 feature exists to solve; all other stories depend on the classification being trustworthy.
 
-**Independent Test**: Can be validated by intentionally simulating each of the four failure
-conditions (missing fixture row, blocked window focus, swipe timeout, product crash signal) and
+**Independent Test**: Can be validated by intentionally simulating each of the five failure
+conditions (missing fixture row, blocked window focus, swipe timeout, product crash signal,
+environment without GUI capability) and
 confirming the test emits the matching category with evidence, rather than a generic assertion
 failure.
 
@@ -177,9 +178,9 @@ previously pinned anchor after the safe boundary.
 ### Functional Requirements
 
 - **FR-001**: The native right-swipe Pin UI test (T032) MUST classify every failure into exactly
-  one of four categories: *Product Crash Regression*, *Native Swipe Synthesis Failure*, *Setup
-  Failure*, or *External Interruption / Focus Failure*, and emit a human-readable result naming
-  the category and the observable evidence that produced it.
+  one of five diagnosable categories: *Product Crash Regression*, *Native Swipe Synthesis Failure*,
+  *Setup Failure*, *External Interruption / Focus Failure*, or *Environment-Blocked*, and emit a
+  human-readable result naming the category and the observable evidence that produced it.
 
 - **FR-002**: Before issuing any native swipe gesture, the test MUST verify that every expected
   fixture row is present and hittable in the rendered list. If any expected fixture row is absent,

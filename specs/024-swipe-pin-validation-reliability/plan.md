@@ -12,9 +12,10 @@ T032 (`testT032PinBecomesFirstRowOfPinnedSectionViaBoundedRetry`) and T046
 (`testT046Feature014020CrashReproductionFlowsRemainRunningNoCrash`) fail opaquely.
 A single `XCTFail` — "Pin action was not revealed for `<row>`" from `RowRobot.revealPinAction`,
 or a generic `assertAppRunningWithoutCrash` / `BoundedRetryUITestHelper.assertOrder` failure —
-collapses four distinct failure modes into one indistinguishable result. Engineers cannot tell
-whether they are looking at a product crash, an environment-blocked swipe synthesis, a missing
-fixture row, or a stolen window focus without re-reading logs and reproducing the environment.
+collapses five distinct diagnostic outcomes into one indistinguishable result. Engineers cannot
+tell whether they are looking at a product crash, an environment-blocked host, a native swipe
+synthesis failure, a missing fixture row, or stolen window focus without re-reading logs and
+reproducing the environment.
 
 This feature makes every T032/T046 failure self-classifying: the test emits exactly one
 diagnosable category with the observable evidence that produced it, so triage happens from the
@@ -43,9 +44,9 @@ test output alone.
 
 ## Root-Cause Hypotheses
 
-The spec identifies four failure modes. Each hypothesis names the likely root cause, the
-investigation strategy, and the confirmation criteria used to validate the classification
-during implementation.
+The spec identifies four failure-mode hypotheses plus one environment precondition category.
+Each hypothesis names the likely root cause, the investigation strategy, and the confirmation
+criteria used to validate the classification during implementation.
 
 ### H1 — XCTest native swipe synthesis timeout (FR-004, SC-002)
 
@@ -251,36 +252,17 @@ Each test follows the same classified flow:
   reports the category. In a GUI-capable environment it exercises the positive path; in a
   headless environment it reports *Environment-Blocked* rather than failing opaquely.
 
-## Validation Strategy
+## Validation Contract Reference
 
-Validation is proportional: targeted unit tests first, then a targeted UI smoke, then the
-GUI-capable positive path. Full regression is not required for this feature because no
-production code changes (documented here per the validation ownership rule).
+Validation execution, evidence requirements, environment-blocked handling, regression scope,
+Propagation Progress, Verification Status, release readiness, and SonarQube evidence are owned by
+[`contracts/validation-and-sonar-contract.md`](contracts/validation-and-sonar-contract.md).
 
-1. **Targeted unit tests (no app launch)** — `NativeSwipeFailureClassifierTests`: verify each
-   of the five categories is selected for its evidence combination and that priority ordering is
-   correct. Source-policy tests verify no prohibited mechanisms are reintroduced in the new test
-   files.
-2. **Targeted UI smoke** — the classified smoke test runs the T032 flow and emits a category;
-   confirms the classification infrastructure is wired end-to-end.
-3. **GUI-capable positive path** — in a GUI-capable environment with no external windows, T032
-   and T046 complete the native right-swipe Pin path, verify relocation above the pinned anchor
-   after the safe boundary, and emit a passing result with no crash signal (FR-012, SC-004).
-
-### Environment-blocked verification
-
-The current session may lack GUI capability (headless / no interactive display). The following
-verifications may be environment-blocked and must be classified, not misreported as product
-regressions (FR-011, SC-002):
-
-- Native swipe synthesis (swipeRight revealing the Pin button) — blocked if no interactive
-  display.
-- Window focus guard positive case (refocus succeeds) — blocked if windows cannot become
-  frontmost.
-
-When environment-blocked, the test reports *Environment-Blocked* with the capability record.
-This is a diagnosable non-product result, not a failure. The classifier and unit tests remain
-fully runnable in any environment because they do not launch the app.
+Implementation follows that contract's proportional sequence at a planning level: targeted
+classifier unit tests and source-policy checks first, then a classified T032 UI smoke, then
+GUI-capable positive-path validation for T032 and T046 when the host can synthesize native swipe
+gestures. Full regression remains unnecessary only while implementation stays test-layer only and
+the contract records that production HomeView reconciliation is untouched.
 
 ## Risks
 
@@ -301,7 +283,7 @@ fully runnable in any environment because they do not launch the app.
 
 | Spec element | Plan section |
 |---|---|
-| FR-001 (four categories) | Failure classification model |
+| FR-001 (five diagnosable categories) | Failure classification model |
 | FR-002 (fixture verification) | H2, `NativeSwipeDiagnostics.verifyFixtureRows` |
 | FR-003 (focus guard) | H3, `NativeSwipeDiagnostics.checkWindowFocus` |
 | FR-004 (synthesis failure) | H1, `SwipeSynthesisRecorder` |
@@ -311,6 +293,6 @@ fully runnable in any environment because they do not launch the app.
 | FR-008 (bounded retry, no fixed sleep) | Constraints |
 | FR-009 (policy prohibition) | Test contract changes, source-policy tests |
 | FR-010 (T046 parity) | Shared diagnostic modules |
-| FR-011 (environment-blocked) | `detectEnvironmentCapability`, Validation |
-| FR-012 (positive path) | Test flow rewrite, Validation |
-| SC-001–SC-005 | Validation strategy |
+| FR-011 (environment-blocked) | `detectEnvironmentCapability`, Validation Contract Reference |
+| FR-012 (positive path) | Test flow rewrite, Validation Contract Reference |
+| SC-001–SC-005 | Validation Contract Reference |
