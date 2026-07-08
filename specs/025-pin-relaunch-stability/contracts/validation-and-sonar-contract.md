@@ -1,0 +1,125 @@
+# Validation & Sonar Contract: Pin/Unpin 與 Auto Capture 重開穩定性
+
+**Feature**: 025-pin-relaunch-stability
+**Spec**: [spec.md](../spec.md)
+**Plan**: [plan.md](../plan.md)
+**Authority**: This contract owns validation execution, validation lifecycle rules, evidence requirements, Sonar evidence, release-readiness validation, and Propagation Progress for this feature. `quickstart.md` references this contract and must not redefine its contents. (Constitution Principle VI.)
+
+## Validation Scope
+
+| Layer | What is Validated | Framework | Target |
+|-------|-------------------|-----------|--------|
+| Unit | Load-failure recovery logic, load-complete guard, content-free diagnostic records, on-disk restart-equivalent pin state/ordering, 100-rep single-item mutation, 20-item interleaved mutation, determinism | Swift `Testing` (`@Test`/`#expect`); XCTest for `PinStateMutationStore` direct tests | `NextPasteTests` |
+| UI | Relaunch with persisted data, Auto Capture + relaunch, 500-item dataset load, 3-second launch budget, single-corrupt-item recovery, 10-round relaunch cycles, 100-rep native pin/unpin, 20-item interleaved native pin/unpin | XCTest | `NextPasteUITests` |
+| Build | Project compiles for macOS; no new diagnostics | `xcodebuild` | `NextPaste` scheme |
+
+## Automated Validation Matrix
+
+| Test | FR/SC Covered | Scope | Command (see quickstart.md) |
+|------|---------------|-------|------------------------------|
+| Load-failure recovery unit test | FR-011, RR-005, SC-007, SC-010 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| Load-complete guard unit test | FR-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| Content-free diagnostic unit test | RR-005 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
+| On-disk restart pin state/ordering | FR-002, FR-003, FR-007, RR-004 | Unit (Targeted) | `-only-testing:NextPasteTests/ClipHistoryTests` |
+| 100-rep single-item mutation | FR-004, FR-005, SC-003 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
+| 20-item interleaved mutation | FR-006, SC-004 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
+| Relaunch + pin/unpin UI test | FR-001, FR-002, FR-003, FR-007, FR-018, SC-005, SC-006, SC-008 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| Auto Capture + relaunch UI test | FR-008, FR-009, FR-010, FR-014, SC-001, SC-002 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| 500-item relaunch UI test | FR-019, SC-009 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| 3-second launch budget UI test | FR-020, SC-011 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| Single-corrupt-item recovery UI test | FR-011, RR-005, SC-007, SC-010 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
+| 100-rep native pin/unpin stress | FR-004, FR-016, SC-003 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
+| 20-item interleaved native stress | FR-006, FR-016, SC-004 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
+
+## Manual Validation Matrix
+
+| Scenario | FR/SC Covered | Method | Evidence |
+|----------|---------------|--------|----------|
+| Relaunch with 500 mixed items, verify count + content + pin state | FR-002, FR-003, FR-019, SC-009 | Seed 500 items via seeder, close app, relaunch, visually verify list + pin badges | Screenshot + row count |
+| Immediate close after pin, relaunch, verify state | FR-007, FR-015, SC-006 | Pin an item, immediately Cmd-Q, relaunch, verify pin state persisted | Screenshot |
+| 10-round Auto Capture + relaunch cycle | FR-014, SC-001, SC-002 | Repeat 10×: Auto Capture 10 items, pin/unpin, close, relaunch; verify no crash + data count | Test run report |
+
+Manual validation supplements automated coverage only where native platform behavior (terminate, relaunch, AppKit teardown) cannot be fully simulated below the UI layer (Constitution Principle VIII).
+
+## Regression Validation Matrix
+
+| Regression Scope | Trigger | Command |
+|------------------|---------|---------|
+| Full unit suite | Feature completion | `xcodebuild … -only-testing:NextPasteTests test` |
+| Full UI suite | Feature completion / release readiness | `xcodebuild … -only-testing:NextPasteUITests test` |
+| Full regression | Release readiness | `xcodebuild … -scheme NextPaste test` |
+
+Full regression is reserved for feature completion / release readiness because this feature touches app launch (`NextPasteApp.makeModelContainer`), persistence (load-failure recovery), and shared clipboard capture infrastructure (Constitution Principle VIII). The reason is recorded here.
+
+## Offline / Local-First Validation
+
+All validation is local and offline. No network dependency. The on-disk UI-test store mode and the in-memory unit-test containers both operate without network. Image assets are local files under Application Support / test temp directories. (Constitution Principle II.)
+
+## Accessibility Validation
+
+No new UI surfaces are introduced (spec assumption: "不新增新的使用者操作介面"). Existing accessibility identifiers (`clip-row-*`, `new-clip-button`, pin/unpin button labels) are reused by new UI tests. No new accessibility contract is required.
+
+## Platform-Specific Validation
+
+| Platform | Scope | Justification |
+|----------|-------|---------------|
+| macOS | Relaunch stress, row-action freeze/reconciliation, 500-item load, launch budget, corrupt-item recovery | The observed crash is macOS-specific (AppKit row-action teardown + on-disk relaunch). `closeApp`/`launchApp` and `rowActionDisplayOrderSnapshot` are macOS-only. |
+| iOS / visionOS | Shared business logic (model, store, projector, capture, retention) validated via unit tests | Pin/unpin mutation, dedup, and retention are cross-platform. The relaunch/stress UI tests are macOS-specific because the crash surface and terminate/relaunch UI infrastructure are macOS-only. |
+
+Shared behavior is validated once at the unit layer; divergent platform behavior is validated where needed (Constitution Principle X).
+
+## Performance Validation
+
+| Budget | Operation | Validation Method | FR/SC |
+|--------|-----------|-------------------|-------|
+| ≤ 3 seconds | Relaunch + load all restorable data with 500 mixed items | Wall-clock from `XCUIApplication.launch()` to `new-clip-button` readiness signal; assert elapsed ≤ 3.0s | FR-020, SC-011 |
+
+The measurement reuses the existing `UITestAppLauncher.prepareMainWindow` readiness gate (`mainWindowReadyIdentifier = "new-clip-button"`). The 500-item dataset is seeded via the extended `UITestHistorySeeder` in on-disk store mode. The budget is measurable, scoped, and validated (Constitution Principle XIII).
+
+## Release-Readiness Validation
+
+| Gate | Evidence Required |
+|------|-------------------|
+| All automated validation matrix tests pass | `xcodebuild` test run report (0 failures) |
+| SC-001 (10 rounds, 0 crashes) | UI test run report |
+| SC-009 (500 items, 0 crashes, 100% accuracy) | UI test run report |
+| SC-010 (corrupt item, diagnostic observable) | UI test run report + diagnostic event capture |
+| SC-011 (≤3s launch) | UI test timing assertion |
+| No `fatalError` on recoverable load failure | Code review + unit test |
+| Full regression passes | `xcodebuild … -scheme NextPaste test` report |
+
+## Sonar Evidence
+
+No SonarQube integration is configured in this repository. There is no checked-in Sonar configuration, scanner, or quality gate. Sonar evidence is therefore **not applicable** for this feature. Code quality is validated via Xcode build/test diagnostics and the existing test suite. If Sonar is introduced later, this contract must be updated to add evidence rules before they are referenced elsewhere (Constitution Principle VI).
+
+## Post-Implementation Quality Evidence
+
+| Evidence | Source | Stored As |
+|----------|--------|-----------|
+| Build success | `xcodebuild … build` | Build log |
+| Targeted test pass | `xcodebuild … -only-testing:… test` | Test run report |
+| Full regression pass | `xcodebuild … -scheme NextPaste test` | Test run report |
+| Launch budget measurement | UI test timing assertion | Test run report |
+| Crash count = 0 | `CrashSignalDetector` + `app.state` assertions | Test run report |
+| Diagnostic event observed | Content-free diagnostic capture in unit/UI test | Test run report |
+
+AI must not assume tests passed. Test results must be recorded from actual execution. Commit SHA, dates, PR, and release versions must not be fabricated; unverifiable fields are left blank or marked `unknown` (Constitution Principle XIX).
+
+## Validation Lifecycle
+
+States: `Pending` → `Executing` → `Passed` / `Failed`.
+- A validation entry is `Pending` until its test is executed.
+- `Passed` requires an actual test run report with 0 failures for that entry.
+- `Failed` requires the failure to be recorded and addressed before re-execution.
+- AI must not mark a validation entry `Passed` without executed evidence.
+
+## Propagation Progress
+
+| Downstream Artifact | Synchronized | Notes |
+|---------------------|-------------|-------|
+| `quickstart.md` | Yes | Execution guide references this contract; does not redefine validation ownership. |
+| `data-model.md` | Yes | Entity/state model aligns with validation targets. |
+| `research.md` | Yes | Root-cause and NEEDS CLARIFICATION resolved; referenced by this contract. |
+| `tasks.md` | Pending | Created by `/speckit.tasks`; must reference this contract for validation steps. |
+
+Propagation Progress is owned by this contract (Constitution Principle XVIII).
