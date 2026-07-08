@@ -119,6 +119,11 @@ enum SafeBoundaryAwaitState: Equatable {
     case idle
     case awaiting
     case resumed
+    /// Post-KVO teardown-safe yield: the `rowActionsVisible == false` boundary
+    /// has been reached, but the snapshot release is deferred to the next
+    /// MainActor runloop turn via `Task.yield()` so it does not execute on the
+    /// AppKit KVO/animation teardown call stack.
+    case yielded
     case cancelled
 }
 
@@ -1375,6 +1380,36 @@ struct HomeView: View {
                 storage?.currentTaskDidFinish = true
                 return
             }
+            storage?.safeBoundaryAwaitState = .resumed
+            // Post-KVO teardown-safe yield: the `rowActionsVisible == false`
+            // KVO callback fires during AppKit's row-action teardown call stack.
+            // `CheckedContinuation.resume()` may schedule the Task to continue
+            // in the same runloop pass, still on the AppKit teardown call stack.
+            // `Task.yield()` suspends and resumes on the next MainActor runloop
+            // turn, fully decoupling the snapshot release from the teardown call
+            // stack so `visibleClips` reordering does not recycle the row while
+            // AppKit is still tearing down the row-action view group. This is a
+            // single runloop hop — NOT a fixed delay, sleep, or user-input gate.
+            storage?.safeBoundaryAwaitState = .yielded
+            await Task.yield()
+            // Re-check cancellation after the yield: if the task was cancelled
+            // (e.g., view teardown or a newer operation superseded it) during the
+            // yield, exit without clearing (FR-009, FR-012).
+            if Task.isCancelled {
+                storage?.safeBoundaryAwaitState = .cancelled
+                let isTeardown = storage?.teardownDidOccur == true
+                let decision: ReconciliationOwnershipDecision = isTeardown ? .teardown : .cancelled
+                storage?.lastExitPath = decision
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: ownerGeneration,
+                    clearingDecision: decision,
+                    snapshotClearOwned: isTeardown
+                )
+                storage?.currentTaskDidFinish = true
+                return
+            }
+            // Restore the resumed state after the yield completes so downstream
+            // observers see `.resumed` as the terminal safe-boundary state.
             storage?.safeBoundaryAwaitState = .resumed
             // Generation / snapshot-ownership guard AFTER the await. The
             // snapshot-ownership validation leg (`snapshotGeneration ==

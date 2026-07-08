@@ -159,6 +159,40 @@ struct RowActionDisplayOrderPolicyTests {
         )
     }
 
+    /// Feature 023 post-KVO teardown-safe yield: after the safe-boundary await
+    /// resumes, the snapshot release must be deferred to the next MainActor
+    /// runloop turn via `Task.yield()` so it does not execute on the AppKit
+    /// KVO/animation teardown call stack. This is a single runloop hop — not a
+    /// fixed delay, sleep, or user-input gate.
+    @Test("reconciliation yields to the next MainActor runloop turn before snapshot release")
+    func reconciliationYieldsBeforeSnapshotRelease() throws {
+        let reconciliation = try reconciliationSectionSource()
+        #expect(
+            reconciliation.contains("await Task.yield()"),
+            "Reconciliation must yield to the next MainActor runloop turn between the safe-boundary await and snapshot release."
+        )
+        // The yield must appear AFTER the safe-boundary await, not before it.
+        guard let awaitRange = reconciliation.range(of: "await awaiter.waitUntilSafeBoundary()") else {
+            Issue.record("Safe-boundary await not found in reconciliation section.")
+            return
+        }
+        let afterAwait = reconciliation[awaitRange.upperBound...]
+        #expect(
+            afterAwait.contains("await Task.yield()"),
+            "Task.yield() must appear after the safe-boundary await, before the snapshot release."
+        )
+        // The yield must appear BEFORE the snapshot release call.
+        guard let yieldRange = afterAwait.range(of: "await Task.yield()") else {
+            Issue.record("Task.yield() not found after the safe-boundary await.")
+            return
+        }
+        let afterYield = afterAwait[yieldRange.upperBound...]
+        #expect(
+            afterYield.contains("releaseSnapshot()"),
+            "releaseSnapshot() must appear after Task.yield()."
+        )
+    }
+
     @Test("reconciliation monitor uses synchronous KVO visibility update")
     func reconciliationMonitorUsesSynchronousKVOVisibilityUpdate() throws {
         let source = try homeViewSource()

@@ -371,6 +371,54 @@ func t021SafeBoundaryAwaitIsSoleGate() async throws {
     )
 }
 
+// MARK: - T074: post-KVO teardown-safe yield before snapshot release
+
+/// Feature 023 (T074): after the `rowActionsVisible == false` safe-boundary
+/// await resumes, the reconciliation Task must yield to the next MainActor
+/// runloop turn (`Task.yield()`) before releasing the snapshot. This decouples
+/// the snapshot release from the AppKit KVO/animation teardown call stack so
+/// `visibleClips` reordering does not recycle the row while AppKit is still
+/// tearing down `rowActionsGroupView`. The terminal state after the yield
+/// completes remains `.resumed`.
+@Test(
+    "T074: post-KVO yield defers snapshot release to the next MainActor runloop turn"
+)
+@MainActor
+func t074PostKVOYieldDefersSnapshotRelease() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
+        Issue.record("Red: T072 seam not implemented (FR-004).")
+        return
+    }
+
+    await harness.awaitBodyInstalled()
+    harness.driveTogglePin()
+
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The reconciliation Task must reach the safe-boundary await (FR-004)."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+
+    // Release the deterministic awaiter: the KVO boundary is reached.
+    harness.safeBoundary.releaseNext()
+
+    // The task must complete successfully after the yield.
+    await probe.awaitReconciliationTaskCompletion()
+
+    #expect(
+        observers.lastExitPath == .success,
+        "A successful reconciliation must still complete after the post-KVO yield (FR-012)."
+    )
+    #expect(
+        !probe.hasRowActionDisplayOrderSnapshot,
+        "The snapshot must be released after the post-KVO yield completes (FR-012)."
+    )
+    #expect(
+        observers.safeBoundaryAwaitState == .resumed,
+        "After the post-KVO yield completes, the terminal await state must be .resumed."
+    )
+}
+
 // MARK: - T015: snapshot eventually released after a successful reconciliation
 
 @Test(
