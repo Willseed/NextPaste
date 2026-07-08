@@ -5,7 +5,8 @@
 - The highest authority is `.specify/memory/constitution.md`, currently Constitution v2.7.0.
 - Follow `.github/copilot-instructions.md` for repository build/test conventions, but defer to the
   constitution when guidance conflicts.
-- Treat `.github/agents/speckit.*.agent.md` as the operational Spec Kit command model.
+- Treat `.github/agents/speckit.*.agent.md` and `.agents/skills/speckit-*` as the
+  operational Spec Kit command models.
 - For governance-only tasks, do not modify product code.
 
 ## Product Constraints
@@ -21,9 +22,14 @@
 
 ## Spec Kit Flow
 
-Use the SDD sequence:
+Use the SDD sequence. Copilot commands use dotted names; Codex skills use the same order with
+hyphenated skill names.
 
 `/speckit.specify -> /speckit.clarify -> /speckit.plan -> /speckit.tasks -> /speckit.analyze -> /speckit.implement`
+
+Codex equivalent:
+
+`$speckit-specify -> $speckit-clarify -> $speckit-plan -> $speckit-tasks -> $speckit-analyze -> $speckit-implement`
 
 - `/speckit.specify` creates the feature specification.
 - `/speckit.clarify` refines the specification before planning when material ambiguity remains.
@@ -37,8 +43,9 @@ Use the SDD sequence:
 Official Spec Kit commands are allowed and remain the canonical workflow for SDD tasks. However, Spec Kit execution must stay bounded by the current user request and must not silently expand repo-level context.
 
 - Do not run optional post-hooks unless the user explicitly requests them in the current turn.
-- Do not run `/speckit-agent-context-update` unless explicitly requested.
-- Do not modify `AGENTS.md` or `.github/copilot-instructions.md` during normal `/speckit.*` execution.
+- Do not run `/speckit-agent-context-update` or `/speckit.agent-context.update` unless explicitly requested.
+- Do not modify `AGENTS.md` or `.github/copilot-instructions.md` during normal `/speckit.*`
+  or `$speckit-*` execution.
 - Do not add or update feature-specific `SPECKIT START` pointers in repo-level instruction files.
 - If the official workflow recommends refreshing agent context, report it as a skipped optional step instead of executing it.
 - Current feature artifacts are the product requirement source for that SDD command. Historical specs may be read only when the current artifact explicitly references them or when needed for compatibility, and then only relevant sections should be read.
@@ -59,7 +66,7 @@ Bounded SDD constraints:
 - Current feature artifact is the only product requirement source unless I explicitly name another source.
 - Do not read historical specs except when the current artifact explicitly references them; if needed, read only relevant sections.
 - Do not run optional post-hooks.
-- Do not run /speckit-agent-context-update.
+- Do not run /speckit-agent-context-update or /speckit.agent-context.update.
 - Do not modify AGENTS.md or .github/copilot-instructions.md.
 - Do not add or update any SPECKIT START feature-plan pointer.
 - If the official workflow recommends updating agent context, report it as a skipped optional step instead of executing it.
@@ -152,6 +159,8 @@ Pending and Verification Pending remain visible follow-up work but are not gover
 - `.github/agents/speckit.*.agent.md`: SDD command sequence, agent-layer inheritance, read-only
   Analyze behavior, classification categories, targeted validation ordering, and implementation
   checkpoints.
+- `.agents/skills/speckit-*`: Codex SDD skill sequence, bounded hook execution, hyphenated command
+  naming, read-only Analyze behavior, targeted validation ordering, and implementation checkpoints.
 - `.github/copilot-instructions.md`: Xcode build/test commands, current architecture notes, Apple
   platform conventions, SwiftData usage, and existing validation guidance.
 
@@ -181,9 +190,3 @@ Pending and Verification Pending remain visible follow-up work but are not gover
 
 - 上述治理規則摘要為常駐提示；一般產品 bug fix 或小功能修改，不預設讀完整 `.specify/`、`.github/agents/` 或所有 feature specs。
 - 只有治理、規格、分析、validation ownership 相關任務才讀完整治理文件（`constitution.md`、`speckit.*.agent.md`、validation contracts）。
-
-<!-- SPECKIT START -->
-For additional context about technologies to be used, project structure,
-shell commands, and other important information, read the current plan
-at specs/023-immediate-safe-pin-unpin-reordering/plan.md
-<!-- SPECKIT END -->
