@@ -2,7 +2,7 @@
 
 ## Authority
 
-- The highest authority is `.specify/memory/constitution.md`, currently Constitution v2.7.0.
+- The highest authority is `.specify/memory/constitution.md`, currently Constitution v2.8.0.
 - Follow `.github/copilot-instructions.md` for repository build/test conventions, but defer to the
   constitution when guidance conflicts.
 - Treat `.github/agents/speckit.*.agent.md` and `.agents/skills/speckit-*` as the
@@ -37,6 +37,33 @@ Codex equivalent:
 - `/speckit.tasks` creates dependency-ordered tasks from the approved artifacts.
 - `/speckit.analyze` is read-only and checks cross-artifact consistency before implementation.
 - `/speckit.implement` executes `tasks.md` after analysis blockers are resolved.
+
+## Specification Lifecycle & Archival
+
+Constitution principle XIX governs this section. The full lifecycle is
+`specify -> clarify -> plan -> tasks -> implement -> validate -> complete -> archive`. `complete`
+means acceptance is finished; `archive` means the specification and its history are organized for
+traceability. Implementation completion does NOT equal archival.
+
+- Layout: `specs/active/` (in development, blocked, or not yet closed), `specs/archive/YYYY/`
+  (completed and accepted), `specs/deprecated/` (rejected, superseded, or cancelled).
+  `specs/README.md` is the authoritative index of every SPEC.
+- Status vocabulary (only these): `draft`, `active`, `blocked`, `completed`, `deprecated`,
+  `superseded`, `cancelled`. Do NOT use `done`, `finished`, `closed`, `complete`, or `implemented`
+  as status. A SPEC replaced by another uses `superseded` with `superseded_by`, never `completed`.
+- Moves MUST use Git-tracked operations (`git mv`). Never delete specs, compress to ZIP, move out of
+  the repo, or rename to `old-spec`/`backup`/`legacy`. Preserve `spec.md`, `plan.md`, `tasks.md`,
+  `research.md`, and `contracts/`.
+- Archival requires: frozen scope, acceptance criteria completed or dispositioned, implementation
+  traceable to a commit, all tasks complete or dispositioned, test results recorded, known
+  limitations recorded, replacement/superseded relationships recorded, and a `completion.md`.
+- Unchecked tasks MUST NOT be marked `[x]` to finish archival. Each open task records a disposition
+  (`Moved to SPEC-<id>`, `Cancelled`, or `Accepted limitation`) with a concrete reason.
+- AI MUST NOT assume tests passed. AI MUST NOT fabricate commit SHA, dates, PR, or release version;
+  unverifiable fields are left blank, marked `unknown`, or omitted.
+- Lightweight validation: run `.specify/scripts/bash/spec-archive-check.sh` to check index coverage,
+  missing `completion.md`, missing `superseded_by`, disallowed status vocabulary, and open tasks
+  without dispositions in archived specs.
 
 ## Spec Kit Compatibility Boundary
 
@@ -153,9 +180,9 @@ Pending and Verification Pending remain visible follow-up work but are not gover
 
 ## Synchronized Sources
 
-- `.specify/memory/constitution.md`: v2.7.0 authority, governance status modeling,
-  equivalent-checkpoint comparison, validation ownership, propagation order, product constraints,
-  and completion gates.
+- `.specify/memory/constitution.md`: v2.8.0 authority, governance status modeling,
+  specification lifecycle & archival (principle XIX), equivalent-checkpoint comparison, validation
+  ownership, propagation order, product constraints, and completion gates.
 - `.github/agents/speckit.*.agent.md`: SDD command sequence, agent-layer inheritance, read-only
   Analyze behavior, classification categories, targeted validation ordering, and implementation
   checkpoints.

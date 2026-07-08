@@ -213,3 +213,13 @@ Report final status with summary of completed work.
 - [ ] Implementation validated against specification, plan, and test coverage
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with summary of completed work
+
+## Specification Lifecycle & Archival
+
+Implementation completion does NOT archive a SPEC. The full lifecycle is
+`specify -> clarify -> plan -> tasks -> implement -> validate -> complete -> archive` (constitution
+principle XIX). Archival requires a `completion.md`, frozen acceptance, all tasks complete or
+dispositioned, recorded test results, and `git mv` into `specs/archive/YYYY/`. Do NOT mark open
+tasks `[X]` to finish archival; record a disposition instead. Do NOT assume tests passed or
+fabricate commit SHA, dates, PR, or release versions. See `specs/README.md` and
+`.specify/scripts/bash/spec-archive-check.sh`.

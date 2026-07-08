@@ -213,3 +213,11 @@ Every task MUST strictly follow this format:
 - [ ] tasks.md generated with all phases, task IDs, and file paths
 - [ ] Extension hooks dispatched or skipped according to the rules in Mandatory Post-Execution Hooks above
 - [ ] Completion reported to user with task count, story breakdown, and MVP scope
+
+## Specification Lifecycle & Archival
+
+Tasks generation is the `tasks` stage of `specify -> clarify -> plan -> tasks -> implement ->
+validate -> complete -> archive` (constitution principle XIX). When a SPEC is later archived, every
+open checkbox item MUST record a final disposition (`Moved to SPEC-<id>`, `Cancelled`, or
+`Accepted limitation` with a reason) and MUST NOT be marked `[X]` to finish archival. See
+`.specify/templates/tasks-template.md` "Archival Dispositions".

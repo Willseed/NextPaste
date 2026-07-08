@@ -1,0 +1,460 @@
+---
+
+description: "Task list template for feature implementation"
+---
+
+# Tasks: Governance v2.5 Representative
+
+**Input**: Design documents from `/specs/013-governance-v25-representative/`
+
+**Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md,
+contracts/, and `contracts/validation-and-sonar-contract.md`
+
+**Validation Contract**: `specs/013-governance-v25-representative/contracts/validation-and-sonar-contract.md`
+owns validation governance, including the automated validation matrix, manual validation matrix, regression validation matrix,
+offline/local-first validation, accessibility validation, platform-specific validation,
+performance validation, representative-feature validation, release-readiness validation, Sync Impact gating, and SonarQube evidence requirements.
+`quickstart.md` owns build/test/run commands and Validation Contract references only.
+
+**FR/SC Authority**: This task list MUST reference Functional Requirement (FR-###) and Success Criteria (SC-###) identifiers from the feature specification (spec.md) only, which is the sole authoritative source of requirements. Downstream tasks MUST NOT renumber, redefine, extend, or invent identifiers.
+
+**Tests**: Generate automated test tasks when the specification or constitution requires them, and
+generate validation execution tasks that reference the Validation Contract instead of restating its
+matrices or ownership rules inside `tasks.md`. Prefer the smallest reliable scope first: targeted
+unit tests, then targeted integration tests, then targeted UI tests only where lower layers are not
+reliable. Full regression belongs only at defined gates and must include a documented reason.
+
+**Organization**: Tasks are grouped by user story to enable independent implementation and testing
+of each story.
+
+## Format: `[ID] [P?] [Story] Description`
+
+- **[P]**: Can run in parallel (different files, no dependencies)
+- **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
+- Include exact file paths in descriptions
+
+## Path Conventions
+
+- **Single project**: `src/`, `tests/` at repository root
+- **Web app**: `backend/src/`, `frontend/src/`
+- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
+- Paths shown below assume single project - adjust based on plan.md structure
+
+## Tiered Validation Strategy
+
+1. Targeted unit tests for pure logic
+2. Targeted integration tests for cross-component behavior
+3. Targeted UI tests only for user-visible flows that lower layers cannot validate reliably
+4. Full regression only at feature completion, release readiness, or when shared infrastructure,
+   persistence, app launch, navigation, or cross-cutting interaction behavior is affected
+5. SonarQube evidence after implementation
+
+Validation tasks MUST list targeted commands or selectors before any full-suite command. If a full
+regression task is included, it MUST state why the gate applies.
+
+<!--
+  ============================================================================
+  IMPORTANT: The tasks below are SAMPLE TASKS for illustration purposes only.
+
+  The /speckit.tasks command MUST replace these with actual tasks based on:
+  - User stories from spec.md (with their priorities P1, P2, P3...)
+  - Feature requirements from plan.md
+  - Entities from data-model.md
+  - Endpoints from contracts/
+
+  Tasks MUST be organized by user story so each story can be:
+  - Implemented independently
+  - Tested independently
+  - Delivered as an MVP increment
+
+  DO NOT keep these sample tasks in the generated tasks.md file.
+  ============================================================================
+-->
+
+## Phase 1: Setup (Shared Infrastructure)
+
+**Purpose**: Project initialization and basic structure
+
+- [ ] T001 Create project structure per implementation plan
+- [ ] T002 Initialize [language] project with [framework] dependencies
+- [ ] T003 [P] Configure linting and formatting tools
+
+---
+
+## Phase 2: Foundational (Blocking Prerequisites)
+
+**Purpose**: Core infrastructure that MUST be complete before ANY user story can be implemented
+
+**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+
+Examples of foundational tasks (adjust based on your project):
+
+- [ ] T004 Create local persistence models and clipboard history schema
+- [ ] T005 [P] Implement clipboard monitoring pipeline
+- [ ] T006 [P] Define content-type identification and deduplication rules
+- [ ] T007 Create base models/entities that all stories depend on
+- [ ] T008 Configure explicit error reporting for local capture failures
+- [ ] T009 Setup feature flags or settings for optional sync/export flows
+
+**Checkpoint**: Foundation ready - user story implementation can now begin in parallel
+
+---
+
+## Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP
+
+**Goal**: [Brief description of what this story delivers]
+
+**Independent Test**: [How to verify this story works on its own]
+
+### Tests for User Story 1 ⚠️
+
+> **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
+
+- [ ] T010 [P] [US1] Run targeted unit test command for clipboard monitoring or deduplication
+  behavior in NextPasteTests/[Name]Tests.swift
+- [ ] T011 [P] [US1] Run targeted integration test command for [cross-component clipboard/history
+  journey] in NextPasteTests/[Name]IntegrationTests.swift
+- [ ] T012 [P] [US1] Run targeted UI test command for [critical user-visible flow that lower layers
+  cannot validate reliably] in NextPasteUITests/[Name]UITests.swift
+- [ ] T013 [US1] Reference and, if needed, extend feature-specific validation execution in
+  specs/013-governance-v25-representative/contracts/validation-and-sonar-contract.md without duplicating its
+  template-owned matrices
+
+### Implementation for User Story 1
+
+- [ ] T014 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
+- [ ] T015 [P] [US1] Create clipboard observation or capture service in
+  NextPaste/[ClipboardService].swift
+- [ ] T016 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
+- [ ] T017 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
+- [ ] T018 [US1] Add explicit consent handling for any optional user-content transmission
+- [ ] T019 [US1] Add type-identification handling for supported clipboard content
+
+**Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
+
+---
+
+## Phase 4: User Story 2 - [Title] (Priority: P2)
+
+**Goal**: [Brief description of what this story delivers]
+
+**Independent Test**: [How to verify this story works on its own]
+
+### Tests for User Story 2 ⚠️
+
+- [ ] T020 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
+- [ ] T021 [P] [US2] Targeted integration or UI test command for [critical user journey], using UI
+  coverage only if lower layers cannot validate it reliably, in NextPasteUITests/[Name]UITests.swift
+- [ ] T022 [P] [US2] Targeted offline/privacy behavior test command for [scenario] in
+  NextPasteTests/[Name]PrivacyTests.swift
+- [ ] T023 [US2] Reference the Validation Contract in
+  specs/013-governance-v25-representative/contracts/validation-and-sonar-contract.md for any story-specific
+  execution additions instead of redefining local validation ownership
+
+### Implementation for User Story 2
+
+- [ ] T024 [P] [US2] Create [Entity] model in NextPaste/[Entity].swift
+- [ ] T025 [US2] Implement [Service] in NextPaste/[Service].swift
+- [ ] T026 [US2] Implement [feature] in NextPaste/[Location].swift
+- [ ] T027 [US2] Integrate with User Story 1 components (if needed)
+
+**Checkpoint**: At this point, User Stories 1 AND 2 should both work independently
+
+---
+
+## Phase 5: User Story 3 - [Title] (Priority: P3)
+
+**Goal**: [Brief description of what this story delivers]
+
+**Independent Test**: [How to verify this story works on its own]
+
+### Tests for User Story 3 ⚠️
+
+- [ ] T028 [P] [US3] Targeted unit or integration test command for [requirement/schema] in
+  NextPasteTests/[Name]Tests.swift
+- [ ] T029 [P] [US3] Targeted UI test command for [critical user-visible journey not covered at
+  lower levels] in NextPasteUITests/[Name]UITests.swift
+- [ ] T030 [US3] Reference manual/platform/performance/release-readiness execution from
+  specs/013-governance-v25-representative/contracts/validation-and-sonar-contract.md instead of recreating that
+  checklist in tasks.md
+
+### Implementation for User Story 3
+
+- [ ] T031 [P] [US3] Create [Entity] model in NextPaste/[Entity].swift
+- [ ] T032 [US3] Implement [Service] in NextPaste/[Service].swift
+- [ ] T033 [US3] Implement [feature] in NextPaste/[Location].swift
+
+**Checkpoint**: All user stories should now be independently functional
+
+---
+
+[Add more user story phases as needed, following the same pattern]
+
+---
+
+## Phase N: Polish & Cross-Cutting Concerns
+
+**Purpose**: Improvements that affect multiple user stories
+
+- [ ] TXXX [P] Documentation updates in docs/
+- [ ] TXXX Code cleanup and refactoring
+- [ ] TXXX Performance optimization across all stories
+- [ ] TXXX [P] Additional regression tests in NextPasteTests/
+- [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
+- [ ] TXXX Offline support review for local-first clipboard behavior
+- [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
+  motion, and component styling in user-facing UI
+- [ ] TXXX **Governance Review**: Review the spec, plan, tasks, checklist, and validation contract for alignment and consistent inheritance
+- [ ] TXXX **Analyze enforcement**: Execute `/speckit.analyze` as a mandatory checkpoint to programmatically verify complete propagation through Constitution -> Templates -> Agents before representative feature validation
+- [ ] TXXX **Representative Feature Validation**: Validate against at least one existing representative feature (e.g., `specs/011-fix-clip-row-clipping`) for backward compatibility, and, where practical, a newly generated feature for forward-generation correctness
+- [ ] TXXX **Final Governance Regression**: Run full regression checks across all shared artifacts
+- [ ] TXXX **Sync Impact Closure**: Close the Sync Impact and record migration follow-up decisions
+- [ ] TXXX **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale
+- [ ] TXXX **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change
+
+---
+
+## Dependencies & Execution Order
+
+### Phase Dependencies
+
+- **Setup (Phase 1)**: No dependencies - can start immediately
+- **Foundational (Phase 2)**: Depends on Setup completion - BLOCKS all user stories
+- **User Stories (Phase 3+)**: All depend on Foundational phase completion
+  - User stories can then proceed in parallel (if staffed)
+  - Or sequentially in priority order (P1 -> P2 -> P3)
+- **Polish (Final Phase)**: Depends on all desired user stories being complete
+
+### User Story Dependencies
+
+- **User Story 1 (P1)**: Can start after Foundational (Phase 2) - No dependencies on other stories
+- **User Story 2 (P2)**: Can start after Foundational (Phase 2) - May integrate with US1 but should be independently testable
+- **User Story 3 (P3)**: Can start after Foundational (Phase 2) - May integrate with US1/US2 but should be independently testable
+
+### Within Each User Story
+
+- Tests MUST be written and FAIL before implementation
+- Models before services
+- Clipboard monitoring and persistence before optional sync/export integrations
+- Core implementation before integration
+- Prefer targeted unit, then targeted integration, then targeted UI validation before any full
+  regression task
+- Shared validation execution belongs in the Validation Contract, not in task-local matrices
+- Story complete before moving to next priority
+
+### Parallel Opportunities
+
+- All Setup tasks marked [P] can run in parallel
+- All Foundational tasks marked [P] can run in parallel (within Phase 2)
+- Once Foundational phase completes, all user stories can start in parallel (if team capacity allows)
+- All tests for a user story marked [P] can run in parallel
+- Models within a story marked [P] can run in parallel
+- Different user stories can be worked on in parallel by different team members
+
+---
+
+## Parallel Example: User Story 1
+
+```bash
+# Launch all tests for User Story 1 together (if tests requested):
+Task: "Contract test for [endpoint] in tests/contract/test_[name].py"
+Task: "Integration test for [user journey] in tests/integration/test_[name].py"
+
+# Launch all models for User Story 1 together:
+Task: "Create [Entity1] model in src/models/[entity1].py"
+Task: "Create [Entity2] model in src/models/[entity2].py"
+```
+
+---
+
+## Implementation Strategy
+
+### MVP First (User Story 1 Only)
+
+1. Complete Phase 1: Setup
+2. Complete Phase 2: Foundational (CRITICAL - blocks all stories)
+3. Complete Phase 3: User Story 1
+4. **STOP and VALIDATE**: Test User Story 1 independently
+5. Deploy/demo if ready
+
+### Incremental Delivery
+
+1. Complete Setup + Foundational -> Foundation ready
+2. Add User Story 1 -> Test independently -> Deploy/Demo (MVP!)
+3. Add User Story 2 -> Test independently -> Deploy/Demo
+4. Add User Story 3 -> Test independently -> Deploy/Demo
+5. Execute the Validation Contract and record Sonar evidence before completion
+6. Each story adds value without breaking previous stories
+
+### Parallel Team Strategy
+
+With multiple developers:
+
+1. Team completes Setup + Foundational together
+2. Once Foundational is done:
+   - Developer A: User Story 1
+   - Developer B: User Story 2
+   - Developer C: User Story 3
+3. Stories complete and integrate independently
+
+---
+
+## Notes
+
+- [P] tasks = different files, no dependencies
+- [Story] label maps task to specific user story for traceability
+- Each user story should be independently completable and testable
+- Verify tests fail before implementing
+- Do not duplicate contract-owned validation matrices, regression definitions, risk tables,
+  rollback sections, or Sonar evidence rules inside `tasks.md`
+- Do not require full regression after every task; include it only at defined gates and document
+  the reason
+- Do not duplicate reliable unit or integration coverage with UI tests
+- Commit after each task or logical group
+- Stop at any checkpoint to validate story independently
+- Avoid: vague tasks, same file conflicts, cross-story dependencies that break independence
+
+## Archive Dispositions
+> Appended at archival (2026-07-08). Open checkbox items below retain their original state; no item was marked complete. Each records its final disposition per the archival workflow.
+
+- [ ] T001 Create project structure per implementation plan
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T002 Initialize [language] project with [framework] dependencies
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T003 [P] Configure linting and formatting tools
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T004 Create local persistence models and clipboard history schema
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T005 [P] Implement clipboard monitoring pipeline
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T006 [P] Define content-type identification and deduplication rules
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T007 Create base models/entities that all stories depend on
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T008 Configure explicit error reporting for local capture failures
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T009 Setup feature flags or settings for optional sync/export flows
+  - Disposition: Accepted limitation
+  - Reason: Optional task not executed at archival closure.
+- [ ] T010 [P] [US1] Run targeted unit test command for clipboard monitoring or deduplication
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T011 [P] [US1] Run targeted integration test command for [cross-component clipboard/history
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T012 [P] [US1] Run targeted UI test command for [critical user-visible flow that lower layers
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T013 [US1] Reference and, if needed, extend feature-specific validation execution in
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T014 [P] [US1] Create SwiftData model [Entity1] in NextPaste/[Entity1].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T015 [P] [US1] Create clipboard observation or capture service in
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T016 [US1] Implement validation, deduplication, and persistence in NextPaste/[Service].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T017 [US1] Implement SwiftUI history refresh flow for [feature] in NextPaste/[View].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T018 [US1] Add explicit consent handling for any optional user-content transmission
+  - Disposition: Accepted limitation
+  - Reason: Optional task not executed at archival closure.
+- [ ] T019 [US1] Add type-identification handling for supported clipboard content
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T020 [P] [US2] Unit test for [requirement/schema] in NextPasteTests/[Name]Tests.swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T021 [P] [US2] Targeted integration or UI test command for [critical user journey], using UI
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T022 [P] [US2] Targeted offline/privacy behavior test command for [scenario] in
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T023 [US2] Reference the Validation Contract in
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T024 [P] [US2] Create [Entity] model in NextPaste/[Entity].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T025 [US2] Implement [Service] in NextPaste/[Service].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T026 [US2] Implement [feature] in NextPaste/[Location].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T027 [US2] Integrate with User Story 1 components (if needed)
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T028 [P] [US3] Targeted unit or integration test command for [requirement/schema] in
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T029 [P] [US3] Targeted UI test command for [critical user-visible journey not covered at
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T030 [US3] Reference manual/platform/performance/release-readiness execution from
+  - Disposition: Accepted limitation
+  - Reason: Manual/hardware/platform regression validation not executed at archival closure.
+- [ ] T031 [P] [US3] Create [Entity] model in NextPaste/[Entity].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T032 [US3] Implement [Service] in NextPaste/[Service].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] T033 [US3] Implement [feature] in NextPaste/[Location].swift
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX [P] Documentation updates in docs/
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX Code cleanup and refactoring
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX Performance optimization across all stories
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX [P] Additional regression tests in NextPasteTests/
+  - Disposition: Accepted limitation
+  - Reason: Manual/hardware/platform regression validation not executed at archival closure.
+- [ ] TXXX Privacy review for on-device monitoring, local storage, and explicit data transmission
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX Offline support review for local-first clipboard behavior
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX Design-system consistency review for colors, typography, spacing, radius, iconography,
+  - Disposition: Accepted limitation
+  - Reason: Not completed before archival; accepted as known limitation and not re-verified at closure.
+- [ ] TXXX **Governance Review**: Review the spec, plan, tasks, checklist, and validation contract for alignment and consistent inheritance
+  - Disposition: Accepted limitation
+  - Reason: Superseded by subsequent governance evolution (constitution v2.7.0); per-task completion evidence not retained at archival.
+- [ ] TXXX **Analyze enforcement**: Execute `/speckit.analyze` as a mandatory checkpoint to programmatically verify complete propagation through Constitution -> Templates -> Agents before representative feature validation
+  - Disposition: Accepted limitation
+  - Reason: Superseded by subsequent governance evolution (constitution v2.7.0); per-task completion evidence not retained at archival.
+- [ ] TXXX **Representative Feature Validation**: Validate against at least one existing representative feature (e.g., `specs/011-fix-clip-row-clipping`) for backward compatibility, and, where practical, a newly generated feature for forward-generation correctness
+  - Disposition: Accepted limitation
+  - Reason: Superseded by subsequent governance evolution (constitution v2.7.0); per-task completion evidence not retained at archival.
+- [ ] TXXX **Final Governance Regression**: Run full regression checks across all shared artifacts
+  - Disposition: Accepted limitation
+  - Reason: Manual/hardware/platform regression validation not executed at archival closure.
+- [ ] TXXX **Sync Impact Closure**: Close the Sync Impact and record migration follow-up decisions
+  - Disposition: Accepted limitation
+  - Reason: Superseded by subsequent governance evolution (constitution v2.7.0); per-task completion evidence not retained at archival.
+- [ ] TXXX **SonarQube Evidence**: Record SonarQube health evidence or document applicability scope rationale
+  - Disposition: Accepted limitation
+  - Reason: SonarQube/SonarCloud not configured in this repository; required Sonar evidence is unobtainable.
+- [ ] TXXX **Constitution Completion**: Complete the Constitution update process, incrementing the version and archiving the ratified change
+  - Disposition: Accepted limitation
+  - Reason: Superseded by subsequent governance evolution (constitution v2.7.0); per-task completion evidence not retained at archival.

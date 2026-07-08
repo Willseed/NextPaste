@@ -5,6 +5,13 @@
 **Created**: [DATE]
 
 **Status**: Draft
+**Owner**: NextPaste
+
+<!-- Lifecycle: specify -> clarify -> plan -> tasks -> implement -> validate -> complete -> archive.
+     Status vocabulary (only): draft, active, blocked, completed, deprecated, superseded, cancelled.
+     Do NOT use done/finished/closed/complete/implemented. On completion add `**Completed**: <date>`
+     and `**Final Commit**: <sha or unknown>`; on supersession use `**Status**: Superseded`
+     with `**Superseded By**: <id>`. Unverifiable fields are left blank or `unknown`. -->
 
 **Input**: User description: "$ARGUMENTS"
 

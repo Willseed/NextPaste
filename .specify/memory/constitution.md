@@ -1,5 +1,38 @@
 <!--
 Sync Impact Report
+Version change: 2.7.0 -> 2.8.0
+Modified principles:
+- Added principle: XIX. Specification Lifecycle & Archival
+Added sections:
+- Specification Lifecycle & Archival (lifecycle, directory layout, status vocabulary,
+  archival qualifications, completion/deprecation records, no-fabrication rules)
+Downstream artifacts requiring synchronization:
+- ✅ .specify/templates/spec-template.md (archival metadata + lifecycle)
+- ✅ .specify/templates/tasks-template.md (archive disposition format)
+- ✅ .github/copilot-instructions.md (archival lifecycle subsection)
+- ✅ AGENTS.md (archival lifecycle subsection)
+- ✅ .github/agents/speckit.implement.agent.md (archival lifecycle note)
+- ✅ .github/agents/speckit.tasks.agent.md (archival disposition note)
+- ✅ .specify/scripts/bash/spec-archive-check.sh (added validation script)
+- ⚠ pending .github/agents/speckit.{specify,clarify,plan,analyze,constitution,checklist,converge,taskstoissues,agent-context.update}.agent.md (reference archival lifecycle; not re-authored here)
+- ⚠ pending specs/README.md index (created; representative features 001–024 archived, 025 active)
+Governance Lifecycle Status:
+- In Progress — constitution amended with the Specification Lifecycle & Archival principle;
+  remaining speckit agent-layer reference synchronization pending.
+Propagation Progress:
+- In Progress — templates, copilot instructions, AGENTS, implement/tasks agents, and validation
+  script synchronized; other speckit.*.agent.md reference updates pending.
+Verification Status:
+- Representative Validation: Executed against features 001–024 (archived) and 025 (active);
+  build + unit-test evidence captured 2026-07-08; UI/manual/Sonar recorded as known limitations.
+- Analyze checkpoints: Deferred — not executed against the v2.8.0 downstream set.
+- Sync Impact closure: In Progress — constitution updated; agent-layer reference sync pending.
+Follow-up TODOs:
+- Reference the archival lifecycle in each .github/agents/speckit.*.agent.md.
+-->
+
+<!--
+Sync Impact Report
 Version change: 2.6.0 -> 2.7.0
 Modified principles:
 - Added principle: XVIII. Governance Status Modeling
@@ -304,6 +337,43 @@ Governance Lifecycle Status.
 Rationale: Explicit checkpoint categories prevent false-positive governance inconsistencies when
 lifecycle ownership, propagation work, and verification evidence progress at different granularities.
 
+### XIX. Specification Lifecycle & Archival
+
+Every specification follows one lifecycle:
+`specify -> clarify -> plan -> tasks -> implement -> validate -> complete -> archive`.
+`complete` means acceptance is finished. `archive` means the specification and its history are
+organized for traceability. Implementation completion does NOT equal archival; a SPEC may not move
+to `archive/` until its acceptance contract is formally closed.
+
+Specifications MUST be organized under `specs/active/`, `specs/archive/YYYY/`, and
+`specs/deprecated/`, with `specs/README.md` as the authoritative index. All moves MUST use Git-tracked
+operations (for example `git mv`); specifications MUST NOT be deleted, compressed into archives,
+moved out of the repository, or renamed to fuzzy names such as `old-spec`, `backup`, or `legacy`.
+Original `spec.md`, `plan.md`, `tasks.md`, `research.md`, `contracts/`, and related files MUST be
+preserved on archival.
+
+Specification status MUST use only this vocabulary:
+`draft`, `active`, `blocked`, `completed`, `deprecated`, `superseded`, `cancelled`. The terms
+`done`, `finished`, `closed`, `complete`, and `implemented` MUST NOT be used as status values. A
+SPEC superseded by another MUST use `status: superseded` with `superseded_by: <id>` and MUST NOT be
+marked `completed`.
+
+A SPEC may move to `archive/YYYY/` only when: the requirement scope is frozen; acceptance criteria
+are completed or formally dispositioned; implementation is traceable to a commit; every task is
+complete or has an explicit disposition; test results are recorded; known limitations are recorded;
+replacement/superseded relationships are recorded; and a `completion.md` exists. Each archived
+completed SPEC MUST include a `completion.md`. Each deprecated or superseded SPEC MUST include a
+`# Deprecation Record`.
+
+Unchecked tasks MUST NOT be marked complete to make a SPEC look finished. Each open task MUST record
+a final disposition: `Moved to SPEC-<id>`, `Cancelled`, or `Accepted limitation`, with a concrete
+reason. AI agents MUST NOT assume tests passed, and MUST NOT fabricate commit SHAs, dates, pull
+requests, or release versions. Fields that cannot be verified from Git or documents MUST be left
+blank, marked `unknown`, or omitted.
+
+Rationale: A consistent, traceable, immutable-history archival workflow protects acceptance
+contracts and prevents status drift after implementation ends.
+
 ## Technical Constraints
 
 NextPaste is an Apple-platform application whose default implementation stack is
@@ -431,4 +501,4 @@ change is incomplete until every required downstream artifact is updated or an e
 approved and documented. The report MUST distinguish Governance Lifecycle Status, Propagation
 Progress, and Verification Status instead of collapsing them into a single completion signal.
 
-**Version**: 2.7.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-01
+**Version**: 2.8.0 | **Ratified**: 2026-06-30 | **Last Amended**: 2026-07-08

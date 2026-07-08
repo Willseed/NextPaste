@@ -19,6 +19,18 @@ description: "Task list template for feature implementation"
 - **[Story]**: Which user story this task belongs to (e.g., US1, US2, US3)
 - Include exact file paths in descriptions
 
+## Archival Dispositions (apply only at archival)
+
+When a SPEC is archived, every open checkbox item MUST record a final disposition. Do NOT change
+`[ ]` to `[x]` to finish archival. Append a `## Archive Dispositions` section listing each open
+item verbatim with one of:
+
+- `Disposition: Moved to SPEC-<id>` (and the destination task) — work transferred.
+- `Disposition: Cancelled` + `Reason:` — work intentionally dropped.
+- `Disposition: Accepted limitation` + `Reason:` — work not executed, accepted as a known limitation.
+
+Only check `[x]` for tasks actually completed and verifiable. Do not assume tests passed.
+
 ## Path Conventions
 
 - **Single project**: `src/`, `tests/` at repository root

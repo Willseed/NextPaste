@@ -33,7 +33,7 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
 
 ## Key conventions
 
-- Follow the NextPaste constitution in `.specify/memory/constitution.md` and enforce the v2.7 governance pillars:
+- Follow the NextPaste constitution in `.specify/memory/constitution.md` and enforce the v2.8 governance pillars:
   1. Continuous Quality Improvement: Evaluate recurring Analyze findings for promotion to shared governance sources before feature-local fixes.
   2. Apple Platform Consistency: Explicitly declare supported Apple platforms, prefer shared business logic, and preserve native platform interactions.
   3. Spec Traceability Governance: Respect spec.md as the sole authoritative source of FR and SC identifiers. Report orphan identifiers and redefined identifiers as blocking Analyze errors.
@@ -42,6 +42,7 @@ There is no repo-specific lint script or SwiftLint configuration checked in. Rel
   6. Governance Evolution and Analysis Accuracy: Treat governance improvements as incremental evolution and classify every Analyze finding as Governance Defect, Implementation Pending, or Verification Pending.
   7. Governance Propagation Order: Apply governance updates in order `Constitution -> Templates -> Agents -> Generated Feature Artifacts -> Representative Validation -> Sync Impact`.
   8. Lifecycle Ownership Boundaries: Keep validation lifecycle ownership centralized in `specs/<feature>/contracts/validation-and-sonar-contract.md` and avoid competing lifecycle definitions in other artifacts.
+  9. Specification Lifecycle & Archival (principle XIX): Follow `specify -> clarify -> plan -> tasks -> implement -> validate -> complete -> archive`. Organize specs under `specs/active/`, `specs/archive/YYYY/`, `specs/deprecated/` with `specs/README.md` as index. Status vocabulary is limited to `draft`, `active`, `blocked`, `completed`, `deprecated`, `superseded`, `cancelled` (never `done`/`finished`/`closed`/`complete`/`implemented`). Use `git mv` for moves; never delete, ZIP, move out, or rename to fuzzy names. Archived completed specs require `completion.md`; superseded specs use `status: superseded` with `superseded_by`. Unchecked tasks must record a disposition (`Moved to SPEC-<id>`, `Cancelled`, or `Accepted limitation`) and must NOT be marked `[x]`. Do not assume tests passed; do not fabricate commit SHA, dates, PR, or release versions (use `unknown`/blank when unverifiable). Run `.specify/scripts/bash/spec-archive-check.sh` for lightweight validation.
   User-facing UI must follow the shared design system, user interactions must preserve native Apple platform behavior
   and documented Apple HIG alignment, refactors must preserve observable behavior with regression
   coverage while avoiding speculative abstractions, validation ownership must remain centralized in
