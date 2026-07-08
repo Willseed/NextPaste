@@ -612,29 +612,33 @@ struct RowRobot {
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        // Feature 021: macOS NSTableView realizes swipe-action buttons as separate
-        // overlay elements (not descendants of the row cell), so a row-descendant
-        // query cannot find them. A global `app.buttons[...]` subscript returns the
-        // first matching button, which may belong to a different row (a stale
-        // still-revealed action, or a realized overlay button), causing the tap to
-        // mutate the wrong item. Instead, after each swipe, enumerate all pin
-        // buttons and select the one that is hittable AND vertically centered on the
-        // targeted row, so the tap always acts on the intended row.
-        for candidate in candidates {
-            for _ in 0..<3 {
-                horizontalGesture(on: candidate, direction: .right, magnitude: magnitude, file: file, line: line)
-                if let button = hittableActionButton(
-                    identifier: Accessibility.pinButtonIdentifier,
-                    alignedTo: rowScope
-                ) {
-                    UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
-                    return button
-                }
-            }
+        // Feature 024 (T008): delegate the native swipe loop to
+        // `SwipeSynthesisRecorder` so the reveal path shares the classified
+        // synthesis outcome infrastructure. The recorder owns the
+        // hittable-button vertical-alignment selection and the
+        // `assertAccessibleTextContains` label check on the returned button.
+        // `swipeRight()` remains the gesture call; press-drag is not
+        // substituted for acceptance (FR-007). On exhaustion this path still
+        // emits the generic `XCTFail` to preserve the observable behavior of
+        // non-opted-in callers; T032/T046 use the recorded variants below to
+        // classify instead of failing generically.
+        let outcome = SwipeSynthesisRecorder.reveal(
+            on: candidates,
+            scopedTo: rowScope,
+            buttonIdentifier: Accessibility.pinButtonIdentifier,
+            expectedLabel: expectedLabel,
+            direction: .right,
+            in: app,
+            file: file,
+            line: line
+        )
+        switch outcome {
+        case .revealed(let button):
+            return button
+        case .failure:
+            XCTFail("Pin action was not revealed for \(rowDescription)", file: file, line: line)
+            return app.buttons[Accessibility.pinButtonIdentifier]
         }
-
-        XCTFail("Pin action was not revealed for \(rowDescription)", file: file, line: line)
-        return app.buttons[Accessibility.pinButtonIdentifier]
     }
 
     private func revealDeleteAction(
@@ -645,88 +649,80 @@ struct RowRobot {
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        // Feature 021: select the hittable delete button aligned with the targeted
-        // row (see revealPinAction rationale).
-        for candidate in candidates {
-            for _ in 0..<3 {
-                horizontalGesture(on: candidate, direction: .left, magnitude: magnitude, file: file, line: line)
-                if let button = hittableActionButton(
-                    identifier: Accessibility.deleteButtonIdentifier,
-                    alignedTo: rowScope
-                ) {
-                    UITestAssertions.assertAccessibleTextContains(button, "Delete", file: file, line: line)
-                    return button
-                }
-            }
+        // Feature 024 (T008): delegate the native swipe loop to
+        // `SwipeSynthesisRecorder` (see revealPinAction rationale).
+        // `swipeLeft()` remains the gesture call; press-drag is not
+        // substituted for acceptance (FR-007).
+        let outcome = SwipeSynthesisRecorder.reveal(
+            on: candidates,
+            scopedTo: rowScope,
+            buttonIdentifier: Accessibility.deleteButtonIdentifier,
+            expectedLabel: "Delete",
+            direction: .left,
+            in: app,
+            file: file,
+            line: line
+        )
+        switch outcome {
+        case .revealed(let button):
+            return button
+        case .failure:
+            XCTFail("Delete action was not revealed for \(rowDescription)", file: file, line: line)
+            return app.buttons[Accessibility.deleteButtonIdentifier]
         }
-
-        XCTFail("Delete action was not revealed for \(rowDescription)", file: file, line: line)
-        return app.buttons[Accessibility.deleteButtonIdentifier]
     }
 
-    /// Feature 021: enumerate all realized action buttons with `identifier` and
-    /// return the one that is hittable and vertically centered on the targeted row.
-    /// macOS realizes swipe-action buttons as separate overlay elements that may
-    /// all report as hittable, so hittability alone is not enough. Requiring the
-    /// button's vertical center to lie within the targeted row's vertical extent
-    /// guarantees the revealed button belongs to `rowScope` and not to an adjacent
-    /// row's realized/stale swipe action.
-    private func hittableActionButton(
-        identifier: String,
-        alignedTo row: XCUIElement
-    ) -> XCUIElement? {
-        guard row.exists else { return nil }
-        let rowFrame = row.frame
-        guard rowFrame.height > 0 else { return nil }
-        let rowCenterY = rowFrame.midY
-        // The button must be vertically centered on the row. Allow the button
-        // center to lie anywhere within the row's vertical extent (± half the row
-        // height from the row center). Adjacent rows' centers are one full row
-        // height away, so they are rejected.
-        let verticalTolerance = rowFrame.height / 2
-        for button in app.buttons.matching(identifier: identifier).allElementsBoundByIndex {
-            guard button.exists, button.isHittable else { continue }
-            let buttonFrame = button.frame
-            guard buttonFrame.height > 0 else { continue }
-            if abs(buttonFrame.midY - rowCenterY) <= verticalTolerance {
-                return button
-            }
-        }
-        return nil
+    // MARK: - Feature 024 recorded reveal variants (T008)
+
+    /// Recorded Pin reveal for the classified T032/T046 flow: returns the
+    /// revealed button on success, or surfaces the `SwipeSynthesisOutcome` on
+    /// failure so callers can classify instead of hitting a generic `XCTFail`
+    /// (FR-004). `swipeRight()` remains the gesture call (FR-007).
+    @discardableResult
+    func revealPinActionRecorded(
+        for clipText: String,
+        expectedLabel: String = "Pin",
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> SwipeSynthesisRecorder.Outcome {
+        let row = textRow(containing: clipText, file: file, line: line)
+        return SwipeSynthesisRecorder.reveal(
+            on: [
+                row,
+                textSwipeElement(containing: clipText, file: file, line: line)
+            ],
+            scopedTo: row,
+            buttonIdentifier: Accessibility.pinButtonIdentifier,
+            expectedLabel: expectedLabel,
+            direction: .right,
+            in: app,
+            file: file,
+            line: line
+        )
     }
 
-    private enum HorizontalDirection {
-        case left
-        case right
-    }
-
-    private func horizontalGesture(
-        on element: XCUIElement,
-        direction: HorizontalDirection,
-        magnitude: SwipeMagnitude,
-        file: StaticString,
-        line: UInt
-    ) {
-        switch magnitude {
-        case .reveal, .full:
-            guard element.exists else {
-                XCTFail("Expected element to exist before swiping", file: file, line: line)
-                return
-            }
-            guard element.isHittable else {
-                return
-            }
-
-            switch direction {
-            case .left:
-                element.swipeLeft()
-            case .right:
-                element.swipeRight()
-            }
-        case .subThreshold:
-            let offset = direction == .right ? magnitude.distance : -magnitude.distance
-            swipe(element, horizontallyBy: offset, file: file, line: line)
-        }
+    /// Recorded Delete reveal for the classified T032/T046 flow (FR-004).
+    /// `swipeLeft()` remains the gesture call (FR-007).
+    @discardableResult
+    func revealDeleteActionRecorded(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> SwipeSynthesisRecorder.Outcome {
+        let row = textRow(containing: clipText, file: file, line: line)
+        return SwipeSynthesisRecorder.reveal(
+            on: [
+                row,
+                textSwipeElement(containing: clipText, file: file, line: line)
+            ],
+            scopedTo: row,
+            buttonIdentifier: Accessibility.deleteButtonIdentifier,
+            expectedLabel: "Delete",
+            direction: .left,
+            in: app,
+            file: file,
+            line: line
+        )
     }
 
     private func swipe(

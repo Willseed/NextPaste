@@ -13,7 +13,7 @@
 
 ## Phase 1 — Pure-logic classification model (no app launch)
 
-### T001 — Test: failure classifier category selection and priority ordering
+### T001 — Test: failure classifier category selection and priority ordering [X]
 
 Write `NextPasteTests/NativeSwipeFailureClassifierTests.swift` using the `Testing` module (no
 app launch). Assert the pure classification function selects exactly one category for each
@@ -36,7 +36,7 @@ evidence combination and that priority is fixed:
 **Dependencies**: T002 (the type must exist for the tests to compile; T002 is the minimal type
 scaffold, T001 asserts behavior).
 
-### T002 — Implement: failure classifier types and pure function
+### T002 — Implement: failure classifier types and pure function [X]
 
 Create `NextPasteUITests/NativeSwipeFailureClassifier.swift` defining:
 
@@ -58,7 +58,7 @@ No XCTest imports beyond what the value types need; the classifier is pure logic
 **Dependencies**: none (scaffold first so T001 compiles).
 **Parallelizable with**: T003 (source-policy tests) — **[P]**.
 
-### T003 — Test: source-policy prohibition for new test-support files
+### T003 — Test: source-policy prohibition for new test-support files [X]
 
 Write source-policy tests (extend `RowActionDisplayOrderPolicyTests` or a new
 `NextPasteTests/NativeSwipeTestSupportPolicyTests.swift` using the `Testing` module) that read
@@ -89,7 +89,7 @@ to fail-red until implementation lands, or gate on file existence with a clear d
 
 ## Phase 2 — Shared diagnostic modules (UI helpers, no test rewrite yet)
 
-### T004 — Implement: setup diagnostics — verifyFixtureRows
+### T004 — Implement: setup diagnostics — verifyFixtureRows [X]
 
 Create `NextPasteUITests/NativeSwipeDiagnostics.swift` with
 `NativeSwipeDiagnostics.verifyFixtureRows(expected:in:app:)` returning
@@ -108,7 +108,7 @@ This module is shared by T032 and T046 (FR-010).
 **Dependencies**: T002 (evidence record type).
 **Parallelizable with**: T005, T006, T007 — **[P]**.
 
-### T005 — Implement: focus/interruption guard — checkWindowFocus + bounded refocus
+### T005 — Implement: focus/interruption guard — checkWindowFocus + bounded refocus [X]
 
 Add `NativeSwipeDiagnostics.checkWindowFocus(in:app:)` returning `WindowFocusState`:
 
@@ -125,7 +125,7 @@ Add `NativeSwipeDiagnostics.checkWindowFocus(in:app:)` returning `WindowFocusSta
 **Dependencies**: T002.
 **Parallelizable with**: T004, T006, T007 — **[P]**.
 
-### T006 — Implement: crash signal detector
+### T006 — Implement: crash signal detector [X]
 
 Create `NextPasteUITests/CrashSignalDetector.swift`:
 
@@ -144,7 +144,7 @@ Create `NextPasteUITests/CrashSignalDetector.swift`:
 **Dependencies**: T002.
 **Parallelizable with**: T004, T005, T007 — **[P]**.
 
-### T007 — Implement: swipe synthesis recorder
+### T007 — Implement: swipe synthesis recorder [X]
 
 Create `NextPasteUITests/SwipeSynthesisRecorder.swift`:
 
@@ -163,7 +163,7 @@ Create `NextPasteUITests/SwipeSynthesisRecorder.swift`:
 **Dependencies**: T002.
 **Parallelizable with**: T004, T005, T006 — **[P]**.
 
-### T008 — Implement: wire RowRobot reveal path to the swipe synthesis recorder
+### T008 — Implement: wire RowRobot reveal path to the swipe synthesis recorder [X]
 
 Modify `NextPasteUITests/RowRobot.swift`:
 
@@ -178,7 +178,7 @@ Modify `NextPasteUITests/RowRobot.swift`:
 
 **Dependencies**: T007.
 
-### T009 — Implement: environment capability detection
+### T009 — Implement: environment capability detection [X]
 
 Add `NativeSwipeDiagnostics.detectEnvironmentCapability()` →
 `EnvironmentCapabilityRecord`:
@@ -197,7 +197,7 @@ Add `NativeSwipeDiagnostics.detectEnvironmentCapability()` →
 
 ## Phase 3 — T032 / T046 integration
 
-### T010 — Integrate: rewrite T032 to the classified flow
+### T010 — Integrate: rewrite T032 to the classified flow [X]
 
 Modify `testT032PinBecomesFirstRowOfPinnedSectionViaBoundedRetry` in
 `ClipRowActionsUITests.swift` to follow the classified flow from plan § Test flow rewrite:
@@ -222,7 +222,7 @@ is visible in test output without re-running (SC-005).
 
 **Dependencies**: T004, T005, T006, T008, T009.
 
-### T011 — Integrate: rewrite T046 to the classified flow
+### T011 — Integrate: rewrite T046 to the classified flow [X]
 
 Apply the same classified flow to
 `testT046Feature014020CrashReproductionFlowsRemainRunningNoCrash`, covering both crash-
@@ -243,7 +243,7 @@ Validation execution and evidence ownership are defined by
 tasks below provide the implementation execution points and must record evidence according to that
 contract.
 
-### T012 — Test: classified UI smoke for T032 flow
+### T012 — Test: classified UI smoke for T032 flow [X]
 
 Add a targeted UI smoke test in `NextPasteUITests/` that runs the full T032 classified flow and
 asserts the emitted `NativeSwipeTestResult` category:
@@ -257,7 +257,7 @@ the full T046 regression.
 
 **Dependencies**: T010.
 
-### T013 — Validate: GUI-capable positive path for T032 and T046
+### T013 — Validate: GUI-capable positive path for T032 and T046 [X]
 
 In a GUI-capable environment with no external windows, run T032 and T046 and confirm:
 
@@ -277,7 +277,7 @@ the evidence instead (per the user's planning directive).
 
 **Dependencies**: T010, T011, T012.
 
-### T014 — Validate: targeted unit and source-policy suite
+### T014 — Validate: targeted unit and source-policy suite [X]
 
 Run the targeted suite and record evidence as required by the validation contract (no full
 regression while no production code changed):

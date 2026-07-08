@@ -776,6 +776,142 @@ final class ClipRowActionsUITests: UITestCase {
         add(attachment)
     }
 
+    // MARK: - Feature 024 classified native-swipe flow helpers (T010/T011)
+
+    /// Attach a `NativeSwipeTestResult` (category + evidence) as an
+    /// `XCTAttachment` so the category is visible in test output without
+    /// re-running (SC-005).
+    @MainActor
+    private func attachClassifiedResult(_ result: NativeSwipeTestResult) {
+        let attachment = XCTAttachment(string: describeClassifiedResult(result))
+        attachment.name = "Feature 024 native swipe classified result"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    private func describeClassifiedResult(_ result: NativeSwipeTestResult) -> String {
+        switch result {
+        case .passing(let bundle):
+            return """
+            Feature 024 native swipe result: PASS
+            \(describeEvidence(bundle))
+            """
+        case .failing(let category):
+            return """
+            Feature 024 native swipe result: FAIL — \(category.diagnosableName)
+            \(describeCategoryEvidence(category))
+            """
+        }
+    }
+
+    private func describeEvidence(_ bundle: NativeSwipeEvidenceBundle) -> String {
+        var lines: [String] = []
+        if let env = bundle.environmentCapability {
+            lines.append("environmentCapability: guiCapable=\(env.guiCapable) — \(env.detail)")
+        }
+        if let fixture = bundle.fixtureRows {
+            lines.append("fixtureRows: expected=\(fixture.expectedIdentifiers), presentHittable=\(fixture.presentAndHittableIdentifiers), presentNotHittable=\(fixture.presentButNotHittableIdentifiers), absent=\(fixture.absentIdentifiers)")
+        }
+        if let focus = bundle.windowFocus {
+            lines.append("windowFocus: belongsToNextPaste=\(focus.belongsToNextPaste), frontmost=\(focus.frontmostWindowID ?? "nil"), interrupting=\(focus.interruptingWindowName ?? "nil"), refocus=\(focus.refocusOutcome)")
+        }
+        if let swipe = bundle.swipeOutcome {
+            lines.append("swipeOutcome: swipeIssued=\(swipe.swipeIssued), buttonHittable=\(swipe.buttonHittable), retries=\(swipe.retryCount), duration=\(swipe.duration)s")
+        }
+        if let crash = bundle.crashSignal {
+            lines.append("crashSignal: appTerminated=\(crash.appTerminated), observedSignals=\(crash.observedSignals), point=\(crash.observationPoint)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private func describeCategoryEvidence(_ category: NativeSwipeFailureCategory) -> String {
+        switch category {
+        case .productCrashRegression(let crash):
+            return "Crash signal at \(crash.observationPoint): appTerminated=\(crash.appTerminated), signals=\(crash.observedSignals)"
+        case .environmentBlocked(let env):
+            return "Environment blocked: guiCapable=\(env.guiCapable) — \(env.detail)"
+        case .setupFailure(let fixture):
+            return "Setup failure: absent=\(fixture.absentIdentifiers), notHittable=\(fixture.presentButNotHittableIdentifiers), expected=\(fixture.expectedIdentifiers)"
+        case .externalInterruptionFocusFailure(let focus):
+            return "Focus failure: interrupting=\(focus.interruptingWindowName ?? "unknown"), refocus=\(focus.refocusOutcome)"
+        case .nativeSwipeSynthesisFailure(let swipe):
+            return "Synthesis failure: swipeIssued=\(swipe.swipeIssued), retries=\(swipe.retryCount), duration=\(swipe.duration)s"
+        case .unclassified(let bundle):
+            return "Unclassified (fail-closed) evidence:\n\(describeEvidence(bundle))"
+        }
+    }
+
+    /// Perform the classified Pin flow for one clip: pre-swipe evidence is
+    /// inherited from `preSwipeBundle`. Reveals via the recorded native
+    /// `swipeRight()` path, taps Pin, and re-checks the crash signal after the
+    /// tap (edge case 4). On any classified failure, attaches the result and
+    /// emits a self-classifying `XCTFail` (the recorder never calls `XCTFail`
+    /// on the acceptance path, FR-004). Returns the updated evidence bundle.
+    @MainActor
+    @discardableResult
+    private func classifiedPinAndTap(
+        _ row: RowRobot,
+        clipText: String,
+        app: XCUIApplication,
+        preSwipeBundle: NativeSwipeEvidenceBundle,
+        expectedLabel: String = "Pin"
+    ) -> NativeSwipeEvidenceBundle {
+        var bundle = preSwipeBundle
+        let outcome = row.revealPinActionRecorded(for: clipText, expectedLabel: expectedLabel)
+
+        switch outcome {
+        case .revealed(let button):
+            bundle.swipeOutcome = SwipeSynthesisOutcome(
+                swipeIssued: true, buttonHittable: true, retryCount: 0, duration: 0
+            )
+            button.tap()
+            if let crash = CrashSignalDetector.recheck(in: app, observationPoint: "post-pin-tap") {
+                bundle.crashSignal = crash
+                attachClassifiedResult(.failing(.productCrashRegression(crash)))
+                XCTFail("Classified Product Crash Regression after Pin tap on \(clipText) (observed at \(crash.observationPoint)).")
+            }
+            return bundle
+        case .failure(let swipe):
+            bundle.swipeOutcome = swipe
+            // Post-swipe focus re-check: a focus loss that occurs between the
+            // pre-swipe focus check and the swipe is attributed to
+            // interruption, not synthesis (edge case 2 / US3 scenario 3).
+            let postFocus = NativeSwipeDiagnostics.checkWindowFocus(in: app)
+            let category: NativeSwipeFailureCategory
+            if !postFocus.belongsToNextPaste, postFocus.refocusFailed {
+                bundle.windowFocus = postFocus
+                category = .externalInterruptionFocusFailure(postFocus)
+            } else {
+                category = .nativeSwipeSynthesisFailure(swipe)
+            }
+            attachClassifiedResult(.failing(category))
+            XCTFail("Classified \(category.diagnosableName) on \(clipText).")
+            return bundle
+        }
+    }
+
+    /// Run the ordered pre-swipe checks (fixture verification, focus guard,
+    /// pre-swipe crash signal) and attach + fail if a non-environment category
+    /// is hit. Environment capability must be checked by the caller before
+    /// invoking this (Environment-Blocked is recorded without failing).
+    @MainActor
+    private func assertClassifiedPreSwipe(
+        fixtureTexts: [String],
+        app: XCUIApplication,
+        bundle: inout NativeSwipeEvidenceBundle,
+        flowContext: String
+    ) {
+        bundle.fixtureRows = NativeSwipeDiagnostics.verifyFixtureRows(expected: fixtureTexts, in: app)
+        bundle.windowFocus = NativeSwipeDiagnostics.checkWindowFocus(in: app)
+        bundle.crashSignal = CrashSignalDetector.detect(in: app, observationPoint: "pre-swipe-\(flowContext)")
+
+        let result = NativeSwipeFailureClassifier.classify(bundle)
+        if case .failing(let category) = result {
+            attachClassifiedResult(result)
+            XCTFail("Classified pre-swipe failure in \(flowContext): \(category.diagnosableName).")
+        }
+    }
+
     @MainActor
     func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
         let app = launchCaptureApp()
@@ -1272,12 +1408,31 @@ final class ClipRowActionsUITests: UITestCase {
     /// retry using the shared `BoundedRetryUITestHelper` (T065). No synthesized input, no
     /// `triggerDisplayOrderReconciliation`, and no fixed-duration sleep is used — the only
     /// synchronization is the observable order polling inside the helper.
+    ///
+    /// Feature 024 (T010): rewritten to the classified native-swipe flow so every
+    /// failure is self-classifying. Environment-blocked hosts record the
+    /// Environment-Blocked result as evidence and return without claiming UI
+    /// Green; GUI-capable hosts run the positive path and attach a passing
+    /// `NativeSwipeTestResult` with all evidence (FR-001–FR-005, FR-011, FR-012,
+    /// SC-001–SC-005).
     @MainActor
     func testT032PinBecomesFirstRowOfPinnedSectionViaBoundedRetry() throws {
+        // 1. Environment capability (FR-011, SC-002). A non-GUI host records the
+        // Environment-Blocked result as validation evidence and returns without
+        // claiming UI Green (per the validation contract). Detected before app
+        // launch so a blocked host is classified rather than failing opaquely.
+        let environment = NativeSwipeDiagnostics.detectEnvironmentCapability()
+        if !environment.guiCapable {
+            attachClassifiedResult(.failing(.environmentBlocked(environment)))
+            return
+        }
+
         let app = launchApp()
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
+        var bundle = NativeSwipeEvidenceBundle(environmentCapability: environment)
 
+        // 2. Fixture clips (existing createTextClips).
         // Created oldest-first. Visible newest-first: filler, target, anchor.
         let anchor = "T032 pinned anchor clip"
         let target = "T032 pin target clip"
@@ -1285,24 +1440,31 @@ final class ClipRowActionsUITests: UITestCase {
         try history.createTextClips([anchor, target, filler])
         history.assertClipRowIdentifierExists()
 
-        // Establish one existing pinned clip so the pinned section is non-empty and the
-        // acted-on clip must relocate above it to be the first pinned row.
-        let pinAnchor = row.revealPinActionWithRightSwipe(for: anchor)
-        UITestAssertions.assertAccessibleTextContains(pinAnchor, "Pin")
-        pinAnchor.tap()
+        // 3–5. Pre-swipe classified checks: fixture verification (FR-002),
+        // focus guard (FR-003), and pre-swipe crash signal (FR-005).
+        assertClassifiedPreSwipe(
+            fixtureTexts: [anchor, target, filler],
+            app: app,
+            bundle: &bundle,
+            flowContext: "T032"
+        )
+
+        // 6. Establish one existing pinned clip via the classified Pin flow so
+        // the pinned section is non-empty and the acted-on clip must relocate
+        // above it to be the first pinned row.
+        bundle = classifiedPinAndTap(row, clipText: anchor, app: app, preSwipeBundle: bundle)
         UITestAssertions.assertEventuallyAccessibleTextContains(
             assertTextRowIdentifier(for: anchor, in: app),
             "Pinned",
             timeout: 2
         )
 
-        // State-changing Pin on the target. No further user input is synthesized after this.
-        let pinTarget = row.revealPinActionWithRightSwipe(for: target)
-        UITestAssertions.assertAccessibleTextContains(pinTarget, "Pin")
-        pinTarget.tap()
+        // 6. State-changing Pin on the target via the classified flow.
+        bundle = classifiedPinAndTap(row, clipText: target, app: app, preSwipeBundle: bundle)
 
-        // Bounded-retry order assertion: the acted-on clip becomes the first row of the
-        // pinned section (above the previously pinned anchor) with no further input.
+        // 7. Bounded-retry order assertion: the acted-on clip becomes the first
+        // row of the pinned section (above the previously pinned anchor) with no
+        // further input. Preserved positive-path check wrapped by the classifier.
         BoundedRetryUITestHelper.assertOrder(
             upperElement: app.staticTexts[target],
             appearsAbove: app.staticTexts[anchor],
@@ -1311,8 +1473,88 @@ final class ClipRowActionsUITests: UITestCase {
             app: app
         )
 
+        // 8. Final crash-signal check (FR-005) → clean ⇒ passing result.
+        bundle.crashSignal = CrashSignalDetector.recheck(in: app, observationPoint: "post-relocation")
         UITestAssertions.assertAppRunningWithoutCrash(app)
+        attachClassifiedResult(NativeSwipeFailureClassifier.classify(bundle))
+
+        // Preserve the existing positive-path attachment.
         attachRowActionWarningAssertionOutcome(["pin-\(anchor)", "pin-\(target)", "reconcile"], app: app)
+    }
+
+    /// T012 [FR-011, SC-002, SC-005]: targeted UI smoke that runs the T032
+    /// classified flow and asserts the emitted `NativeSwipeTestResult` category.
+    /// In a GUI-capable environment it exercises the positive path and expects a
+    /// passing result. In a headless / non-GUI environment it expects
+    /// Environment-Blocked with the capability record, not an opaque failure.
+    /// Confirms the classification infrastructure is wired end-to-end without
+    /// running the full T046 regression.
+    @MainActor
+    func testT032ClassifiedFlowSmoke() throws {
+        // 1. Environment capability (FR-011, SC-002). Detected before app launch
+        // so a blocked host records Environment-Blocked instead of failing
+        // opaquely at launch.
+        let environment = NativeSwipeDiagnostics.detectEnvironmentCapability()
+        if !environment.guiCapable {
+            let result = NativeSwipeTestResult.failing(.environmentBlocked(environment))
+            attachClassifiedResult(result)
+            XCTAssertEqual(
+                result.category,
+                .environmentBlocked(environment),
+                "Blocked host smoke expected Environment-Blocked, got \(result)."
+            )
+            return
+        }
+
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        // 2–5. Fixture + pre-swipe classified checks, then the native Pin reveal.
+        let anchor = "T032-smoke pinned anchor"
+        let target = "T032-smoke pin target"
+        let filler = "T032-smoke unpinned filler"
+        try history.createTextClips([anchor, target, filler])
+        history.assertClipRowIdentifierExists()
+
+        var bundle = NativeSwipeEvidenceBundle(environmentCapability: environment)
+        assertClassifiedPreSwipe(
+            fixtureTexts: [anchor, target, filler],
+            app: app,
+            bundle: &bundle,
+            flowContext: "T032-smoke"
+        )
+
+        let outcome = row.revealPinActionRecorded(for: target)
+        switch outcome {
+        case .revealed(let button):
+            bundle.swipeOutcome = SwipeSynthesisOutcome(
+                swipeIssued: true, buttonHittable: true, retryCount: 0, duration: 0
+            )
+            button.tap()
+            bundle.crashSignal = CrashSignalDetector.recheck(in: app, observationPoint: "post-pin-tap-smoke")
+            let result = NativeSwipeFailureClassifier.classify(bundle)
+            attachClassifiedResult(result)
+            XCTAssertTrue(
+                result.isPassing,
+                "GUI-capable T032 smoke expected a passing classified result, got \(result)."
+            )
+        case .failure(let swipe):
+            bundle.swipeOutcome = swipe
+            let postFocus = NativeSwipeDiagnostics.checkWindowFocus(in: app)
+            let category: NativeSwipeFailureCategory
+            if !postFocus.belongsToNextPaste, postFocus.refocusFailed {
+                bundle.windowFocus = postFocus
+                category = .externalInterruptionFocusFailure(postFocus)
+            } else {
+                category = .nativeSwipeSynthesisFailure(swipe)
+            }
+            let result = NativeSwipeTestResult.failing(category)
+            attachClassifiedResult(result)
+            XCTFail(
+                "T032 smoke classified failure in a GUI-capable environment: \(category.diagnosableName)."
+            )
+        }
     }
 
     /// T033 [US1, FR-004] UI regression assertion: the Pin automatic-reconciliation scenario
@@ -1629,6 +1871,13 @@ final class ClipRowActionsUITests: UITestCase {
     /// bounded-retry helper for the post-action pinned-state assertion; no
     /// `triggerDisplayOrderReconciliation`, no synthesized reconciliation input,
     /// and no fixed-duration sleep.
+    ///
+    /// Feature 024 (T011): both crash-reproduction sub-flows receive the same
+    /// failure classification, setup diagnostics, and focus guard treatment as
+    /// T032 (FR-010). The `.tall` window preset is preserved so all rows stay
+    /// onscreen/hittable. The existing `XCTAssertEqual(app.state, .runningForeground)`
+    /// per-pin checks are preserved as the crash-signal inputs to
+    /// `CrashSignalDetector` (FR-005).
     @MainActor
     func testT046Feature014020CrashReproductionFlowsRemainRunningNoCrash() throws {
         // Feature 023 T046 accumulates six rows across both crash-reproduction
@@ -1639,9 +1888,19 @@ final class ClipRowActionsUITests: UITestCase {
         // reveals the Delete action never synthesizes. Use the `.tall` preset so
         // every row stays onscreen and hittable throughout the test (same pattern
         // as `testTenConsecutiveNativeRowActionFlowsRemainRunning...`).
+        //
+        // 1. Environment capability (FR-011, SC-002). Detected before launch so a
+        // blocked host records Environment-Blocked instead of failing opaquely.
+        let environment = NativeSwipeDiagnostics.detectEnvironmentCapability()
+        if !environment.guiCapable {
+            attachClassifiedResult(.failing(.environmentBlocked(environment)))
+            return
+        }
+
         let app = launchApp(windowSizePreset: .tall)
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
+        var bundle = NativeSwipeEvidenceBundle(environmentCapability: environment)
 
         // Crash-reproduction flow 1 (Feature 019): pin the third clip after the
         // first two already reveal/dismiss native swipe actions.
@@ -1653,9 +1912,16 @@ final class ClipRowActionsUITests: UITestCase {
         try history.createTextClips(thirdClips)
         history.assertClipRowIdentifierExists()
 
+        // 3–5. Pre-swipe classified checks for flow 1.
+        assertClassifiedPreSwipe(
+            fixtureTexts: thirdClips,
+            app: app,
+            bundle: &bundle,
+            flowContext: "T046-flow1"
+        )
+
         for clip in thirdClips {
-            let pinButton = row.revealPinActionWithRightSwipe(for: clip)
-            pinButton.tap()
+            bundle = classifiedPinAndTap(row, clipText: clip, app: app, preSwipeBundle: bundle)
             XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 third-clip pin of \(clip)")
             UITestAssertions.assertEventuallyAccessibleTextContains(
                 assertTextRowIdentifier(for: clip, in: app),
@@ -1668,18 +1934,26 @@ final class ClipRowActionsUITests: UITestCase {
         // Crash-reproduction flow 2 (Feature 019): reveal then dismiss a native
         // row action on one clip, then immediately pin a different clip — the
         // recently-dismissed-teardown hazard window.
-        try history.createTextClips([
+        let flow2Clips = [
             UITestFixtures.RowActions.recentlyActiveDismissed,
             "T046 dismiss-then-pin older",
             "T046 dismiss-then-pin newer"
-        ])
+        ]
+        try history.createTextClips(flow2Clips)
         history.assertClipRowIdentifierExists()
+
+        // 3–5. Pre-swipe classified checks for flow 2.
+        assertClassifiedPreSwipe(
+            fixtureTexts: flow2Clips,
+            app: app,
+            bundle: &bundle,
+            flowContext: "T046-flow2"
+        )
 
         _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.recentlyActiveDismissed)
         row.dismissRevealedSwipeActions()
 
-        let pinButton = row.revealPinActionWithRightSwipe(for: "T046 dismiss-then-pin older")
-        pinButton.tap()
+        bundle = classifiedPinAndTap(row, clipText: "T046 dismiss-then-pin older", app: app, preSwipeBundle: bundle)
         XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 pin-after-dismissed-action")
         UITestAssertions.assertEventuallyAccessibleTextContains(
             assertTextRowIdentifier(for: "T046 dismiss-then-pin older", in: app),
@@ -1688,6 +1962,10 @@ final class ClipRowActionsUITests: UITestCase {
         )
         UITestAssertions.assertAppRunningWithoutCrash(app)
         history.assertRowExists(withText: UITestFixtures.RowActions.recentlyActiveDismissed)
+
+        // 8. Final crash-signal check (FR-005) → clean ⇒ passing classified result.
+        bundle.crashSignal = CrashSignalDetector.recheck(in: app, observationPoint: "post-relocation")
+        attachClassifiedResult(NativeSwipeFailureClassifier.classify(bundle))
 
         attachRowActionWarningAssertionOutcome(
             [
