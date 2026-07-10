@@ -21,8 +21,8 @@
 | `store-load-failed` diagnostic content-free unit test (T007) | RR-005, SC-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
 | Load-complete guard unit test (T017) | FR-012 | Unit (Targeted) | `-only-testing:NextPasteTests/RelaunchStabilityTests` |
 | On-disk restart pin state/ordering | FR-002, FR-003, FR-007, RR-004 | Unit (Targeted) | `-only-testing:NextPasteTests/ClipHistoryTests` |
-| 100-rep single-item mutation (incl. image-clip variant) (T015) | FR-004, FR-005, SC-003 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
-| 20-item interleaved mutation (text + image clips) (T016) | FR-006, SC-004 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreTests` |
+| 100-rep single-item mutation (incl. image-clip variant) (T015) | FR-004, FR-005, SC-003 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreUS2Tests` |
+| 20-item interleaved mutation (text + image clips) (T016) | FR-006, SC-004 | Unit (Targeted) | `-only-testing:NextPasteTests/PinStateMutationStoreUS2Tests` |
 | Relaunch + pin/unpin UI test | FR-001, FR-002, FR-003, FR-007, FR-018, SC-005, SC-006, SC-008 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
 | Auto Capture + relaunch UI test | FR-008, FR-009, FR-010, FR-014, SC-001, SC-002 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |
 | 500-item relaunch UI test | FR-019, SC-009 | UI (Targeted) | `-only-testing:NextPasteUITests/RelaunchStabilityUITests` |

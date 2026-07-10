@@ -31,6 +31,6 @@
 
 ## Notes
 
-- All items pass validation. The specification is comprehensive: 4 user stories (3 P1, 1 P2), 18 functional requirements, 4 reliability requirements, 8 success criteria, and explicit assumptions/out-of-scope boundaries.
+- All items pass validation. The latest specification is comprehensive: 4 user stories (3 P1, 1 P2), 20 functional requirements, 5 reliability requirements, 12 success criteria, and explicit assumptions/out-of-scope boundaries.
 - User provided a fully detailed feature description; no [NEEDS CLARIFICATION] markers were required.
 - Ready for `/speckit-clarify` (optional, if material ambiguity is found) or `/speckit-plan`.

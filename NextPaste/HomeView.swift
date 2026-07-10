@@ -71,6 +71,12 @@ private final class InitialLoadState {
     var hasCompletedInitialLoad: Bool = false
 }
 
+private struct ImageRestorationInput: Hashable, Sendable {
+    let id: UUID
+    let imageFilename: String?
+    let thumbnailFilename: String?
+}
+
 // T073.1: read-only observability mirror for the row-action display-order
 // snapshot lifecycle. HomeView is a struct, and the production snapshot state
 // (`rowActionDisplayOrderSnapshot: [UUID]?`,
@@ -248,6 +254,8 @@ struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @State private var initialLoadState = InitialLoadState()
+    @State private var imageRestorationStates: [UUID: ImageClipRestorationState] = [:]
+    @State private var reportedMissingImageIDs: Set<UUID> = []
     @State private var isPresentingNewClip = false
     @State private var searchText = ""
     // T002: single search presentation authority. `isSearchPresented` drives the
@@ -499,8 +507,11 @@ struct HomeView: View {
             traceVisibleClipSnapshot(reason: "visible-clips.changed")
         }
 #endif
-        .task {
+        .task(id: clips.map(\.id)) {
             initialLoadState.hasCompletedInitialLoad = true
+        }
+        .task(id: imageRestorationTaskKey) {
+            await refreshImageRestorationStates()
         }
 #if os(macOS)
         .task {
@@ -588,32 +599,52 @@ struct HomeView: View {
     }
 
     private func restorableVisibleClips(_ candidateClips: [ClipItem]) -> [ClipItem] {
-        let imageFileStore = ImageClipFileStore()
         return candidateClips.filter { clip in
             guard clip.contentType == "image" else {
                 return true
             }
-
-            let state = imageFileStore.restorationState(
-                imageFilename: clip.imageFilename,
-                thumbnailFilename: clip.thumbnailFilename
-            )
-            guard state == .restorable else {
-                emitImageFileMissingDiagnostic(for: clip)
-                return false
-            }
-            return true
+            return imageRestorationStates[clip.id] == .restorable
         }
     }
 
-    private func emitImageFileMissingDiagnostic(for clip: ClipItem) {
-        let diagnostics: PersistenceLoadDiagnostics
-#if DEBUG
-        diagnostics = PersistenceLoadDiagnostics(sink: RowActionTraceBridgePersistenceDiagnosticsSink())
-#else
-        diagnostics = PersistenceLoadDiagnostics()
-#endif
-        diagnostics.imageFileMissing(itemID: clip.id)
+    private var imageRestorationTaskKey: [ImageRestorationInput] {
+        clips.compactMap { clip in
+            guard clip.contentType == "image" else { return nil }
+            return ImageRestorationInput(
+                id: clip.id,
+                imageFilename: clip.imageFilename,
+                thumbnailFilename: clip.thumbnailFilename
+            )
+        }
+    }
+
+    private func refreshImageRestorationStates() async {
+        let inputs = imageRestorationTaskKey
+        let results = await Task.detached(priority: .userInitiated) {
+            let fileStore = ImageClipFileStore()
+            return Dictionary(uniqueKeysWithValues: inputs.map { input in
+                (
+                    input.id,
+                    fileStore.restorationState(
+                        imageFilename: input.imageFilename,
+                        thumbnailFilename: input.thumbnailFilename
+                    )
+                )
+            })
+        }.value
+
+        guard Task.isCancelled == false else { return }
+        imageRestorationStates = results
+
+        let unavailableIDs = Set(
+            results.compactMap { id, state in
+                state == .restorable ? nil : id
+            }
+        )
+        let newlyUnavailableIDs = unavailableIDs.subtracting(reportedMissingImageIDs)
+        let diagnostics = PersistenceLoadDiagnostics.runtime()
+        newlyUnavailableIDs.forEach { diagnostics.imageFileMissing(itemID: $0) }
+        reportedMissingImageIDs = unavailableIDs
     }
 
     private var fixedHeaderBottom: CGFloat {
@@ -1557,12 +1588,12 @@ struct HomeView: View {
         reconciliationEnvironmentMirror.clips = clips
         reconciliationEnvironmentMirror.searchText = searchText
         reconciliationEnvironmentMirror.snapshotIDs = rowActionDisplayOrderSnapshot
-        // Mark the initial load as complete during body evaluation so the
-        // shared reference-type holder is observable from the held value
-        // (before .task runs). This is safe because body evaluation means
-        // @Query has fetched and the view is installed.
+        // Body evaluation is the first point at which the installed view has
+        // observed the current @Query result. Keep the shared reference holder
+        // in sync for bare-view lifecycle tests; the installed task(id:) remains
+        // the normal query-observation path.
         initialLoadState.hasCompletedInitialLoad = true
-        #endif
+#endif
     }
 
     #if os(macOS)
@@ -1636,6 +1667,11 @@ struct HomeView: View {
                 accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
                 accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
                 accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
+                accessibilityMarker(
+                    identifier: "history-visible-integrity-digest",
+                    value: ClipDatasetIntegritySnapshot.digest(for: visibleClips),
+                    label: "Content-free history integrity digest"
+                )
             }
 #endif
             // T004: announce the search result count for VoiceOver when a search is

@@ -37,6 +37,7 @@ enum UITestAppLauncher {
     static let uiTestingArgument = "-ui-testing"
     static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
     static let relaunchDatasetSeedArgument = "-ui-test-seed-relaunch-dataset"
+    static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
     static let rowActionTraceEnabledArgument = "-row-action-trace-enabled"

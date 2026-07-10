@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 enum UITestHistorySeeder {
     static let settingsHistoryLimitArgument = "-ui-test-seed-settings-history-limit"
     static let relaunchDatasetArgument = "-ui-test-seed-relaunch-dataset"
+    static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
     static let relaunchTextClipCount = 400
     static let relaunchImageClipCount = 100
     static let relaunchDatasetCount = relaunchTextClipCount + relaunchImageClipCount
@@ -25,6 +26,7 @@ enum UITestHistorySeeder {
         if arguments.contains(relaunchDatasetArgument) {
             seedRelaunchDatasetIfNeeded(container: container)
         }
+        deleteRelaunchImageIfRequested(arguments: arguments)
 
         if arguments.contains(settingsHistoryLimitArgument) {
             seedSettingsHistoryLimitFixture(container: container)
@@ -124,9 +126,25 @@ enum UITestHistorySeeder {
         }
     }
 
+    private static func deleteRelaunchImageIfRequested(arguments: [String]) {
+        guard let argumentIndex = arguments.firstIndex(of: relaunchImageDeletionArgument),
+              arguments.indices.contains(argumentIndex + 1),
+              let imageIndex = Int(arguments[argumentIndex + 1]),
+              (0..<relaunchImageClipCount).contains(imageIndex) else {
+            return
+        }
+
+        let imageID = deterministicID(kind: 2, index: imageIndex)
+        let fileStore = ImageClipFileStore()
+        try? fileStore.removeImageAsset(
+            imageFilename: "\(imageID.uuidString).png",
+            thumbnailFilename: nil
+        )
+    }
+
     static func relaunchText(index: Int) -> String {
-        if index.isMultiple(of: 75) {
-            return "Relaunch duplicate text bucket \(index / 75)"
+        if index < 20 {
+            return "Relaunch duplicate text pair \(index / 2)"
         }
         if index.isMultiple(of: 10) {
             return "Relaunch dataset text \(String(format: "%03d", index)) " + String(repeating: "long segment ", count: 12)

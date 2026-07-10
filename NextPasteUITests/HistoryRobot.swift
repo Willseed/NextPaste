@@ -417,6 +417,10 @@ struct HistoryRobot {
         markerValue(identifier: "history-visible-unique-count")
     }
 
+    func visibleIntegrityDigest() -> String? {
+        markerStringValue(identifier: "history-visible-integrity-digest")
+    }
+
     @discardableResult
     func assertVisibleClipCount(
         _ expectedCount: Int,
@@ -477,6 +481,12 @@ struct HistoryRobot {
             return Int(rawValue)
         }
         return Int(marker.label)
+    }
+
+    private func markerStringValue(identifier: String) -> String? {
+        let marker = app.descendants(matching: .any)[identifier]
+        guard marker.exists else { return nil }
+        return marker.value as? String ?? marker.label
     }
 
     private func assertMarkerValue(

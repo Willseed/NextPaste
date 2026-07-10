@@ -20,10 +20,12 @@ final class RelaunchStabilityUITests: UITestCase {
     func testRelaunchWith500MixedItemsKeepsAppRunningAndDatasetIntact() throws {
         let store = try makeOnDiskStore()
         var app = launchSeededLargeDataset(store: store)
+        let expectedDigest = try XCTUnwrap(historyRobot(for: app).visibleIntegrityDigest())
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
         assertLargeDataset(in: app)
+        XCTAssertEqual(historyRobot(for: app).visibleIntegrityDigest(), expectedDigest)
         XCTAssertEqual(app.state, .runningForeground)
     }
 
@@ -50,10 +52,12 @@ final class RelaunchStabilityUITests: UITestCase {
         var app = launchSeededLargeDataset(store: store)
         closeApp(app)
 
-        try FileManager.default.removeItem(at: imageFileURL(forImageIndex: Fixture.missingImageIndex, store: store))
-
         let trace = UITestAppLauncher.makeTraceApp(onDiskStore: store, windowSizePreset: .tall)
         app = trace.app
+        app.launchArguments.append(contentsOf: [
+            UITestAppLauncher.relaunchImageDeletionArgument,
+            "\(Fixture.missingImageIndex)"
+        ])
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock { self.closeApp(app) }
@@ -87,9 +91,19 @@ final class RelaunchStabilityUITests: UITestCase {
         let elapsed = CFAbsoluteTimeGetCurrent() - startedAt
         addTeardownBlock { self.closeApp(app) }
 
+        let imageByteCount = try Data(contentsOf: imageFileURL(forImageIndex: 0, store: store)).count
+#if DEBUG
+        let buildConfiguration = "Debug"
+#else
+        let buildConfiguration = "Release"
+#endif
         let attachment = XCTAttachment(string: """
         Relaunch dataset: \(Fixture.textCount) text + \(Fixture.imageCount) image clips
-        Image fixture byte size: app-seeded deterministic PNG
+        Image fixture byte size: \(imageByteCount) bytes
+        Host: \(Host.current().localizedName ?? "unknown")
+        OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
+        Build configuration: \(buildConfiguration)
+        Baseline measurement: \(elapsed) seconds
         Elapsed launch-to-list-loaded: \(elapsed)
         """)
         attachment.name = "Relaunch launch budget measurement"
@@ -97,6 +111,7 @@ final class RelaunchStabilityUITests: UITestCase {
         add(attachment)
 
         XCTAssertLessThanOrEqual(elapsed, 3.0)
+        XCTAssertGreaterThan(imageByteCount, 0)
         XCTAssertEqual(app.state, .runningForeground)
     }
 

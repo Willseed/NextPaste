@@ -5,7 +5,7 @@
 **Input**: Feature specification from `/specs/025-pin-relaunch-stability/spec.md`
 
 **Resolved FEATURE_SPEC path**: `/Users/pony/repo/NextPaste/specs/025-pin-relaunch-stability/spec.md`
-**Confirmed Active feature location**: `specs/025-pin-relaunch-stability/` (status: Active, per spec.md line 7)
+**Confirmed active feature location**: `specs/025-pin-relaunch-stability/` (status: `active`, per spec.md line 7)
 
 ## Summary
 

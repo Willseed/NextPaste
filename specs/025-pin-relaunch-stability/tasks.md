@@ -303,3 +303,17 @@ Every FR, RR, and SC identifier maps to at least one task ID. No required identi
 - Commit after each task or logical group.
 - Stop at any checkpoint to validate a story independently.
 - Do not implement code during `/speckit.tasks`; implementation happens in `/speckit.implement`.
+
+---
+
+## Phase 8: Convergence
+
+**Purpose**: Close implementation and verification gaps found by the post-implementation code/test audit while preserving the observable behavior and scope of SPEC-025.
+
+- [ ] T029 Move persistence-load diagnostics out of the Pin/Unpin mutation diagnostics concern, enforce typed content-free error categories, and install an Apple-native local runtime sink so `store-load-failed` and `image-file-missing` remain observable outside DEBUG tracing per FR-011, RR-005, SC-010, and SC-012 (partial)
+- [ ] T030 Make the clean recovery store location deterministic and add restart-equivalent coverage proving clips successfully persisted during a fallback launch remain available on the next fallback launch per FR-002, FR-009, FR-011, and Constitution II (contradicts)
+- [ ] T031 Refactor image restoration validation out of repeated `HomeView.visibleClips` computation into a single-pass, off-main-thread refresh that emits at most one content-free diagnostic per unavailable item and preserves the 500-item launch budget per FR-011, FR-020, RR-005, SC-010, and SC-011 (partial)
+- [ ] T032 Tie the initial-load mutation gate to the first installed `@Query` result instead of body evaluation, and replace the Boolean-only test with behavioral gate coverage that proves mutations are blocked before completion and allowed afterward per FR-012 (partial)
+- [ ] T033 Make the 500-item fixture explicitly include deterministic duplicate text pairs and record/assert the actual image fixture byte size plus OS, device, architecture, build configuration, and baseline timing evidence per FR-017, FR-019, FR-020, and SC-011 (partial)
+- [ ] T034 Add a deterministic UI-test-only integrity digest over stable identity, content/type metadata, and pin state; compare it before and after the 500-item relaunch and after every 10-round relaunch so SC-002, SC-005, SC-009, and RR-002 are verified exactly rather than by aggregate counts or two sampled rows (partial)
+- [ ] T035 Strengthen Auto Capture and large-data continuity UI coverage with duplicate-capture dedup across relaunch, final pin-state persistence after repeated toggles, and a missing-image failure followed by add/toggle/relaunch proving the failure does not spread per FR-009, FR-010, FR-014, RR-003, and SC-008 (partial)

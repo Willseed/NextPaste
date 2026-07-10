@@ -29,6 +29,48 @@ struct RelaunchStabilityTests {
         #expect(sink.records.first?.errorCategory == "model-container-unavailable")
     }
 
+    @MainActor
+    @Test("fallback store keeps successfully saved clips across repeated fallback launches")
+    func fallbackStoreKeepsSavedClipsAcrossRepeatedFallbackLaunches() throws {
+        let failedStoreURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
+        defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: failedStoreURL) }
+
+        let arguments = [
+            NextPasteApp.uiTestOnDiskStoreArgument,
+            failedStoreURL.appendingPathComponent("Primary.store").path
+        ]
+        let alwaysFailingFactory: NextPasteApp.ModelContainerFactory = { _, _ in
+            throw NSError(domain: "NextPasteTests.ModelContainer", code: 2)
+        }
+        let recoveredFactory: NextPasteApp.ModelContainerFactory = { schema, configurations in
+            try ModelContainer(for: schema, configurations: configurations)
+        }
+
+        let first = NextPasteApp.makeModelContainer(
+            isStoredInMemoryOnly: false,
+            arguments: arguments,
+            primaryContainerFactory: alwaysFailingFactory,
+            recoveryContainerFactory: recoveredFactory
+        )
+        let firstContext = ModelContext(first)
+        let savedID = UUID(uuidString: "25000000-0000-0000-0000-000000000025")!
+        firstContext.insert(
+            ClipItem(id: savedID, textContent: "fallback persistence", createdAt: Date(timeIntervalSince1970: 2_500))
+        )
+        try firstContext.save()
+
+        let second = NextPasteApp.makeModelContainer(
+            isStoredInMemoryOnly: false,
+            arguments: arguments,
+            primaryContainerFactory: alwaysFailingFactory,
+            recoveryContainerFactory: recoveredFactory
+        )
+        let restored = try SwiftDataTestSupport.fetchHistory(in: ModelContext(second))
+
+        #expect(restored.map(\.id) == [savedID])
+        #expect(restored.first?.textContent == "fallback persistence")
+    }
+
     @Test("store-load-failed diagnostic is content free")
     func storeLoadFailedDiagnosticIsContentFree() {
         let sink = CapturingPersistenceLoadDiagnosticsSink()

@@ -30,35 +30,35 @@ enum ImageClipFileStoreError: Error, Equatable {
     case pathEscapesRoot(String)
 }
 
-enum ImageClipRestorationState: Equatable {
+enum ImageClipRestorationState: Equatable, Sendable {
     case restorable
     case missingImageFile
     case missingThumbnailFile
 }
 
 struct ImageClipFileStore {
-    private let rootURL: URL
-    private let fileManager: FileManager
+    private nonisolated let rootURL: URL
+    private nonisolated(unsafe) let fileManager: FileManager
 
-    private var imagesDirectory: URL {
+    private nonisolated var imagesDirectory: URL {
         rootURL
             .appendingPathComponent("Clips", isDirectory: true)
             .appendingPathComponent("Images", isDirectory: true)
             .standardizedFileURL
     }
 
-    private var thumbnailsDirectory: URL {
+    private nonisolated var thumbnailsDirectory: URL {
         rootURL
             .appendingPathComponent("Clips", isDirectory: true)
             .appendingPathComponent("Thumbnails", isDirectory: true)
             .standardizedFileURL
     }
 
-    init(fileManager: FileManager = .default) {
+    nonisolated init(fileManager: FileManager = .default) {
         self.init(rootURL: Self.defaultRootURL(fileManager: fileManager), fileManager: fileManager)
     }
 
-    init(rootURL: URL, fileManager: FileManager = .default) {
+    nonisolated init(rootURL: URL, fileManager: FileManager = .default) {
         self.rootURL = rootURL.standardizedFileURL
         self.fileManager = fileManager
     }
@@ -129,7 +129,7 @@ struct ImageClipFileStore {
         try Data(contentsOf: imageURL(for: filename))
     }
 
-    func restorationState(
+    nonisolated func restorationState(
         imageFilename: String?,
         thumbnailFilename: String?
     ) -> ImageClipRestorationState {
@@ -146,7 +146,7 @@ struct ImageClipFileStore {
         return .restorable
     }
 
-    private static func defaultRootURL(fileManager: FileManager) -> URL {
+    private nonisolated static func defaultRootURL(fileManager: FileManager) -> URL {
         if let testStoreURL = NextPasteApp.uiTestOnDiskStoreURL(arguments: ProcessInfo.processInfo.arguments) {
             return testStoreURL
                 .deletingLastPathComponent()
@@ -176,7 +176,7 @@ struct ImageClipFileStore {
         return "\(clipID.uuidString).\(sourceExtension)"
     }
 
-    private static func isSafeSourceExtension(_ sourceExtension: String) -> Bool {
+    private nonisolated static func isSafeSourceExtension(_ sourceExtension: String) -> Bool {
         guard sourceExtension.isEmpty == false else {
             return false
         }
@@ -185,7 +185,7 @@ struct ImageClipFileStore {
         return sourceExtension.unicodeScalars.allSatisfy { allowedCharacters.contains($0) }
     }
 
-    private func resolveRelativeFilename(_ filename: String, in directory: URL) throws -> URL {
+    nonisolated private func resolveRelativeFilename(_ filename: String, in directory: URL) throws -> URL {
         guard Self.isSafeRelativeFilename(filename) else {
             throw ImageClipFileStoreError.unsafeRelativeFilename(filename)
         }
@@ -201,7 +201,7 @@ struct ImageClipFileStore {
         return resolvedURL
     }
 
-    private static func isSafeRelativeFilename(_ filename: String) -> Bool {
+    private nonisolated static func isSafeRelativeFilename(_ filename: String) -> Bool {
         !filename.isEmpty
             && filename == (filename as NSString).lastPathComponent
             && (filename as NSString).isAbsolutePath == false
@@ -209,13 +209,13 @@ struct ImageClipFileStore {
             && filename.contains("\\") == false
     }
 
-    private static func isContained(_ url: URL, in directory: URL) -> Bool {
+    private nonisolated static func isContained(_ url: URL, in directory: URL) -> Bool {
         let directoryPath = directory.standardizedFileURL.path
         let urlPath = url.standardizedFileURL.path
         return urlPath == directoryPath || urlPath.hasPrefix(directoryPath + "/")
     }
 
-    private func fileExists(for filename: String, in directory: URL) throws -> Bool {
+    nonisolated private func fileExists(for filename: String, in directory: URL) throws -> Bool {
         let url = try resolveRelativeFilename(filename, in: directory)
         return fileManager.fileExists(atPath: url.path)
     }

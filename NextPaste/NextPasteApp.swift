@@ -139,16 +139,18 @@ struct NextPasteApp: App {
 
     private static func recoveredStoreURL(for failedStoreURL: URL?) -> URL? {
         guard let failedStoreURL else {
-            let temporaryDirectory = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
-            return temporaryDirectory
-                .appendingPathComponent("NextPaste-recovered-\(UUID().uuidString)", isDirectory: true)
-                .appendingPathComponent("NextPaste.store", isDirectory: false)
+            let applicationSupport = FileManager.default
+                .urls(for: .applicationSupportDirectory, in: .userDomainMask)
+                .first ?? URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true)
+            return applicationSupport
+                .appendingPathComponent("NextPaste", isDirectory: true)
+                .appendingPathComponent("Recovered.store", isDirectory: false)
                 .standardizedFileURL
         }
 
         return failedStoreURL
             .deletingLastPathComponent()
-            .appendingPathComponent("Recovered-\(UUID().uuidString).store", isDirectory: false)
+            .appendingPathComponent("Recovered.store", isDirectory: false)
             .standardizedFileURL
     }
 
@@ -159,9 +161,9 @@ struct NextPasteApp: App {
 
     private static func defaultPersistenceLoadDiagnostics() -> PersistenceLoadDiagnostics {
 #if DEBUG
-        PersistenceLoadDiagnostics(sink: RowActionTraceBridgePersistenceDiagnosticsSink())
+        PersistenceLoadDiagnostics.runtime()
 #else
-        PersistenceLoadDiagnostics()
+        PersistenceLoadDiagnostics.runtime()
 #endif
     }
 

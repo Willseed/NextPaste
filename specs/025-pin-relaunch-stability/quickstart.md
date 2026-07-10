@@ -33,7 +33,9 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform
 
 # 100-rep single-item + 20-item interleaved mutation (XCTest)
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -destination 'platform=macOS' \
-  -only-testing:NextPasteTests/PinStateMutationStoreTests test
+  -only-testing:NextPasteTests/PinStateMutationStoreUS1Tests \
+  -only-testing:NextPasteTests/PinStateMutationStoreUS2Tests \
+  -only-testing:NextPasteTests/PinStateMutationStoreUS3Tests test
 ```
 
 ### Targeted UI tests (run next)

@@ -112,56 +112,6 @@ public struct PinStateMutationDiagnostics: Sendable {
     }
 }
 
-public enum PersistenceLoadDiagnosticEvent: String, Sendable, Equatable {
-    case storeLoadFailed = "store-load-failed"
-    case imageFileMissing = "image-file-missing"
-}
-
-public struct PersistenceLoadDiagnosticRecord: Sendable, Equatable {
-    public let event: PersistenceLoadDiagnosticEvent
-    public let itemID: UUID?
-    public let errorCategory: String?
-    public let timestamp: Date
-
-    public init(
-        event: PersistenceLoadDiagnosticEvent,
-        itemID: UUID? = nil,
-        errorCategory: String? = nil,
-        timestamp: Date = Date()
-    ) {
-        self.event = event
-        self.itemID = itemID
-        self.errorCategory = errorCategory
-        self.timestamp = timestamp
-    }
-}
-
-public protocol PersistenceLoadDiagnosticsSink: Sendable {
-    func emit(_ record: PersistenceLoadDiagnosticRecord)
-}
-
-public struct NullPersistenceLoadDiagnosticsSink: PersistenceLoadDiagnosticsSink {
-    public init() {}
-
-    public func emit(_: PersistenceLoadDiagnosticRecord) {}
-}
-
-public struct PersistenceLoadDiagnostics: Sendable {
-    public let sink: PersistenceLoadDiagnosticsSink
-
-    public init(sink: PersistenceLoadDiagnosticsSink = NullPersistenceLoadDiagnosticsSink()) {
-        self.sink = sink
-    }
-
-    public func storeLoadFailed(errorCategory: String = "model-container-unavailable") {
-        sink.emit(.init(event: .storeLoadFailed, errorCategory: errorCategory))
-    }
-
-    public func imageFileMissing(itemID: UUID) {
-        sink.emit(.init(event: .imageFileMissing, itemID: itemID))
-    }
-}
-
 #if DEBUG
 /// Bridge that forwards content-free Pin/Unpin mutation diagnostics into the
 /// existing `RowActionTraceRuntime` when DEBUG tracing is enabled (T021). Only
@@ -217,24 +167,4 @@ struct RowActionTraceBridgePinStateDiagnosticsSink: PinStateMutationDiagnosticsS
     }
 }
 
-@MainActor
-struct RowActionTraceBridgePersistenceDiagnosticsSink: PersistenceLoadDiagnosticsSink {
-    func emit(_ record: PersistenceLoadDiagnosticRecord) {
-        guard RowActionTraceRuntime.isActive else { return }
-        var state: [String: RowActionTraceStateValue] = [
-            "event": .string(record.event.rawValue),
-            "timestamp": .double(record.timestamp.timeIntervalSince1970)
-        ]
-        if let errorCategory = record.errorCategory {
-            state["errorCategory"] = .string(errorCategory)
-        }
-        RowActionTraceRuntime.emit(
-            category: .swiftData,
-            event: record.event.rawValue,
-            directness: .direct,
-            clipID: record.itemID,
-            payload: .init(state: state)
-        )
-    }
-}
 #endif

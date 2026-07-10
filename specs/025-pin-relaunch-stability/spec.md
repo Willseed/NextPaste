@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-08
 
-**Status**: Active
+**Status**: active
 **Owner**: NextPaste
 
 **Input**: 使用者發現應用程式在已有資料的狀態下重開後，重複執行 pin 或 unpin 可能發生閃退。需要擴充此類測試，並使用 Auto Capture 建立多筆資料後反覆重開應用程式，驗證資料與操作穩定性。
