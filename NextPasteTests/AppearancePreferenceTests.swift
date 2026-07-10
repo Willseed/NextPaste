@@ -69,4 +69,14 @@ struct AppearancePreferenceTests {
 
         defaults.removePersistentDomain(forName: suite)
     }
+
+    @Test func invalidPersistedModeFallsBackToSystem() {
+        let defaults = makeDefaults()
+        defaults.set("unknown-appearance", forKey: AppearancePreference.storageKey)
+
+        let preference = AppearancePreference(defaults: defaults)
+
+        #expect(preference.mode == .system)
+        #expect(preference.mode.preferredColorScheme == nil)
+    }
 }

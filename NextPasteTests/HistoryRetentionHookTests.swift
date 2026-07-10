@@ -68,7 +68,7 @@ struct HistoryRetentionHookTests {
         let service = ClipboardCaptureService(modelContext: context)
         // Wire retention with a limit of 3.
         service.postCaptureRetention = { ctx in
-            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(limit: .preset(3))
+            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(limit: HistoryLimit(3))
         }
 
         // Capture 5 clips; after each, retention should keep only the 3 newest.
@@ -87,7 +87,7 @@ struct HistoryRetentionHookTests {
 
         let service = ClipboardCaptureService(modelContext: context)
         service.postCaptureRetention = { ctx in
-            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(limit: .preset(1))
+            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(limit: HistoryLimit(1))
         }
 
         // Capture 2 unpinned clips.
@@ -141,7 +141,7 @@ struct HistoryRetentionHookTests {
         // Wire retention with a limit of 2; protect the just-unpinned item.
         store.postUnpinRetention = { itemID, ctx in
             _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(
-                limit: .preset(2),
+                limit: HistoryLimit(2),
                 protectedItemID: itemID
             )
         }
@@ -153,5 +153,6 @@ struct HistoryRetentionHookTests {
         let unpinned = remaining.filter { $0.isPinned == false }
         // The just-unpinned p1 should still be present.
         #expect(unpinned.contains { $0.id == clips[0].id })
+        #expect(unpinned.count <= 2)
     }
 }

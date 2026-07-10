@@ -27,6 +27,65 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(row, fixture.thumbnailDescription)
     }
 
+    #if os(macOS)
+    @MainActor
+    func testImageContextMenuExposesIdleCopyTextAndPreservesExistingActions() throws {
+        let app = launchCaptureApp()
+        let clipboard = clipboardRobot(for: app)
+        let row = rowRobot(for: app)
+        let fixture = UITestFixtures.ImageClipboard.copyTarget
+        let expectedImageData = clipboard.captureImageAndReturnOriginalPasteboardData(fixture)
+        let imageRow = clipboard.assertImageRow(for: fixture)
+
+        imageRow.rightClick()
+
+        let copyImageTextItem = UITestAssertions.assertExists(
+            app.menuItems["copy-image-text-menu-item"],
+            "Expected the native image OCR context-menu item while OCR is idle"
+        )
+        XCTAssertEqual(copyImageTextItem.label, "Copy Image Text")
+        XCTAssertTrue(copyImageTextItem.isEnabled, "Expected idle OCR action to be enabled")
+        XCTAssertTrue(copyImageTextItem.isHittable, "Expected idle OCR action to be keyboard/mouse actionable")
+
+        // Dismiss without invoking OCR. This test validates the native menu
+        // surface and existing row actions; it intentionally has no dependency
+        // on Vision output or OCR completion timing.
+        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(
+            UITestAssertions.waitForDisappearance(
+                of: copyImageTextItem,
+                timeout: UITestAssertions.defaultTimeout
+            ),
+            "Expected the native OCR context menu to dismiss after Escape"
+        )
+
+        // Original image copy remains the row's primary action.
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        row.tapImageRow(withThumbnailDescription: fixture.thumbnailDescription)
+        UITestAssertions.assertCopiedFeedback(in: app)
+        clipboard.assertPasteboardImageDataEquals(expectedImageData, for: fixture)
+
+        // Native Pin and Delete affordances remain available after presenting
+        // and dismissing the context menu.
+        let pinButton = row.revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        XCTAssertTrue(pinButton.isEnabled)
+        XCTAssertTrue(pinButton.isHittable)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        row.dismissRevealedSwipeActions()
+
+        let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: fixture.thumbnailDescription
+        )
+        XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
+        XCTAssertTrue(deleteButton.isEnabled)
+        XCTAssertTrue(deleteButton.isHittable)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+    }
+    #endif
+
     @MainActor
     func testCopyActionPlacesPreservedImageBackOnPasteboard() throws {
         let app = launchCaptureApp()

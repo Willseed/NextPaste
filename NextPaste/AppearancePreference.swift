@@ -21,11 +21,11 @@ enum AppearanceMode: String, Codable, CaseIterable, Sendable {
     case light
     case dark
 
-    var displayName: String {
+    var displayNameKey: LocalizedStringKey {
         switch self {
-        case .system: return String(localized: "Follow System")
-        case .light: return String(localized: "Light")
-        case .dark: return String(localized: "Dark")
+        case .system: return "Follow System"
+        case .light: return "Light"
+        case .dark: return "Dark"
         }
     }
 

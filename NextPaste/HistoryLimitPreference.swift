@@ -2,159 +2,161 @@
 //  HistoryLimitPreference.swift
 //  NextPaste
 //
-//  T016 — typed preference for clipboard history retention. Supports Unlimited,
-//  presets (50, 100, 200, 500, 1000), and Custom (10–10,000 integers). Pinned
-//  items never count toward the limit. Stored in UserDefaults (NOT SwiftData).
-//  Includes migration: existing installs with no prior limit default to
-//  Unlimited; new installs default to 500.
-//
 
-import Foundation
 import Combine
+import Foundation
 
-/// T016: the history limit preference.
-enum HistoryLimit: Codable, Equatable, Hashable, Sendable {
-    case unlimited
-    case preset(Int)
-    case custom(Int)
+/// A normalized clipboard-history storage limit. Construction and decoding
+/// always clamp to the product-supported range, so invalid values cannot escape
+/// the preference layer.
+struct HistoryLimit: Codable, Equatable, Hashable, Sendable {
+    static let minimum = 1
+    static let maximum = 1_000
+    static let allowedRange = minimum...maximum
+    static let defaultLimit = HistoryLimit(500)
 
-    var effectiveCount: Int? {
-        switch self {
-        case .unlimited: return nil
-        case .preset(let n), .custom(let n): return n
-        }
+    let value: Int
+
+    init(_ value: Int) {
+        self.value = min(max(value, Self.minimum), Self.maximum)
     }
 
-    var displayName: String {
-        switch self {
-        case .unlimited: return String(localized: "Unlimited")
-        case .preset(let n): return String(n)
-        case .custom(let n):
-            return String.localizedStringWithFormat(
-                String(localized: "Custom (%lld)"),
-                Int64(n)
-            )
-        }
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.init(try container.decode(Int.self))
     }
 
-    static let presets: [Int] = [50, 100, 200, 500, 1000]
-    static let customMin = 10
-    static let customMax = 10_000
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(value)
+    }
 }
 
-/// T016: typed store for the history limit preference. `@MainActor`.
+/// Pure commit policy for the temporarily editable numeric TextField.
+/// Draft changes never touch the persisted preference. On commit, integer input
+/// is normalized into 1...1000; empty or non-integer input restores the last
+/// valid value.
+enum HistoryLimitInputPolicy {
+    struct CommitResult: Equatable {
+        let limit: HistoryLimit
+        let normalizedText: String
+        let shouldPersist: Bool
+    }
+
+    static func commit(_ draft: String, current: HistoryLimit) -> CommitResult {
+        let trimmed = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.isEmpty == false,
+              isIntegerToken(trimmed) else {
+            return restored(current)
+        }
+
+        let parsedValue: Int
+        if let value = Int(trimmed) {
+            parsedValue = value
+        } else {
+            // Lexically valid integers can still overflow Int. Their sign gives a
+            // deterministic clamp direction without accepting NaN/Infinity/text.
+            parsedValue = trimmed.first == "-" ? Int.min : Int.max
+        }
+
+        let limit = HistoryLimit(parsedValue)
+        return CommitResult(
+            limit: limit,
+            normalizedText: String(limit.value),
+            shouldPersist: true
+        )
+    }
+
+    private static func restored(_ current: HistoryLimit) -> CommitResult {
+        CommitResult(
+            limit: current,
+            normalizedText: String(current.value),
+            shouldPersist: false
+        )
+    }
+
+    private static func isIntegerToken(_ value: String) -> Bool {
+        let characters = Array(value)
+        guard characters.isEmpty == false else { return false }
+
+        let digitStart: Int
+        if characters[0] == "+" || characters[0] == "-" {
+            digitStart = 1
+        } else {
+            digitStart = 0
+        }
+
+        guard digitStart < characters.count else { return false }
+        return characters[digitStart...].allSatisfy { character in
+            character >= "0" && character <= "9"
+        }
+    }
+}
+
 @MainActor
 final class HistoryLimitPreference: ObservableObject {
     static let storageKey = "nextpaste.historyLimit"
-    static let migrationMarkerKey = "nextpaste.historyLimitMigrated"
-
-    /// New installs default to 500.
-    static let newInstallDefault: HistoryLimit = .preset(500)
 
     @Published private(set) var limit: HistoryLimit
 
     private let defaults: UserDefaults
 
-    init(defaults: UserDefaults = .standard, isNewInstall: Bool = false) {
+    init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        self.limit = Self.loadOrCreate(
-            from: defaults,
-            isNewInstall: isNewInstall
-        )
+        let loaded = Self.load(from: defaults)
+        limit = loaded
+        Self.save(loaded, to: defaults)
     }
 
     func persist(_ limit: HistoryLimit) {
-        let persistedLimit = Self.sanitized(limit) ?? .unlimited
-        self.limit = persistedLimit
-        Self.save(persistedLimit, to: defaults)
+        self.limit = limit
+        Self.save(limit, to: defaults)
     }
 
-    static func shouldTreatAsNewInstall(
-        defaults: UserDefaults,
-        appDomainName: String? = Bundle.main.bundleIdentifier,
-        hasExistingInstallationEvidence: Bool
-    ) -> Bool {
-        if defaults.object(forKey: storageKey) != nil || defaults.object(forKey: migrationMarkerKey) != nil {
-            return false
-        }
-
-        if hasExistingInstallationEvidence {
-            return false
-        }
-
-        guard let appDomainName else {
-            return true
-        }
-
-        let appDomain = defaults.persistentDomain(forName: appDomainName) ?? [:]
-        return appDomain.keys.allSatisfy { key in
-            key == storageKey || key == migrationMarkerKey
-        }
-    }
-
-    // MARK: Migration
-
-    /// If no prior limit exists:
-    /// - New install → 500.
-    /// - Existing install upgrade → Unlimited.
-    /// Uses a migration marker so the default is only applied once.
-    private static func loadOrCreate(from defaults: UserDefaults, isNewInstall: Bool) -> HistoryLimit {
-        if let data = defaults.data(forKey: storageKey) {
-            if let limit = try? JSONDecoder().decode(HistoryLimit.self, from: data),
-               let sanitizedLimit = sanitized(limit) {
-                return sanitizedLimit
+    private static func load(from defaults: UserDefaults) -> HistoryLimit {
+        if let number = defaults.object(forKey: storageKey) as? NSNumber {
+            let rawValue = number.doubleValue
+            guard rawValue.isFinite,
+                  rawValue.rounded(.towardZero) == rawValue else {
+                return .defaultLimit
             }
-
-            return repairMissingOrInvalidPersistedValue(in: defaults)
+            if rawValue <= Double(Int.min) { return HistoryLimit(Int.min) }
+            if rawValue >= Double(Int.max) { return HistoryLimit(Int.max) }
+            return HistoryLimit(Int(rawValue))
         }
 
-        // No stored value. Apply migration default.
-        if defaults.object(forKey: migrationMarkerKey) != nil {
-            return repairMissingOrInvalidPersistedValue(in: defaults)
+        guard let data = defaults.data(forKey: storageKey) else {
+            return .defaultLimit
         }
 
-        // First launch: set marker and apply default.
-        defaults.set(true, forKey: migrationMarkerKey)
-        let defaultLimit = isNewInstall ? newInstallDefault : .unlimited
-        save(defaultLimit, to: defaults)
-        return defaultLimit
-    }
-
-    private static func repairMissingOrInvalidPersistedValue(in defaults: UserDefaults) -> HistoryLimit {
-        let fallback: HistoryLimit = .unlimited
-        defaults.set(true, forKey: migrationMarkerKey)
-        save(fallback, to: defaults)
-        return fallback
-    }
-
-    private static func sanitized(_ limit: HistoryLimit) -> HistoryLimit? {
-        switch limit {
-        case .unlimited:
-            return .unlimited
-        case .preset(let value) where HistoryLimit.presets.contains(value):
-            return .preset(value)
-        case .custom(let value) where HistoryLimitValidator.validateCustom(value):
-            return .custom(value)
-        default:
-            return nil
+        // Current format is a single normalized integer.
+        if let rawValue = try? JSONDecoder().decode(Int.self, from: data) {
+            return HistoryLimit(rawValue)
         }
+
+        // Migrate the previous synthesized enum representation without exposing
+        // its invalid Unlimited/10,000-value states to the rest of the app.
+        if let legacy = try? JSONDecoder().decode(LegacyHistoryLimit.self, from: data) {
+            switch legacy {
+            case .unlimited:
+                return .defaultLimit
+            case .preset(let value), .custom(let value):
+                return HistoryLimit(value)
+            }
+        }
+
+        return .defaultLimit
     }
 
     private static func save(_ limit: HistoryLimit, to defaults: UserDefaults) {
-        if let data = try? JSONEncoder().encode(limit) {
+        if let data = try? JSONEncoder().encode(limit.value) {
             defaults.set(data, forKey: storageKey)
         }
     }
 }
 
-/// T016: validation for custom history limit values.
-enum HistoryLimitValidator {
-    static func validateCustom(_ value: Int) -> Bool {
-        value >= HistoryLimit.customMin && value <= HistoryLimit.customMax
-    }
-
-    static func validateCustom(_ string: String) -> Int? {
-        guard let value = Int(string), value > 0 else { return nil }
-        return validateCustom(value) ? value : nil
-    }
+private enum LegacyHistoryLimit: Codable {
+    case unlimited
+    case preset(Int)
+    case custom(Int)
 }

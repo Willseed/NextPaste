@@ -1076,21 +1076,25 @@ final class ClipRowActionsUITests: UITestCase {
         XCTAssertEqual(app.state, .runningForeground)
         history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 3)
 
-        // Scroll back to the top and verify pinned-first/newest-first ordering.
-        // Under suite load, swipeDown may not scroll all the way back in one pass,
-        // so scroll generously and wait for the top element to appear.
-        for _ in 0..<10 {
-            list.swipeDown(velocity: .fast)
-        }
-        XCTAssertTrue(
-            app.staticTexts[pinnedNewer].waitForExistence(timeout: UITestAssertions.defaultTimeout),
-            "Expected pinnedNewer to be visible after scrolling back to top"
-        )
+        // Pinning moves the recycled target from the bottom of the unpinned
+        // section to the top of the pinned section. The app must bring that
+        // stable item identity back into the viewport without another swipe.
+        // Synchronize on the persisted Pin state first so the pre-tap hittable
+        // row cannot satisfy the auto-scroll assertion vacuously.
+        let pinnedTargetRow = assertTextRowIdentifier(for: pinTarget, in: app)
         UITestAssertions.assertEventuallyAccessibleTextContains(
-            assertTextRowIdentifier(for: pinTarget, in: app),
+            pinnedTargetRow,
             "Pinned",
             timeout: UITestAssertions.defaultTimeout
         )
+        assertScenarioBElementBecomesHittable(
+            app.staticTexts[pinTarget],
+            app: app,
+            context: "newly pinned recycled target automatically returns to the viewport"
+        )
+
+        // Verify the final pinned-first/newest-first order at the viewport the
+        // app selected. No manual scroll occurs between Pin and these checks.
         // A state-changing Pin writes sectionSortDate = operationTime, so the target
         // must become the first row of the pinned section. The pinned group remains
         // above every unpinned filler.
@@ -1185,6 +1189,45 @@ final class ClipRowActionsUITests: UITestCase {
             context: "reveal-only preserves pinned order"
         )
         attachRowActionWarningAssertionOutcome(["reveal-only-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    @MainActor
+    private func assertScenarioBElementBecomesHittable(
+        _ element: XCUIElement,
+        app: XCUIApplication,
+        context: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == true AND hittable == true"),
+            object: element
+        )
+        guard XCTWaiter.wait(for: [expectation], timeout: timeout) != .completed else {
+            return
+        }
+
+        let attachment = XCTAttachment(string: """
+        Scenario B automatic-scroll failure: \(context)
+
+        Target:
+        \(UITestAssertions.elementFrameDescription(element))
+
+        Visible clip rows:
+        \(UITestAssertions.visibleClipRowsDescription(in: app))
+
+        App state: \(app.state)
+        """)
+        attachment.name = "Scenario B automatic-scroll diagnostic - \(context)"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+
+        XCTFail(
+            "Expected Scenario B target to become hittable automatically: \(context)",
+            file: file,
+            line: line
+        )
     }
 
     @MainActor

@@ -45,6 +45,58 @@ struct ClipboardWriterTests {
         #expect(pasteboard.string(forType: .string) == originalText)
     }
 
+    @Test("nonempty text writer preserves exact multiline content on an injected pasteboard")
+    func nonemptyTextWriterPreservesExactMultilineContentOnInjectedPasteboard() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.nonempty-text.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
+        let text = "First line\n\n  Indented second paragraph"
+
+        #expect(ClipboardWriter.copyNonemptyText(
+            text,
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.processInfo()
+        ))
+        #expect(pasteboard.string(forType: .string) == text)
+    }
+
+    @Test("nonempty text writer rejects whitespace without changing an injected pasteboard")
+    func nonemptyTextWriterRejectsWhitespaceWithoutChangingInjectedPasteboard() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.empty-derived-text.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
+        let originalText = "Existing clipboard content"
+
+        pasteboard.clearContents()
+        #expect(pasteboard.setString(originalText, forType: .string))
+        #expect(ClipboardWriter.copyNonemptyText(
+            "  \n\t  ",
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.processInfo()
+        ) == false)
+        #expect(pasteboard.string(forType: .string) == originalText)
+    }
+
+    @Test("simulated nonempty text failure leaves an injected pasteboard unchanged")
+    func simulatedNonemptyTextFailureLeavesInjectedPasteboardUnchanged() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.failed-derived-text.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
+        let originalText = "Existing clipboard content"
+
+        pasteboard.clearContents()
+        #expect(pasteboard.setString(originalText, forType: .string))
+        #expect(ClipboardWriter.copyNonemptyText(
+            "Recognized replacement",
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.simulatedFailureProcessInfo()
+        ) == false)
+        #expect(pasteboard.string(forType: .string) == originalText)
+    }
+
     @Test("copies preserved full image data to the pasteboard with the stored type identifier")
     func copiesPreservedFullImageDataWithStoredTypeIdentifier() throws {
         let harness = try ImageClipboardWriterHarness(named: "copies-preserved-full-image-data")

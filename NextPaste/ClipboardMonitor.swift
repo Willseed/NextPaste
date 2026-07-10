@@ -87,7 +87,11 @@ final class ClipboardMonitorLifecycleController {
         // set by the app from the HistoryLimitPreference.
         service.postCaptureRetention = { [weak self] context in
             guard let limit = self?.historyLimitProvider?() else { return }
-            _ = try? HistoryRetentionService(modelContext: context).enforceLimit(limit: limit)
+            do {
+                _ = try HistoryRetentionService(modelContext: context).enforceLimit(limit: limit)
+            } catch {
+                NSLog("NextPaste could not enforce history retention after capture: %@", String(describing: error))
+            }
         }
         let monitor = ClipboardMonitor(
             captureService: service,

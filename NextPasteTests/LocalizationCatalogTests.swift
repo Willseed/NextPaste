@@ -10,6 +10,30 @@ import Foundation
 import Testing
 
 struct LocalizationCatalogTests {
+    private let featureBilingualKeys: Set<String> = [
+        "1–1000",
+        "Appearance",
+        "App Language",
+        "Changes apply immediately throughout NextPaste.",
+        "Copy Image Text",
+        "Dark",
+        "English (United States)",
+        "Image Text Recognition Failed",
+        "Follow System",
+        "History limit could not be applied. Try again.",
+        "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
+        "Language",
+        "Light",
+        "No Text Found in Image",
+        "Recognizing Image Text",
+        "Recognizing Image Text…",
+        "Retry Copy Image Text",
+        "Storage Limit",
+        "Storage Limit Range",
+        "Storage Limit Value",
+        "Traditional Chinese (Taiwan)"
+    ]
+
     private struct Catalog: Decodable {
         let strings: [String: Entry]
     }
@@ -63,7 +87,7 @@ struct LocalizationCatalogTests {
             .split(separator: "\n")
             .map { line in
                 line.trimmingCharacters(
-                    in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ","))
+                    in: CharacterSet.whitespacesAndNewlines.union(CharacterSet(charactersIn: ",\""))
                 )
             }
             .filter { $0.isEmpty == false && $0 != "Base" }
@@ -72,11 +96,14 @@ struct LocalizationCatalogTests {
     @Test func stringCatalogContainsBranchFeatureLocalizationKeys() throws {
         let catalog = try loadCatalog()
         let requiredKeys: Set<String> = [
+            "1–1000",
             "Appearance",
+            "App Language",
             "Apply",
             "At least one modifier is required.",
             "Cancel",
             "Cancel Recording",
+            "Changes apply immediately throughout NextPaste.",
             "Clear %lld Unpinned Item",
             "Clear %lld Unpinned Items",
             "Clear All History",
@@ -94,6 +121,7 @@ struct LocalizationCatalogTests {
             "Command-F is used for search.",
             "Command-, is used for Settings.",
             "Control",
+            "Copy Image Text",
             "Current global shortcut",
             "Custom",
             "Custom (%lld)",
@@ -107,6 +135,7 @@ struct LocalizationCatalogTests {
             "Disable the global keyboard shortcut",
             "Enter a whole number from %lld to %lld.",
             "Enter text to save a clip.",
+            "English (United States)",
             "Escape",
             "Find…",
             "Focus the clipboard search field",
@@ -116,6 +145,10 @@ struct LocalizationCatalogTests {
             "Global Shortcut",
             "History",
             "History Limit",
+            "History limit could not be applied. Try again.",
+            "Image Text Recognition Failed",
+            "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
+            "Language",
             "History actions",
             "Light",
             "Lower History Limit",
@@ -123,15 +156,19 @@ struct LocalizationCatalogTests {
             "New Clip",
             "New Text Clip",
             "None",
+            "No Text Found in Image",
             "Option",
             "Option alone cannot be a shortcut.",
             "Press a key combination…",
             "Quit",
             "Record Shortcut",
             "Record a new global keyboard shortcut",
+            "Recognizing Image Text",
+            "Recognizing Image Text…",
             "Reset to Default",
             "Restore the default global keyboard shortcut",
             "Return",
+            "Retry Copy Image Text",
             "Save",
             "Search",
             "Search Clipboard History",
@@ -143,8 +180,12 @@ struct LocalizationCatalogTests {
             "Shortcut is already in use.",
             "Shortcuts",
             "Space",
+            "Storage Limit",
+            "Storage Limit Range",
+            "Storage Limit Value",
             "Tab",
             "This shortcut conflicts with the %@ menu command.",
+            "Traditional Chinese (Taiwan)",
             "This will delete %lld unpinned item to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.",
             "This will delete %lld unpinned items to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.",
             "This will permanently delete %lld unpinned item. %lld pinned item will be preserved. This action cannot be undone.",
@@ -176,13 +217,21 @@ struct LocalizationCatalogTests {
             return
         }
 
+        #expect(Set(locales).isSuperset(of: ["en", "zh-Hant"]))
+
         for locale in locales {
             // Skip comment-only/metadata catalog entries (keys with no
             // `localizations` field, e.g. the app name, an illustration label,
             // and an auto-generated format-string comment). These are not
             // translatable strings; the completeness contract applies only to
             // entries that actually declare localizations.
-            let missingKeys = catalog.strings.compactMap { key, entry -> String? in
+            // Existing English-only entries intentionally use the String Catalog
+            // fallback in zh-Hant. Every string introduced by the language/storage
+            // settings work is explicitly bilingual.
+            let entriesToValidate = locale == "en"
+                ? catalog.strings
+                : catalog.strings.filter { featureBilingualKeys.contains($0.key) }
+            let missingKeys = entriesToValidate.compactMap { key, entry -> String? in
                 guard let localizations = entry.localizations else { return nil }
                 guard let localization = localizations[locale],
                       let stringUnit = localization.stringUnit,
@@ -198,6 +247,26 @@ struct LocalizationCatalogTests {
                 Issue.record("Locale \(locale) is missing translations for keys: \(missingKeys.sorted())")
             }
             #expect(missingKeys.isEmpty)
+        }
+    }
+
+    @Test func featureKeysHaveConcreteEnglishAndTraditionalChineseValues() throws {
+        let catalog = try loadCatalog()
+
+        for key in featureBilingualKeys {
+            guard let entry = catalog.strings[key] else {
+                Issue.record("Feature localization key is missing: \(key)")
+                continue
+            }
+
+            for locale in ["en", "zh-Hant"] {
+                guard let stringUnit = entry.localizations?[locale]?.stringUnit,
+                      stringUnit.state == "translated",
+                      stringUnit.value.isEmpty == false else {
+                    Issue.record("Feature key \(key) has no concrete \(locale) translation")
+                    continue
+                }
+            }
         }
     }
 }

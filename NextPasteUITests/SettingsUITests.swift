@@ -16,7 +16,12 @@ final class SettingsUITests: UITestCase {
         static let appearanceTab = "Appearance"
         static let historyTab = "History"
 
-        static let generalPlaceholder = "General settings"
+        static let appLanguage = "App Language"
+        static let englishUnitedStates = "English (United States)"
+        static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
+        static let localizedEnglishUnitedStates = "英文（美國）"
+        static let localizedTraditionalChineseTaiwan = "繁體中文（台灣）"
+        static let localizedLanguageDescription = "變更會立即套用至整個 NextPaste。"
         static let recordShortcut = "Record Shortcut"
         static let clearShortcut = "Clear Shortcut"
         static let resetShortcut = "Reset to Default"
@@ -25,20 +30,15 @@ final class SettingsUITests: UITestCase {
         static let followSystem = "Follow System"
         static let light = "Light"
         static let dark = "Dark"
-        static let historyUnlimited = "Unlimited"
-        static let historyCustom = "Custom"
-
         static let appearanceLabel = "Appearance"
-        static let historyLimitLabel = "History Limit"
-        static let customHistoryLimit = "Custom history limit"
+        static let storageLimit = "Storage Limit"
+        static let storageLimitValue = "Storage Limit Value"
     }
 
     private enum Fixture {
         static let settingsHistoryLimitSeedArgument = "-ui-test-seed-settings-history-limit"
         static let invalidShortcutError = "At least one modifier is required."
         static let defaultShortcutDisplay = "Command+Shift+V"
-        static let invalidHistoryLimitError = "Enter a whole number from 10 to 10000."
-
         static let darkCanvas = "#1D1A16"
         static let lightCanvas = "#FFFAF0"
 
@@ -60,10 +60,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertEqual(settingsWindowCount(in: app), 1, "Expected repeated Command-, to reuse the same Settings window")
 
         openSettingsTab(Accessibility.generalTab, in: app)
-        UITestAssertions.assertExists(
-            settingsWindow.staticTexts[Accessibility.generalPlaceholder],
-            "Expected General settings content"
-        )
+        _ = languagePopup(in: settingsWindow)
 
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         UITestAssertions.assertExists(settingsWindow.buttons[Accessibility.recordShortcut], "Expected Record Shortcut button")
@@ -74,7 +71,8 @@ final class SettingsUITests: UITestCase {
         _ = appearancePopup(in: settingsWindow)
 
         openSettingsTab(Accessibility.historyTab, in: app)
-        _ = historyLimitPopup(in: settingsWindow)
+        _ = historyLimitSlider(in: settingsWindow)
+        _ = historyLimitField(in: settingsWindow)
     }
 
     @MainActor
@@ -137,142 +135,101 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
-    func testHistoryLimitValidatesCustomInputAndConfirmsTrimmingWhilePreservingPinnedRows() throws {
+    func testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows() throws {
         let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
         let history = historyRobot(for: app)
 
-        var settingsWindow = openSettingsWindow(in: app)
+        let settingsWindow = openSettingsWindow(in: app)
         openSettingsTab(Accessibility.historyTab, in: app)
-        let historyPopup = historyLimitPopup(in: settingsWindow)
+        let slider = historyLimitSlider(in: settingsWindow)
+        let field = historyLimitField(in: settingsWindow)
 
-        assertPopupMenuOptions(
-            from: historyPopup,
-            in: app,
-            options: [
-                Accessibility.historyUnlimited,
-                "50",
-                "100",
-                "200",
-                "500",
-                "1000",
-                Accessibility.historyCustom
-            ]
-        )
-
-        selectMenuOption(Accessibility.historyUnlimited, from: historyPopup, in: app)
-        assertPopupValueEventually(historyPopup, equals: Accessibility.historyUnlimited)
-
-        selectMenuOption(Accessibility.historyCustom, from: historyPopup, in: app)
-        let customField = customHistoryLimitField(in: settingsWindow)
-        replaceText(in: customField, with: "100000", application: app)
-        customHistoryApplyButton(in: settingsWindow).tap()
-        UITestAssertions.assertDoesNotExist(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected invalid custom input not to open the lower-limit confirmation",
-            timeout: 1
-        )
-        app.typeKey("w", modifierFlags: .command)
+        replaceText(in: field, with: "1000", application: app)
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(waitForTextInputValue(field, equals: "1000", timeout: UITestAssertions.defaultTimeout))
         XCTAssertTrue(
-            waitForSettingsWindowCount(in: app, expectedCount: 0, timeout: UITestAssertions.defaultTimeout),
-            "Expected Settings window to close"
+            waitForElementValue(slider, equals: "1000", timeout: UITestAssertions.defaultTimeout),
+            "Expected TextField changes to update the Slider accessibility value"
         )
 
-        settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
-        XCTAssertEqual(
-            popupValue(of: historyLimitPopup(in: settingsWindow)),
-            Accessibility.historyUnlimited,
-            "Expected invalid custom input not to persist"
-        )
-        app.typeKey("w", modifierFlags: .command)
+        replaceText(in: field, with: "letters", application: app)
+        app.typeKey(.return, modifierFlags: [])
         XCTAssertTrue(
-            waitForSettingsWindowCount(in: app, expectedCount: 0, timeout: UITestAssertions.defaultTimeout),
-            "Expected Settings window to close before interacting with the main history window"
+            waitForTextInputValue(field, equals: "1000", timeout: UITestAssertions.defaultTimeout),
+            "Expected unparseable input to restore the prior valid value"
         )
+
+        replaceText(in: field, with: "1001", application: app)
+        app.typeKey(.return, modifierFlags: [])
+        XCTAssertTrue(
+            waitForTextInputValue(field, equals: "1000", timeout: UITestAssertions.defaultTimeout),
+            "Expected parseable high input to clamp to 1000"
+        )
+
+        slider.adjust(toNormalizedSliderPosition: 0)
+        XCTAssertTrue(
+            waitForTextInputValue(field, equals: "1", timeout: UITestAssertions.defaultTimeout),
+            "Expected Slider and TextField to remain synchronized at the minimum"
+        )
+        XCTAssertTrue(waitForElementValue(slider, equals: "1", timeout: UITestAssertions.defaultTimeout))
+
+        app.typeKey("w", modifierFlags: .command)
         UITestAppLauncher.prepareMainWindow(in: app)
-
-        settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
-        let refreshedHistoryPopup = historyLimitPopup(in: settingsWindow)
-        selectMenuOption(Accessibility.historyCustom, from: refreshedHistoryPopup, in: app)
-
-        let confirmedCustomField = customHistoryLimitField(in: settingsWindow)
-        replaceText(in: confirmedCustomField, with: "10", application: app)
-        customHistoryApplyButton(in: settingsWindow).tap()
-
-        let confirmPreviewButton = UITestAssertions.assertExists(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected lower-limit confirm button"
-        )
-        UITestAssertions.assertAccessibleTextContains(confirmPreviewButton, "Delete 1 Item")
-
-        let cancelButton = UITestAssertions.assertExists(
-            app.buttons["cancel-lower-limit-button"],
-            "Expected lower-limit cancel button"
-        )
-        cancelButton.tap()
-        assertPopupValueEventually(refreshedHistoryPopup, equals: Accessibility.historyUnlimited)
-
-        assertHistorySearchFinds(Fixture.firstTrimmedClip, history: history)
-
-        settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
-        let reconfirmedHistoryPopup = historyLimitPopup(in: settingsWindow)
-        selectMenuOption(Accessibility.historyCustom, from: reconfirmedHistoryPopup, in: app)
-
-        let reconfirmedCustomField = customHistoryLimitField(in: settingsWindow)
-        replaceText(in: reconfirmedCustomField, with: "10", application: app)
-        customHistoryApplyButton(in: settingsWindow).tap()
-
-        let confirmButton = UITestAssertions.assertExists(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected lower-limit confirm button"
-        )
-        confirmButton.tap()
-        XCTAssertTrue(
-            UITestAssertions.waitForDisappearance(
-                of: app.buttons["confirm-lower-limit-button"],
-                timeout: UITestAssertions.defaultTimeout
-            ),
-            "Expected lower-limit confirmation to dismiss after confirming"
-        )
-
         assertHistorySearchMisses(Fixture.firstTrimmedClip, history: history)
         assertHistorySearchFinds(Fixture.retainedClip, history: history)
         assertHistorySearchFinds(Fixture.pinnedClip, history: history)
 
-        settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
-        let loweredHistoryPopup = historyLimitPopup(in: settingsWindow)
-        selectMenuOption(Accessibility.historyUnlimited, from: loweredHistoryPopup, in: app)
-        assertPopupValueEventually(loweredHistoryPopup, equals: Accessibility.historyUnlimited)
+        closeApp(app)
 
-        selectMenuOption(Accessibility.historyCustom, from: loweredHistoryPopup, in: app)
-        let noDeletionCustomField = customHistoryLimitField(in: settingsWindow)
-        replaceText(in: noDeletionCustomField, with: "10", application: app)
-        customHistoryApplyButton(in: settingsWindow).tap()
-        assertPopupValueEventually(loweredHistoryPopup, equals: Accessibility.historyCustom)
-        UITestAssertions.assertDoesNotExist(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected no confirmation when the new limit matches the unpinned count",
-            timeout: 1
+        let relaunchedApp = launchApp()
+        let reopenedSettings = openSettingsWindow(in: relaunchedApp)
+        openSettingsTab(Accessibility.historyTab, in: relaunchedApp)
+        let relaunchedField = historyLimitField(in: reopenedSettings)
+        XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
+
+        historyLimitSlider(in: reopenedSettings).adjust(toNormalizedSliderPosition: 1)
+        XCTAssertTrue(
+            waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
+            "Expected maximum Slider position to update the TextField to 1000"
         )
 
-        selectMenuOption("50", from: loweredHistoryPopup, in: app)
-        assertPopupValueEventually(loweredHistoryPopup, equals: "50")
-        UITestAssertions.assertDoesNotExist(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected no confirmation when increasing the history limit",
-            timeout: 1
+        // Leave a conventional value for other UI tests sharing app defaults.
+        replaceText(in: relaunchedField, with: "500", application: relaunchedApp)
+        relaunchedApp.typeKey(.return, modifierFlags: [])
+    }
+
+    @MainActor
+    func testLanguageSelectionAppliesImmediatelyAndPersistsAcrossRelaunch() throws {
+        let app = launchApp()
+        var settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
+
+        let languagePicker = languagePopup(in: settingsWindow)
+        selectMenuOption(Accessibility.traditionalChineseTaiwan, from: languagePicker, in: app)
+        assertPopupValueEventually(languagePicker, equals: Accessibility.localizedTraditionalChineseTaiwan)
+        UITestAssertions.assertExists(
+            settingsWindow.staticTexts[Accessibility.localizedLanguageDescription],
+            "Expected the selected locale to update Settings immediately"
         )
 
-        selectMenuOption(Accessibility.historyUnlimited, from: loweredHistoryPopup, in: app)
-        assertPopupValueEventually(loweredHistoryPopup, equals: Accessibility.historyUnlimited)
-        UITestAssertions.assertDoesNotExist(
-            app.buttons["confirm-lower-limit-button"],
-            "Expected no confirmation when switching to Unlimited",
-            timeout: 1
+        closeApp(app)
+
+        let relaunchedApp = launchApp()
+        settingsWindow = openSettingsWindow(in: relaunchedApp)
+        openSettingsTab(Accessibility.generalTab, in: relaunchedApp)
+        let relaunchedLanguagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(
+            relaunchedLanguagePicker,
+            equals: Accessibility.localizedTraditionalChineseTaiwan
         )
+
+        // Restore English so independent UI tests retain their existing labels.
+        selectMenuOption(
+            Accessibility.localizedEnglishUnitedStates,
+            from: relaunchedLanguagePicker,
+            in: relaunchedApp
+        )
+        assertPopupValueEventually(relaunchedLanguagePicker, equals: Accessibility.englishUnitedStates)
     }
 
     @MainActor
@@ -310,15 +267,8 @@ final class SettingsUITests: UITestCase {
         assertPopupValueEventually(appearancePicker, equals: Accessibility.followSystem)
         assertCanvasValueEventually(systemCanvas, in: app)
 
-        openSettingsTab(Accessibility.historyTab, in: app)
-        let historyPopup = historyLimitPopup(in: settingsWindow)
-        selectMenuOption("50", from: historyPopup, in: app)
-        assertPopupValueEventually(historyPopup, equals: "50")
-
-        openSettingsTab(Accessibility.appearanceTab, in: app)
-        let refreshedAppearancePicker = appearancePopup(in: settingsWindow)
-        selectMenuOption(Accessibility.dark, from: refreshedAppearancePicker, in: app)
-        assertPopupValueEventually(refreshedAppearancePicker, equals: Accessibility.dark)
+        selectMenuOption(Accessibility.dark, from: appearancePicker, in: app)
+        assertPopupValueEventually(appearancePicker, equals: Accessibility.dark)
         assertCanvasValueEventually(Fixture.darkCanvas, in: app)
 
         closeApp(app)
@@ -334,20 +284,8 @@ final class SettingsUITests: UITestCase {
             "Expected appearance preference to persist across relaunch"
         )
 
-        openSettingsTab(Accessibility.historyTab, in: relaunchedApp)
-        XCTAssertEqual(
-            popupValue(of: historyLimitPopup(in: settingsWindow)),
-            "50",
-            "Expected history limit preference to persist across relaunch"
-        )
-
-        openSettingsTab(Accessibility.appearanceTab, in: relaunchedApp)
         let relaunchedAppearancePopup = appearancePopup(in: settingsWindow)
         selectMenuOption(Accessibility.followSystem, from: relaunchedAppearancePopup, in: relaunchedApp)
-
-        openSettingsTab(Accessibility.historyTab, in: relaunchedApp)
-        let relaunchedHistoryPopup = historyLimitPopup(in: settingsWindow)
-        selectMenuOption(Accessibility.historyUnlimited, from: relaunchedHistoryPopup, in: relaunchedApp)
     }
 
     private func openSettingsWindow(
@@ -431,15 +369,53 @@ final class SettingsUITests: UITestCase {
         )
     }
 
-    private func historyLimitPopup(
+    private func languagePopup(
         in settingsWindow: XCUIElement,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        popupButton(
-            labeled: Accessibility.historyLimitLabel,
+        let identifiedPicker = settingsWindow.descendants(matching: .popUpButton)["app-language-picker"]
+        if identifiedPicker.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
+            return identifiedPicker
+        }
+
+        return popupButton(
+            labeled: Accessibility.appLanguage,
             in: settingsWindow,
-            message: "Expected History Limit pop-up button",
+            message: "Expected App Language pop-up button",
+            file: file,
+            line: line
+        )
+    }
+
+    private func historyLimitSlider(
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            settingsWindow.sliders["history-limit-slider"],
+            "Expected native Storage Limit slider",
+            file: file,
+            line: line
+        )
+    }
+
+    private func historyLimitField(
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let identifiedField = settingsWindow.textFields["history-limit-field"]
+        if identifiedField.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
+            return identifiedField
+        }
+
+        return UITestAssertions.assertExists(
+            settingsWindow.textFields.matching(
+                NSPredicate(format: "label == %@", Accessibility.storageLimitValue)
+            ).firstMatch,
+            "Expected editable Storage Limit value field",
             file: file,
             line: line
         )
@@ -463,6 +439,21 @@ final class SettingsUITests: UITestCase {
 
     private func popupValue(of popup: XCUIElement) -> String {
         popup.value as? String ?? ""
+    }
+
+    private func waitForElementValue(
+        _ element: XCUIElement,
+        equals expectedValue: String,
+        timeout: TimeInterval
+    ) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while Date() < deadline {
+            if (element.value as? String) == expectedValue {
+                return true
+            }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        return (element.value as? String) == expectedValue
     }
 
     private func assertPopupValueEventually(
@@ -536,48 +527,6 @@ final class SettingsUITests: UITestCase {
         } else {
             app.typeKey(.escape, modifierFlags: [])
         }
-    }
-
-    private func customHistoryLimitField(
-        in settingsWindow: XCUIElement,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> XCUIElement {
-        let identifiedField = settingsWindow.textFields["history-limit-custom-field"]
-        if identifiedField.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
-            return identifiedField
-        }
-
-        let predicate = NSPredicate(format: "label == %@", Accessibility.customHistoryLimit)
-        return UITestAssertions.assertExists(
-            settingsWindow.textFields.matching(predicate).firstMatch,
-            "Expected custom history limit field",
-            file: file,
-            line: line
-        )
-    }
-
-    private func customHistoryApplyButton(
-        in settingsWindow: XCUIElement,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> XCUIElement {
-        let identifiedButton = settingsWindow.buttons["history-limit-custom-apply-button"]
-        if identifiedButton.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
-            return identifiedButton
-        }
-
-        let labeledButton = settingsWindow.buttons["Apply"]
-        if labeledButton.waitForExistence(timeout: 1) {
-            return labeledButton
-        }
-
-        return UITestAssertions.assertExists(
-            settingsWindow.buttons.matching(NSPredicate(format: "label == %@", "Apply")).firstMatch,
-            "Expected custom history Apply button",
-            file: file,
-            line: line
-        )
     }
 
     private func replaceText(

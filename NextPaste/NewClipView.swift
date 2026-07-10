@@ -11,6 +11,7 @@ import SwiftUI
 struct NewClipView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @State private var draftText = ""
     @State private var validationMessage: String?
     @State private var saveErrorMessage: String?
@@ -81,6 +82,15 @@ struct NewClipView: View {
             }
 
             let service = ClipboardCaptureService(modelContext: modelContext)
+            service.postCaptureRetention = { context in
+                do {
+                    _ = try HistoryRetentionService(modelContext: context).enforceLimit(
+                        limit: historyLimitPreference.limit
+                    )
+                } catch {
+                    NSLog("NextPaste could not enforce history retention after manual save: %@", String(describing: error))
+                }
+            }
             try service.saveManualTextClip(draftText)
             dismiss()
         } catch {
@@ -97,4 +107,5 @@ private enum SaveFailure: Error {
 #Preview {
     NewClipView()
         .modelContainer(for: ClipItem.self, inMemory: true)
+        .environmentObject(HistoryLimitPreference())
 }

@@ -2,210 +2,169 @@
 //  HistoryLimitPreferenceTests.swift
 //  NextPasteTests
 //
-//  T016 — history limit typed preference + validation + migration coverage.
-//
 
-import Testing
 import Foundation
+import Testing
 @testable import NextPaste
 
 @MainActor
 struct HistoryLimitPreferenceTests {
+    private enum LegacyHistoryLimit: Codable {
+        case unlimited
+        case preset(Int)
+        case custom(Int)
+    }
+
     private func makeDefaults(suite: String = "nextpaste-limit-\(UUID().uuidString)") -> UserDefaults {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
         return defaults
     }
 
-    // MARK: Codable
-
-    @Test func unlimitedRoundTripsThroughCodable() throws {
-        let limit = HistoryLimit.unlimited
-        let data = try JSONEncoder().encode(limit)
-        let decoded = try JSONDecoder().decode(HistoryLimit.self, from: data)
-        #expect(decoded == limit)
-        #expect(decoded.effectiveCount == nil)
+    @Test func boundsAndDefaultAreProductValues() {
+        #expect(HistoryLimit.minimum == 1)
+        #expect(HistoryLimit.maximum == 1_000)
+        #expect(HistoryLimit.defaultLimit.value == 500)
     }
 
-    @Test func presetRoundTripsThroughCodable() throws {
-        let limit = HistoryLimit.preset(200)
-        let data = try JSONEncoder().encode(limit)
-        let decoded = try JSONDecoder().decode(HistoryLimit.self, from: data)
-        #expect(decoded == limit)
-        #expect(decoded.effectiveCount == 200)
+    @Test(arguments: [1, 450, 1_000])
+    func validValuesRemainUnchanged(_ rawValue: Int) {
+        #expect(HistoryLimit(rawValue).value == rawValue)
     }
 
-    @Test func customRoundTripsThroughCodable() throws {
-        let limit = HistoryLimit.custom(750)
-        let data = try JSONEncoder().encode(limit)
-        let decoded = try JSONDecoder().decode(HistoryLimit.self, from: data)
-        #expect(decoded == limit)
-        #expect(decoded.effectiveCount == 750)
+    @Test(arguments: [
+        (raw: Int.min, expected: 1),
+        (raw: -1, expected: 1),
+        (raw: 0, expected: 1),
+        (raw: 1_001, expected: 1_000),
+        (raw: Int.max, expected: 1_000)
+    ])
+    func constructionClampsOutsideRange(_ fixture: (raw: Int, expected: Int)) {
+        #expect(HistoryLimit(fixture.raw).value == fixture.expected)
     }
 
-    // MARK: Presets
+    @Test func codableRoundTripUsesNormalizedInteger() throws {
+        let original = HistoryLimit(750)
+        let data = try JSONEncoder().encode(original)
 
-    @Test func presetsContainExpectedValues() {
-        #expect(HistoryLimit.presets == [50, 100, 200, 500, 1000])
+        #expect(String(data: data, encoding: .utf8) == "750")
+        #expect(try JSONDecoder().decode(HistoryLimit.self, from: data) == original)
     }
 
-    // MARK: Custom validation
+    @Test(arguments: [
+        (draft: "1", expected: 1),
+        (draft: "1000", expected: 1_000),
+        (draft: "425", expected: 425),
+        (draft: "  25  ", expected: 25),
+        (draft: "0", expected: 1),
+        (draft: "-12", expected: 1),
+        (draft: "1001", expected: 1_000),
+        (draft: "999999999999999999999999", expected: 1_000)
+    ])
+    func commitAcceptsIntegersAndClampsOutOfRange(_ fixture: (draft: String, expected: Int)) {
+        let result = HistoryLimitInputPolicy.commit(fixture.draft, current: HistoryLimit(500))
 
-    @Test func customValidValuePassesValidation() {
-        #expect(HistoryLimitValidator.validateCustom(100))
-        #expect(HistoryLimitValidator.validateCustom(10))
-        #expect(HistoryLimitValidator.validateCustom(10_000))
+        #expect(result.shouldPersist)
+        #expect(result.limit.value == fixture.expected)
+        #expect(result.normalizedText == String(fixture.expected))
     }
 
-    @Test func customTooLowFailsValidation() {
-        #expect(HistoryLimitValidator.validateCustom(9) == false)
-        #expect(HistoryLimitValidator.validateCustom(0) == false)
+    @Test(arguments: ["", "   ", "3.5", "abc", "12abc", "NaN", "∞", "+", "-"])
+    func commitRestoresCurrentValueForEmptyOrUnparseableInput(_ draft: String) {
+        let result = HistoryLimitInputPolicy.commit(draft, current: HistoryLimit(321))
+
+        #expect(result.shouldPersist == false)
+        #expect(result.limit.value == 321)
+        #expect(result.normalizedText == "321")
     }
 
-    @Test func customTooHighFailsValidation() {
-        #expect(HistoryLimitValidator.validateCustom(10_001) == false)
-    }
-
-    @Test func customNonIntegerStringFailsValidation() {
-        #expect(HistoryLimitValidator.validateCustom("abc") == nil)
-        #expect(HistoryLimitValidator.validateCustom("") == nil)
-        #expect(HistoryLimitValidator.validateCustom("3.5") == nil)
-    }
-
-    @Test func customValidStringPassesValidation() {
-        #expect(HistoryLimitValidator.validateCustom("500") == 500)
-        #expect(HistoryLimitValidator.validateCustom("10") == 10)
-    }
-
-    @Test func customInvalidStringReturnsNil() {
-        #expect(HistoryLimitValidator.validateCustom("5") == nil) // too low
-        #expect(HistoryLimitValidator.validateCustom("99999") == nil) // too high
-    }
-
-    // MARK: Migration
-
-    @Test func newInstallDefaultsToPreset500() {
+    @Test func missingValueDefaultsTo500AndIsPersisted() {
         let defaults = makeDefaults()
-        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(pref.limit == .preset(500))
-    }
+        let preference = HistoryLimitPreference(defaults: defaults)
 
-    @Test func existingInstallUpgradeDefaultsToUnlimited() {
-        let defaults = makeDefaults()
-        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: false)
-        #expect(pref.limit == .unlimited)
-    }
-
-    @Test func existingPersistedValueWinsOverNewInstallDefault() {
-        let defaults = makeDefaults()
-        let original = HistoryLimitPreference(defaults: defaults, isNewInstall: false)
-        original.persist(.preset(1000))
-
-        let reloaded = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(reloaded.limit == .preset(1000))
+        #expect(preference.limit == .defaultLimit)
+        #expect(defaults.data(forKey: HistoryLimitPreference.storageKey) != nil)
     }
 
     @Test func persistedLimitSurvivesNewInstance() {
-        let suite = "nextpaste-limit-restart-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-
-        let pref1 = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        pref1.persist(.custom(750))
-
-        let pref2 = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(pref2.limit == .custom(750))
-
-        defaults.removePersistentDomain(forName: suite)
-    }
-
-    @Test func migrationMarkerPreventsOverwritingOnRestart() {
-        let suite = "nextpaste-limit-marker-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-
-        // First launch: new install → 500.
-        let pref1 = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(pref1.limit == .preset(500))
-
-        // User changes to unlimited.
-        pref1.persist(.unlimited)
-
-        // Second launch: should load unlimited, not reset to 500.
-        let pref2 = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(pref2.limit == .unlimited)
-
-        defaults.removePersistentDomain(forName: suite)
-    }
-
-    @Test func invalidPersistedDataFallsBackToUnlimited() {
         let defaults = makeDefaults()
-        defaults.set(Data("not-json".utf8), forKey: HistoryLimitPreference.storageKey)
+        HistoryLimitPreference(defaults: defaults).persist(HistoryLimit(842))
 
-        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-
-        #expect(pref.limit == .unlimited)
-        #expect(defaults.bool(forKey: HistoryLimitPreference.migrationMarkerKey))
-
-        let repaired = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
-        #expect(repaired.limit == .unlimited)
+        #expect(HistoryLimitPreference(defaults: defaults).limit.value == 842)
     }
 
-    @Test func invalidTypedPersistedValueFallsBackToUnlimited() throws {
+    @Test(arguments: [
+        (raw: -20, expected: 1),
+        (raw: 375, expected: 375),
+        (raw: 1_500, expected: 1_000)
+    ])
+    func legacyNSNumberIntegersAreNormalized(_ fixture: (raw: Int, expected: Int)) {
+        let defaults = makeDefaults()
+        defaults.set(fixture.raw, forKey: HistoryLimitPreference.storageKey)
+
+        #expect(HistoryLimitPreference(defaults: defaults).limit.value == fixture.expected)
+    }
+
+    @Test func fractionalOrNonfiniteLegacyNumbersRepairToDefault() {
+        for rawValue in [3.5, Double.nan, Double.infinity] {
+            let defaults = makeDefaults()
+            defaults.set(rawValue, forKey: HistoryLimitPreference.storageKey)
+            #expect(HistoryLimitPreference(defaults: defaults).limit == .defaultLimit)
+        }
+    }
+
+    @Test(arguments: [
+        (raw: 0, expected: 1),
+        (raw: 1_001, expected: 1_000),
+        (raw: 125, expected: 125)
+    ])
+    func persistedIntegerDataIsNormalizedAndRepaired(_ fixture: (raw: Int, expected: Int)) throws {
         let defaults = makeDefaults()
         defaults.set(
-            try JSONEncoder().encode(HistoryLimit.custom(5)),
+            try JSONEncoder().encode(fixture.raw),
             forKey: HistoryLimitPreference.storageKey
         )
 
-        let pref = HistoryLimitPreference(defaults: defaults, isNewInstall: true)
+        let preference = HistoryLimitPreference(defaults: defaults)
+        let repairedData = try #require(defaults.data(forKey: HistoryLimitPreference.storageKey))
 
-        #expect(pref.limit == .unlimited)
+        #expect(preference.limit.value == fixture.expected)
+        #expect(try JSONDecoder().decode(Int.self, from: repairedData) == fixture.expected)
     }
 
-    @Test func newInstallDetectionReturnsTrueOnlyForEmptyState() {
-        let suite = "nextpaste-limit-detection-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-
-        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
-            defaults: defaults,
-            hasPersistedHistory: false,
-            appDomainName: suite
+    @Test func legacyUnlimitedMigratesToDefault() throws {
+        let defaults = makeDefaults()
+        defaults.set(
+            try JSONEncoder().encode(LegacyHistoryLimit.unlimited),
+            forKey: HistoryLimitPreference.storageKey
         )
 
-        #expect(isNewInstall)
-        defaults.removePersistentDomain(forName: suite)
+        #expect(HistoryLimitPreference(defaults: defaults).limit == .defaultLimit)
     }
 
-    @Test func newInstallDetectionTreatsPersistedHistoryAsExistingInstall() {
-        let suite = "nextpaste-limit-history-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-
-        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
-            defaults: defaults,
-            hasPersistedHistory: true,
-            appDomainName: suite
+    @Test(arguments: [
+        (legacyValue: 50, expected: 50),
+        (legacyValue: 10_000, expected: 1_000),
+        (legacyValue: 0, expected: 1)
+    ])
+    func legacyCustomValuesMigrateAndClamp(_ fixture: (legacyValue: Int, expected: Int)) throws {
+        let defaults = makeDefaults()
+        defaults.set(
+            try JSONEncoder().encode(LegacyHistoryLimit.custom(fixture.legacyValue)),
+            forKey: HistoryLimitPreference.storageKey
         )
 
-        #expect(isNewInstall == false)
-        defaults.removePersistentDomain(forName: suite)
+        #expect(HistoryLimitPreference(defaults: defaults).limit.value == fixture.expected)
     }
 
-    @Test func newInstallDetectionTreatsExistingDefaultsAsUpgrade() {
-        let suite = "nextpaste-limit-domain-\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suite)!
-        defaults.removePersistentDomain(forName: suite)
-        defaults.set("legacy", forKey: "nextpaste.someExistingPreference")
+    @Test func corruptPersistedDataRepairsToDefault() throws {
+        let defaults = makeDefaults()
+        defaults.set(Data("not-json".utf8), forKey: HistoryLimitPreference.storageKey)
 
-        let isNewInstall = NextPasteApp.resolveHistoryLimitNewInstallState(
-            defaults: defaults,
-            hasPersistedHistory: false,
-            appDomainName: suite
-        )
+        let preference = HistoryLimitPreference(defaults: defaults)
+        let repairedData = try #require(defaults.data(forKey: HistoryLimitPreference.storageKey))
 
-        #expect(isNewInstall == false)
-        defaults.removePersistentDomain(forName: suite)
+        #expect(preference.limit == .defaultLimit)
+        #expect(try JSONDecoder().decode(Int.self, from: repairedData) == 500)
     }
 }

@@ -195,6 +195,7 @@ struct GenerationComparison: Equatable {
 // via `HomeView.safeBoundaryAwaiter`; production defaults to the real
 // `RowActionSafeBoundaryKVOAdapter` unconditionally — there is no placeholder
 // `nil` dependency.
+#if os(macOS)
 @MainActor
 private final class SafeBoundaryAwaiterHolder {
     /// Weak cell updated when SwiftUI resolves the real `NSTableView`. The
@@ -217,6 +218,7 @@ private final class SafeBoundaryAwaiterHolder {
 private final class SafeBoundaryTableViewCell {
     weak var tableView: NSTableView?
 }
+#endif
 
 // T026: production-populated read-only mirror of the reconciliation environment.
 // HomeView is a struct; the held (unhosted) value's `@Environment(\.modelContext)`
@@ -263,7 +265,9 @@ struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
+    @StateObject private var imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator()
     @State private var initialLoadState = InitialLoadState()
     @State private var imageRestorationStates: [UUID: ImageClipRestorationState] = [:]
     @State private var reportedMissingImageIDs: Set<UUID> = []
@@ -287,6 +291,14 @@ struct HomeView: View {
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
     @State private var hasAppliedLaunchWindowSize = false
+    @State private var pinScrollRequestState = PinScrollRequestState()
+    @State private var visiblePinScrollClipIDs: Set<UUID> = []
+    @State private var hasVisibilityObservation = false
+    @State private var visibilityProjectionItemIDs: [UUID] = []
+    @State private var pinScrollTask: Task<Void, Never>?
+    // Platform-neutral ID-first Pin/Unpin store. Only the native row-action
+    // safe-boundary snapshot is macOS-specific.
+    @State private var pinStore: PinStateMutationStore? = nil
 #if os(macOS)
     @State private var rowActionResolverObservation = RowActionResolverObservationState()
     // Feature 019/020: transient display-order snapshot held while a native row-action
@@ -308,10 +320,6 @@ struct HomeView: View {
     // FR-003/FR-004), not by an input-event monitor. This is a RunLoop-internal
     // lifecycle signal, not a fixed delay or sleep.
     @State private var rowActionDisplayOrderSnapshot: [UUID]? = nil
-    // Feature 021: ID-first Pin/Unpin mutation store. Created lazily on first action
-    // so it captures `modelContext` from the environment. The store is `@MainActor`
-    // and serializes mutations on the MainActor (FR-005, FR-006).
-    @State private var pinStore: PinStateMutationStore? = nil
     // T072: generation token the current row-action display-order snapshot was
     // opened under, if any. Default nil; captured by the mechanism (T024) when
     // `beginRowActionDisplayOrderSnapshot()` records the active generation.
@@ -524,13 +532,28 @@ struct HomeView: View {
         .task(id: imageRestorationTaskKey) {
             await refreshImageRestorationStates()
         }
+        .task(id: imageTextRecognitionTaskKey) {
+            imageTextRecognitionCoordinator.reconcile(
+                validRequests: Set(imageTextRecognitionTaskKey)
+            )
+        }
 #if os(macOS)
         .task {
             await applyLaunchWindowSizeIfNeeded()
         }
 #endif
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase != .active else { return }
+            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
+        }
         .onDisappear {
             copyFeedbackTask?.cancel()
+            pinScrollTask?.cancel()
+            pinScrollRequestState.cancel()
+            visiblePinScrollClipIDs.removeAll()
+            hasVisibilityObservation = false
+            visibilityProjectionItemIDs.removeAll()
+            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
             #if os(macOS)
             rowActionResolverObservation.reset()
             #if DEBUG
@@ -619,6 +642,37 @@ struct HomeView: View {
         }
     }
 
+    private var imageTextRecognitionTaskKey: [ImageTextRecognitionRequest] {
+        clips
+            .compactMap(imageTextRecognitionRequest(for:))
+            .sorted { lhs, rhs in
+                lhs.itemID.uuidString < rhs.itemID.uuidString
+            }
+    }
+
+    private func imageTextRecognitionRequest(
+        for clip: ClipItem
+    ) -> ImageTextRecognitionRequest? {
+        guard clip.contentType == "image",
+              let imageFilename = clip.imageFilename,
+              imageFilename.isEmpty == false else {
+            return nil
+        }
+
+        // Captured images carry a content hash. Older valid rows may predate
+        // that metadata, so fall back to their immutable stored filename
+        // instead of silently removing the OCR affordance.
+        let imageFingerprint = clip.imageHash.flatMap { hash in
+            hash.isEmpty ? nil : "\(hash)|\(imageFilename)"
+        } ?? "stored-file|\(imageFilename)"
+
+        return ImageTextRecognitionRequest(
+            itemID: clip.id,
+            imageFilename: imageFilename,
+            imageFingerprint: imageFingerprint
+        )
+    }
+
     private var imageRestorationTaskKey: [ImageRestorationInput] {
         clips.compactMap { clip in
             guard clip.contentType == "image" else { return nil }
@@ -689,6 +743,57 @@ struct HomeView: View {
             imageFilename: imageFilename,
             typeIdentifier: imageUTType
         )
+    }
+
+    private func copyRecognizedImageText(
+        for clip: ClipItem,
+        request: ImageTextRecognitionRequest
+    ) {
+        guard let imageURL = try? ImageClipFileStore().imageURL(for: request.imageFilename) else {
+            imageTextRecognitionCoordinator.remove(itemID: request.itemID)
+            clearCopyFeedback()
+            return
+        }
+
+        Task { @MainActor in
+            await imageTextRecognitionCoordinator.requestCopy(
+                request,
+                imageURL: imageURL,
+                isCurrentItem: { candidate in
+                    isCurrentImageTextRecognitionRequest(candidate)
+                },
+                completion: { outcome in
+                    if outcome == .copied {
+                        showCopyFeedback(for: clip.id)
+                    } else {
+                        clearCopyFeedback()
+                    }
+                }
+            )
+        }
+    }
+
+    private func retryCopyRecognizedImageText(
+        for clip: ClipItem,
+        request: ImageTextRecognitionRequest
+    ) {
+        imageTextRecognitionCoordinator.remove(itemID: request.itemID)
+        copyRecognizedImageText(for: clip, request: request)
+    }
+
+    private func isCurrentImageTextRecognitionRequest(
+        _ request: ImageTextRecognitionRequest
+    ) -> Bool {
+        let itemID = request.itemID
+        var descriptor = FetchDescriptor<ClipItem>()
+        descriptor.predicate = #Predicate { item in
+            item.id == itemID
+        }
+
+        guard let currentItem = try? modelContext.fetch(descriptor).first else {
+            return false
+        }
+        return imageTextRecognitionRequest(for: currentItem) == request
     }
 
     private func showCopyFeedback(for clipID: UUID) {
@@ -855,29 +960,170 @@ struct HomeView: View {
 
     private var historyList: some View {
         let rows = visibleClips
-        return List {
-            // Keep AppKit row slots stable while a Pin/Unpin mutation changes
-            // the pinned-first projection. The logical clip UUID remains on the
-            // row content and actions, but NSTableView does not have to remove
-            // or relocate the physical row that still owns native swipe state.
-            ForEach(rows.indices, id: \.self) { index in
-                clipRow(for: rows[index])
+        let rowIDs = rows.map(\.id)
+        return ScrollViewReader { proxy in
+            List {
+                // Keep AppKit row slots stable while a Pin/Unpin mutation changes
+                // the pinned-first projection. The logical clip UUID remains on the
+                // row content and actions, but NSTableView does not have to remove
+                // or relocate the physical row that still owns native swipe state.
+                ForEach(rows.indices, id: \.self) { index in
+                    let clip = rows[index]
+                    clipRow(for: clip)
+                        // Programmatic scrolling is always addressed by the stable
+                        // persisted item UUID, never by this protective row-slot index.
+                        .id(clip.id)
+                        .onScrollVisibilityChange(threshold: 0.01) { isVisible in
+                            updatePinScrollVisibility(
+                                for: clip.id,
+                                isVisible: isVisible,
+                                visibleItemIDs: rowIDs,
+                                proxy: proxy
+                            )
+                        }
+                }
+            }
+            .padding(DesignTokens.Spacing.small)
+            .contentMargins(.top, historyTopInset, for: .scrollContent)
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(appTheme.surface.color)
+#if os(macOS)
+            .background(
+                RowActionTableViewResolver { tableView in
+                    observeRowActions(on: tableView)
+                }
+            )
+#endif
+            .background(measuredFrameReader(for: .viewport))
+            .accessibilityIdentifier("clip-history-list")
+            .onChange(of: rowIDs) { _, updatedIDs in
+                if visibilityProjectionItemIDs != updatedIDs {
+                    visibilityProjectionItemIDs = updatedIDs
+                    visiblePinScrollClipIDs.removeAll()
+                    hasVisibilityObservation = false
+                }
+                pinScrollRequestState.reconcileProjection(with: updatedIDs)
+                if let request = pinScrollRequestState.pendingRequest {
+                    schedulePinScroll(
+                        request,
+                        visibleItemIDs: updatedIDs,
+                        proxy: proxy
+                    )
+                }
+            }
+            .onChange(of: pinScrollRequestState.pendingRequest) { _, request in
+                guard let request else { return }
+                schedulePinScroll(
+                    request,
+                    visibleItemIDs: rowIDs,
+                    proxy: proxy
+                )
+            }
+            .onScrollPhaseChange { _, newPhase in
+                if newPhase == .tracking || newPhase == .interacting {
+                    pinScrollTask?.cancel()
+                    pinScrollRequestState.cancel()
+                }
             }
         }
-        .padding(DesignTokens.Spacing.small)
-        .contentMargins(.top, historyTopInset, for: .scrollContent)
-        .listStyle(.plain)
-        .scrollContentBackground(.hidden)
-        .background(appTheme.surface.color)
-#if os(macOS)
-        .background(
-            RowActionTableViewResolver { tableView in
-                observeRowActions(on: tableView)
+    }
+
+    private func updatePinScrollVisibility(
+        for itemID: UUID,
+        isVisible: Bool,
+        visibleItemIDs: [UUID],
+        proxy: ScrollViewProxy
+    ) {
+        // Ignore callbacks retained by a row slot from the prior projection.
+        guard visibleItemIDs == visibleClips.map(\.id) else { return }
+
+        if visibilityProjectionItemIDs != visibleItemIDs {
+            visibilityProjectionItemIDs = visibleItemIDs
+            visiblePinScrollClipIDs.removeAll()
+            hasVisibilityObservation = false
+        }
+        hasVisibilityObservation = true
+        if isVisible {
+            visiblePinScrollClipIDs.insert(itemID)
+        } else {
+            visiblePinScrollClipIDs.remove(itemID)
+        }
+
+        if let request = pinScrollRequestState.pendingRequest {
+            schedulePinScroll(
+                request,
+                visibleItemIDs: visibleItemIDs,
+                proxy: proxy
+            )
+        }
+    }
+
+    private func schedulePinScroll(
+        _ request: PinScrollRequest,
+        visibleItemIDs: [UUID],
+        proxy: ScrollViewProxy
+    ) {
+        pinScrollTask?.cancel()
+        pinScrollTask = Task { @MainActor in
+            // One cooperative MainActor turn lets List publish its reordered
+            // children and native visibility callbacks. This is a layout barrier,
+            // not a fixed-duration delay.
+            await Task.yield()
+            guard Task.isCancelled == false,
+                  pinScrollRequestState.isCurrent(request) else {
+                return
             }
-        )
-#endif
-        .background(measuredFrameReader(for: .viewport))
-        .accessibilityIdentifier("clip-history-list")
+            guard Set(visibleItemIDs) == Set(request.expectedVisibleItemIDs) else {
+                pinScrollRequestState.cancel()
+                return
+            }
+            // The same rows in the old order mean SwiftData/List has not yet
+            // published the Pin reorder. The row-ID onChange path will retry.
+            guard visibleItemIDs == request.expectedVisibleItemIDs else { return }
+
+            let decision = HistoryViewportVisibility.pinScrollDecision(
+                request: request,
+                visibleItemIDs: visibleItemIDs,
+                viewportVisibleItemIDs: visiblePinScrollClipIDs,
+                hasVisibilityObservation: hasVisibilityObservation
+            )
+
+            switch decision {
+            case .waitForLayout:
+                return
+            case .cancel:
+                pinScrollRequestState.cancel()
+            case .noScroll:
+                pinScrollRequestState.consume(request)
+            case .scroll(let itemID):
+                guard isCurrentPinnedScrollTarget(
+                    itemID,
+                    visibleItemIDs: visibleItemIDs
+                ) else {
+                    pinScrollRequestState.cancel()
+                    return
+                }
+
+                pinScrollRequestState.consume(request)
+                withAnimation(appMotion.animation(DesignTokens.Motion.pinToggle)) {
+                    proxy.scrollTo(itemID, anchor: .center)
+                }
+            }
+        }
+    }
+
+    private func isCurrentPinnedScrollTarget(
+        _ itemID: UUID,
+        visibleItemIDs: [UUID]
+    ) -> Bool {
+        guard visibleItemIDs.contains(itemID) else { return false }
+
+        var descriptor = FetchDescriptor<ClipItem>()
+        descriptor.predicate = #Predicate { item in
+            item.id == itemID
+        }
+        return (try? modelContext.fetch(descriptor).first)?.isPinned == true
     }
 
     private func openSettingsOrShowPlaceholder() {
@@ -932,10 +1178,12 @@ struct HomeView: View {
             directness: .inferred,
             payload: .init(state: state)
         )
+#if os(macOS)
         RowActionAppKitObserver.recordSnapshot(
             reason: "visible-clips.\(reason)",
             visibleClipIDs: visibleIDs
         )
+#endif
     }
 
     private func traceVisibleIndex(for clip: ClipItem) -> Int? {
@@ -943,9 +1191,11 @@ struct HomeView: View {
     }
 
     private func traceRowIdentity(for clip: ClipItem) -> (rowIndex: Int?, rowViewID: String?) {
+#if os(macOS)
         if let appKitIdentity = RowActionAppKitObserver.rowIdentity(for: clip.id) {
             return (appKitIdentity.rowIndex, appKitIdentity.rowViewID)
         }
+#endif
 
         return (traceVisibleIndex(for: clip), nil)
     }
@@ -968,10 +1218,12 @@ struct HomeView: View {
                 ]
             )
         )
+#if os(macOS)
         RowActionAppKitObserver.recordSnapshot(
             reason: "row-action.tap.\(action)",
             visibleClipIDs: traceVisibleClipIDs
         )
+#endif
     }
 
     private func tracePinActionName(targetPinnedState: Bool) -> String {
@@ -988,6 +1240,13 @@ struct HomeView: View {
     }
 
     private func requestDelete(_ clip: ClipItem, waitsForNativeLifecycle: Bool) {
+        if clip.contentType == "image" {
+            imageTextRecognitionCoordinator.remove(itemID: clip.id)
+        }
+        if pinScrollRequestState.pendingRequest?.itemID == clip.id {
+            pinScrollTask?.cancel()
+            pinScrollRequestState.cancel()
+        }
 #if DEBUG
         let rowIdentity = traceRowIdentity(for: clip)
         let traceRowIndex = rowIdentity.rowIndex
@@ -1009,6 +1268,7 @@ struct HomeView: View {
             // The native handler owns no model mutation. Capture projection and
             // observation synchronously, then queue an immutable UUID command.
             let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            beginRowActionDisplayOrderSnapshot()
             reconciliationLifecycle.pendingMutations.append(.delete(
                 itemID: clip.id,
                 traceRowIndex: traceRowIndex,
@@ -1090,6 +1350,7 @@ struct HomeView: View {
             // Keep the acted-on row and its Pin/Unpin configuration unchanged
             // until the native lifecycle owner releases publication.
             let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            beginRowActionDisplayOrderSnapshot()
             reconciliationLifecycle.pendingMutations.append(.setPinned(
                 itemID: clip.id,
                 desiredState: targetPinnedState
@@ -1099,19 +1360,39 @@ struct HomeView: View {
                 waitForSafeBoundary: waitForSafeBoundary
             )
         } else {
-            ensurePinStore().setPinned(
+            let result = ensurePinStore().setPinned(
                 targetPinnedState,
                 for: clip.id,
                 source: .keyboardAccessibility
             )
+            recordPinScrollMutationResult(result)
         }
 #else
-        ensurePinStore().setPinned(
+        let result = ensurePinStore().setPinned(
             targetPinnedState,
             for: clip.id,
             source: waitsForNativeLifecycle ? .rowAction : .keyboardAccessibility
         )
+        recordPinScrollMutationResult(result)
 #endif
+    }
+
+    private func recordPinScrollMutationResult(_ result: PinStateMutationResult) {
+        pinScrollTask?.cancel()
+        pinScrollRequestState.record(
+            result,
+            expectedVisibleItemIDs: projectedVisibleClipIDsForPinScroll()
+        )
+    }
+
+    private func projectedVisibleClipIDsForPinScroll() -> [UUID] {
+        let snapshot = ensurePinStore().projectVisible(
+            clips: clips,
+            searchQuery: searchText
+        )
+        let clipsByID = Dictionary(uniqueKeysWithValues: clips.map { ($0.id, $0) })
+        let projectedClips = snapshot.orderedItemIDs.compactMap { clipsByID[$0] }
+        return restorableVisibleClips(projectedClips).map(\.id)
     }
 
     static func canProcessPinMutation(hasCompletedInitialLoad: Bool) -> Bool {
@@ -1158,10 +1439,14 @@ struct HomeView: View {
             guard let limit = ClipboardMonitorLifecycleController.shared.historyLimitProvider?() else {
                 return
             }
-            _ = try? HistoryRetentionService(modelContext: context).enforceLimit(
-                limit: limit,
-                protectedItemID: itemID
-            )
+            do {
+                _ = try HistoryRetentionService(modelContext: context).enforceLimit(
+                    limit: limit,
+                    protectedItemID: itemID
+                )
+            } catch {
+                NSLog("NextPaste could not enforce history retention after Unpin: %@", String(describing: error))
+            }
         }
         pinStore = store
         return store
@@ -1312,6 +1597,9 @@ struct HomeView: View {
         let applyMutation: @MainActor (PendingRowActionMutation) -> Bool = { [self] mutation in
             applyPendingRowActionMutation(mutation)
         }
+        let releaseSnapshot: @MainActor () -> Void = { [self] in
+            clearRowActionDisplayOrderSnapshot()
+        }
         // T026: align the snapshot ownership token with this task's captured
         // generation. `beginRowActionDisplayOrderSnapshot()` records the
         // pre-bump generation; the snapshot is owned by the task launched here
@@ -1320,6 +1608,7 @@ struct HomeView: View {
         // stale (`snapshotGeneration != capturedGeneration`) and the current
         // task could never clear its own snapshot (FR-009, FR-010).
         reconciliationSnapshotObservation.snapshotGeneration = capturedGeneration
+        rowActionDisplayOrderSnapshotGenerationValue = capturedGeneration
         // T024 (FR-008): the only identity values carried across the async hop
         // are `capturedGeneration` and `targetClipID` (UUID). No index,
         // `IndexPath`, row position, or array count is captured.
@@ -1437,6 +1726,7 @@ struct HomeView: View {
             for mutation in pendingMutations {
                 _ = applyMutation(mutation)
             }
+            releaseSnapshot()
 
             let decision: ReconciliationOwnershipDecision =
                 (!targetWasPresent || targetWasDelete) ? .missingTarget : .success
@@ -1461,6 +1751,7 @@ struct HomeView: View {
         switch mutation {
         case .setPinned(let itemID, let desiredState):
             let result = ensurePinStore().setPinned(desiredState, for: itemID, source: .rowAction)
+            recordPinScrollMutationResult(result)
             if case .ignoredMissingTarget = result {
                 return false
             }
@@ -1483,6 +1774,7 @@ struct HomeView: View {
         // T030: the NSEvent input-event monitor is gone; this helper now only
         // clears the production value-type snapshot and the read-only mirror.
         rowActionDisplayOrderSnapshot = nil
+        rowActionDisplayOrderSnapshotGenerationValue = nil
         // T073.1: clear the read-only observability mirror alongside the
         // production value-type snapshot state. Does NOT drive production
         // behavior; only keeps the seam accessors consistent.
@@ -1631,19 +1923,21 @@ struct HomeView: View {
     #endif
 
     private func clipRow(for clip: ClipItem) -> some View {
-        ClipRowView(
-            clip: clip,
-            copyFeedback: copiedClipID == clip.id ? .copied : nil,
-            onCopy: {
-                copyClip(clip)
-            },
-            onDelete: {
-                deleteClipImmediately(clip)
-            },
-            onTogglePin: {
-                togglePinImmediately(clip)
-            }
-        )
+        imageTextContextMenu(for: clip) {
+            ClipRowView(
+                clip: clip,
+                copyFeedback: copiedClipID == clip.id ? .copied : nil,
+                onCopy: {
+                    copyClip(clip)
+                },
+                onDelete: {
+                    deleteClipImmediately(clip)
+                },
+                onTogglePin: {
+                    togglePinImmediately(clip)
+                }
+            )
+        }
         .contentShape(Rectangle())
         .onTapGesture {
             copyClip(clip)
@@ -1676,6 +1970,70 @@ struct HomeView: View {
             .tint(appTheme.accentPinned.color)
             .accessibilityIdentifier(RowActionControlGroup.pinButtonIdentifier)
             .accessibilityLabel(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))
+        }
+    }
+
+    @ViewBuilder
+    private func imageTextContextMenu<Content: View>(
+        for clip: ClipItem,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        if let request = imageTextRecognitionRequest(for: clip) {
+            content()
+                .contextMenu {
+                    imageTextContextMenuItems(for: clip, request: request)
+                }
+        } else {
+            content()
+        }
+    }
+
+    @ViewBuilder
+    private func imageTextContextMenuItems(
+        for clip: ClipItem,
+        request: ImageTextRecognitionRequest
+    ) -> some View {
+        switch imageTextRecognitionCoordinator.state(for: request) {
+        case .idle, .recognized:
+            Button {
+                copyRecognizedImageText(for: clip, request: request)
+            } label: {
+                Label("Copy Image Text", systemImage: "doc.on.doc")
+            }
+            .accessibilityIdentifier("copy-image-text-menu-item")
+            .accessibilityLabel("Copy Image Text")
+
+        case .recognizing:
+            Button(action: {}) {
+                Label("Recognizing Image Text…", systemImage: "text.viewfinder")
+            }
+            .disabled(true)
+            .accessibilityIdentifier("recognizing-image-text-menu-item")
+            .accessibilityLabel("Recognizing Image Text")
+
+        case .noText:
+            Button(action: {}) {
+                Label("No Text Found in Image", systemImage: "text.magnifyingglass")
+            }
+            .disabled(true)
+            .accessibilityIdentifier("no-image-text-menu-item")
+            .accessibilityLabel("No Text Found in Image")
+
+        case .failed:
+            Button(action: {}) {
+                Label("Image Text Recognition Failed", systemImage: "exclamationmark.triangle")
+            }
+            .disabled(true)
+            .accessibilityIdentifier("image-text-recognition-failed-menu-item")
+            .accessibilityLabel("Image Text Recognition Failed")
+
+            Button {
+                retryCopyRecognizedImageText(for: clip, request: request)
+            } label: {
+                Label("Retry Copy Image Text", systemImage: "arrow.clockwise")
+            }
+            .accessibilityIdentifier("retry-copy-image-text-menu-item")
+            .accessibilityLabel("Retry Copy Image Text")
         }
     }
 

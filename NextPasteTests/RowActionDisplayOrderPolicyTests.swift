@@ -79,7 +79,7 @@ struct RowActionDisplayOrderPolicyTests {
         let snapshotDeclarations = try fragment(
             in: source,
             from: "@State private var rowActionDisplayOrderSnapshot",
-            to: "@State private var pinStore"
+            to: "@State private var rowActionDisplayOrderSnapshotGenerationValue"
         )
         // The declaration line itself must be the only @State in this fragment; it must not
         // introduce persisted content, image payload, preview text, or interaction history.

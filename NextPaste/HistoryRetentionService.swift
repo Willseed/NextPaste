@@ -29,29 +29,28 @@ struct HistoryRetentionService {
     func calculateItemsToRemove(
         limit: HistoryLimit,
         protectedItemID: UUID? = nil
-    ) -> [UUID] {
-        guard let maxCount = limit.effectiveCount else {
-            return [] // Unlimited
-        }
+    ) throws -> [UUID] {
+        let maxCount = limit.value
 
         // Fetch all unpinned items, sorted by the canonical sort (newest first).
         var descriptor = FetchDescriptor<ClipItem>(sortBy: ClipItem.historySortDescriptors)
         descriptor.predicate = #Predicate { $0.isPinned == false }
-        guard let unpinned = try? modelContext.fetch(descriptor) else {
-            return []
-        }
-
-        // Protect the specified item.
-        let working = unpinned.filter { $0.id != protectedItemID }
+        let unpinned = try modelContext.fetch(descriptor)
 
         // If under or at the limit, nothing to remove.
-        guard working.count > maxCount else {
+        guard unpinned.count > maxCount else {
             return []
         }
 
-        // Keep the newest `maxCount`; remove the rest (oldest unpinned).
-        // `working` is already newest-first (historySortDescriptors).
-        let toRemove = working.dropFirst(maxCount)
+        // A protected just-unpinned item still counts toward the strict
+        // unpinned capacity. Reserve one kept slot for it, then keep the newest
+        // remaining items; this preserves the item without allowing limit + 1.
+        let protectedItemExists = protectedItemID.map { protectedID in
+            unpinned.contains { $0.id == protectedID }
+        } ?? false
+        let keepOtherCount = maxCount - (protectedItemExists ? 1 : 0)
+        let working = unpinned.filter { $0.id != protectedItemID }
+        let toRemove = working.dropFirst(keepOtherCount)
         return toRemove.map(\.id)
     }
 
@@ -64,7 +63,10 @@ struct HistoryRetentionService {
         limit: HistoryLimit,
         protectedItemID: UUID? = nil
     ) throws -> Int {
-        let idsToRemove = calculateItemsToRemove(limit: limit, protectedItemID: protectedItemID)
+        let idsToRemove = try calculateItemsToRemove(
+            limit: limit,
+            protectedItemID: protectedItemID
+        )
         guard idsToRemove.isEmpty == false else {
             return 0
         }

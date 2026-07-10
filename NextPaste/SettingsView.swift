@@ -43,17 +43,35 @@ struct SettingsView: View {
                         .accessibilityIdentifier("settings-tab-history")
                 }
         }
-        .frame(width: 460, height: 320)
+        .frame(width: 500, height: 360)
     }
 }
 
-// MARK: - General (T010 placeholder; T016-T021 populate)
+// MARK: - General
 
 private struct GeneralSettingsTab: View {
+    @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+
     var body: some View {
         Form {
-            Text("General settings")
-                .accessibilityIdentifier("settings-general-placeholder")
+            Section("Language") {
+                Picker("App Language", selection: Binding(
+                    get: { appLanguagePreference.language },
+                    set: { appLanguagePreference.persist($0) }
+                )) {
+                    ForEach(AppLanguage.allCases, id: \.self) { language in
+                        Text(language.displayNameKey).tag(language)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("app-language-picker")
+                .accessibilityLabel("App Language")
+                .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
+
+                Text("Changes apply immediately throughout NextPaste.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
     }
@@ -275,207 +293,119 @@ private struct AppearanceSettingsTab: View {
                     set: { appearancePreference.persist($0) }
                 )) {
                     ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                        Text(mode.displayName).tag(mode)
+                        Text(mode.displayNameKey).tag(mode)
                     }
                 }
                 .accessibilityIdentifier("appearance-picker")
                 .accessibilityLabel("Appearance")
+                .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
             }
         }
         .padding()
     }
 }
 
-// MARK: - History (T017/T021: history limit picker + lower-limit confirmation)
+// MARK: - History
 
 private struct HistorySettingsTab: View {
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @Environment(\.modelContext) private var modelContext
-    @State private var customText: String = ""
-    @State private var customValidationError: String?
-    @State private var selectedHistoryLimitTag: String = ""
-    @State private var pendingLowerLimit: HistoryLimit?
-    @State private var pendingRemovalCount: Int = 0
-
-    private let unlimitedTag = "unlimited"
-    private let customTag = "custom"
+    @State private var draftText = ""
+    @State private var sliderValue = Double(HistoryLimit.defaultLimit.value)
+    @State private var retentionErrorKey: LocalizedStringKey?
+    @FocusState private var isLimitFieldFocused: Bool
 
     var body: some View {
         Form {
-            Section("History Limit") {
-                Picker("History Limit", selection: Binding(
-                    get: { currentSelectionTag },
-                    set: { newTag in applySelection(newTag) }
-                )) {
-                    Text("Unlimited").tag(unlimitedTag)
-                    ForEach(HistoryLimit.presets, id: \.self) { value in
-                        Text(String(value)).tag(String(value))
-                    }
-                    Text("Custom").tag(customTag)
-                }
-                .accessibilityIdentifier("history-limit-picker")
-                .accessibilityLabel("History Limit")
+            Section("Storage Limit") {
+                HStack(spacing: 12) {
+                    Slider(
+                        value: Binding(
+                            get: { sliderValue },
+                            set: { newValue in
+                                let draftLimit = HistoryLimit(Int(newValue.rounded()))
+                                sliderValue = Double(draftLimit.value)
+                                draftText = String(draftLimit.value)
+                            }
+                        ),
+                        in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
+                        step: 1,
+                        onEditingChanged: { isEditing in
+                            if isEditing == false {
+                                apply(HistoryLimit(Int(sliderValue.rounded())))
+                            }
+                        }
+                    )
+                    .accessibilityIdentifier("history-limit-slider")
+                    .accessibilityLabel("Storage Limit")
+                    .accessibilityValue("\(Int(sliderValue.rounded()))")
 
-                if showsCustomField {
-                    HStack {
-                        TextField("10–\(HistoryLimit.customMax)", text: $customText)
-                            .accessibilityIdentifier("history-limit-custom-field")
-                            .accessibilityLabel("Custom history limit")
-                            .onSubmit { applyCustomText() }
-                        Button("Apply") { applyCustomText() }
-                            .accessibilityIdentifier("history-limit-custom-apply-button")
-                    }
-                    if let customValidationError {
-                        Text(customValidationError)
-                            .foregroundStyle(.red)
-                            .accessibilityIdentifier("history-limit-custom-error")
-                            .accessibilityLabel(customValidationError)
-                    }
+                    TextField("1–1000", text: $draftText)
+                        .frame(width: 76)
+                        .multilineTextAlignment(.trailing)
+                        .focused($isLimitFieldFocused)
+                        .onSubmit(commitDraft)
+                        .accessibilityIdentifier("history-limit-field")
+                        .accessibilityLabel("Storage Limit Value")
+                }
+
+                Text("Keep up to \(Int(sliderValue.rounded())) unpinned clipboard items. Pinned items are always kept.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Text("1–1000")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel("Storage Limit Range")
+
+                if let retentionErrorKey {
+                    Text(retentionErrorKey)
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                        .accessibilityIdentifier("history-limit-error")
+                        .accessibilityLabel(Text(retentionErrorKey))
                 }
             }
         }
         .padding()
         .onAppear {
-            syncFromPersistedLimit(historyLimitPreference.limit)
+            draftText = String(historyLimitPreference.limit.value)
+            sliderValue = Double(historyLimitPreference.limit.value)
         }
         .onChange(of: historyLimitPreference.limit) { _, newLimit in
-            syncFromPersistedLimit(newLimit)
+            draftText = String(newLimit.value)
+            sliderValue = Double(newLimit.value)
         }
-        // T021: confirmation when lowering the limit would delete items.
-        .confirmationDialog(
-            "Lower History Limit",
-            isPresented: Binding(
-                get: { pendingLowerLimit != nil },
-                set: {
-                    if $0 == false {
-                        cancelPendingLowerLimit()
-                    }
-                }
-            ),
-            titleVisibility: .visible
-        ) {
-            if let pending = pendingLowerLimit {
-                Button(lowerLimitConfirmationButtonTitle, role: .destructive) {
-                    confirmLowerLimit(pending)
-                }
-                .accessibilityIdentifier("confirm-lower-limit-button")
-            }
-            Button("Cancel", role: .cancel) {
-                cancelPendingLowerLimit()
-            }
-            .accessibilityIdentifier("cancel-lower-limit-button")
-        } message: {
-            if let pending = pendingLowerLimit {
-                Text(lowerLimitConfirmationMessage(for: pending))
-                    .accessibilityIdentifier("lower-limit-confirmation-message")
+        .onChange(of: isLimitFieldFocused) { _, isFocused in
+            if isFocused == false {
+                commitDraft()
             }
         }
     }
 
-    private var lowerLimitConfirmationButtonTitle: String {
-        let format = pendingRemovalCount == 1
-            ? String(localized: "Delete %lld Item")
-            : String(localized: "Delete %lld Items")
-        return String.localizedStringWithFormat(format, Int64(pendingRemovalCount))
-    }
-
-    private func lowerLimitConfirmationMessage(for pending: HistoryLimit) -> String {
-        let format = pendingRemovalCount == 1
-            ? String(localized: "This will delete %lld unpinned item to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.")
-            : String(localized: "This will delete %lld unpinned items to meet the new limit of %@. Pinned items are not affected. This action cannot be undone.")
-        return String.localizedStringWithFormat(
-            format,
-            Int64(pendingRemovalCount),
-            pending.displayName
+    private func commitDraft() {
+        let result = HistoryLimitInputPolicy.commit(
+            draftText,
+            current: historyLimitPreference.limit
         )
-    }
-
-    private var currentSelectionTag: String {
-        selectedHistoryLimitTag.isEmpty ? selectionTag(for: historyLimitPreference.limit) : selectedHistoryLimitTag
-    }
-
-    private var showsCustomField: Bool {
-        currentSelectionTag == customTag
-    }
-
-    private func selectionTag(for limit: HistoryLimit) -> String {
-        switch limit {
-        case .unlimited: return unlimitedTag
-        case .preset(let n): return String(n)
-        case .custom: return customTag
+        draftText = result.normalizedText
+        if result.shouldPersist {
+            apply(result.limit)
         }
     }
 
-    private func applySelection(_ tag: String) {
-        selectedHistoryLimitTag = tag
-        customValidationError = nil
-        if tag == unlimitedTag {
-            historyLimitPreference.persist(.unlimited)
-        } else if tag == customTag {
-            // Show the custom field; don't persist until a valid value is entered.
-            if case .custom(let value) = historyLimitPreference.limit {
-                customText = String(value)
-            } else if customText.isEmpty {
-                customText = "100"
-            }
-        } else if let value = Int(tag) {
-            // Preset selection. If lowering, check if items would be deleted.
-            let newLimit = HistoryLimit.preset(value)
-            tryLowering(newLimit)
-        }
-    }
-
-    private func applyCustomText() {
-        guard let value = HistoryLimitValidator.validateCustom(customText) else {
-            customValidationError = String.localizedStringWithFormat(
-                String(localized: "Enter a whole number from %lld to %lld."),
-                Int64(HistoryLimit.customMin),
-                Int64(HistoryLimit.customMax)
-            )
-            return
-        }
-        customValidationError = nil
-        let newLimit = HistoryLimit.custom(value)
-        tryLowering(newLimit)
-    }
-
-    /// T021: if the new limit is lower than the current effective count of unpinned
-    /// items, show a confirmation before persisting and trimming. Increasing or
-    /// switching to Unlimited does not need confirmation.
-    private func tryLowering(_ newLimit: HistoryLimit) {
-        let service = HistoryRetentionService(modelContext: modelContext)
-        let toRemove = service.calculateItemsToRemove(limit: newLimit)
-        if toRemove.isEmpty {
-            // No items would be deleted; persist immediately.
-            historyLimitPreference.persist(newLimit)
-        } else {
-            // Defer: show confirmation. The pending limit is stored in state.
-            pendingRemovalCount = toRemove.count
-            pendingLowerLimit = newLimit
-        }
-    }
-
-    private func confirmLowerLimit(_ limit: HistoryLimit) {
-        historyLimitPreference.persist(limit)
-        // T021: immediately execute retention after confirming.
-        _ = try? HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
-        pendingLowerLimit = nil
-        pendingRemovalCount = 0
-        syncFromPersistedLimit(limit)
-    }
-
-    private func cancelPendingLowerLimit() {
-        pendingLowerLimit = nil
-        pendingRemovalCount = 0
-        syncFromPersistedLimit(historyLimitPreference.limit)
-    }
-
-    private func syncFromPersistedLimit(_ limit: HistoryLimit) {
-        selectedHistoryLimitTag = selectionTag(for: limit)
-        if case .custom(let value) = limit {
-            customText = String(value)
-        } else if selectedHistoryLimitTag != customTag {
-            customText = ""
+    private func apply(_ limit: HistoryLimit) {
+        do {
+            _ = try HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
+            historyLimitPreference.persist(limit)
+            draftText = String(limit.value)
+            sliderValue = Double(limit.value)
+            retentionErrorKey = nil
+        } catch {
+            modelContext.rollback()
+            draftText = String(historyLimitPreference.limit.value)
+            sliderValue = Double(historyLimitPreference.limit.value)
+            retentionErrorKey = "History limit could not be applied. Try again."
         }
     }
 }

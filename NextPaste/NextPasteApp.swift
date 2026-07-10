@@ -20,6 +20,7 @@ struct NextPasteApp: App {
     let sharedModelContainer: ModelContainer
     @StateObject private var historyLimitPreference: HistoryLimitPreference
     @StateObject private var appearancePreference: AppearancePreference
+    @StateObject private var appLanguagePreference: AppLanguagePreference
 #if os(macOS)
     @StateObject private var globalShortcutPreference: GlobalShortcutPreference
     @StateObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
@@ -35,14 +36,9 @@ struct NextPasteApp: App {
             container: sharedModelContainer
         )
         let defaults = UserDefaults.standard
-        let limitPref = HistoryLimitPreference(
-            defaults: defaults,
-            isNewInstall: Self.resolveHistoryLimitNewInstallState(
-                defaults: defaults,
-                hasPersistedHistory: Self.hasPersistedHistory(in: sharedModelContainer)
-            )
-        )
-        let appearancePref = AppearancePreference()
+        let limitPref = HistoryLimitPreference(defaults: defaults)
+        let appearancePref = AppearancePreference(defaults: defaults)
+        let languagePref = AppLanguagePreference(defaults: defaults)
 #if os(macOS)
         let globalShortcutPref = GlobalShortcutPreference()
         let globalShortcutLifecycleController = GlobalShortcutLifecycleController(
@@ -56,6 +52,7 @@ struct NextPasteApp: App {
         }
         _historyLimitPreference = StateObject(wrappedValue: limitPref)
         _appearancePreference = StateObject(wrappedValue: appearancePref)
+        _appLanguagePreference = StateObject(wrappedValue: languagePref)
 #if os(macOS)
         _globalShortcutPreference = StateObject(wrappedValue: globalShortcutPref)
         _globalShortcutLifecycleController = StateObject(wrappedValue: globalShortcutLifecycleController)
@@ -167,38 +164,18 @@ struct NextPasteApp: App {
 #endif
     }
 
-    static func resolveHistoryLimitNewInstallState(
-        defaults: UserDefaults = .standard,
-        hasPersistedHistory: Bool,
-        appDomainName: String? = Bundle.main.bundleIdentifier
-    ) -> Bool {
-        HistoryLimitPreference.shouldTreatAsNewInstall(
-            defaults: defaults,
-            appDomainName: appDomainName,
-            hasExistingInstallationEvidence: hasPersistedHistory
-        )
-    }
-
-    static func hasPersistedHistory(in container: ModelContainer) -> Bool {
-        var descriptor = FetchDescriptor<ClipItem>()
-        descriptor.fetchLimit = 1
-
-        do {
-            return try container.mainContext.fetch(descriptor).isEmpty == false
-        } catch {
-            return false
-        }
-    }
-
     var body: some Scene {
         WindowGroup("NextPaste") {
             ClipboardMonitorHostView {
                 ContentView()
             }
                 .environmentObject(appearancePreference)
+                .environmentObject(historyLimitPreference)
+                .environmentObject(appLanguagePreference)
 #if os(macOS)
                 .environmentObject(globalShortcutLifecycleController)
 #endif
+                .environment(\.locale, appLanguagePreference.language.locale)
                 .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
                 .frame(minWidth: 520, minHeight: 380)
         }
@@ -220,8 +197,10 @@ struct NextPasteApp: App {
                 .modelContainer(sharedModelContainer)
                 .environmentObject(historyLimitPreference)
                 .environmentObject(appearancePreference)
+                .environmentObject(appLanguagePreference)
                 .environmentObject(globalShortcutPreference)
                 .environmentObject(globalShortcutLifecycleController)
+                .environment(\.locale, appLanguagePreference.language.locale)
                 .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
         }
 #endif

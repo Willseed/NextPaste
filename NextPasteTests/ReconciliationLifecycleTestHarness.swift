@@ -128,12 +128,15 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 
 /// Hosted `HomeView` fixture for reconciliation lifecycle tests.
 ///
-/// Builds an in-memory SwiftData `ModelContainer`, seeds one model-backed
-/// `ClipItem`, installs a real `HomeView` in a SwiftUI host with
+/// Reuses one suite-scoped in-memory SwiftData `ModelContainer`, resets its
+/// rows before each fixture, seeds one model-backed `ClipItem`, and installs a
+/// real `HomeView` in a SwiftUI host with
 /// `@Environment(\.modelContext)` injected via `.modelContainer`, and injects a
 /// deterministic `DeterministicSafeBoundaryAwaiter` through the single T072
 /// `safeBoundaryAwaiter` seam. The SwiftUI hosting object is held strongly for
-/// the lifetime of the fixture, keeping test data isolated per test.
+/// the lifetime of the fixture. Sharing the container keeps the observed store
+/// alive while SwiftUI unregisters each hosted `@Query`; resetting its rows and
+/// serializing the suite preserve per-test data isolation.
 ///
 /// The held `homeView` value is the same value installed in the host. SwiftUI's
 /// `@State` reference-type holders (`ReconciliationLifecycleStorage`,
@@ -145,6 +148,11 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 /// `@Environment(\.modelContext)`.
 @MainActor
 final class ReconciliationLifecycleTestHarness {
+    // SwiftData's SwiftUI query observation can outlive synchronous host
+    // removal. Keep one store alive for the serialized suite so a subsequent
+    // context save cannot notify an observer whose store was deallocated.
+    private static var suiteContainer: ModelContainer?
+
     let container: ModelContainer
     let context: ModelContext
     let clip: ClipItem
@@ -152,8 +160,7 @@ final class ReconciliationLifecycleTestHarness {
     let homeView: HomeView
 
     #if os(macOS)
-    private let hostingView: NSHostingView<AnyView>
-    internal var hostingViewPublic: NSHostingView<AnyView> { hostingView }
+    private var hostingView: NSHostingView<AnyView>?
     private var hostWindow: NSWindow?
     #endif
 
@@ -162,10 +169,23 @@ final class ReconciliationLifecycleTestHarness {
     }
 
     init(clipText: String = "lifecycle-fixture") throws {
-        self.container = try SwiftDataTestSupport.makeInMemoryContainer(
-            for: Schema([ClipItem.self])
-        )
+        let container: ModelContainer
+        if let suiteContainer = Self.suiteContainer {
+            container = suiteContainer
+        } else {
+            container = try SwiftDataTestSupport.makeInMemoryContainer(
+                for: Schema([ClipItem.self])
+            )
+            Self.suiteContainer = container
+        }
+        self.container = container
+
         let context = ModelContext(container)
+        // The suite is serialized, so resetting before the fixture is seeded
+        // gives every test an empty authoritative store without replacing it.
+        for existingClip in try context.fetch(FetchDescriptor<ClipItem>()) {
+            context.delete(existingClip)
+        }
         let clip = ClipItem(textContent: clipText)
         context.insert(clip)
         try context.save()
@@ -317,7 +337,26 @@ extension ReconciliationLifecycleTestHarness {
     func teardown() {
         #if os(macOS)
         hostWindow?.orderOut(nil)
+        // The harness retains `hostingView` for its own lifetime, so merely
+        // detaching it from the window does not reliably remove its SwiftUI
+        // root. Replace the root explicitly to drive the real `onDisappear`
+        // lifecycle without a timer, sleep, or production-only test hook.
+        hostingView?.rootView = AnyView(EmptyView())
+        hostingView?.layoutSubtreeIfNeeded()
+        dispose()
+        #endif
+    }
+
+    /// Release the fixture's AppKit/SwiftUI host after an ordinary test without
+    /// forcing the `onDisappear` behavior that T020 alone is responsible for
+    /// validating. The shared suite container remains alive while SwiftData
+    /// finishes unregistering the hosted query observer.
+    func dispose() {
+        #if os(macOS)
+        hostWindow?.orderOut(nil)
         hostWindow?.contentView = nil
+        hostingView = nil
+        hostWindow = nil
         #endif
     }
 }

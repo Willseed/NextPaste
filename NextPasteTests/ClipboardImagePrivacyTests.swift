@@ -137,13 +137,13 @@ struct ClipboardImagePrivacyTests {
         #expect(metadata.imageHash == payload.duplicateIdentity.hash)
     }
 
-    @Test("image capture production sources do not reference remote analysis analytics or import surfaces")
-    func imageCaptureProductionSourcesDoNotReferenceRemoteAnalysisAnalyticsOrImportSurfaces() throws {
+    @Test("image features do not reference remote analysis analytics or import surfaces")
+    func imageFeaturesDoNotReferenceRemoteAnalysisAnalyticsOrImportSurfaces() throws {
         let findings = try Self.findForbiddenPrivacySurfacesInProductionSources()
 
         #expect(
             findings.isEmpty,
-            "Image capture should remain local-first with no network, CloudKit, OCR, AI, analytics, or manual import surfaces: \(findings.joined(separator: "; "))"
+            "Image features must remain local-first with no network, CloudKit, remote AI, analytics, or manual import surfaces: \(findings.joined(separator: "; "))"
         )
     }
 
@@ -151,10 +151,12 @@ struct ClipboardImagePrivacyTests {
         let fileManager = FileManager.default
         let sourceRoot = try productionSourceRoot(fileManager: fileManager)
         let swiftFiles = try productionSwiftFiles(in: sourceRoot, fileManager: fileManager)
+        // Apple Vision text recognition is intentionally allowed: it runs
+        // on-device against app-private image files. Remote transports,
+        // synchronization, analytics, and third-party analysis remain banned.
         let forbiddenSurfaces = [
             ForbiddenSurface(label: "CloudKit sync", pattern: #"\b(import\s+CloudKit|CloudKit|CKContainer|CKDatabase|CKRecord|NSUbiquitousKeyValueStore)\b"#),
             ForbiddenSurface(label: "network transport", pattern: #"\b(import\s+Network|URLSession|URLRequest|URLProtocol|NWPathMonitor|NWConnection|NWTCPConnection)\b"#),
-            ForbiddenSurface(label: "OCR or Vision analysis", pattern: #"\b(import\s+Vision|VisionKit|VNRecognizeTextRequest|VNDocumentCameraViewController|OCR)\b"#),
             ForbiddenSurface(label: "AI or machine-learning analysis", pattern: #"\b(import\s+CoreML|import\s+CreateML|MLModel|OpenAI|GenerativeAI|LLM|AI)\b"#),
             ForbiddenSurface(label: "analytics or telemetry", pattern: #"\b(Firebase|Analytics|Telemetry|telemetry|analytics|trackingIdentifier)\b"#),
             ForbiddenSurface(label: "manual image import", pattern: #"\b(import\s+PhotosUI|import\s+Photos|PhotosPicker|PHPicker|UIImagePickerController|UIDocumentPicker|NSOpenPanel|fileImporter)\b"#),
