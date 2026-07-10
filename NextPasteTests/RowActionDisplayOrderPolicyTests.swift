@@ -36,7 +36,7 @@ struct RowActionDisplayOrderPolicyTests {
         let activation = try fragment(
             in: source,
             from: "private func beginRowActionDisplayOrderSnapshot()",
-            to: "private func scheduleRowActionDisplayOrderReconciliation()"
+            to: "private func scheduleAutomaticReconciliation(for targetClipID: UUID)"
         )
         // The activation extracts ID-only metadata via `visibleClips.map(\.id)` and
         // assigns the snapshot from those identifiers. The landed refactor (T073.1)
@@ -193,17 +193,24 @@ struct RowActionDisplayOrderPolicyTests {
         )
     }
 
-    @Test("reconciliation monitor uses synchronous KVO visibility update")
-    func reconciliationMonitorUsesSynchronousKVOVisibilityUpdate() throws {
+    @Test("reconciliation KVO callback does not synchronously write view-driving state (FR-003)")
+    func reconciliationKVOCallbackDoesNotSynchronouslyWriteState() throws {
         let source = try homeViewSource()
         let kvoFragment = try fragment(
             in: source,
             from: "tableView.observe(\\.rowActionsVisible",
             to: "Task { @MainActor in"
         )
+        // FR-003: the KVO callback must NOT synchronously write any state that
+        // re-drives the same view tree (layout re-entry). The synchronous
+        // `areRowActionsVisible = isVisible` write has been removed because it
+        // was only consumed by the dead `scheduleRowActionDisplayOrderReconciliation()`
+        // path. The live reconciliation path uses the async KVO-backed
+        // `RowActionSafeBoundaryKVOAdapter` which has its own separate KVO
+        // observation.
         #expect(
-            kvoFragment.contains("observation.areRowActionsVisible = isVisible"),
-            "areRowActionsVisible must be updated synchronously in the KVO callback, before the Task hop, so the monitor always has accurate visibility state."
+            kvoFragment.contains("areRowActionsVisible") == false,
+            "The KVO callback must not synchronously write areRowActionsVisible (FR-003: no observation-callback state feedback that re-drives the view tree)."
         )
     }
 

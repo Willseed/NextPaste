@@ -125,6 +125,7 @@ func t011NewOperationIncrementsReconciliationGeneration() async throws {
     }
 
     let before = probe.reconciliationGeneration
+    await harness.awaitBodyInstalled()
     harness.driveTogglePin()
     let afterPin = probe.reconciliationGeneration
     #expect(
@@ -163,6 +164,7 @@ func t012NewOperationCancelsPriorReconciliationTask() async throws {
         return
     }
 
+    await harness.awaitBodyInstalled()
     harness.driveTogglePin()
     // The first operation launches a reconciliationTask. A second operation
     // must cancel that prior task before storing its own (FR-009). T024.1 seam
@@ -338,6 +340,7 @@ func t021SafeBoundaryAwaitIsSoleGate() async throws {
 
     // Drive only the real Pin/Unpin row-action entry point. No click, scroll,
     // key, mouse, or other input is synthesized.
+    await harness.awaitBodyInstalled()
     harness.driveTogglePin()
 
     // The reconciliation Task must hop off the AppKit callback call stack and

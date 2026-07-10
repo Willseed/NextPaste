@@ -28,7 +28,7 @@ private final class ReconciliationLifecycleStorage {
     /// for that (T024.1 seam cleanup).
     var currentTaskDidFinish: Bool = false
     /// Whether the *prior* task was cancelled when a new operation began. Set
-    /// to `true` only inside `scheduleRowActionDisplayOrderReconciliation()`
+    /// to `true` only inside `scheduleAutomaticReconciliation(for:)`
     /// when an in-flight prior task is cancelled before launching the new one.
     /// Reset to `false` is unnecessary because each new operation records the
     /// fresh cancellation state for the prior task it replaced.
@@ -55,6 +55,20 @@ private final class ReconciliationLifecycleStorage {
     /// Last generation comparison result (T072 § 4). `nil` until the
     /// generation guard runs and records captured vs current generation.
     var lastGenerationComparison: GenerationComparison? = nil
+}
+
+// Reference-type backing for `hasCompletedInitialLoad`. HomeView is a struct,
+// and value-type `@State` writes are no-ops on an unhosted view (e.g. the bare
+// `HomeView()` value driven by the reconciliation lifecycle tests). The
+// `.task` modifier on the installed copy sets this to `true`, but the held
+// value's value-type `@State` stays `false`, causing `scheduleTogglePin` to
+// early-return. A reference-type holder held by `@State` is shared across the
+// held value and the installed copy, so the `.task` setter on the installed
+// copy is observable from the held value (same pattern as
+// `ReconciliationLifecycleStorage`).
+@MainActor
+private final class InitialLoadState {
+    var hasCompletedInitialLoad: Bool = false
 }
 
 // T073.1: read-only observability mirror for the row-action display-order
@@ -233,7 +247,7 @@ struct HomeView: View {
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
-    @State private var hasCompletedInitialLoad = false
+    @State private var initialLoadState = InitialLoadState()
     @State private var isPresentingNewClip = false
     @State private var searchText = ""
     // T002: single search presentation authority. `isSearchPresented` drives the
@@ -292,7 +306,7 @@ struct HomeView: View {
     // bare HomeView value is driven by lifecycle tests. The mechanism body
     // (generation increment, prior-task cancellation, Task launch,
     // snapshot-generation-token capture) is implemented in
-    // `scheduleRowActionDisplayOrderReconciliation()` and
+    // `scheduleAutomaticReconciliation(for:)` and
     // `beginRowActionDisplayOrderSnapshot()`.
     @State private var reconciliationLifecycle = ReconciliationLifecycleStorage()
 
@@ -415,9 +429,15 @@ struct HomeView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .onPreferenceChange(HistoryMeasuredFramePreferenceKey.self) { frames in
-            headerFrame = frames[.header] ?? .null
-            settingsMessageFrame = frames[.settingsMessage] ?? .null
-            listViewportFrame = frames[.viewport] ?? .null
+            // H3 guard: only write when the value actually changed to avoid
+            // unnecessary @State mutations during a layout pass, which can
+            // trigger layout re-entry feedback (FR-003).
+            let newHeader = frames[.header] ?? .null
+            let newSettingsMessage = frames[.settingsMessage] ?? .null
+            let newViewport = frames[.viewport] ?? .null
+            if newHeader != headerFrame { headerFrame = newHeader }
+            if newSettingsMessage != settingsMessageFrame { settingsMessageFrame = newSettingsMessage }
+            if newViewport != listViewportFrame { listViewportFrame = newViewport }
         }
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
@@ -480,7 +500,7 @@ struct HomeView: View {
         }
 #endif
         .task {
-            hasCompletedInitialLoad = true
+            initialLoadState.hasCompletedInitialLoad = true
         }
 #if os(macOS)
         .task {
@@ -962,7 +982,7 @@ struct HomeView: View {
     }
 
     func scheduleTogglePin(_ clip: ClipItem) {
-        guard Self.canProcessPinMutation(hasCompletedInitialLoad: hasCompletedInitialLoad) else {
+        guard Self.canProcessPinMutation(hasCompletedInitialLoad: initialLoadState.hasCompletedInitialLoad) else {
             return
         }
 
@@ -993,8 +1013,7 @@ struct HomeView: View {
         // T024: Pin/Unpin is wired through the formal generation-guarded
         // automatic reconciliation entry, capturing `(capturedGeneration,
         // targetClipID)` across the async hop (FR-008, FR-009, FR-010, FR-012).
-        // The Delete call site still calls
-        // `scheduleRowActionDisplayOrderReconciliation()` unchanged (T031).
+        // Both Pin/Unpin and Delete route through `scheduleAutomaticReconciliation`.
         scheduleAutomaticReconciliation(for: clip.id)
 #else
         ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
@@ -1079,7 +1098,6 @@ struct HomeView: View {
 
         observation.observedRowActionsTableView = tableView
         observation.observedRowActionsTableViewID = tableViewID
-        observation.areRowActionsVisible = tableView.rowActionsVisible
         // T072 § 3: publish the resolved table view to the safe-boundary
         // dependency cell so the production KVO adapter can observe it at
         // await time. This is wiring only; it does not trigger reconciliation.
@@ -1090,16 +1108,17 @@ struct HomeView: View {
             visibleClipIDs: traceVisibleClipIDs
         )
 #endif
+        // FR-003: the KVO callback must NOT synchronously write any state that
+        // re-drives the same view tree (layout re-entry). The previous
+        // synchronous `areRowActionsVisible = isVisible` write has been removed
+        // because it was only consumed by the dead
+        // `scheduleRowActionDisplayOrderReconciliation()` path. The live
+        // reconciliation path (`scheduleAutomaticReconciliation`) uses the
+        // async `RowActionSafeBoundaryKVOAdapter` which has its own separate
+        // KVO observation. All trace work is deferred to an async Task so it
+        // never runs on the KVO/layout call stack.
         observation.rowActionsObservation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { observedTableView, change in
-            // Feature 020 edge-case guard: update areRowActionsVisible synchronously so the
-            // reconciliation monitor has accurate visibility state without waiting for a
-            // Task hop. The KVO callback fires on the main thread (UI property), so a
-            // synchronous boolean update is safe. Trace emission remains deferred to avoid
-            // trace work during a potential layout pass.
             let isVisible = change.newValue ?? false
-            MainActor.assumeIsolated {
-                observation.areRowActionsVisible = isVisible
-            }
             Task { @MainActor in
 #if DEBUG
                 RowActionAppKitObserver.recordRowActionsVisible(
@@ -1135,127 +1154,11 @@ struct HomeView: View {
         reconciliationSnapshotObservation.snapshotIDs = snapshotIDs
     }
 
-    // Reconcile the frozen display order back to the @Query-sorted order on the next
-    // intentional user interaction. A user-driven event is guaranteed to occur after the
-    // native row-action dismiss animation finishes (the user must release the current
-    // swipe and act again before another intentional event is delivered), so the
-    // subsequent @Query reorder happens after the teardown hazard window. This is
-    // event-driven, not a fixed delay, KVO signal, or sleep.
-    //
-    // Feature 020 edge-case guard (Codex review): if the next explicit user input occurs
-    // while native row-action dismiss animation may still be active
-    // (`rowActionResolverObservation.currentRowActionsVisible` is still true), clearing
-    // the snapshot would let the @Query reorder relocate or recycle the acted-on row
-    // during AppKit teardown. The guard passes the event through unchanged without
-    // clearing; the next explicit input after `rowActionsVisible` becomes false reconciles.
-    // The `areRowActionsVisible` flag is updated synchronously in the KVO callback (no
-    // Task hop) so the guard always has accurate visibility state. This reads only the
-    // public `NSTableView.rowActionsVisible` state — no private API, swizzling, fixed
-    // delay, run-loop-hop, or render-cycle assumption.
-    private func scheduleRowActionDisplayOrderReconciliation() {
-        // T024: generation-guarded reconciliation lifecycle entry. On every new
-        // Pin/Unpin/Delete row-action reconciliation entry, bump the generation
-        // (FR-010), cancel any prior in-flight reconciliation task (FR-009),
-        // and launch a new generation-tokened task (FR-012). The task body does
-        // not yet perform stale-generation snapshot cleanup correctness — that
-        // is T026's scope; this slice only records task completion so
-        // `reconciliationTaskIsFinished` reflects the active lifecycle.
-        let storage = reconciliationLifecycle
-        storage.generation &+= 1
-        let generation = storage.generation
-        // T072 § 4 (Task identity): observe the already-landed Task launch by
-        // incrementing the monotonic launch sequence. This is pure observation
-        // of existing partial behavior (the Task launch landed with T024's
-        // partial body); it does not add new mechanism behavior.
-        storage.taskLaunchSequence &+= 1
-        // T024.1: `currentTaskDidFinish` reports only the current task's own
-        // lifecycle (set by the task body/defer below). `priorTaskWasCancelled`
-        // is the separate signal that the previous task was cancelled by this
-        // new operation. They must not contaminate each other so T012 can
-        // assert prior cancellation precisely.
-        storage.currentTaskDidFinish = false
-        if let prior = storage.task {
-            prior.cancel()
-            // Record that the prior task was cancelled by this new operation
-            // (FR-009). This is the only place prior cancellation is recorded;
-            // the new task's own finished state is owned by its body/defer.
-            storage.priorTaskWasCancelled = true
-        } else {
-            storage.priorTaskWasCancelled = false
-        }
-        // T073.2: capture the read-only observability holders (reference types
-        // held by `@State`; they do not reference `storage`/the task, so strong
-        // capture is cycle-free) so the task body can drive the snapshot
-        // lifecycle observable. The value-type `@State` snapshot itself is NOT
-        // touched here (see comment in the defer below).
-        let rowActions = rowActionResolverObservation
-        let snapshotObservation = reconciliationSnapshotObservation
-        storage.task = Task { @MainActor [weak storage] in
-            // T026: generation/token guard. The task captures its own
-            // generation token (`generation`). Before touching the snapshot it
-            // must re-validate that it is still the authoritative owner:
-            //   1. `capturedGeneration == currentReconciliationGeneration` — a
-            //      newer operation has not superseded this task (FR-010).
-            //   2. `capturedGeneration == snapshotGeneration` — the live
-            //      snapshot was opened under this task's generation, not by a
-            //      newer operation (FR-009, FR-010; Plan § old-task cannot
-            //      clear new snapshot).
-            //   3. the task has not been cancelled (FR-009).
-            // If any condition fails the task is stale/older and must early
-            // exit WITHOUT clearing the snapshot — the newer operation owns
-            // the snapshot lifetime (Plan § stale-task prevention). Only the
-            // current-generation, non-cancelled task may release the snapshot
-            // lifecycle ownership. Mirror and production snapshot cleanup are
-            // gated by the same guard so semantics stay consistent; the
-            // production value-type `@State` clear remains owned by the NSEvent
-            // monitor / T027 success path (not removed here), and this task only
-            // releases the read-only observability mirror it has direct access
-            // to, under the identical generation guard.
-            let currentGeneration = storage?.generation ?? generation
-            let snapshotGeneration = snapshotObservation.snapshotGeneration
-            // T072 § 4 (Generation comparison): record the real captured vs
-            // current generation comparison at the guard. Pure observation of
-            // the already-landed generation guard; does not change behavior.
-            storage?.lastGenerationComparison = GenerationComparison(
-                capturedGeneration: generation,
-                currentGeneration: currentGeneration
-            )
-            let isStale = (generation != currentGeneration)
-                || (snapshotGeneration != generation)
-                || Task.isCancelled
-            if isStale {
-                // Stale/older or cancelled task: early exit. Must NOT clear the
-                // mirror snapshot and must NOT clear the production snapshot
-                // (FR-009, FR-010). The newer operation owns the snapshot.
-                // T072 § 4 (Exit-path classification): record the stale
-                // early-exit classification. Pure observation of the
-                // already-landed stale guard; does not complete T026/T028.
-                storage?.lastExitPath = .staleGeneration
-                storage?.currentTaskDidFinish = true
-                return
-            }
-            // Current-generation, non-cancelled task owns the snapshot
-            // lifetime and may release it. The release is still gated by the
-            // existing `rowActionsVisible` safe-boundary (the same gate the
-            // NSEvent monitor uses), so production rendering is unchanged:
-            // during the row-action dismiss animation `rowActionsVisible` is
-            // true and this clear is a no-op, leaving the existing NSEvent
-            // monitor as the production snapshot-clear owner (no regression).
-            // T025 replaces this synchronous gate with the async KVO-boundary
-            // await; T027 moves the production value-type clear into this
-            // generation-guarded success path.
-            if !rowActions.currentRowActionsVisible {
-                snapshotObservation.snapshotExists = false
-                snapshotObservation.snapshotGeneration = nil
-                snapshotObservation.snapshotIDs = nil
-            }
-            // FR-012: record task completion last so `reconciliationTaskIsFinished`
-            // reflects the active lifecycle after the cleanup ran.
-            storage?.currentTaskDidFinish = true
-        }
-        // T030: the Feature 020 NSEvent input-event monitor is fully removed;
-        // the safe boundary is the KVO/awaiter gate only (FR-004).
-    }
+    // FR-003: the dead `scheduleRowActionDisplayOrderReconciliation()` has been
+    // removed. Both Pin/Unpin and Delete now route through
+    // `scheduleAutomaticReconciliation(for:)` which uses the async KVO-backed
+    // safe-boundary awaiter — no synchronous `rowActionsVisible` state gate,
+    // no observation-callback state feedback, no layout re-entry.
 
     /// T024: formal generation-guarded automatic reconciliation entry for
     /// Pin/Unpin row actions. This is the canonical reconciliation lifecycle
@@ -1264,18 +1167,14 @@ struct HomeView: View {
     /// captures only `(capturedGeneration, targetClipID)` across the async hop
     /// (FR-008 — UUID only, no index/`IndexPath`/row position), and launches a
     /// new generation-tokened `Task { @MainActor in … }` stored as
-    /// `reconciliationTask` (FR-012). The task body preserves the partial
-    /// behavior already landed in `scheduleRowActionDisplayOrderReconciliation()`
-    /// (generation guard, mirror snapshot release gated by `rowActionsVisible`,
-    /// `currentTaskDidFinish` recording) and keeps the existing NSEvent monitor
-    /// as the production snapshot-clear owner (T030 removes it; T027 moves the
-    /// production value-type clear into the success path). `targetClipID` is
-    /// captured here so T026 can re-resolve the target clip by UUID inside the
-    /// Task; it is intentionally unused in this slice (no missing-target
-    /// safe-exit, no production snapshot clear) so T025–T031 behavior is not
-    /// started. The Delete call site continues to call
-    /// `scheduleRowActionDisplayOrderReconciliation()` unchanged (T031 rewires
-    /// Delete later).
+    /// `reconciliationTask` (FR-012). The task body awaits the
+    /// `NSTableView.rowActionsVisible == false` safe boundary through the
+    /// injected `safeBoundaryAwaiter` dependency (FR-003, FR-004), then
+    /// re-validates by generation token (FR-010) and re-resolves the target
+    /// clip by `targetClipID` (FR-008, FR-011). Both Pin/Unpin and Delete route
+    /// through this entry. `targetClipID` is captured so the Task can
+    /// re-resolve the target clip by UUID inside the Task body; for Delete the
+    /// target is gone and the Task safe-exits `.missingTarget`.
     private func scheduleAutomaticReconciliation(for targetClipID: UUID) {
         let storage = reconciliationLifecycle
         storage.generation &+= 1
@@ -1350,9 +1249,8 @@ struct HomeView: View {
             // re-validate by generation token (FR-010) and re-resolve the target
             // clip by `targetClipID` (FR-008, FR-011). No click, scroll, key, or
             // mouse-move input is observed. The production value-type snapshot
-            // clear is owned by T027's success path (not started here); the
-            // NSEvent monitor is retained (T030 owns removal); Delete remains on
-            // `scheduleRowActionDisplayOrderReconciliation()` (T031 rewires).
+            // clear is owned by the success/missing-target exit paths; the
+            // NSEvent monitor has been removed (T030).
             //
             // Stale-generation / cancellation guard BEFORE the await. A stale
             // (superseded) or already-cancelled task must not reach the
@@ -1659,6 +1557,11 @@ struct HomeView: View {
         reconciliationEnvironmentMirror.clips = clips
         reconciliationEnvironmentMirror.searchText = searchText
         reconciliationEnvironmentMirror.snapshotIDs = rowActionDisplayOrderSnapshot
+        // Mark the initial load as complete during body evaluation so the
+        // shared reference-type holder is observable from the held value
+        // (before .task runs). This is safe because body evaluation means
+        // @Query has fetched and the view is installed.
+        initialLoadState.hasCompletedInitialLoad = true
         #endif
     }
 
@@ -1891,21 +1794,19 @@ private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
 #if os(macOS)
 @MainActor
 private final class RowActionResolverObservationState {
-    var areRowActionsVisible = false
+    // FR-003: `areRowActionsVisible` and `currentRowActionsVisible` have been
+    // removed. The dead `scheduleRowActionDisplayOrderReconciliation()` was
+    // the only consumer; the live reconciliation path uses the async KVO-backed
+    // `RowActionSafeBoundaryKVOAdapter` which has its own KVO observation.
     var rowActionsObservation: NSKeyValueObservation?
     weak var observedRowActionsTableView: NSTableView?
     var observedRowActionsTableViewID: ObjectIdentifier?
-
-    var currentRowActionsVisible: Bool {
-        observedRowActionsTableView?.rowActionsVisible ?? areRowActionsVisible
-    }
 
     func reset() {
         rowActionsObservation?.invalidate()
         rowActionsObservation = nil
         observedRowActionsTableView = nil
         observedRowActionsTableViewID = nil
-        areRowActionsVisible = false
     }
 }
 
