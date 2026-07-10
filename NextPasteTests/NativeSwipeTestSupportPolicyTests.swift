@@ -11,8 +11,8 @@
 //      Pin/Unpin reveal path (FR-007).
 //    - `HomeView.swift` is unchanged for the production reconciliation mechanism
 //      (FR-006): `List {`, both `swipeActions(edge:)`, `allowsFullSwipe: false`,
-//      `rowActionDisplayOrderSnapshot: [UUID]?`, and
-//      `await awaiter.waitUntilSafeBoundary()` all remain.
+//      `rowActionDisplayOrderSnapshot: [UUID]?`, and a prepared lifecycle wait
+//      all remain.
 //
 //  Uses the Swift Testing module to match the NextPasteTests target
 //  convention. The tests inspect source text; they fail if implementation
@@ -198,8 +198,9 @@ struct NativeSwipeTestSupportPolicyTests {
             "The ID-only rowActionDisplayOrderSnapshot declaration must remain (FR-006)."
         )
         #expect(
-            source.contains("await awaiter.waitUntilSafeBoundary()"),
-            "The safe-boundary awaiter gate must remain (FR-006)."
+            source.contains("prepareToWaitForSafeBoundary()")
+                && source.contains("await waitForSafeBoundary()"),
+            "The prepared native lifecycle gate must remain (FR-006)."
         )
     }
 

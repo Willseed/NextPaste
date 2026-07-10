@@ -36,7 +36,7 @@ struct RowActionDisplayOrderPolicyTests {
         let activation = try fragment(
             in: source,
             from: "private func beginRowActionDisplayOrderSnapshot()",
-            to: "private func scheduleAutomaticReconciliation(for targetClipID: UUID)"
+            to: "private func scheduleAutomaticReconciliation("
         )
         // The activation extracts ID-only metadata via `visibleClips.map(\.id)` and
         // assigns the snapshot from those identifiers. The landed refactor (T073.1)
@@ -141,17 +141,17 @@ struct RowActionDisplayOrderPolicyTests {
 
     // MARK: - T025: Final source-policy regression coverage
 
-    /// Feature 023 (T025/T030): the safe boundary is the
-    /// `NSTableView.rowActionsVisible == false` KVO transition bridged through the
-    /// injected `safeBoundaryAwaiter` dependency — NOT a click/scroll/key/mouse
-    /// `NSEvent` input-event monitor. The reconciliation Task awaits the boundary
-    // through the awaiter; no input event is observed (FR-003, FR-004).
+    /// Native handlers synchronously prepare a transaction-scoped lifecycle
+    /// wait before returning to AppKit. The Task awaits that prepared wait and
+    /// never observes click/scroll/key/mouse input.
     @Test("reconciliation gates on the safe-boundary awaiter, not an NSEvent input monitor")
     func reconciliationMonitorGatesOnRowActionsVisible() throws {
+        let source = try homeViewSource()
         let reconciliation = try reconciliationSectionSource()
         #expect(
-            reconciliation.contains("await awaiter.waitUntilSafeBoundary()"),
-            "Feature 023 reconciliation must gate on the injected safe-boundary awaiter (FR-003, FR-004)."
+            source.contains("prepareToWaitForSafeBoundary()")
+                && reconciliation.contains("await waitForSafeBoundary()"),
+            "Native reconciliation must prepare observation synchronously and await the transaction-scoped lifecycle boundary."
         )
         #expect(
             reconciliation.contains("NSEvent.addLocalMonitorForEvents") == false,
@@ -159,37 +159,32 @@ struct RowActionDisplayOrderPolicyTests {
         )
     }
 
-    /// Feature 023 post-KVO teardown-safe yield: after the safe-boundary await
-    /// resumes, the snapshot release must be deferred to the next MainActor
-    /// runloop turn via `Task.yield()` so it does not execute on the AppKit
-    /// KVO/animation teardown call stack. This is a single runloop hop — not a
-    /// fixed delay, sleep, or user-input gate.
-    @Test("reconciliation yields to the next MainActor runloop turn before snapshot release")
-    func reconciliationYieldsBeforeSnapshotRelease() throws {
+    /// `Task.yield()` is not an AppKit animation barrier. The prepared lifecycle
+    /// wait itself owns the boundary; mutation and snapshot release follow it.
+    @Test("reconciliation never treats Task.yield as an animation barrier")
+    func reconciliationMutatesOnlyAfterPreparedBoundary() throws {
         let reconciliation = try reconciliationSectionSource()
         #expect(
-            reconciliation.contains("await Task.yield()"),
-            "Reconciliation must yield to the next MainActor runloop turn between the safe-boundary await and snapshot release."
+            reconciliation.contains("await Task.yield()") == false,
+            "Task.yield() must not be used as an AppKit animation or teardown barrier."
         )
-        // The yield must appear AFTER the safe-boundary await, not before it.
-        guard let awaitRange = reconciliation.range(of: "await awaiter.waitUntilSafeBoundary()") else {
-            Issue.record("Safe-boundary await not found in reconciliation section.")
+        guard let awaitRange = reconciliation.range(of: "await waitForSafeBoundary()") else {
+            Issue.record("Prepared lifecycle await not found in reconciliation section.")
             return
         }
         let afterAwait = reconciliation[awaitRange.upperBound...]
         #expect(
-            afterAwait.contains("await Task.yield()"),
-            "Task.yield() must appear after the safe-boundary await, before the snapshot release."
+            afterAwait.contains("applyMutation(mutation)"),
+            "Accepted native commands must remain unapplied until after the lifecycle await."
         )
-        // The yield must appear BEFORE the snapshot release call.
-        guard let yieldRange = afterAwait.range(of: "await Task.yield()") else {
-            Issue.record("Task.yield() not found after the safe-boundary await.")
+        guard let mutationRange = afterAwait.range(of: "applyMutation(mutation)") else {
+            Issue.record("Deferred mutation application not found after the lifecycle await.")
             return
         }
-        let afterYield = afterAwait[yieldRange.upperBound...]
+        let afterMutation = afterAwait[mutationRange.upperBound...]
         #expect(
-            afterYield.contains("releaseSnapshot()"),
-            "releaseSnapshot() must appear after Task.yield()."
+            afterMutation.contains("releaseSnapshot()"),
+            "The frozen projection must release only after deferred commands are applied at the owned boundary."
         )
     }
 

@@ -69,7 +69,11 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
     /// Number of waiters currently pending (observable). Get-only.
     var pendingWaitCount: Int { waiters.count }
 
-    func waitUntilSafeBoundary() async {
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
+        return { await self.waitUntilReleased() }
+    }
+
+    private func waitUntilReleased() async {
         totalWaitCount += 1
         let id = UUID()
         await withTaskCancellationHandler {

@@ -414,9 +414,21 @@ struct RowRobot {
     }
 
     @discardableResult
-    func dismissRevealedSwipeActions() -> Self {
+    func dismissRevealedSwipeActions(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Self {
+        let pinButton = app.buttons[Accessibility.pinButtonIdentifier]
+        let deleteButton = app.buttons[Accessibility.deleteButtonIdentifier]
         app.typeKey(.escape, modifierFlags: [])
-        RunLoop.current.run(until: Date().addingTimeInterval(0.2))
+        XCTAssertTrue(
+            UITestAssertions.waitForDisappearance(of: pinButton, timeout: timeout)
+                && UITestAssertions.waitForDisappearance(of: deleteButton, timeout: timeout),
+            "Expected native swipe actions to dismiss after Escape",
+            file: file,
+            line: line
+        )
         return self
     }
 

@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 enum UITestHistorySeeder {
     static let settingsHistoryLimitArgument = "-ui-test-seed-settings-history-limit"
     static let relaunchDatasetArgument = "-ui-test-seed-relaunch-dataset"
+    static let rowActionScenarioBArgument = "-ui-test-seed-row-action-scenario-b"
     static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
     static let relaunchTextClipCount = 400
     static let relaunchImageClipCount = 100
@@ -25,6 +26,9 @@ enum UITestHistorySeeder {
     static func seedIfNeeded(arguments: [String], container: ModelContainer) {
         if arguments.contains(relaunchDatasetArgument) {
             seedRelaunchDatasetIfNeeded(container: container)
+        }
+        if arguments.contains(rowActionScenarioBArgument) {
+            seedRowActionScenarioB(container: container)
         }
         deleteRelaunchImageIfRequested(arguments: arguments)
 
@@ -58,6 +62,39 @@ enum UITestHistorySeeder {
             try context.save()
         } catch {
             assertionFailure("Failed to seed UI test history fixture: \(error)")
+        }
+    }
+
+    /// Exact recycled-row fixture: 8 text rows, 2 already pinned, and the Pin
+    /// target five unpinned rows below the pinned section. Every UI-test launch
+    /// uses a fresh in-memory container, so no setup swipe contaminates the
+    /// lifecycle under test and every iteration restores the same geometry.
+    private static func seedRowActionScenarioB(container: ModelContainer) {
+        let context = ModelContext(container)
+        let baseDate = Date(timeIntervalSinceReferenceDate: 10_000)
+        let rows: [(text: String, offset: TimeInterval, pinned: Bool)] = [
+            ("Scroll pin target unpinned clip", 0, false),
+            ("Feature 019 scroll pin filler 4", 1, false),
+            ("Feature 019 scroll pin filler 3", 2, false),
+            ("Feature 019 scroll pin filler 2", 3, false),
+            ("Feature 019 scroll pin filler 1", 4, false),
+            ("Feature 019 scroll pin filler 0", 5, false),
+            ("Scroll pin pinned older clip", 6, true),
+            ("Scroll pin pinned newer clip", 7, true),
+        ]
+
+        for row in rows {
+            context.insert(ClipItem(
+                textContent: row.text,
+                createdAt: baseDate.addingTimeInterval(row.offset),
+                isPinned: row.pinned
+            ))
+        }
+
+        do {
+            try context.save()
+        } catch {
+            assertionFailure("Failed to seed row-action Scenario B fixture: \(error)")
         }
     }
 

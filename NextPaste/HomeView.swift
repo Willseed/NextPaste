@@ -12,6 +12,18 @@ import SwiftUI
 import AppKit
 #endif
 
+private enum PendingRowActionMutation {
+    case setPinned(itemID: UUID, desiredState: Bool)
+    case delete(itemID: UUID, traceRowIndex: Int?, traceRowViewID: String?)
+
+    var itemID: UUID {
+        switch self {
+        case .setPinned(let itemID, _), .delete(let itemID, _, _):
+            return itemID
+        }
+    }
+}
+
 // T024: reference-type backing for the generation-guarded reconciliation
 // lifecycle state. HomeView is a struct, and `@State` value-type writes are
 // no-ops on an unhosted view (e.g. the bare `HomeView()` value driven by the
@@ -55,6 +67,10 @@ private final class ReconciliationLifecycleStorage {
     /// Last generation comparison result (T072 § 4). `nil` until the
     /// generation guard runs and records captured vs current generation.
     var lastGenerationComparison: GenerationComparison? = nil
+    /// FIFO commands accepted by native row-action handlers. Commands stay
+    /// immutable and content-free until the current lifecycle owner reaches
+    /// its publication boundary. Superseding Tasks never discard commands.
+    var pendingMutations: [PendingRowActionMutation] = []
 }
 
 // Reference-type backing for `hasCompletedInitialLoad`. HomeView is a struct,
@@ -139,11 +155,6 @@ enum SafeBoundaryAwaitState: Equatable {
     case idle
     case awaiting
     case resumed
-    /// Post-KVO teardown-safe yield: the `rowActionsVisible == false` boundary
-    /// has been reached, but the snapshot release is deferred to the next
-    /// MainActor runloop turn via `Task.yield()` so it does not execute on the
-    /// AppKit KVO/animation teardown call stack.
-    case yielded
     case cancelled
 }
 
@@ -554,6 +565,7 @@ struct HomeView: View {
             clearingDecision: .teardown,
             snapshotClearOwned: true
         )
+        storage.pendingMutations.removeAll()
         storage.task?.cancel()
     }
 
@@ -842,9 +854,14 @@ struct HomeView: View {
     }
 
     private var historyList: some View {
-        List {
-            ForEach(visibleClips) { clip in
-                clipRow(for: clip)
+        let rows = visibleClips
+        return List {
+            // Keep AppKit row slots stable while a Pin/Unpin mutation changes
+            // the pinned-first projection. The logical clip UUID remains on the
+            // row content and actions, but NSTableView does not have to remove
+            // or relocate the physical row that still owns native swipe state.
+            ForEach(rows.indices, id: \.self) { index in
+                clipRow(for: rows[index])
             }
         }
         .padding(DesignTokens.Spacing.small)
@@ -963,6 +980,14 @@ struct HomeView: View {
 #endif
 
     func deleteClip(_ clip: ClipItem) {
+        requestDelete(clip, waitsForNativeLifecycle: true)
+    }
+
+    private func deleteClipImmediately(_ clip: ClipItem) {
+        requestDelete(clip, waitsForNativeLifecycle: false)
+    }
+
+    private func requestDelete(_ clip: ClipItem, waitsForNativeLifecycle: Bool) {
 #if DEBUG
         let rowIdentity = traceRowIdentity(for: clip)
         let traceRowIndex = rowIdentity.rowIndex
@@ -980,17 +1005,22 @@ struct HomeView: View {
         let traceRowViewID: String? = nil
 #endif
 #if os(macOS)
-        // Freeze the visible display order before the SwiftData mutation so the @Query
-        // reorder does not recycle the acted-on row during AppKit row-action teardown.
-        beginRowActionDisplayOrderSnapshot()
-        applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
-        // T031: route Delete through the shared generation-guarded automatic
-        // reconciliation lifecycle by target UUID (FR-009 Delete call site). The
-        // deleted UUID is gone from the dataset, so the Task re-resolves to nil and
-        // safe-exits `.missingTarget`, clearing the snapshot so the live `@Query`
-        // projection (without the deleted clip) becomes the visible order (FR-011,
-        // FR-006, FR-007).
-        scheduleAutomaticReconciliation(for: clip.id)
+        if waitsForNativeLifecycle {
+            // The native handler owns no model mutation. Capture projection and
+            // observation synchronously, then queue an immutable UUID command.
+            let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            reconciliationLifecycle.pendingMutations.append(.delete(
+                itemID: clip.id,
+                traceRowIndex: traceRowIndex,
+                traceRowViewID: traceRowViewID
+            ))
+            scheduleAutomaticReconciliation(
+                for: clip.id,
+                waitForSafeBoundary: waitForSafeBoundary
+            )
+        } else {
+            applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
+        }
 #else
         applyDeleteClip(clip, traceRowIndex: traceRowIndex, traceRowViewID: traceRowViewID)
 #endif
@@ -1013,11 +1043,36 @@ struct HomeView: View {
     }
 
     func scheduleTogglePin(_ clip: ClipItem) {
+        requestTogglePin(clip, waitsForNativeLifecycle: true)
+    }
+
+    private func togglePinImmediately(_ clip: ClipItem) {
+        requestTogglePin(clip, waitsForNativeLifecycle: false)
+    }
+
+    private func requestTogglePin(_ clip: ClipItem, waitsForNativeLifecycle: Bool) {
         guard Self.canProcessPinMutation(hasCompletedInitialLoad: initialLoadState.hasCompletedInitialLoad) else {
             return
         }
 
-        let targetPinnedState = !clip.isPinned
+        let currentProjectedState: Bool
+#if os(macOS)
+        if waitsForNativeLifecycle,
+           let queuedState = reconciliationLifecycle.pendingMutations.reversed().compactMap({ mutation -> Bool? in
+               guard case .setPinned(let itemID, let desiredState) = mutation,
+                     itemID == clip.id else {
+                   return nil
+               }
+               return desiredState
+           }).first {
+            currentProjectedState = queuedState
+        } else {
+            currentProjectedState = clip.isPinned
+        }
+#else
+        currentProjectedState = clip.isPinned
+#endif
+        let targetPinnedState = !currentProjectedState
 #if DEBUG
         let action = tracePinActionName(targetPinnedState: targetPinnedState)
         let rowIdentity = traceRowIdentity(for: clip)
@@ -1030,24 +1085,32 @@ struct HomeView: View {
             phase: "action.tap"
         )
 #endif
-        // Feature 021: route through the ID-first mutation store. The store resolves
-        // the live item by `clip.id` at mutation time, serializes the mutation on the
-        // MainActor, persists through SwiftData, rolls back on failure, and
-        // regenerates the visible snapshot synchronously (FR-004, FR-006, FR-007,
-        // SC-003). The production mutation call passes item identity (`clip.id`) and
-        // the explicit desired state — never a row index (SC-002).
 #if os(macOS)
-        // Freeze the visible display order before the SwiftData mutation so the @Query
-        // reorder does not recycle the acted-on row during AppKit row-action teardown.
-        beginRowActionDisplayOrderSnapshot()
-        ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
-        // T024: Pin/Unpin is wired through the formal generation-guarded
-        // automatic reconciliation entry, capturing `(capturedGeneration,
-        // targetClipID)` across the async hop (FR-008, FR-009, FR-010, FR-012).
-        // Both Pin/Unpin and Delete route through `scheduleAutomaticReconciliation`.
-        scheduleAutomaticReconciliation(for: clip.id)
+        if waitsForNativeLifecycle {
+            // Keep the acted-on row and its Pin/Unpin configuration unchanged
+            // until the native lifecycle owner releases publication.
+            let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            reconciliationLifecycle.pendingMutations.append(.setPinned(
+                itemID: clip.id,
+                desiredState: targetPinnedState
+            ))
+            scheduleAutomaticReconciliation(
+                for: clip.id,
+                waitForSafeBoundary: waitForSafeBoundary
+            )
+        } else {
+            ensurePinStore().setPinned(
+                targetPinnedState,
+                for: clip.id,
+                source: .keyboardAccessibility
+            )
+        }
 #else
-        ensurePinStore().setPinned(targetPinnedState, for: clip.id, source: .rowAction)
+        ensurePinStore().setPinned(
+            targetPinnedState,
+            for: clip.id,
+            source: waitsForNativeLifecycle ? .rowAction : .keyboardAccessibility
+        )
 #endif
     }
 
@@ -1206,7 +1269,10 @@ struct HomeView: View {
     /// through this entry. `targetClipID` is captured so the Task can
     /// re-resolve the target clip by UUID inside the Task body; for Delete the
     /// target is gone and the Task safe-exits `.missingTarget`.
-    private func scheduleAutomaticReconciliation(for targetClipID: UUID) {
+    private func scheduleAutomaticReconciliation(
+        for targetClipID: UUID,
+        waitForSafeBoundary: @escaping RowActionSafeBoundaryWait
+    ) {
         let storage = reconciliationLifecycle
         storage.generation &+= 1
         let capturedGeneration = storage.generation
@@ -1235,13 +1301,6 @@ struct HomeView: View {
         // lifecycle observable. The value-type `@State` snapshot itself is NOT
         // touched here (see comment in the task body below).
         let snapshotObservation = reconciliationSnapshotObservation
-        // T025: capture the injected safe-boundary awaiter (T072 seam) so the
-        // Task body can `await` the `NSTableView.rowActionsVisible == false`
-        // teardown-safe boundary without re-resolving the dependency or
-        // touching `rowActionsVisible` KVO directly (FR-003, FR-004). The
-        // production default is the real KVO-backed adapter; lifecycle tests
-        // inject the deterministic `DeterministicSafeBoundaryAwaiter`.
-        let awaiter = safeBoundaryAwaiter
         // T026: capture the live environment mirror so the Task body can
         // re-resolve the target clip by `targetClipID` (UUID) against the live
         // dataset after the safe-boundary await (FR-008, FR-011). The mirror is a
@@ -1250,16 +1309,8 @@ struct HomeView: View {
         // `IndexPath` / row position (FR-008) and does not reference `storage` or
         // the task, so strong capture is cycle-free.
         let environmentMirror = reconciliationEnvironmentMirror
-        // T027: capture a release closure that clears the production value-type
-        // `rowActionDisplayOrderSnapshot` and the read-only mirror (and removes
-        // any installed NSEvent monitor until T030), so the success/missing-target
-        // exit paths can release the snapshot at the safe boundary. Captured on
-        // `self` (struct) so the @State write reaches the shared storage; this
-        // mirrors the existing NSEvent-monitor `[self]` capture pattern. The
-        // closure is released when the task completes / is replaced / is cancelled
-        // by teardown (T029), so no permanent reference cycle remains.
-        let releaseSnapshot: @MainActor () -> Void = { [self] in
-            clearRowActionDisplayOrderSnapshot()
+        let applyMutation: @MainActor (PendingRowActionMutation) -> Bool = { [self] mutation in
+            applyPendingRowActionMutation(mutation)
         }
         // T026: align the snapshot ownership token with this task's captured
         // generation. `beginRowActionDisplayOrderSnapshot()` records the
@@ -1269,7 +1320,6 @@ struct HomeView: View {
         // stale (`snapshotGeneration != capturedGeneration`) and the current
         // task could never clear its own snapshot (FR-009, FR-010).
         reconciliationSnapshotObservation.snapshotGeneration = capturedGeneration
-        rowActionDisplayOrderSnapshotGenerationValue = capturedGeneration
         // T024 (FR-008): the only identity values carried across the async hop
         // are `capturedGeneration` and `targetClipID` (UUID). No index,
         // `IndexPath`, row position, or array count is captured.
@@ -1329,12 +1379,10 @@ struct HomeView: View {
                 storage?.currentTaskDidFinish = true
                 return
             }
-            // T025: enter the safe-boundary await. The task hops off the AppKit
-            // callback call stack and obtains the
-            // `NSTableView.rowActionsVisible == false` teardown-safe boundary
-            // solely through the injected dependency (FR-003, FR-004).
+            // The native handler prepared this wait synchronously before it
+            // returned. No model or List-driving mutation has occurred yet.
             storage?.safeBoundaryAwaitState = .awaiting
-            await awaiter.waitUntilSafeBoundary()
+            await waitForSafeBoundary()
             // Cancellation observed after the await: exit without clearing
             // (FR-009, FR-012). T028 records the full cleanup trace.
             if Task.isCancelled {
@@ -1350,36 +1398,6 @@ struct HomeView: View {
                 storage?.currentTaskDidFinish = true
                 return
             }
-            storage?.safeBoundaryAwaitState = .resumed
-            // Post-KVO teardown-safe yield: the `rowActionsVisible == false`
-            // KVO callback fires during AppKit's row-action teardown call stack.
-            // `CheckedContinuation.resume()` may schedule the Task to continue
-            // in the same runloop pass, still on the AppKit teardown call stack.
-            // `Task.yield()` suspends and resumes on the next MainActor runloop
-            // turn, fully decoupling the snapshot release from the teardown call
-            // stack so `visibleClips` reordering does not recycle the row while
-            // AppKit is still tearing down the row-action view group. This is a
-            // single runloop hop — NOT a fixed delay, sleep, or user-input gate.
-            storage?.safeBoundaryAwaitState = .yielded
-            await Task.yield()
-            // Re-check cancellation after the yield: if the task was cancelled
-            // (e.g., view teardown or a newer operation superseded it) during the
-            // yield, exit without clearing (FR-009, FR-012).
-            if Task.isCancelled {
-                storage?.safeBoundaryAwaitState = .cancelled
-                let isTeardown = storage?.teardownDidOccur == true
-                let decision: ReconciliationOwnershipDecision = isTeardown ? .teardown : .cancelled
-                storage?.lastExitPath = decision
-                storage?.lastCleanupTrace = CleanupOwnershipTrace(
-                    ownerGeneration: ownerGeneration,
-                    clearingDecision: decision,
-                    snapshotClearOwned: isTeardown
-                )
-                storage?.currentTaskDidFinish = true
-                return
-            }
-            // Restore the resumed state after the yield completes so downstream
-            // observers see `.resumed` as the terminal safe-boundary state.
             storage?.safeBoundaryAwaitState = .resumed
             // Generation / snapshot-ownership guard AFTER the await. The
             // snapshot-ownership validation leg (`snapshotGeneration ==
@@ -1405,44 +1423,27 @@ struct HomeView: View {
                 storage?.currentTaskDidFinish = true
                 return
             }
-            // T026: re-resolve the target clip by `targetClipID` (UUID) against
-            // the live dataset (FR-008, FR-011). If the clip was deleted, removed
-            // from the visible dataset, or filtered out by the active search
-            // query by the time the task runs, exit safely as `.missingTarget`
-            // (FR-011). For Delete this is the expected steady state, not an
-            // error. The snapshot clear itself is owned by T027 (success path);
-            // this slice records the exit-path classification only, so
-            // stale-task prevention (T013/T014) is preserved and T015 (snapshot
-            // eventually released) remains Red until T027.
-            let resolvedTarget = environmentMirror.resolveTarget(targetClipID)
-            if resolvedTarget == nil {
-                // T027: missing-target exit. The target UUID is gone (deleted,
-                // removed, or filtered out). For Delete this is the expected
-                // steady state. `.missingTarget` clears the snapshot (FR-011,
-                // FR-012) so the live `@Query` projection becomes the visible
-                // order; the clear is gated by the generation-ownership guard
-                // above, so a stale task can never reach this clear.
-                releaseSnapshot()
-                storage?.lastExitPath = .missingTarget
-                storage?.lastCleanupTrace = CleanupOwnershipTrace(
-                    ownerGeneration: capturedGeneration,
-                    clearingDecision: .missingTarget,
-                    snapshotClearOwned: true
-                )
-                storage?.currentTaskDidFinish = true
-                return
+            // This latest generation owns every immutable command accepted while
+            // AppKit held the native action surface. Drain FIFO only now; stale
+            // tasks never remove commands, so rapid operations are not lost.
+            let pendingMutations = storage?.pendingMutations ?? []
+            storage?.pendingMutations.removeAll()
+            let targetWasPresent = environmentMirror.clips.contains { $0.id == targetClipID }
+            let targetWasDelete = pendingMutations.contains { mutation in
+                guard mutation.itemID == targetClipID else { return false }
+                if case .delete = mutation { return true }
+                return false
             }
-            // T027: success path. The target is present and visible, and this
-            // task owns the current generation/snapshot. Clear the production
-            // value-type `rowActionDisplayOrderSnapshot` and the mirror so
-            // `visibleClips` returns to the `PinStateMutationStore` authoritative
-            // projection (FR-006, FR-007), at the safe boundary without any user
-            // input (FR-004). The clear is gated by the ownership guard above.
-            releaseSnapshot()
-            storage?.lastExitPath = .success
+            for mutation in pendingMutations {
+                _ = applyMutation(mutation)
+            }
+
+            let decision: ReconciliationOwnershipDecision =
+                (!targetWasPresent || targetWasDelete) ? .missingTarget : .success
+            storage?.lastExitPath = decision
             storage?.lastCleanupTrace = CleanupOwnershipTrace(
                 ownerGeneration: capturedGeneration,
-                clearingDecision: .success,
+                clearingDecision: decision,
                 snapshotClearOwned: true
             )
             // FR-012: record task completion last so `reconciliationTaskIsFinished`
@@ -1453,6 +1454,29 @@ struct HomeView: View {
         // the safe boundary is the KVO/awaiter gate only (FR-004). The
         // production snapshot clear is owned by the generation-guarded Task
         // success/missing-target exit paths (T027) and view teardown (T029).
+    }
+
+    @discardableResult
+    private func applyPendingRowActionMutation(_ mutation: PendingRowActionMutation) -> Bool {
+        switch mutation {
+        case .setPinned(let itemID, let desiredState):
+            let result = ensurePinStore().setPinned(desiredState, for: itemID, source: .rowAction)
+            if case .ignoredMissingTarget = result {
+                return false
+            }
+            return true
+
+        case .delete(let itemID, let traceRowIndex, let traceRowViewID):
+            guard let target = reconciliationEnvironmentMirror.clips.first(where: { $0.id == itemID }) else {
+                return false
+            }
+            applyDeleteClip(
+                target,
+                traceRowIndex: traceRowIndex,
+                traceRowViewID: traceRowViewID
+            )
+            return true
+        }
     }
 
     private func clearRowActionDisplayOrderSnapshot() {
@@ -1614,10 +1638,10 @@ struct HomeView: View {
                 copyClip(clip)
             },
             onDelete: {
-                deleteClip(clip)
+                deleteClipImmediately(clip)
             },
             onTogglePin: {
-                scheduleTogglePin(clip)
+                togglePinImmediately(clip)
             }
         )
         .contentShape(Rectangle())

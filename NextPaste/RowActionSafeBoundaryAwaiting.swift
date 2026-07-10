@@ -2,18 +2,7 @@
 //  RowActionSafeBoundaryAwaiting.swift
 //  NextPaste
 //
-//  Feature 023 — Phase 3, Tier 3: T072 safe-boundary dependency contract +
-//  production KVO-backed adapter. This is the single non-read-only test seam
-//  authorized by Plan § Safe-boundary dependency injection surface.
-//
-//  Authority: specs/023-immediate-safe-pin-unpin-reordering/plan.md
-//    (§ Safe-boundary dependency injection surface, § Test seam mechanism)
-//  Contract: the awaitable boundary ONLY signals that the
-//    `NSTableView.rowActionsVisible == false` teardown-safe boundary has been
-//    reached. It does NOT clear the snapshot, bump the generation, cancel the
-//    task, mutate the target UUID, or trigger reconciliation.
-//  FRs: FR-003 (KVO-only safe boundary), FR-008 (no index/IndexPath),
-//       FR-013 (no force-unwraps).
+//  Native row-action publication boundary.
 //
 
 import Foundation
@@ -21,181 +10,143 @@ import Foundation
 import AppKit
 #endif
 
-// T072 § 1: awaitable safe-boundary dependency contract.
-//
-// The production reconciliation Task obtains the
-// `NSTableView.rowActionsVisible == false` safe boundary solely through this
-// dependency. The contract is `internal` (reachable from `NextPasteTests` via
-// `@testable import NextPaste` so lifecycle tests can inject a deterministic
-// test double; `NextPasteUITests` is a separate host with no `@testable`
-// access and must exercise the real KVO-backed adapter).
-//
-// The contract provides ONLY the awaitable boundary. It does NOT:
-//   - clear `rowActionDisplayOrderSnapshot`;
-//   - bump `reconciliationGeneration`;
-//   - cancel or replace `reconciliationTask`;
-//   - mutate the target `UUID`;
-//   - trigger reconciliation;
-//   - use index / row index / `IndexPath`;
-//   - use force-unwraps or implicitly-unwrapped optionals;
-//   - use a fixed delay (`Task.sleep` / `usleep`).
+internal typealias RowActionSafeBoundaryWait = @MainActor @Sendable () async -> Void
+
+/// Preparing and awaiting are intentionally separate. Preparation happens
+/// synchronously inside the native action handler while AppKit still reports
+/// its row actions as visible. Starting an unstructured Task first would leave
+/// a race in which the visibility transition can occur before observation.
+///
+/// The dependency only owns lifecycle observation. It never clears a List
+/// projection, mutates SwiftData, changes a generation, or uses row indices.
 @MainActor
 internal protocol RowActionSafeBoundaryAwaiting: AnyObject {
-    /// Await the teardown-safe boundary. Completes when the
-    /// `NSTableView.rowActionsVisible == false` transition has been reached
-    /// (production) or when the injected test double decides (lifecycle
-    /// tests). Cancellation-safe: releasing the awaiting Task releases the
-    /// underlying observation.
-    func waitUntilSafeBoundary() async
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait
 }
 
 #if !os(macOS)
-// Non-macOS platforms have no `NSTableView` row-action surface, so there is
-// no visibility transition to wait for: the safe boundary is already reached.
-// This is a real semantic implementation (not a placeholder `nil` dependency)
-// so the `internal` injection surface compiles and returns a concrete
-// awaiter on every platform HomeView builds for.
 @MainActor
 internal final class NoOpSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
     static let shared = NoOpSafeBoundaryAwaiter()
-    // Singleton initializer has no state to construct: the awaiter is a pure
-    // semantic no-op whose only behavior is completing the boundary instantly.
-    private init() {
-        // No instance state is required: every await returns immediately
-        // because non-macOS platforms have no row-action visibility transition.
-    }
-    func waitUntilSafeBoundary() async {
-        // Non-macOS platforms have no `NSTableView.rowActionsVisible` surface,
-        // so the teardown-safe boundary is already reached at call time; there
-        // is no transition to observe and nothing to await. Returning without
-        // suspending is the correct semantic completion of the contract.
+
+    private init() {}
+
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
+        return {}
     }
 }
 #endif
 
 #if os(macOS)
-// T072 § 2: production KVO-backed adapter.
-//
-// Observes the real `NSTableView.rowActionsVisible` KVO transition to `false`
-// and bridges it into `RowActionSafeBoundaryAwaiting`. The adapter is the ONLY
-// component that touches `rowActionsVisible` KVO; the reconciliation Task only
-// `await`s the dependency.
-//
-// The observation token is released on every exit path:
-//   - completion (KVO transition to false);
-//   - cancellation (Task.cancel());
-//   - teardown (await returning for any other reason).
-//
-// If `rowActionsVisible == false` when the await begins, the await completes
-// immediately without installing an observation. The adapter never waits on
-// click, scroll, keyboard, mouse movement, or `NSEvent`, and never uses a
-// fixed delay.
+/// Resolves the exact `NSTableView`, installs visibility observation, and
+/// pre-arms the current public animation context synchronously before the
+/// native action handler returns. Publication requires both signals. A false
+/// visibility value alone is never treated as teardown completion.
 @MainActor
 internal final class RowActionSafeBoundaryKVOAdapter: RowActionSafeBoundaryAwaiting {
-    // Provides the currently observed `NSTableView` at await time. Captured by
-    // a `@MainActor`-isolated closure so the adapter stays decoupled from
-    // HomeView's storage layout; the table view is resolved lazily because it
-    // is only known after SwiftUI installs the view.
     private let tableViewProvider: @MainActor () -> NSTableView?
 
     init(tableViewProvider: @escaping @MainActor () -> NSTableView?) {
         self.tableViewProvider = tableViewProvider
     }
 
-    func waitUntilSafeBoundary() async {
-        guard let tableView = tableViewProvider() else {
-            // No row-action surface is currently observed, so there is no
-            // visibility transition to wait for: the safe boundary is already
-            // reached. This is a real semantic completion, not a placeholder.
-            return
-        }
-        if tableView.rowActionsVisible == false {
-            return
-        }
-
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
         let handle = SafeBoundaryWaitHandle()
-        handle.startObserving(tableView: tableView)
 
-        await withTaskCancellationHandler {
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-                handle.registerContinuation(continuation)
-            }
-        } onCancel: {
-            handle.resume()
+        guard let tableView = tableViewProvider() else {
+            // Fail closed. Resolver absence is not evidence that AppKit has no
+            // active row-action state. Cancellation/view teardown releases the
+            // returned wait without publishing a mutation.
+            return { await handle.wait() }
         }
 
-        // Teardown safety: guarantee the observation token is released after
-        // the await returns, regardless of which path resumed the
-        // continuation. `resume()` is idempotent, so this is a no-op if the
-        // KVO transition or cancellation already released it.
-        handle.resume()
+        guard tableView.rowActionsVisible else {
+            // A false value does not prove private teardown has completed. Fail
+            // closed instead of publishing into an unknown lifecycle state.
+            return { await handle.wait() }
+        }
+
+        handle.startObservingAndPrearm(tableView: tableView)
+
+        return { await handle.wait() }
     }
 }
 
-// Thread-safe handle bridging the KVO callback and the async continuation.
-// KVO fires on the main thread, but `withTaskCancellationHandler.onCancel`
-// may run off-actor, so the handle guards its state with a lock and is
-// `@unchecked Sendable`. `resume()` is idempotent: exactly one of the
-// completion / cancellation / teardown paths resumes the continuation and
-// invalidates the observation.
-private final class SafeBoundaryWaitHandle: @unchecked Sendable {
-    private let lock = NSLock()
+@MainActor
+private final class SafeBoundaryWaitHandle {
     private var continuation: CheckedContinuation<Void, Never>?
     private var observation: NSKeyValueObservation?
     private var didComplete = false
+    private var didSeeVisibilityFalse = false
+    private var didCompletePrearmedContext = false
+    private var didScheduleResume = false
 
-    /// Install the KVO observation. The `.initial` option lets the callback
-    /// fire synchronously if the value is already `false` (race between the
-    /// adapter's pre-check and `observe`), so the handle completes immediately
-    /// without waiting for a future transition that will never come.
-    func startObserving(tableView: NSTableView) {
-        let observation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { _, change in
-            let isVisible = change.newValue ?? false
-            if !isVisible {
-                self.resume()
+    func wait() async {
+        let handle = self
+        await withTaskCancellationHandler {
+            if didComplete {
+                return
+            }
+            await withCheckedContinuation { continuation in
+                self.continuation = continuation
+            }
+        } onCancel: {
+            Task { @MainActor in
+                handle.resume()
             }
         }
-        lock.lock()
-        if didComplete {
-            // The `.initial` callback already completed the handle during the
-            // `observe` call; discard the freshly returned token.
-            lock.unlock()
-            observation.invalidate()
-        } else {
-            self.observation = observation
-            lock.unlock()
+
+        resume()
+    }
+
+    func startObservingAndPrearm(tableView: NSTableView) {
+        guard !didComplete else { return }
+
+        observation = tableView.observe(\.rowActionsVisible, options: [.initial, .new]) { [weak self] _, change in
+            guard change.newValue == false else { return }
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.didSeeVisibilityFalse = true
+                self.scheduleResumeIfReady()
+            }
+        }
+
+        let context = NSAnimationContext.current
+        let priorCompletion = context.completionHandler
+        context.completionHandler = { [weak self] in
+            priorCompletion?()
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.didCompletePrearmedContext = true
+                self.scheduleResumeIfReady()
+            }
         }
     }
 
-    /// Register the async continuation. If the handle already completed
-    /// (KVO fired before the continuation was registered), resume immediately.
-    func registerContinuation(_ continuation: CheckedContinuation<Void, Never>) {
-        lock.lock()
-        if didComplete {
-            lock.unlock()
-            continuation.resume()
-        } else {
-            self.continuation = continuation
-            lock.unlock()
-        }
-    }
-
-    /// Idempotent completion: release the observation and resume the
-    /// continuation exactly once. Safe to call from the KVO callback,
-    /// `onCancel`, or the teardown path.
-    func resume() {
-        lock.lock()
-        if didComplete {
-            lock.unlock()
+    private func scheduleResumeIfReady() {
+        guard didSeeVisibilityFalse,
+              didCompletePrearmedContext,
+              !didScheduleResume,
+              !didComplete else {
             return
         }
-        didComplete = true
-        let continuation = self.continuation
-        self.continuation = nil
-        let observation = self.observation
-        self.observation = nil
-        lock.unlock()
+        didScheduleResume = true
         observation?.invalidate()
+        observation = nil
+        DispatchQueue.main.async { [weak self] in
+            MainActor.assumeIsolated {
+                self?.resume()
+            }
+        }
+    }
+
+    func resume() {
+        guard !didComplete else { return }
+        didComplete = true
+        observation?.invalidate()
+        observation = nil
+        let continuation = continuation
+        self.continuation = nil
         continuation?.resume()
     }
 }

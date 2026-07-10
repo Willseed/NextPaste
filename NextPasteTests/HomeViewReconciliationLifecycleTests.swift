@@ -374,20 +374,17 @@ func t021SafeBoundaryAwaitIsSoleGate() async throws {
     )
 }
 
-// MARK: - T074: post-KVO teardown-safe yield before snapshot release
+// MARK: - Native row-action publication boundary
 
-/// Feature 023 (T074): after the `rowActionsVisible == false` safe-boundary
-/// await resumes, the reconciliation Task must yield to the next MainActor
-/// runloop turn (`Task.yield()`) before releasing the snapshot. This decouples
-/// the snapshot release from the AppKit KVO/animation teardown call stack so
-/// `visibleClips` reordering does not recycle the row while AppKit is still
-/// tearing down `rowActionsGroupView`. The terminal state after the yield
-/// completes remains `.resumed`.
+/// A native Pin handler may only enqueue identity + desired state. Until the
+/// injected lifecycle boundary completes, neither SwiftData nor the List
+/// projection may observe the Pin. This is the lower-layer regression for the
+/// AppKit crash: merely completing the Task eventually is not sufficient.
 @Test(
-    "T074: post-KVO yield defers snapshot release to the next MainActor runloop turn"
+    "native Pin mutation and List publication remain blocked until the lifecycle boundary"
 )
 @MainActor
-func t074PostKVOYieldDefersSnapshotRelease() async throws {
+func nativePinMutationWaitsForLifecycleBoundary() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     let observers = ReconciliationLifecycleObservers(harness.homeView)
     guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
@@ -402,23 +399,38 @@ func t074PostKVOYieldDefersSnapshotRelease() async throws {
         message: "The reconciliation Task must reach the safe-boundary await (FR-004)."
     ) { harness.safeBoundary.pendingWaitCount >= 1 }
 
-    // Release the deterministic awaiter: the KVO boundary is reached.
-    harness.safeBoundary.releaseNext()
+    let beforeBoundary = try #require(harness.refetchClipFresh())
+    #expect(
+        beforeBoundary.isPinned == false,
+        "Native Pin must not mutate isPinned while AppKit can still use the active action configuration."
+    )
+    #expect(
+        beforeBoundary.sectionSortDate == nil,
+        "Native Pin must not publish section ordering metadata before the lifecycle boundary."
+    )
+    #expect(
+        probe.hasRowActionDisplayOrderSnapshot,
+        "The pre-action display projection must remain owned until the lifecycle boundary."
+    )
 
-    // The task must complete successfully after the yield.
+    // Release the deterministic lifecycle boundary.
+    harness.safeBoundary.releaseNext()
     await probe.awaitReconciliationTaskCompletion()
 
+    let afterBoundary = try #require(harness.refetchClipFresh())
+    #expect(afterBoundary.isPinned)
+    #expect(afterBoundary.sectionSortDate != nil)
     #expect(
         observers.lastExitPath == .success,
-        "A successful reconciliation must still complete after the post-KVO yield (FR-012)."
+        "A successful lifecycle-owned Pin must complete after the boundary."
     )
     #expect(
         !probe.hasRowActionDisplayOrderSnapshot,
-        "The snapshot must be released after the post-KVO yield completes (FR-012)."
+        "The snapshot must be released only after mutation is safe to publish."
     )
     #expect(
         observers.safeBoundaryAwaitState == .resumed,
-        "After the post-KVO yield completes, the terminal await state must be .resumed."
+        "The terminal lifecycle state must record the completed boundary."
     )
 }
 
@@ -619,18 +631,18 @@ func t019DeleteAfterRemovalExitsCleanly() async throws {
         return
     }
 
-    // Drive the real Delete entry point. After T031 it routes through the
-    // shared automatic reconciliation lifecycle by target UUID; the deleted
-    // UUID is gone from the dataset, so the task must safe-exit .missingTarget.
+    // The native Delete handler must enqueue only. Before the lifecycle
+    // boundary the target remains in the query and on screen.
     await harness.awaitBodyInstalled()
     harness.driveDelete()
-    await harness.awaitQueryReflects(clipPresent: false)
+    #expect(harness.homeView.reconciliationMirrorClipIDs.contains(harness.clip.id))
 
     await ReconciliationLifecycleAssertions.awaitCondition(
         message: "The Delete reconciliation Task must reach the safe-boundary await (T031)."
     ) { harness.safeBoundary.pendingWaitCount >= 1 }
     harness.safeBoundary.releaseNext()
     await probe.awaitReconciliationTaskCompletion()
+    await harness.awaitQueryReflects(clipPresent: false)
 
     #expect(
         observers.lastExitPath == .missingTarget,
@@ -797,10 +809,10 @@ func t060RollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
     )
 }
 
-// MARK: - T061: a no-op Pin/Unpin does not relocate or mutate timestamp; an opened snapshot still clears at the safe boundary
+// MARK: - T061: rapid same-row commands are serialized without lost intent
 
 @Test(
-    "T061: a no-op Pin/Unpin does not relocate or mutate timestamp; an opened snapshot still clears at the safe boundary (FR-001, FR-002, FR-004, FR-007, FR-010, FR-012)"
+    "T061: rapid same-row Pin then Unpin is FIFO and remains unpublished until the boundary"
 )
 @MainActor
 func t061NoOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async throws {
@@ -815,44 +827,37 @@ func t061NoOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async thro
     // `ModelContext` (not the held value's empty `@Environment` default).
     await harness.awaitBodyInstalled()
 
-    // First Pin is state-changing: the store writes `sectionSortDate` and pins
-    // the clip. Read the post-pin timestamp from a FRESH context so the cached
-    // `harness.clip` (used by the next `scheduleTogglePin` to compute the
-    // desired state) is NOT auto-refreshed to `isPinned = true` before the
-    // second drive.
+    // Queue Pin then Unpin before either command may mutate the model. The
+    // second desired state must be derived from the queued projection, not the
+    // still-unpinned model object.
     harness.driveTogglePin()
-    let pinnedTimestamp = harness.refetchClipFresh()?.sectionSortDate
-
-    // Second Pin is launched synchronously, before `harness.clip` auto-refreshes,
-    // so `scheduleTogglePin` still computes `desired = true` (Pin). The store
-    // re-resolves the clip by UUID and sees `isPinned == true` already, so it
-    // returns the idempotent no-op WITHOUT calling `setPinned` — `sectionSortDate`
-    // must NOT be updated and the clip must NOT relocate (FR-001, FR-002). A
-    // snapshot is still opened for teardown protection and must clear at the
-    // safe boundary without any explicit user input (FR-004, FR-007).
     harness.driveTogglePin()
 
-    // The second (no-op) drive cancelled the first task and launched G2, which
-    // awaits the safe boundary. Release it and let G2 complete the success path.
+    let beforeBoundary = try #require(harness.refetchClipFresh())
+    #expect(beforeBoundary.isPinned == false)
+    #expect(beforeBoundary.sectionSortDate == nil)
+
+    // G2 owns the boundary, but G1's accepted command remains in the FIFO.
     await ReconciliationLifecycleAssertions.awaitCondition(
-        message: "The no-op Pin's reconciliation Task must reach the safe-boundary await."
+        message: "The rapid command owner must reach the safe-boundary await."
     ) { harness.safeBoundary.pendingWaitCount >= 1 }
     harness.safeBoundary.releaseNext()
     await probe.awaitReconciliationTaskCompletion()
 
-    let afterNoOpTimestamp = harness.refetchClipFresh()?.sectionSortDate
+    let afterBoundary = try #require(harness.refetchClipFresh())
+    #expect(afterBoundary.isPinned == false, "Pin then Unpin must preserve FIFO final intent.")
     #expect(
-        afterNoOpTimestamp == pinnedTimestamp,
-        "An idempotent no-op Pin/Unpin must NOT update sectionSortDate (FR-001, FR-002)."
+        afterBoundary.sectionSortDate != nil,
+        "A non-nil Unpin operation time proves the queued Pin was applied before Unpin; commands were not collapsed into a no-op."
     )
     #expect(
         observers.lastExitPath == .success,
-        "An opened snapshot still clears at the safe boundary via the success path (FR-004, FR-007; T027)."
+        "The FIFO transaction must complete via the success path."
     )
     #expect(
         observers.cleanupOwnershipTrace.clearingDecision == .success
             && observers.cleanupOwnershipTrace.snapshotClearOwned == true,
-        "The no-op snapshot clear must record an owning cleanup trace (FR-012; T028)."
+        "The rapid transaction snapshot clear must record owning cleanup."
     )
     #expect(
         !probe.hasRowActionDisplayOrderSnapshot,

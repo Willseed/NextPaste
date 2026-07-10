@@ -1015,42 +1015,23 @@ final class ClipRowActionsUITests: UITestCase {
 
     @MainActor
     func testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash() throws {
-        let app = launchApp(windowSizePreset: .tall)
+        let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .small)
+        let app = trace.app
+        app.launchArguments.append(UITestAppLauncher.rowActionScenarioBSeedArgument)
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
+        addTeardownBlock { self.closeApp(app) }
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
 
-        // Creation order is oldest-first. pinTarget is the oldest unpinned clip so it
-        // lands near the bottom of the unpinned group; after pinning two clips and
-        // scrolling ~5 rows away, pinTarget is revealed from a recycled row state.
+        // DEBUG launch seeding creates the exact fresh fixture without setup swipes:
+        // 8 text rows, 2 already pinned, then 5 fillers before the target.
         let pinTarget = UITestFixtures.RowActions.scrollPinTarget
         let fillers = (0..<5).map { "Feature 019 scroll pin filler \($0)" }
         let pinnedNewer = UITestFixtures.RowActions.scrollPinPinnedNewer
         let pinnedOlder = UITestFixtures.RowActions.scrollPinPinnedOlder
-        try history.createTextClips([
-            pinTarget,
-            fillers[4],
-            fillers[3],
-            fillers[2],
-            fillers[1],
-            fillers[0],
-            pinnedOlder,
-            pinnedNewer
-        ])
         history.assertClipRowIdentifierExists()
-
-        // Pin the two newest clips through native row actions, top-down so the rows
-        // stay fully visible and hittable while the list reorders into pinned-first.
-        for clip in [pinnedNewer, pinnedOlder] {
-            let pinButton = row.revealPinActionWithRightSwipe(for: clip)
-            UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
-            pinButton.tap()
-            XCTAssertEqual(app.state, .runningForeground)
-            UITestAssertions.assertEventuallyAccessibleTextContains(
-                assertTextRowIdentifier(for: clip, in: app),
-                "Pinned",
-                timeout: 1
-            )
-        }
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
 
         // Pinned-first: both pinned clips sit above the unpinned fillers, newest-first.
         assertScenarioBOrder(
@@ -1065,17 +1046,26 @@ final class ClipRowActionsUITests: UITestCase {
             app: app,
             context: "initial pinned older above first filler"
         )
+        XCTAssertFalse(
+            app.staticTexts[pinTarget].isHittable,
+            "Scenario B target must begin offscreen before recycled-row scrolling"
+        )
 
         // Scroll about five rows away so the pinned rows leave the viewport and rows
         // recycle, then reveal the pin action on the brought-back target.
         let list = app.descendants(matching: .any)["clip-history-list"]
         XCTAssertTrue(list.waitForExistence(timeout: UITestAssertions.defaultTimeout))
-        for _ in 0..<5 {
+        for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
             list.swipeUp(velocity: .fast)
         }
         XCTAssertTrue(
-            app.staticTexts[pinTarget].waitForExistence(timeout: UITestAssertions.defaultTimeout),
-            "Expected pin target row to appear after scrolling"
+            app.staticTexts[pinTarget].waitForExistence(timeout: UITestAssertions.defaultTimeout)
+                && app.staticTexts[pinTarget].isHittable,
+            "Expected offscreen pin target to become hittable after scrolling"
+        )
+        XCTAssertFalse(
+            app.staticTexts[pinnedNewer].isHittable,
+            "Pinned rows must leave the viewport so the target uses recycled row geometry"
         )
 
         // Scenario B: pin the recycled unpinned clip through native row action.
@@ -1084,11 +1074,7 @@ final class ClipRowActionsUITests: UITestCase {
         pinButton.tap()
 
         XCTAssertEqual(app.state, .runningForeground)
-        UITestAssertions.assertEventuallyAccessibleTextContains(
-            assertTextRowIdentifier(for: pinTarget, in: app),
-            "Pinned",
-            timeout: 1
-        )
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 3)
 
         // Scroll back to the top and verify pinned-first/newest-first ordering.
         // Under suite load, swipeDown may not scroll all the way back in one pass,
@@ -1100,32 +1086,105 @@ final class ClipRowActionsUITests: UITestCase {
             app.staticTexts[pinnedNewer].waitForExistence(timeout: UITestAssertions.defaultTimeout),
             "Expected pinnedNewer to be visible after scrolling back to top"
         )
-        // pinTarget was the oldest clip, so after pinning it it is the oldest pinned
-        // clip and sits below the other two pinned clips (newest-first within pinned),
-        // and the pinned group stays above the unpinned fillers.
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: pinTarget, in: app),
+            "Pinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        // A state-changing Pin writes sectionSortDate = operationTime, so the target
+        // must become the first row of the pinned section. The pinned group remains
+        // above every unpinned filler.
+        assertScenarioBOrder(
+            app.staticTexts[pinTarget],
+            appearsAbove: app.staticTexts[pinnedNewer],
+            app: app,
+            context: "newly pinned target is first in pinned section",
+            timeout: 15
+        )
         assertScenarioBOrder(
             app.staticTexts[pinnedNewer],
             appearsAbove: app.staticTexts[pinnedOlder],
             app: app,
-            context: "final pinned newer above older",
+            context: "existing pinned newer remains above older",
             timeout: 15
         )
         assertScenarioBOrder(
             app.staticTexts[pinnedOlder],
-            appearsAbove: app.staticTexts[pinTarget],
-            app: app,
-            context: "final pinned older above pin target",
-            timeout: 15
-        )
-        assertScenarioBOrder(
-            app.staticTexts[pinTarget],
             appearsAbove: app.staticTexts[fillers[0]],
             app: app,
-            context: "final pin target above first filler",
+            context: "pinned section remains above first filler",
             timeout: 15
         )
 
         attachRowActionWarningAssertionOutcome(["pin-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    @MainActor
+    func testRevealAndDismissPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash() throws {
+        let app = launchApp(
+            extraArguments: [UITestAppLauncher.rowActionScenarioBSeedArgument],
+            windowSizePreset: .small
+        )
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+        let pinTarget = UITestFixtures.RowActions.scrollPinTarget
+        let pinnedNewer = UITestFixtures.RowActions.scrollPinPinnedNewer
+        let pinnedOlder = UITestFixtures.RowActions.scrollPinPinnedOlder
+
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        let initialDigest = try XCTUnwrap(history.visibleIntegrityDigest())
+        XCTAssertFalse(app.staticTexts[pinTarget].isHittable)
+
+        let list = app.descendants(matching: .any)["clip-history-list"]
+        XCTAssertTrue(list.waitForExistence(timeout: UITestAssertions.defaultTimeout))
+        for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
+            list.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(app.staticTexts[pinTarget].isHittable)
+        XCTAssertFalse(app.staticTexts[pinnedNewer].isHittable)
+
+        // Reveal only: keep the native Pin surface visible, but never tap it.
+        let pinButton = row.revealPinActionWithRightSwipe(for: pinTarget)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        XCTAssertTrue(pinButton.isHittable)
+        XCTAssertEqual(app.state, .runningForeground)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: pinTarget, in: app),
+            "Unpinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+
+        // Escape drives native snap-back. Synchronization is the action's actual
+        // disappearance, not a fixed-duration wait.
+        row.dismissRevealedSwipeActions()
+        XCTAssertEqual(app.state, .runningForeground)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: pinTarget, in: app),
+            "Unpinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        XCTAssertEqual(history.visibleIntegrityDigest(), initialDigest)
+
+        // Sub-threshold snap-back on the same recycled geometry must also be a
+        // no-op and must not leave a native action surface behind.
+        row.performSubThresholdRightSwipe(onTextRow: pinTarget)
+            .assertNoSwipeActionsRevealed()
+        XCTAssertEqual(app.state, .runningForeground)
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        XCTAssertEqual(history.visibleIntegrityDigest(), initialDigest)
+
+        for _ in 0..<10 {
+            list.swipeDown(velocity: .fast)
+        }
+        assertScenarioBOrder(
+            app.staticTexts[pinnedNewer],
+            appearsAbove: app.staticTexts[pinnedOlder],
+            app: app,
+            context: "reveal-only preserves pinned order"
+        )
+        attachRowActionWarningAssertionOutcome(["reveal-only-\(pinTarget): \(app.state)"], app: app)
     }
 
     @MainActor
