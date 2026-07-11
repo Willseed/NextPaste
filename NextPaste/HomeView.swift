@@ -435,7 +435,7 @@ struct HomeView: View {
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(
-                    title: String(localized: "Clips"),
+                    title: "Clips",
                     onSettings: openSettingsOrShowPlaceholder
                 ) {
                     HStack(spacing: DesignTokens.Spacing.small) {

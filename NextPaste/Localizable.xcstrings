@@ -309,6 +309,12 @@
             "state" : "translated",
             "value" : "Clips"
           }
+        },
+        "zh-Hant" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "剪貼簿項目"
+          }
         }
       }
     },

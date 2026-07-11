@@ -24,6 +24,7 @@ struct LocalizationCatalogTests {
         "Clear All History",
         "Clear Shortcut",
         "Clear Unpinned History",
+        "Clips",
         "Close",
         "Command",
         "Command-, is used for Settings.",

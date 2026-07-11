@@ -18,11 +18,15 @@ final class SettingsUITests: UITestCase {
 
         static let appLanguagePicker = "app-language-picker"
         static let appLanguageDescription = "app-language-description"
+        static let mainToolbarTitle = "app-toolbar-title"
+        static let newClipButton = "new-clip-button"
         static let languageFocusProbe = "settings-language-focus"
         static let shortcutsFocusProbe = "settings-shortcuts-focus"
         static let appearanceFocusProbe = "settings-appearance-focus"
         static let historyFocusProbe = "settings-history-focus"
         static let englishUnitedStates = "English (United States)"
+        static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
+        static let localizedEnglishUnitedStates = "英文（美國）"
         static let localizedTraditionalChineseTaiwan = "繁體中文（台灣）"
         static let englishLanguageDescription = "Changes apply immediately throughout NextPaste."
         static let localizedLanguageDescription = "變更會立即套用至整個 NextPaste。"
@@ -74,6 +78,8 @@ final class SettingsUITests: UITestCase {
         static let traditionalChineseNone = "無"
         static let traditionalChineseInvalidShortcut = "至少需要一個修飾鍵。"
         static let traditionalChineseNewClipConflict = "此快速鍵與「新增剪貼簿項目」選單指令衝突。"
+        static let englishMainWindow = (title: "Clips", newClip: "New Clip")
+        static let traditionalChineseMainWindow = (title: "剪貼簿項目", newClip: "新增剪貼簿項目")
     }
 
     private enum PopupDirection {
@@ -137,7 +143,7 @@ final class SettingsUITests: UITestCase {
             settingsWindow.staticTexts[Accessibility.shortcutValidationError],
             "Expected shortcut validation error with its stable identifier"
         )
-        assertElementLabel(validationError, equals: Fixture.invalidShortcutError)
+        assertStaticTextValue(validationError, equals: Fixture.invalidShortcutError)
         XCTAssertEqual(
             currentGlobalShortcutValue(in: settingsWindow),
             originalShortcutValue,
@@ -333,12 +339,18 @@ final class SettingsUITests: UITestCase {
             in: settingsWindow
         )
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: app)
+        assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: app)
 
-        selectAdjacentPopupOption(.next, from: languagePicker, in: app)
+        selectMenuOption(
+            Accessibility.traditionalChineseTaiwan,
+            from: languagePicker,
+            in: app
+        )
         languagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(languagePicker, equals: Accessibility.localizedTraditionalChineseTaiwan)
         assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
+        assertMainWindowLabels(LocalizedLabel.traditionalChineseMainWindow, in: app)
         XCTAssertTrue(languagePicker.isEnabled)
         XCTAssertTrue(languagePicker.isHittable)
         openSettingsTab(Accessibility.shortcutsTab, in: app)
@@ -363,14 +375,14 @@ final class SettingsUITests: UITestCase {
         let localizedRecordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
         localizedRecordButton.tap()
         app.typeKey("9", modifierFlags: [])
-        assertElementLabel(
+        assertStaticTextValue(
             shortcutValidationError(in: settingsWindow),
             equals: LocalizedLabel.traditionalChineseInvalidShortcut
         )
 
         localizedRecordButton.tap()
         app.typeKey("n", modifierFlags: .command)
-        assertElementLabel(
+        assertStaticTextValue(
             shortcutValidationError(in: settingsWindow),
             equals: LocalizedLabel.traditionalChineseNewClipConflict
         )
@@ -386,12 +398,18 @@ final class SettingsUITests: UITestCase {
         )
         assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: traditionalChineseApp)
+        assertMainWindowLabels(LocalizedLabel.traditionalChineseMainWindow, in: traditionalChineseApp)
 
-        selectAdjacentPopupOption(.previous, from: languagePicker, in: traditionalChineseApp)
+        selectMenuOption(
+            Accessibility.localizedEnglishUnitedStates,
+            from: languagePicker,
+            in: traditionalChineseApp
+        )
         languagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(languagePicker, equals: Accessibility.englishUnitedStates)
         assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: traditionalChineseApp)
+        assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: traditionalChineseApp)
         openSettingsTab(Accessibility.shortcutsTab, in: traditionalChineseApp)
         assertElementLabel(
             shortcutButton(Accessibility.recordShortcut, in: settingsWindow),
@@ -407,6 +425,7 @@ final class SettingsUITests: UITestCase {
         assertPopupValueEventually(relaunchedLanguagePicker, equals: Accessibility.englishUnitedStates)
         assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: relaunchedApp)
+        assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: relaunchedApp)
     }
 
     @MainActor
@@ -750,7 +769,7 @@ final class SettingsUITests: UITestCase {
             localizedTitles = []
         }
 
-        return app.buttons.matching(
+        return app.windows[Accessibility.settingsWindowIdentifier].buttons.matching(
             NSPredicate(
                 format: "identifier == %@ OR label IN %@ OR title IN %@",
                 identifier,
@@ -1117,6 +1136,34 @@ final class SettingsUITests: UITestCase {
                 file: file,
                 line: line
             )
+            let settingsWindow = app.windows[Accessibility.settingsWindowIdentifier]
+            UITestAssertions.assertExists(
+                settingsWindow,
+                "Expected Settings window while validating localized tab labels",
+                file: file,
+                line: line
+            )
+            let localizedTabs = settingsWindow.buttons.matching(
+                NSPredicate(
+                    format: "label == %@ OR title == %@",
+                    expectedLabel,
+                    expectedLabel
+                )
+            )
+            let localizedTab = localizedTabs.firstMatch
+            XCTAssertTrue(
+                localizedTab.waitForExistence(timeout: UITestAssertions.defaultTimeout),
+                "Expected Settings tab \(identifier) with localized label/title \(expectedLabel); observed \(tab.debugDescription)",
+                file: file,
+                line: line
+            )
+            XCTAssertEqual(
+                localizedTabs.count,
+                1,
+                "Expected exactly one Settings-window button with localized label/title \(expectedLabel)",
+                file: file,
+                line: line
+            )
             XCTAssertEqual(
                 settingsTabQuery(identifier: identifier, in: app).count,
                 1,
@@ -1124,13 +1171,10 @@ final class SettingsUITests: UITestCase {
                 file: file,
                 line: line
             )
-            assertAccessibleControl(
-                tab,
-                named: "\(expectedLabel) Settings tab",
-                file: file,
-                line: line
-            )
-            assertElementLabel(tab, equals: expectedLabel, file: file, line: line)
+            XCTAssertTrue(tab.isEnabled, "\(expectedLabel) Settings tab must be enabled", file: file, line: line)
+            XCTAssertTrue(tab.isHittable, "\(expectedLabel) Settings tab must be hittable", file: file, line: line)
+            XCTAssertTrue(localizedTab.isEnabled, "\(expectedLabel) localized Settings tab must be enabled", file: file, line: line)
+            XCTAssertTrue(localizedTab.isHittable, "\(expectedLabel) localized Settings tab must be hittable", file: file, line: line)
         }
     }
 
@@ -1152,6 +1196,61 @@ final class SettingsUITests: UITestCase {
                 element.label == expectedLabel
             },
             "Expected accessibility label \(expectedLabel), got \(element.label)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertStaticTextValue(
+        _ element: XCUIElement,
+        equals expectedValue: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(
+            element,
+            "Expected static text value \(expectedValue)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                (element.value as? String) == expectedValue
+            },
+            "Expected static text value \(expectedValue), got \(element.value as? String ?? "nil")",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertMainWindowLabels(
+        _ expected: (title: String, newClip: String),
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let mainWindow = app.windows.matching(
+            NSPredicate(
+                format: "identifier != %@",
+                Accessibility.settingsWindowIdentifier
+            )
+        ).firstMatch
+        UITestAssertions.assertExists(
+            mainWindow,
+            "Expected the main NextPaste window while Settings is open",
+            file: file,
+            line: line
+        )
+        assertStaticTextValue(
+            mainWindow.staticTexts[Accessibility.mainToolbarTitle],
+            equals: expected.title,
+            file: file,
+            line: line
+        )
+        assertElementLabel(
+            mainWindow.buttons[Accessibility.newClipButton],
+            equals: expected.newClip,
             file: file,
             line: line
         )

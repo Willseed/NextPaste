@@ -8,12 +8,12 @@ import SwiftUI
 struct AppToolbar: View {
     @Environment(\.appTheme) private var appTheme
 
-    let title: String
+    let title: LocalizedStringKey
     let onSettings: () -> Void
     let trailingContent: AnyView?
 
     init<TrailingContent: View>(
-        title: String,
+        title: LocalizedStringKey,
         onSettings: @escaping () -> Void,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
@@ -23,7 +23,7 @@ struct AppToolbar: View {
     }
 
     init(
-        title: String,
+        title: LocalizedStringKey,
         onSettings: @escaping () -> Void
     ) {
         self.title = title
@@ -38,6 +38,7 @@ struct AppToolbar: View {
                     .font(DesignTokens.Typography.title.font)
                     .foregroundStyle(appTheme.textPrimary.color)
                     .accessibilityIdentifier("app-toolbar-title")
+                    .accessibilityLabel(Text(title))
 
                 Spacer(minLength: DesignTokens.Spacing.medium)
 
