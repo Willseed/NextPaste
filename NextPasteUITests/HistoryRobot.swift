@@ -421,6 +421,29 @@ struct HistoryRobot {
         markerStringValue(identifier: "history-visible-integrity-digest")
     }
 
+    func launchReadinessDuration(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> TimeInterval {
+        var duration: TimeInterval?
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                guard let rawValue = markerStringValue(
+                    identifier: "history-launch-readiness-duration"
+                ), let parsed = TimeInterval(rawValue), parsed.isFinite else {
+                    return false
+                }
+                duration = parsed
+                return true
+            },
+            "Expected a frozen rendered history launch readiness duration",
+            file: file,
+            line: line
+        )
+        return duration ?? .infinity
+    }
+
     @discardableResult
     func assertVisibleClipCount(
         _ expectedCount: Int,

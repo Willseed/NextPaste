@@ -19,6 +19,8 @@ struct UITestLaunchEnvironment: Sendable {
     static let ocrScenarioKey = "NEXTPASTE_UI_TEST_OCR_SCENARIO"
     static let ocrTextKey = "NEXTPASTE_UI_TEST_OCR_TEXT"
     static let initialLanguageKey = "NEXTPASTE_UI_TEST_INITIAL_LANGUAGE"
+    static let launchStartedUptimeKey = "NEXTPASTE_UI_TEST_LAUNCH_STARTED_UPTIME"
+    static let expectedHistoryCountKey = "NEXTPASTE_UI_TEST_EXPECTED_HISTORY_COUNT"
 
     let identifier: String
     let rootURL: URL

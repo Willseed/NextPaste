@@ -84,11 +84,26 @@ final class RelaunchStabilityUITests: UITestCase {
         closeApp(seeded)
 
         let app = UITestAppLauncher.makeApp(onDiskStore: store, windowSizePreset: .tall)
+        let launchStartedUptime = ProcessInfo.processInfo.systemUptime
+        app.launchEnvironment[UITestLaunchEnvironment.launchStartedUptimeKey] = String(
+            launchStartedUptime
+        )
+        app.launchEnvironment[UITestLaunchEnvironment.expectedHistoryCountKey] = String(
+            Fixture.totalCount
+        )
         let startedAt = CFAbsoluteTimeGetCurrent()
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app, timeout: 10)
-        historyRobot(for: app).assertVisibleClipCount(Fixture.totalCount, timeout: 10)
-        let elapsed = CFAbsoluteTimeGetCurrent() - startedAt
+        let history = historyRobot(for: app)
+        history.assertVisibleDatasetCounts(
+            total: Fixture.totalCount,
+            text: Fixture.textCount,
+            image: Fixture.imageCount,
+            pinned: Fixture.pinnedCount,
+            timeout: 10
+        )
+        let renderedReadinessDuration = history.launchReadinessDuration(timeout: 10)
+        let testHarnessElapsed = CFAbsoluteTimeGetCurrent() - startedAt
         addTeardownBlock { self.closeApp(app) }
 
         let imageByteCount = try Data(contentsOf: imageFileURL(forImageIndex: 0, store: store)).count
@@ -108,14 +123,15 @@ final class RelaunchStabilityUITests: UITestCase {
         Host: \(hostName)
         OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
         Build configuration: \(buildConfiguration)
-        Baseline measurement: \(elapsed) seconds
-        Elapsed launch-to-list-loaded: \(elapsed)
+        Frozen app launch-to-laid-out 500-item history: \(renderedReadinessDuration) seconds
+        XCUITest launch plus accessibility query elapsed: \(testHarnessElapsed) seconds
         """)
         attachment.name = "Relaunch launch budget measurement"
         attachment.lifetime = XCTAttachment.Lifetime.keepAlways
         add(attachment)
 
-        XCTAssertLessThanOrEqual(elapsed, 3.0)
+        XCTAssertLessThanOrEqual(renderedReadinessDuration, 3.0)
+        XCTAssertGreaterThanOrEqual(testHarnessElapsed, renderedReadinessDuration)
         XCTAssertGreaterThan(imageByteCount, 0)
         XCTAssertEqual(app.state, .runningForeground)
     }

@@ -25,6 +25,8 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     static let ocrScenarioKey = "NEXTPASTE_UI_TEST_OCR_SCENARIO"
     static let ocrTextKey = "NEXTPASTE_UI_TEST_OCR_TEXT"
     static let initialLanguageKey = "NEXTPASTE_UI_TEST_INITIAL_LANGUAGE"
+    static let launchStartedUptimeKey = "NEXTPASTE_UI_TEST_LAUNCH_STARTED_UPTIME"
+    static let expectedHistoryCountKey = "NEXTPASTE_UI_TEST_EXPECTED_HISTORY_COUNT"
 
     let identifier: String
     let defaultsSuiteName: String
@@ -33,6 +35,7 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     let pasteboardName: String
     let ocrFixture: DebugUITestOCRFixture?
     let initialLanguageRawValue: String?
+    let launchReadinessConfiguration: DebugUITestLaunchReadinessConfiguration?
 
     init?(
         arguments: [String] = ProcessInfo.processInfo.arguments,
@@ -73,6 +76,27 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
         } else {
             self.initialLanguageRawValue = nil
         }
+
+        let rawLaunchStartedUptime = environment[Self.launchStartedUptimeKey]
+        let rawExpectedHistoryCount = environment[Self.expectedHistoryCountKey]
+        switch (rawLaunchStartedUptime, rawExpectedHistoryCount) {
+        case (nil, nil):
+            self.launchReadinessConfiguration = nil
+        case let (rawUptime?, rawCount?):
+            guard let uptime = TimeInterval(rawUptime),
+                  uptime.isFinite,
+                  uptime >= 0,
+                  let expectedCount = Int(rawCount),
+                  expectedCount >= 0 else {
+                return nil
+            }
+            self.launchReadinessConfiguration = DebugUITestLaunchReadinessConfiguration(
+                launchStartedUptime: uptime,
+                expectedHistoryCount: expectedCount
+            )
+        default:
+            return nil
+        }
     }
 
     var defaults: UserDefaults {
@@ -90,6 +114,38 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
             return nil
         }
         return value
+    }
+}
+
+nonisolated struct DebugUITestLaunchReadinessConfiguration: Equatable, Sendable {
+    let launchStartedUptime: TimeInterval
+    let expectedHistoryCount: Int
+}
+
+/// Content-free, Debug-only launch metric. The first authoritative projection
+/// with the expected item count freezes only after both the main toolbar and
+/// history viewport have completed a non-empty layout. Later renders or
+/// mutations cannot make a slow launch look faster.
+nonisolated struct DebugUITestLaunchReadinessProbe: Equatable, Sendable {
+    private(set) var elapsed: TimeInterval?
+
+    mutating func observe(
+        authoritativeHistoryCount: Int,
+        mainToolbarLaidOut: Bool,
+        historyViewportLaidOut: Bool,
+        nowUptime: TimeInterval,
+        configuration: DebugUITestLaunchReadinessConfiguration?
+    ) {
+        guard elapsed == nil,
+              let configuration,
+              authoritativeHistoryCount == configuration.expectedHistoryCount,
+              mainToolbarLaidOut,
+              historyViewportLaidOut,
+              nowUptime.isFinite,
+              nowUptime >= configuration.launchStartedUptime else {
+            return
+        }
+        elapsed = nowUptime - configuration.launchStartedUptime
     }
 }
 

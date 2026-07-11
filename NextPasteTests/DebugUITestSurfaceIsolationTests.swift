@@ -85,6 +85,129 @@ struct DebugUITestSurfaceIsolationTests {
         _ = NewClipView(simulateSaveFailure: true)
     }
 
+#if DEBUG
+    @Test("launch readiness configuration requires a complete valid pair")
+    func launchReadinessConfigurationRequiresACompleteValidPair() {
+        var validEnvironment = Self.completeEnvironment
+        validEnvironment[DebugUITestLaunchEnvironment.launchStartedUptimeKey] = "120.5"
+        validEnvironment[DebugUITestLaunchEnvironment.expectedHistoryCountKey] = "500"
+
+        let valid = DebugUITestLaunchEnvironment(
+            arguments: Self.simulationArguments,
+            environment: validEnvironment
+        )
+        #expect(
+            valid?.launchReadinessConfiguration
+                == DebugUITestLaunchReadinessConfiguration(
+                    launchStartedUptime: 120.5,
+                    expectedHistoryCount: 500
+                )
+        )
+
+        var missingCount = validEnvironment
+        missingCount.removeValue(forKey: DebugUITestLaunchEnvironment.expectedHistoryCountKey)
+        #expect(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: missingCount
+            ) == nil
+        )
+
+        var malformedUptime = validEnvironment
+        malformedUptime[DebugUITestLaunchEnvironment.launchStartedUptimeKey] = "not-a-number"
+        #expect(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: malformedUptime
+            ) == nil
+        )
+    }
+
+    @Test("launch readiness freezes only after exact projection and completed layout")
+    func launchReadinessFreezesOnlyTheFirstExactAuthoritativeProjection() {
+        let configuration = DebugUITestLaunchReadinessConfiguration(
+            launchStartedUptime: 100,
+            expectedHistoryCount: 500
+        )
+        var probe = DebugUITestLaunchReadinessProbe()
+
+        probe.observe(
+            authoritativeHistoryCount: 499,
+            mainToolbarLaidOut: true,
+            historyViewportLaidOut: true,
+            nowUptime: 101,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == nil)
+
+        probe.observe(
+            authoritativeHistoryCount: 500,
+            mainToolbarLaidOut: true,
+            historyViewportLaidOut: true,
+            nowUptime: 99,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == nil)
+
+        probe.observe(
+            authoritativeHistoryCount: 500,
+            mainToolbarLaidOut: true,
+            historyViewportLaidOut: false,
+            nowUptime: 101,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == nil)
+
+        probe.observe(
+            authoritativeHistoryCount: 500,
+            mainToolbarLaidOut: false,
+            historyViewportLaidOut: true,
+            nowUptime: 101,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == nil)
+
+        probe.observe(
+            authoritativeHistoryCount: 500,
+            mainToolbarLaidOut: true,
+            historyViewportLaidOut: true,
+            nowUptime: 101.25,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == 1.25)
+
+        probe.observe(
+            authoritativeHistoryCount: 500,
+            mainToolbarLaidOut: true,
+            historyViewportLaidOut: true,
+            nowUptime: 102.5,
+            configuration: configuration
+        )
+        #expect(probe.elapsed == 1.25)
+    }
+
+    @Test("launch readiness is emitted only by count-coupled layout preferences")
+    func launchReadinessIsEmittedOnlyByCountCoupledLayoutPreferences() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let homeViewSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/HomeView.swift"),
+            encoding: .utf8
+        )
+
+        #expect(homeViewSource.contains(".onPreferenceChange(DebugUITestLaunchLayoutPreferenceKey.self)"))
+        #expect(homeViewSource.contains("authoritativeHistoryCount: visibleClips.count"))
+        #expect(homeViewSource.contains("authoritativeHistoryCount: rows.count"))
+        #expect(
+            homeViewSource.components(
+                separatedBy: "recordUITestLaunchReadinessIfNeeded("
+            ).count - 1 == 2,
+            "Only the layout preference callback and function declaration may reference the readiness recorder"
+        )
+    }
+#endif
+
     private static let simulationArguments = [
         "-ui-testing",
         UITestArgument.disableClipboardMonitor,

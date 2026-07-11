@@ -353,6 +353,7 @@ struct HomeView: View {
     @State private var uiTestPinScrollLastDecision = "none"
     @State private var uiTestPinScrollVisibleItemIDs = "none"
     @State private var uiTestAppliedWindowSize = "pending"
+    @State private var uiTestLaunchReadinessProbe = DebugUITestLaunchReadinessProbe()
 #endif
     // Platform-neutral ID-first Pin/Unpin store. Only the native row-action
     // safe-boundary snapshot is macOS-specific.
@@ -513,6 +514,14 @@ struct HomeView: View {
                     }
                 }
                 .background(measuredFrameReader(for: .header))
+#if DEBUG && os(macOS)
+                .background(
+                    uiTestLaunchReadinessFrameReader(
+                        for: .toolbar,
+                        authoritativeHistoryCount: visibleClips.count
+                    )
+                )
+#endif
 
                 if let settingsPlaceholderMessage {
                     Text(settingsPlaceholderMessage)
@@ -540,6 +549,20 @@ struct HomeView: View {
             if newSettingsMessage != settingsMessageFrame { settingsMessageFrame = newSettingsMessage }
             if newViewport != listViewportFrame { listViewportFrame = newViewport }
         }
+#if DEBUG && os(macOS)
+        .onPreferenceChange(DebugUITestLaunchLayoutPreferenceKey.self) { samples in
+            guard let toolbar = samples[.toolbar],
+                  let viewport = samples[.viewport],
+                  toolbar.authoritativeHistoryCount == viewport.authoritativeHistoryCount else {
+                return
+            }
+            recordUITestLaunchReadinessIfNeeded(
+                authoritativeHistoryCount: viewport.authoritativeHistoryCount,
+                mainToolbarFrame: toolbar.frame,
+                historyViewportFrame: viewport.frame
+            )
+        }
+#endif
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
@@ -1091,6 +1114,14 @@ struct HomeView: View {
             }
 #endif
             .background(measuredFrameReader(for: .viewport))
+#if DEBUG && os(macOS)
+            .background(
+                uiTestLaunchReadinessFrameReader(
+                    for: .viewport,
+                    authoritativeHistoryCount: rows.count
+                )
+            )
+#endif
             .accessibilityIdentifier("clip-history-list")
             .onChange(of: searchText) { _, _ in
                 // A filtered macOS List can retain the pre-filter AppKit
@@ -2368,6 +2399,11 @@ struct HomeView: View {
 #if DEBUG && os(macOS)
             if isUITesting {
                 accessibilityMarker(identifier: "history-visible-count", value: "\(visibleClips.count)", label: "Visible clip count")
+                accessibilityMarker(
+                    identifier: "history-launch-readiness-duration",
+                    value: uiTestLaunchReadinessProbe.elapsed.map { String($0) } ?? "pending",
+                    label: "Rendered history launch readiness duration"
+                )
                 accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
                 accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
                 accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
@@ -2470,6 +2506,28 @@ struct HomeView: View {
     }
 
 #if DEBUG && os(macOS)
+    private func recordUITestLaunchReadinessIfNeeded(
+        authoritativeHistoryCount: Int,
+        mainToolbarFrame: CGRect,
+        historyViewportFrame: CGRect
+    ) {
+        guard let configuration = DebugUITestLaunchEnvironment()?
+            .launchReadinessConfiguration else {
+            return
+        }
+        var updatedProbe = uiTestLaunchReadinessProbe
+        updatedProbe.observe(
+            authoritativeHistoryCount: authoritativeHistoryCount,
+            mainToolbarLaidOut: mainToolbarFrame.width > 0 && mainToolbarFrame.height > 0,
+            historyViewportLaidOut: historyViewportFrame.width > 0 && historyViewportFrame.height > 0,
+            nowUptime: ProcessInfo.processInfo.systemUptime,
+            configuration: configuration
+        )
+        if updatedProbe != uiTestLaunchReadinessProbe {
+            uiTestLaunchReadinessProbe = updatedProbe
+        }
+    }
+
     private func uiTestOCRStateValue(for request: ImageTextRecognitionRequest) -> String {
         switch imageTextRecognitionCoordinator.state(for: request) {
         case .idle: return "idle"
@@ -2547,6 +2605,25 @@ struct HomeView: View {
     }
 
 #if DEBUG && os(macOS)
+    private func uiTestLaunchReadinessFrameReader(
+        for role: DebugUITestLaunchLayoutRole,
+        authoritativeHistoryCount: Int
+    ) -> some View {
+        GeometryReader { geometry in
+            Color.clear.preference(
+                key: DebugUITestLaunchLayoutPreferenceKey.self,
+                value: [
+                    role: DebugUITestLaunchLayoutSample(
+                        authoritativeHistoryCount: authoritativeHistoryCount,
+                        frame: geometry.frame(in: .global)
+                    )
+                ]
+            )
+        }
+    }
+#endif
+
+#if DEBUG && os(macOS)
     private var pinScrollVisibilityIsReady: Bool {
         pinScrollLayoutObservationState.hasCurrentSnapshot
             && pinScrollLayoutObservationState.projectionItemIDs == visibleClips.map(\.id)
@@ -2618,6 +2695,29 @@ private struct HistoryMeasuredFramePreferenceKey: PreferenceKey {
         value.merge(nextValue(), uniquingKeysWith: { _, newValue in newValue })
     }
 }
+
+#if DEBUG && os(macOS)
+private enum DebugUITestLaunchLayoutRole: Hashable {
+    case toolbar
+    case viewport
+}
+
+private struct DebugUITestLaunchLayoutSample: Equatable {
+    let authoritativeHistoryCount: Int
+    let frame: CGRect
+}
+
+private struct DebugUITestLaunchLayoutPreferenceKey: PreferenceKey {
+    static var defaultValue: [DebugUITestLaunchLayoutRole: DebugUITestLaunchLayoutSample] = [:]
+
+    static func reduce(
+        value: inout [DebugUITestLaunchLayoutRole: DebugUITestLaunchLayoutSample],
+        nextValue: () -> [DebugUITestLaunchLayoutRole: DebugUITestLaunchLayoutSample]
+    ) {
+        value.merge(nextValue(), uniquingKeysWith: { _, newValue in newValue })
+    }
+}
+#endif
 
 #if os(macOS)
 @MainActor
