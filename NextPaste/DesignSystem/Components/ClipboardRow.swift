@@ -7,6 +7,7 @@ import SwiftUI
 
 struct ClipboardRow: View {
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.locale) private var locale
 
     let presentation: ClipboardRowPresentation
     let onCopy: (() -> Void)?
@@ -81,7 +82,7 @@ struct ClipboardRow: View {
 
     private func accessibilityValue(for interactionState: ClipboardRowPresentation.InteractionState) -> String {
         [
-            presentation.pinState.accessibilityLabel,
+            presentation.pinState.localizedAccessibilityLabel(locale: locale),
             presentation.copyFeedback?.accessibilityLabel,
             interactionState.accessibilityLabel
         ]

@@ -45,6 +45,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
 
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
+    @Environment(\.locale) private var locale
     @State private var isHovered = false
 
     let isPinned: Bool
@@ -137,15 +138,16 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         .accessibilityValue(accessibility.value(effectiveInteractionState))
         .accessibilityIdentifier(accessibility.identifier)
         .optionalAccessibilityAction(
-            named: ClipboardRowPresentation.RowAction.copy.accessibilityLabel,
+            named: ClipboardRowPresentation.RowAction.copy.localizedAccessibilityLabel(locale: locale),
             perform: onCopy
         )
         .optionalAccessibilityAction(
-            named: RowActionControlGroup.pinActionLabel(isPinned: isPinned),
+            named: ClipboardRowPresentation.RowAction.pin(isPinned: isPinned)
+                .localizedAccessibilityLabel(locale: locale),
             perform: onTogglePin
         )
         .optionalAccessibilityAction(
-            named: RowActionControlGroup.deleteActionLabel,
+            named: ClipboardRowPresentation.RowAction.delete.localizedAccessibilityLabel(locale: locale),
             perform: onDelete
         )
     }
@@ -236,6 +238,7 @@ struct SharedRowTrailingState: View {
     }
 
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.locale) private var locale
 
     let copyFeedback: ClipboardRowPresentation.CopyFeedback?
     let copyFeedbackStyle: CopyFeedbackStyle
@@ -248,7 +251,7 @@ struct SharedRowTrailingState: View {
             copyFeedbackView(copyFeedback)
         } else if isPinned {
             Badge(
-                pinState.accessibilityLabel,
+                pinState.localizedAccessibilityLabel(locale: locale),
                 symbolName: pinState.symbolName,
                 role: .pinned
             )

@@ -90,6 +90,22 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
             }
         }
 
+        /// Resolves at render time against SwiftUI's in-app locale rather than
+        /// freezing the process language into a stored presentation string.
+        func localizedAccessibilityLabel(locale: Locale) -> String {
+            let localizedBundle = locale.nextPasteLocalizationBundle
+            return switch self {
+            case .copy:
+                String(localized: "Copy", bundle: localizedBundle, locale: locale)
+            case .delete:
+                String(localized: "Delete", bundle: localizedBundle, locale: locale)
+            case let .pin(isPinned):
+                isPinned
+                    ? String(localized: "Unpin", bundle: localizedBundle, locale: locale)
+                    : String(localized: "Pin", bundle: localizedBundle, locale: locale)
+            }
+        }
+
         var symbolName: String {
             switch self {
             case .copy:
@@ -121,6 +137,18 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
                 "Unpinned"
             case .pinned:
                 "Pinned"
+            }
+        }
+
+        /// `Pinned`/`Unpinned` are accessibility state, not persisted model
+        /// values. Resolve them with the current in-app locale on every render.
+        func localizedAccessibilityLabel(locale: Locale) -> String {
+            let localizedBundle = locale.nextPasteLocalizationBundle
+            return switch self {
+            case .unpinned:
+                String(localized: "Unpinned", bundle: localizedBundle, locale: locale)
+            case .pinned:
+                String(localized: "Pinned", bundle: localizedBundle, locale: locale)
             }
         }
 
@@ -179,6 +207,19 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
         }
 
         return String(normalizedText.prefix(limit)) + "..."
+    }
+}
+
+private extension Locale {
+    /// NextPaste deliberately supports two in-app languages. Map the SwiftUI
+    /// environment locale to that product language, then resolve against the
+    /// concrete `.lproj` sub-bundle so process-language preferences cannot
+    /// override the in-app selection.
+    var nextPasteLocalizationBundle: Bundle {
+        let appLanguage: AppLanguage = language.languageCode?.identifier == "zh"
+            ? .traditionalChineseTaiwan
+            : .englishUnitedStates
+        return appLanguage.localizationBundle(in: Bundle(for: ClipItem.self))
     }
 }
 
@@ -257,7 +298,9 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             metadata: content.metadata,
             thumbnailFilename: content.thumbnailFilename,
             usesFallbackIcon: usesFallbackIcon,
-            pinState: content.isPinned ? .pinned : .unpinned,
+            pinStateLabel: (content.isPinned
+                ? ClipboardRowPresentation.PinState.pinned
+                : .unpinned).accessibilityLabel,
             copyFeedback: copyFeedback,
             interactionState: interactionState
         )
@@ -277,6 +320,17 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
 
     var pinState: ClipboardRowPresentation.PinState {
         isPinned ? .pinned : .unpinned
+    }
+
+    func localizedAccessibilityValue(locale: Locale) -> String {
+        Self.accessibilityValue(
+            metadata: metadata,
+            thumbnailFilename: thumbnailFilename,
+            usesFallbackIcon: usesFallbackIcon,
+            pinStateLabel: pinState.localizedAccessibilityLabel(locale: locale),
+            copyFeedback: copyFeedback,
+            interactionState: interactionState
+        )
     }
 
     private static func metadata(for clip: ClipItem) -> String {
@@ -305,7 +359,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         metadata: String,
         thumbnailFilename: String?,
         usesFallbackIcon: Bool,
-        pinState: ClipboardRowPresentation.PinState,
+        pinStateLabel: String,
         copyFeedback: ClipboardRowPresentation.CopyFeedback?,
         interactionState: ClipboardRowPresentation.InteractionState
     ) -> String {
@@ -321,7 +375,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         return [
             metadata,
             thumbnailState,
-            pinState.accessibilityLabel,
+            pinStateLabel,
             copyFeedback?.accessibilityLabel,
             interactionState.accessibilityLabel
         ]

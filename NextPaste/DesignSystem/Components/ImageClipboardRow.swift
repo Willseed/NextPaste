@@ -12,6 +12,7 @@ import UIKit
 
 struct ImageClipboardRow: View {
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.locale) private var locale
 
     private static let thumbnailAreaSize: CGFloat = 56
 
@@ -42,7 +43,7 @@ struct ImageClipboardRow: View {
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: presentation.rowAccessibilityIdentifier,
                 label: presentation.accessibilityLabel,
-                value: presentation.accessibilityValue
+                value: presentation.localizedAccessibilityValue(locale: locale)
             ),
             onCopy: onCopy,
             onDelete: onDelete,

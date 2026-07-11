@@ -63,6 +63,21 @@ struct ClipboardRowPresentationTests {
         #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true).symbolName == DesignTokens.Icons.unpin)
     }
 
+    @Test("Pin and Unpin accessibility actions follow the in-app locale")
+    func pinActionsFollowInAppLocale() {
+        let english = Locale(identifier: "en_US")
+        let traditionalChinese = Locale(identifier: "zh_Hant_TW")
+
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: false)
+            .localizedAccessibilityLabel(locale: english) == "Pin")
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true)
+            .localizedAccessibilityLabel(locale: english) == "Unpin")
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: false)
+            .localizedAccessibilityLabel(locale: traditionalChinese) == "釘選")
+        #expect(ClipboardRowPresentation.RowAction.pin(isPinned: true)
+            .localizedAccessibilityLabel(locale: traditionalChinese) == "取消釘選")
+    }
+
     @Test("shared row action controls preserve stable identifiers and state-aware swipe labels")
     func sharedRowActionControlsPreserveIdentifiersAndSwipeLabels() {
         #expect(RowActionControlGroup.copyButtonIdentifier == "copy-clip-button")
@@ -88,6 +103,21 @@ struct ClipboardRowPresentationTests {
         #expect(state.symbolName == DesignTokens.Icons.pinned)
         #expect(state.accessibilityLabel == "Pinned")
         #expect(state.usesAccentMarker)
+    }
+
+    @Test("Pinned and Unpinned accessibility state follows the in-app locale")
+    func pinStateFollowsInAppLocale() {
+        let english = Locale(identifier: "en_US")
+        let traditionalChinese = Locale(identifier: "zh_Hant_TW")
+
+        #expect(ClipboardRowPresentation.PinState.pinned
+            .localizedAccessibilityLabel(locale: english) == "Pinned")
+        #expect(ClipboardRowPresentation.PinState.unpinned
+            .localizedAccessibilityLabel(locale: english) == "Unpinned")
+        #expect(ClipboardRowPresentation.PinState.pinned
+            .localizedAccessibilityLabel(locale: traditionalChinese) == "已釘選")
+        #expect(ClipboardRowPresentation.PinState.unpinned
+            .localizedAccessibilityLabel(locale: traditionalChinese) == "未釘選")
     }
 
     @Test("preserves image row metadata inputs")

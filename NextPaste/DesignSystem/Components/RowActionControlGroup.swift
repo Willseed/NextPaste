@@ -64,10 +64,10 @@ struct RowActionControlGroup: View {
         Button(role: role) {
             handler()
         } label: {
-            Label(action.accessibilityLabel, systemImage: action.symbolName)
+            Label(LocalizedStringKey(action.accessibilityLabel), systemImage: action.symbolName)
         }
         .buttonStyle(.borderless)
         .accessibilityIdentifier(identifier)
-        .accessibilityLabel(action.accessibilityLabel)
+        .accessibilityLabel(Text(LocalizedStringKey(action.accessibilityLabel)))
     }
 }
