@@ -2539,7 +2539,7 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(copyRow, "Unpinned")
         UITestAssertions.assertAccessibleTextContains(copyRow, "Normal")
 
-        let copyButton = row.copyButton()
+        let copyButton = row.copyButton(for: UITestFixtures.RowActions.copyTarget)
         XCTAssertEqual(copyButton.identifier, "copy-clip-button", "FR-017: copy button identifier preserved")
         XCTAssertTrue(copyButton.isHittable, "FR-017: copy button keyboard-reachable (hittable)")
         UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
@@ -2562,6 +2562,10 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(fullPinButton, "Pin")
         UITestAssertions.assertNoCopiedFeedback(in: app)
         XCTAssertEqual(clipboard.string(), UITestFixtures.RowActions.beforeCopy)
+
+        row.dismissRevealedSwipeActions(
+            on: row.textRowElement(containing: UITestFixtures.RowActions.olderPinTarget)
+        )
 
         row.performSubThresholdRightSwipe(onTextRow: UITestFixtures.RowActions.olderPinTarget)
             .assertNoSwipeActionsRevealed()

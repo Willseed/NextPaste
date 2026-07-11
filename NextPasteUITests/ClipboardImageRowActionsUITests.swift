@@ -480,11 +480,15 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         let fixture = UITestFixtures.ImageClipboard.olderPinTarget
         let deleteFixture = UITestFixtures.ImageClipboard.deleteTarget
 
-        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
         clipboard.captureImage(fixture)
         clipboard.captureImage(deleteFixture)
         clipboard.assertImageRow(for: fixture)
         clipboard.assertImageRow(for: deleteFixture)
+        // Image fixture publication intentionally replaces pasteboard contents.
+        // Establish the no-copy sentinel only after both prerequisite captures,
+        // immediately before exercising the row-action surface.
+        clipboard.setString(PasteboardSentinel.beforeSuccessfulCopy)
+        XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
 
         // FR-017 identifiers + labels + accessibility traits (image side).
         let pinButton = row.revealImagePinActionWithRightSwipe(
@@ -509,6 +513,10 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(fullPinButton, "Pin")
         UITestAssertions.assertNoImageCopiedFeedback(in: app)
         XCTAssertEqual(clipboard.string(), PasteboardSentinel.beforeSuccessfulCopy)
+
+        row.dismissRevealedSwipeActions(
+            on: row.imageRowElement(withThumbnailDescription: fixture.thumbnailDescription)
+        )
 
         row.performSubThresholdRightSwipe(onImageRow: fixture.thumbnailDescription)
             .assertNoSwipeActionsRevealed()
