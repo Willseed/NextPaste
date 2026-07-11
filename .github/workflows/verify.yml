@@ -12,16 +12,15 @@ jobs:
     name: Build and test
     runs-on: macos-26
     timeout-minutes: 180
-    env:
-      VERIFY_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteVerification
-      VERIFY_DERIVED_DATA_PATH: ${{ runner.temp }}/NextPasteDerivedData
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Run complete verification
         shell: bash
+        env:
+          VERIFY_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteVerification
+          VERIFY_DERIVED_DATA_PATH: ${{ runner.temp }}/NextPasteDerivedData
         run: |
           set -euo pipefail
           mkdir -p "$VERIFY_ARTIFACTS_DIR"
