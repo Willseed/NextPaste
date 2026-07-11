@@ -321,17 +321,57 @@ struct HistoryRetentionServiceTests {
         #expect(applyImplementation.contains("HistoryRetentionService(modelContext: modelContext).enforceLimit"))
     }
 
-    @Test func saveFailureRollsBackAllPendingRetentionDeletes() throws {
+    @Test func saveFailureRollsBackRowsAndPreservesImageFiles() throws {
         enum InjectedFailure: Error { case save }
 
         let context = try makeContext()
-        let clips = try SwiftDataTestSupport.seedClips(
-            ["oldest", "middle", "newest"],
-            in: context,
+        let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "retention-save-failure-preserves-image-files"
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root) }
+        let fileStore = ImageClipFileStore(rootURL: root.rootURL)
+        let oldestID = try #require(UUID(uuidString: "F8AF5E89-5150-47A0-9D5C-6DB64167DA49"))
+        let fullImageData = ImageTestFixtures.png.data
+        let thumbnailData = ImageTestFixtures.screenshotStyle.data
+        let asset = try fileStore.persistImageAsset(
+            clipID: oldestID,
+            sourceExtension: ImageTestFixtures.png.fileExtension,
+            fullImageData: fullImageData,
+            thumbnailData: thumbnailData
+        )
+        let thumbnailURL = try #require(asset.thumbnailURL)
+        let oldestImage = ClipItem.imageClip(ImageClipInitialization(
+            id: oldestID,
+            metadata: ImageClipInitialization.Metadata(
+                hash: "retention-save-failure-image",
+                dimensions: .init(width: 1, height: 1),
+                byteCount: fullImageData.count,
+                utType: ImageTestFixtures.png.typeIdentifier,
+                filename: asset.imageFilename,
+                thumbnail: .init(
+                    filename: asset.thumbnailFilename,
+                    description: "Retention save failure fixture"
+                )
+            ),
+            createdAt: Date(timeIntervalSince1970: 1),
+            isPinned: false
+        ))
+        let middle = ClipItem(
+            textContent: "middle",
+            createdAt: Date(timeIntervalSince1970: 2),
             isPinned: false
         )
+        let newest = ClipItem(
+            textContent: "newest",
+            createdAt: Date(timeIntervalSince1970: 3),
+            isPinned: false
+        )
+        [oldestImage, middle, newest].forEach(context.insert)
+        try context.save()
+
         let service = HistoryRetentionService(
             modelContext: context,
+            imageFileStore: fileStore,
             saveContext: { _ in throw InjectedFailure.save }
         )
 
@@ -339,7 +379,12 @@ struct HistoryRetentionServiceTests {
             try service.enforceLimit(limit: HistoryLimit(1))
         }
         let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
-        #expect(Set(remaining.map(\.id)) == Set(clips.map(\.id)))
+        #expect(Set(remaining.map(\.id)) == Set([oldestImage.id, middle.id, newest.id]))
+        let restoredImage = try #require(remaining.first { $0.id == oldestID })
+        #expect(restoredImage.imageFilename == asset.imageFilename)
+        #expect(restoredImage.thumbnailFilename == asset.thumbnailFilename)
+        #expect(try Data(contentsOf: asset.imageURL) == fullImageData)
+        #expect(try Data(contentsOf: thumbnailURL) == thumbnailData)
     }
 
     @Test func trimmingAnImageRemovesItsFilesAfterTheStoreSave() throws {
