@@ -84,6 +84,7 @@ struct ImageTextRecognitionCoordinatorTests {
             .success("Retry succeeded")
         ])
         let writer = RecordingClipboardTextWriter()
+        let outcomes = CopyOutcomeRecorder()
         let coordinator = ImageTextRecognitionCoordinator(
             recognizer: recognizer,
             pasteboardWriter: writer
@@ -93,11 +94,13 @@ struct ImageTextRecognitionCoordinatorTests {
         _ = await coordinator.requestCopy(
             request,
             imageURL: imageURL(index: 4),
-            isCurrentItem: { $0 == request }
+            isCurrentItem: { $0 == request },
+            completion: outcomes.record
         )
         await coordinator.waitForCurrentTask(for: request.itemID)
         #expect(coordinator.state(for: request) == .failed)
         #expect(writer.writes.isEmpty)
+        #expect(outcomes.values == [.recognitionFailed])
 
         #expect(await coordinator.requestCopy(
             request,
@@ -109,6 +112,129 @@ struct ImageTextRecognitionCoordinatorTests {
         #expect(coordinator.state(for: request) == .recognized("Retry succeeded"))
         #expect(writer.writes == ["Retry succeeded"])
         #expect(await recognizer.invocationCount == 2)
+    }
+
+    @Test("an in-flight request publishes recognizing before completion")
+    func inflightRequestPublishesRecognizingBeforeCompletion() async {
+        let recognizer = ControlledImageTextRecognizer()
+        let writer = RecordingClipboardTextWriter()
+        let coordinator = ImageTextRecognitionCoordinator(
+            recognizer: recognizer,
+            pasteboardWriter: writer
+        )
+        let request = makeRequest(index: 52)
+        let url = imageURL(index: 52)
+
+        _ = await coordinator.requestCopy(
+            request,
+            imageURL: url,
+            isCurrentItem: { $0 == request }
+        )
+        #expect(coordinator.state(for: request) == .recognizing)
+        await expectInvocationCount(1, recognizer: recognizer)
+        if let token = await recognizer.firstPendingToken(for: url) {
+            await recognizer.resume(token: token, with: .success("Completed text"))
+        }
+        await coordinator.waitForCurrentTask(for: request.itemID)
+
+        #expect(coordinator.state(for: request) == .recognized("Completed text"))
+    }
+
+    @Test("reconcile cancels deleted and changed-fingerprint requests")
+    func reconcileCancelsDeletedAndChangedFingerprintRequests() async {
+        let recognizer = ControlledImageTextRecognizer()
+        let writer = RecordingClipboardTextWriter()
+        let coordinator = ImageTextRecognitionCoordinator(
+            recognizer: recognizer,
+            pasteboardWriter: writer
+        )
+        let deletedRequest = makeRequest(index: 53)
+        let deletedURL = imageURL(index: 53)
+        _ = await coordinator.requestCopy(
+            deletedRequest,
+            imageURL: deletedURL,
+            isCurrentItem: { $0 == deletedRequest }
+        )
+        await expectInvocationCount(1, recognizer: recognizer)
+        let deletedToken = await recognizer.firstPendingToken(for: deletedURL)
+
+        coordinator.reconcile(validRequests: [])
+        if let deletedToken {
+            await recognizer.resume(token: deletedToken, with: .success("Late deleted text"))
+        }
+        await expectCompletionCount(1, recognizer: recognizer)
+        #expect(coordinator.state(for: deletedRequest) == .idle)
+
+        let sharedID = deterministicID(index: 54)
+        let oldRequest = ImageTextRecognitionRequest(
+            itemID: sharedID,
+            imageFilename: "old-54.png",
+            imageFingerprint: "old-54"
+        )
+        let newRequest = ImageTextRecognitionRequest(
+            itemID: sharedID,
+            imageFilename: "new-54.png",
+            imageFingerprint: "new-54"
+        )
+        let oldURL = imageURL(index: 54)
+        _ = await coordinator.requestCopy(
+            oldRequest,
+            imageURL: oldURL,
+            isCurrentItem: { $0 == oldRequest }
+        )
+        await expectInvocationCount(2, recognizer: recognizer)
+        let oldToken = await recognizer.firstPendingToken(for: oldURL)
+
+        coordinator.reconcile(validRequests: [newRequest])
+        if let oldToken {
+            await recognizer.resume(token: oldToken, with: .success("Late old fingerprint"))
+        }
+        await expectCompletionCount(2, recognizer: recognizer)
+
+        #expect(coordinator.state(for: oldRequest) == .idle)
+        #expect(coordinator.state(for: newRequest) == .idle)
+        #expect(writer.writes.isEmpty)
+    }
+
+    @Test("cancel all cancels in-flight work and clears every terminal cache entry")
+    func cancelAllCancelsInflightAndClearsCache() async {
+        let recognizer = ControlledImageTextRecognizer()
+        let writer = RecordingClipboardTextWriter()
+        let coordinator = ImageTextRecognitionCoordinator(
+            recognizer: recognizer,
+            pasteboardWriter: writer
+        )
+        let cached = makeRequest(index: 55)
+        let cachedURL = imageURL(index: 55)
+        _ = await coordinator.requestCopy(
+            cached,
+            imageURL: cachedURL,
+            isCurrentItem: { $0 == cached }
+        )
+        await expectInvocationCount(1, recognizer: recognizer)
+        if let token = await recognizer.firstPendingToken(for: cachedURL) {
+            await recognizer.resume(token: token, with: .success("Cached before cancel all"))
+        }
+        await coordinator.waitForCurrentTask(for: cached.itemID)
+
+        let inflight = makeRequest(index: 56)
+        let inflightURL = imageURL(index: 56)
+        _ = await coordinator.requestCopy(
+            inflight,
+            imageURL: inflightURL,
+            isCurrentItem: { $0 == inflight }
+        )
+        await expectInvocationCount(2, recognizer: recognizer)
+        let inflightToken = await recognizer.firstPendingToken(for: inflightURL)
+        coordinator.cancelAll(clearCache: true)
+        if let inflightToken {
+            await recognizer.resume(token: inflightToken, with: .success("Late inflight text"))
+        }
+        await expectCompletionCount(2, recognizer: recognizer)
+
+        #expect(coordinator.state(for: cached) == .idle)
+        #expect(coordinator.state(for: inflight) == .idle)
+        #expect(writer.writes == ["Cached before cancel all"])
     }
 
     @Test("cancelling a non-cooperative task ignores its late result")
@@ -659,16 +785,33 @@ private actor ControlledImageTextRecognizer: ImageTextRecognizing {
 private actor CancellationObservingImageTextRecognizer: ImageTextRecognizing {
     private(set) var hasStarted = false
     private(set) var didObserveCancellation = false
+    private var continuation: CheckedContinuation<Void, Error>?
 
     func recognizeText(in _: URL) async throws -> String? {
         hasStarted = true
         do {
-            try await Task.sleep(for: .seconds(60))
+            try await withTaskCancellationHandler {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    if Task.isCancelled {
+                        continuation.resume(throwing: CancellationError())
+                    } else {
+                        self.continuation = continuation
+                    }
+                }
+            } onCancel: {
+                Task { await self.cancelPendingRecognition() }
+            }
             return "Unexpected uncancelled result"
         } catch is CancellationError {
             didObserveCancellation = true
             throw CancellationError()
         }
+    }
+
+    private func cancelPendingRecognition() {
+        didObserveCancellation = true
+        continuation?.resume(throwing: CancellationError())
+        continuation = nil
     }
 }
 

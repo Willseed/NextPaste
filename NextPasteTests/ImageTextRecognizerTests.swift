@@ -34,6 +34,7 @@ struct ImageTextRecognizerTests {
     @Test("classifies empty and whitespace-only observations as no text", arguments: [
         [String](),
         [""],
+        ["\n\n"],
         ["   ", "\n\t", "  "]
     ])
     func rejectsEmptyOrWhitespaceOnlyResults(_ fragments: [String]) {
@@ -44,6 +45,23 @@ struct ImageTextRecognizerTests {
 #if os(macOS)
 @Suite("Vision image text recognition")
 struct VisionImageTextRecognizerIntegrationTests {
+    @Test("synchronous Vision work is isolated in a non-MainActor actor")
+    func expensiveVisionPerformHasANonMainActorExecutorBoundary() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("NextPaste/ImageClips/ImageTextRecognizer.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let declaration = try #require(source.range(of: "actor VisionImageTextRecognizer"))
+        let nextDeclaration = try #require(
+            source[declaration.lowerBound...].range(of: "nonisolated private final class VisionRequestCancellation")
+        )
+        let actorImplementation = source[declaration.lowerBound..<nextDeclaration.lowerBound]
+
+        #expect(actorImplementation.contains("try handler.perform([request])"))
+        #expect(actorImplementation.contains("@MainActor") == false)
+    }
+
     @Test("recognizes meaningful text from a local high-contrast PNG")
     func recognizesGeneratedBitmapText() async throws {
         let fixture = try LocalVisionImageFixture(text: "NEXTPASTE 7429")
@@ -66,6 +84,20 @@ struct VisionImageTextRecognizerIntegrationTests {
         let recognizedText = try await VisionImageTextRecognizer().recognizeText(in: fixture.url)
 
         #expect(recognizedText == nil)
+    }
+
+    @Test("invalid image data fails safely")
+    func invalidImageDataThrowsWithoutCrashing() async throws {
+        let directoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NextPaste-InvalidVisionFixture-\(UUID().uuidString)", isDirectory: true)
+        let invalidURL = directoryURL.appendingPathComponent("invalid.png")
+        try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directoryURL) }
+        try Data("not an encoded image".utf8).write(to: invalidURL, options: .atomic)
+
+        await #expect(throws: (any Error).self) {
+            try await VisionImageTextRecognizer().recognizeText(in: invalidURL)
+        }
     }
 }
 
