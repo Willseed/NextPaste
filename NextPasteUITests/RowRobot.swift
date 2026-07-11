@@ -85,6 +85,22 @@ struct RowRobot {
         return button
     }
 
+    func copyButton(
+        for clipText: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let row = textRow(containing: clipText, file: file, line: line)
+        let button = row.buttons.matching(identifier: Accessibility.copyButtonIdentifier).firstMatch
+        UITestAssertions.assertExists(
+            button,
+            "Expected copy button in the row for \(clipText)",
+            file: file,
+            line: line
+        )
+        return button
+    }
+
     func textRowElement(
         containing clipText: String,
         timeout: TimeInterval = UITestAssertions.defaultTimeout,

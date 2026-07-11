@@ -68,6 +68,7 @@ NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/RowRobot.swift|for clipText: String,
+NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/SettingsUITests.swift|for (identifier, expectedLabel) in expectedLabels {
 NextPasteUITests/SettingsUITests.swift|for invalidDraft in ["letters", "1.5", "#$%"] {
 NextPasteUITests/SettingsUITests.swift|for option in options {

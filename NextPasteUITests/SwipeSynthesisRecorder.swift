@@ -71,11 +71,16 @@ enum SwipeSynthesisRecorder {
                 }
                 swipeIssued = true
 
-                if let button = hittableActionButton(
-                    identifier: buttonIdentifier,
-                    alignedTo: rowScope,
-                    in: app
-                ) {
+                var revealedButton: XCUIElement?
+                let didReveal = UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                    revealedButton = hittableActionButton(
+                        identifier: buttonIdentifier,
+                        alignedTo: rowScope,
+                        in: app
+                    )
+                    return revealedButton != nil
+                }
+                if didReveal, let button = revealedButton {
                     UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
                     return .revealed(button)
                 }

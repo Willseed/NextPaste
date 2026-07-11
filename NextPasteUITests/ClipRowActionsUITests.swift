@@ -44,7 +44,7 @@ final class ClipRowActionsUITests: UITestCase {
         history.assertClipRowIdentifierExists()
         assertTextRowIdentifier(for: UITestFixtures.RowActions.accessibleAction, in: app)
 
-        let copyButton = row.copyButton()
+        let copyButton = row.copyButton(for: UITestFixtures.RowActions.accessibleAction)
         XCTAssertEqual(copyButton.identifier, "copy-clip-button")
         XCTAssertTrue(copyButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
