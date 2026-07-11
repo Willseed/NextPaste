@@ -539,7 +539,7 @@ struct ClipItemTests {
         context.insert(clip)
         try context.save()
         _ = store.setPinned(true, for: clip.id, source: .testHarness)
-        var pinnedHistory = try SwiftDataTestSupport.fetchHistory(in: context)
+        let pinnedHistory = try SwiftDataTestSupport.fetchHistory(in: context)
         #expect(pinnedHistory.filter { $0.id == clip.id }.count == 1)
         // (c)+(d) the acted-on clip is the only item in the pinned section after a
         //        state-changing Pin and writes the correct sectionSortDate/section placement.

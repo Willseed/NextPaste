@@ -373,12 +373,9 @@ struct ReconciliationLifecycleObservers {
 
     init(_ homeView: HomeView) {
         self.homeView = homeView
-        // The retroactive conformance in the test file guarantees this cast
-        // succeeds once T072 has landed.
-        guard let probe = homeView as? ReconciliationLifecycleProbe else {
-            fatalError("HomeView must conform to ReconciliationLifecycleProbe (T072 seam).")
-        }
-        self.probe = probe
+        // The retroactive conformance in the test file makes the T072 seam a
+        // compile-time requirement.
+        self.probe = homeView
     }
 
     // Generation / token
@@ -521,8 +518,8 @@ enum ReconciliationLifecycleAssertions {
     /// input. On timeout, records a diagnostic failure.
     static func awaitCondition(
         timeout: Duration = .seconds(2),
-        _ condition: @MainActor @escaping () -> Bool,
-        message: Comment = "Bounded async condition wait timed out."
+        message: Comment = "Bounded async condition wait timed out.",
+        _ condition: @MainActor @escaping () -> Bool
     ) async {
         let clock = ContinuousClock()
         let start = clock.now

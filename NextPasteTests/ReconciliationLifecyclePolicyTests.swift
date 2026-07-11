@@ -32,6 +32,7 @@ import Testing
 
 // MARK: - Suite
 
+@MainActor
 @Suite("Pure reconciliation lifecycle policy (T070)")
 struct ReconciliationLifecyclePolicyTests {
 
@@ -42,13 +43,15 @@ struct ReconciliationLifecyclePolicyTests {
         let a = ReconciliationGenerationToken(generation: 1)
         let same = ReconciliationGenerationToken(generation: 1)
         let other = ReconciliationGenerationToken(generation: 2)
+        let sameGenerationTokensAreEqual = a == same
+        let differentGenerationTokensAreUnequal = a != other
 
         #expect(
-            a == same,
+            sameGenerationTokensAreEqual,
             "Tokens with the same generation must be equal (FR-010)."
         )
         #expect(
-            a != other,
+            differentGenerationTokensAreUnequal,
             "Tokens with different generations must be unequal (FR-010)."
         )
     }
@@ -57,6 +60,7 @@ struct ReconciliationLifecyclePolicyTests {
     func tokenBumpProducesNextGeneration() {
         let initial = ReconciliationGenerationToken(generation: 0)
         let next = initial.bumped()
+        let bumpedTokenDiffersFromSource = next != initial
 
         #expect(
             next.generation == initial.generation &+ 1,
@@ -67,7 +71,7 @@ struct ReconciliationLifecyclePolicyTests {
             "bumped() must not mutate the source token (value semantics, FR-013)."
         )
         #expect(
-            next != initial,
+            bumpedTokenDiffersFromSource,
             "A bumped token must differ from its source (FR-010)."
         )
     }

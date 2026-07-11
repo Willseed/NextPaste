@@ -7,6 +7,7 @@ import Foundation
 import Testing
 @testable import NextPaste
 
+@MainActor
 @Suite("Clipboard image payload validation")
 struct ClipboardImagePayloadTests {
     @Test("validates PNG, JPEG, and screenshot-style Apple-native raster payloads")
@@ -14,6 +15,8 @@ struct ClipboardImagePayloadTests {
         for fixture in ImageTestFixtures.supportedCaptureFixtures {
             let payload = try ImageTestFixtures.makePayload(for: fixture)
             let repeatedPayload = try ImageTestFixtures.makePayload(for: fixture)
+            let duplicateIdentitiesMatch =
+                payload.duplicateIdentity == repeatedPayload.duplicateIdentity
 
             #expect(payload.encodedData == fixture.data)
             #expect(payload.typeIdentifier == fixture.typeIdentifier)
@@ -25,7 +28,7 @@ struct ClipboardImagePayloadTests {
             #expect(payload.duplicateIdentity.hash.isEmpty == false)
             #expect(payload.duplicateIdentity.width == fixture.width)
             #expect(payload.duplicateIdentity.height == fixture.height)
-            #expect(payload.duplicateIdentity == repeatedPayload.duplicateIdentity)
+            #expect(duplicateIdentitiesMatch)
         }
     }
 

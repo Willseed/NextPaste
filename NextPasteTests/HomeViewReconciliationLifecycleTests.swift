@@ -18,10 +18,9 @@
 //  `reconciliationTask`) and the internal read-only testability seam are
 //  introduced by T072, and `scheduleTogglePin`/`deleteClip` are promoted from
 //  `private` to `internal` in the same task. T073 builds the lifecycle harness
-//  attached to that seam. Until T072 lands, `HomeView` does not conform to the
-//  test-local `ReconciliationLifecycleProbe` protocol below, so every test
-//  records a behavioral Red ("seam not implemented") rather than a compile
-//  failure. No production code is modified by this file.
+//  attached to that seam. The test-local `ReconciliationLifecycleProbe`
+//  conformance below makes the seam a compile-time requirement. No production
+//  code is modified by this file.
 //
 //  The probe protocol mirrors the T059 read-only observation surface plus the
 //  real row-action entry points (`scheduleTogglePin` / `deleteClip`) that T072
@@ -43,8 +42,8 @@ import SwiftData
 /// `HomeView` conforms to this protocol once T072 introduces
 /// `reconciliationGeneration`, `reconciliationTask`, the read-only seam
 /// accessors, and promotes `scheduleTogglePin(_:)` / `deleteClip(_:)` to
-/// `internal`. Until then, `homeView as? ReconciliationLifecycleProbe` returns
-/// `nil` and the lifecycle tests record a behavioral Red.
+/// `internal`. The direct existential conversion used by the tests makes a
+/// missing conformance a compile-time failure.
 ///
 /// The protocol carries no index / `IndexPath` / row position (FR-008), exposes
 /// no force-unwraps (FR-013), and provides no way to force a snapshot clear, a
@@ -81,9 +80,7 @@ protocol ReconciliationLifecycleProbe {
 
 // MARK: - T072 retroactive conformance
 // HomeView now provides the internal seam accessors and row-action entry points
-// (T072), so the `as? ReconciliationLifecycleProbe` cast succeeds and the
-// lifecycle tests proceed to real assertions instead of recording "seam not
-// implemented" Red.
+// (T072), so the lifecycle tests use the conformance directly.
 extension HomeView: ReconciliationLifecycleProbe {}
 
 // MARK: - T073 hosted harness
@@ -121,12 +118,7 @@ func t011NewOperationIncrementsReconciliationGeneration() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
 
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record(
-            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — reconciliationGeneration is not observable (FR-010; Plan § generation/token ownership)."
-        )
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     let before = probe.reconciliationGeneration
     await harness.awaitBodyInstalled()
@@ -162,12 +154,7 @@ func t012NewOperationCancelsPriorReconciliationTask() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
 
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record(
-            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — reconciliationTask cancellation state is not observable (FR-009; Plan § previous-task cancellation)."
-        )
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -203,12 +190,7 @@ func t013StaleGenerationTaskExitsWithoutClearingSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
 
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record(
-            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — snapshot generation token is not observable (FR-010; Plan § stale-task prevention)."
-        )
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // Open a snapshot via the first operation, then bump the generation with a
     // second operation. The first Task's capturedGeneration no longer matches
@@ -268,12 +250,7 @@ func t014OlderTaskCannotClearNewerSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
 
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record(
-            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — snapshot ownership by generation is not observable (FR-009, FR-010; Plan § old-task cannot clear new snapshot)."
-        )
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // First operation opens a snapshot under generation G1.
     await harness.awaitBodyInstalled()
@@ -339,12 +316,7 @@ func t021SafeBoundaryAwaitIsSoleGate() async throws {
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
 
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record(
-            "Red: T072 reconciliation lifecycle seam not implemented on HomeView — safeBoundaryAwaitState is not observable (FR-004; Plan § KVO safety gate)."
-        )
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // Drive only the real Pin/Unpin row-action entry point. No click, scroll,
     // key, mouse, or other input is synthesized.
@@ -396,10 +368,7 @@ func nativePinMutationWaitsForLifecycleBoundary() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-004).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -453,10 +422,7 @@ func t015SnapshotEventuallyReleasedAfterSuccess() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-012).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -494,10 +460,7 @@ func t016CancelledTaskReleasesWithoutClearingNewerSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-012).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // G1 reaches the safe-boundary await, then G2 cancels it (generation bump)
     // and opens its own snapshot. G1 must release its own resources (exit
@@ -550,10 +513,7 @@ func t017StaleEarlyExitReleasesWithoutClearing() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-012).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // G2 is launched synchronously right after G1, before G1's Task body runs.
     // G1's pre-await guard sees the bumped generation and exits .staleGeneration
@@ -601,10 +561,7 @@ func t018TargetDeletedExitsSafely() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-011).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -640,10 +597,7 @@ func t019DeleteAfterRemovalExitsCleanly() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-011).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // The native Delete handler must enqueue only. Before the lifecycle
     // boundary the target remains in the query and on screen.
@@ -678,10 +632,7 @@ func t020TeardownCancelsInFlightTask() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-012).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -730,10 +681,7 @@ func t022UuidOnlyIdentityAcrossAsyncHop() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-008).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
     harness.driveTogglePin()
@@ -772,10 +720,7 @@ func t060RollbackWhilePendingNoStaleOrderOrPermanentSnapshot() async throws {
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-009, FR-010).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // G1 opens a snapshot and reaches the safe-boundary await.
     await harness.awaitBodyInstalled()
@@ -836,10 +781,7 @@ func t061NoOpPinUnpinDoesNotRelocateButClearsSnapshotAtSafeBoundary() async thro
     let harness = try ReconciliationLifecycleTestHarness()
     defer { harness.dispose() }
     let observers = ReconciliationLifecycleObservers(harness.homeView)
-    guard let probe = harness.homeView as? ReconciliationLifecycleProbe else {
-        Issue.record("Red: T072 seam not implemented (FR-001, FR-002).")
-        return
-    }
+    let probe: ReconciliationLifecycleProbe = harness.homeView
 
     // Ensure the hosted body has installed so the store uses the real hosted
     // `ModelContext` (not the held value's empty `@Environment` default).

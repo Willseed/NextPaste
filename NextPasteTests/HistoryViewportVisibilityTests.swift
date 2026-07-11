@@ -8,6 +8,7 @@ import Foundation
 import Testing
 @testable import NextPaste
 
+@MainActor
 @Suite("History viewport visibility")
 struct HistoryViewportVisibilityTests {
     @Test("keeps the minimum top inset when the viewport already clears the header")
@@ -67,9 +68,12 @@ struct HistoryViewportVisibilityTests {
             minimumTopInset: 4
         )
 
+        let correctiveScrollTargetsCandidate =
+            plan.correctiveScrollDecision == .scroll(candidateRowID)
+
         #expect(plan.visibleBoundary == 124)
         #expect(plan.firstVisibleRowID == candidateRowID)
-        #expect(plan.correctiveScrollDecision == .scroll(candidateRowID))
+        #expect(correctiveScrollTargetsCandidate)
     }
 
     @Test("does not request corrective scrolling when the candidate row is already fully visible")
@@ -83,7 +87,9 @@ struct HistoryViewportVisibilityTests {
             minimumTopInset: 4
         )
 
-        #expect(plan.correctiveScrollDecision == .notNeeded)
+        let correctiveScrollIsNotNeeded = plan.correctiveScrollDecision == .notNeeded
+
+        #expect(correctiveScrollIsNotNeeded)
         #expect(plan.firstVisibleRowID == candidateRowID)
     }
 
@@ -98,7 +104,9 @@ struct HistoryViewportVisibilityTests {
             minimumTopInset: 4
         )
 
-        #expect(plan.correctiveScrollDecision == .unavailable)
+        let correctiveScrollIsUnavailable = plan.correctiveScrollDecision == .unavailable
+
+        #expect(correctiveScrollIsUnavailable)
         #expect(plan.firstVisibleRowID == nil)
     }
 }

@@ -7,6 +7,7 @@ import Foundation
 import Testing
 @testable import NextPaste
 
+@MainActor
 @Suite("Theme contracts")
 struct ThemeContractTests {
     @Test("provides semantic roles for every supported appearance")
@@ -40,8 +41,9 @@ struct ThemeContractTests {
         let dark = AppTheme(appearance: .dark)
         let highContrastLight = AppTheme(appearance: .highContrastLight)
         let highContrastDark = AppTheme(appearance: .highContrastDark)
+        let darkAppearanceIsSelected = dark.appearance == .dark
 
-        #expect(dark.appearance == .dark)
+        #expect(darkAppearanceIsSelected)
         #expect(dark.canvas.hex != "#FFFFFF")
         #expect(highContrastLight.isHighContrast)
         #expect(highContrastDark.isHighContrast)

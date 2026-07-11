@@ -120,7 +120,7 @@ struct RowActionTraceEventTests {
         ]
 
         for requiredEvent in requiredEvents {
-            try #require(session.emit(
+            _ = try #require(session.emit(
                 category: requiredEvent.0,
                 event: requiredEvent.1,
                 directness: .direct,
@@ -238,7 +238,7 @@ struct RowActionTraceEventTests {
         ]
 
         for event in deferredSequence {
-            try #require(session.emit(
+            _ = try #require(session.emit(
                 category: event.0,
                 event: event.1,
                 directness: .direct,

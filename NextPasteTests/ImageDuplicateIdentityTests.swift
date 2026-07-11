@@ -9,6 +9,7 @@ import Foundation
 import Testing
 @testable import NextPaste
 
+@MainActor
 @Suite("Image duplicate identity")
 struct ImageDuplicateIdentityTests {
     @Test("same decoded pixels and dimensions share identity despite metadata changes")
@@ -17,9 +18,10 @@ struct ImageDuplicateIdentityTests {
 
         let plainIdentity = try identity(for: fixtures.plainPNG)
         let metadataIdentity = try identity(for: fixtures.metadataPNG)
+        let identitiesMatch = plainIdentity == metadataIdentity
 
         #expect(fixtures.plainPNG.data != fixtures.metadataPNG.data)
-        #expect(plainIdentity == metadataIdentity)
+        #expect(identitiesMatch)
         #expect(plainIdentity.hash == metadataIdentity.hash)
         #expect(plainIdentity.hash.isEmpty == false)
         #expect(plainIdentity.width == fixtures.plainPNG.width)
@@ -36,8 +38,9 @@ struct ImageDuplicateIdentityTests {
             for rightIndex in identitiesByFixture.indices where rightIndex > leftIndex {
                 let left = identitiesByFixture[leftIndex]
                 let right = identitiesByFixture[rightIndex]
+                let identitiesDiffer = left.identity != right.identity
 
-                #expect(left.identity != right.identity)
+                #expect(identitiesDiffer)
                 #expect(
                     left.identity.hash != right.identity.hash
                         || left.identity.width != right.identity.width
@@ -55,8 +58,9 @@ struct ImageDuplicateIdentityTests {
         for fixture in fixtures {
             let firstIdentity = try identity(for: fixture)
             let secondIdentity = try identity(for: fixture)
+            let identitiesMatch = firstIdentity == secondIdentity
 
-            #expect(firstIdentity == secondIdentity)
+            #expect(identitiesMatch)
             #expect(firstIdentity.hash == secondIdentity.hash)
             #expect(firstIdentity.hash.isEmpty == false)
             #expect(firstIdentity.width == fixture.width)
