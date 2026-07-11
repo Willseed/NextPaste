@@ -1087,6 +1087,18 @@ struct HomeView: View {
 #endif
             .background(measuredFrameReader(for: .viewport))
             .accessibilityIdentifier("clip-history-list")
+            .onChange(of: searchText) { _, _ in
+                // A filtered macOS List can retain the pre-filter AppKit
+                // viewport even though its matching row has a stable SwiftUI
+                // target. Bring the first result into view by persisted ID so
+                // search never leaves an existing result stranded offscreen.
+                guard let firstResultID = visibleClips.first?.id else { return }
+                proxy.scrollTo(firstResultID, anchor: .top)
+            }
+            .onChange(of: historyFilter) { _, _ in
+                guard let firstResultID = visibleClips.first?.id else { return }
+                proxy.scrollTo(firstResultID, anchor: .top)
+            }
             .onChange(of: rowIDs) { _, updatedIDs in
                 pinScrollLayoutObservationState.beginProjection(updatedIDs)
                 let requestBeforeReconciliation = pinScrollRequestState.pendingRequest
