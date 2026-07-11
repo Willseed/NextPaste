@@ -17,33 +17,82 @@ import AppKit
 #endif
 
 struct SettingsView: View {
+    private enum Tab: Hashable {
+        case general
+        case shortcuts
+        case appearance
+        case history
+    }
+
+    @Environment(\.colorScheme) private var colorScheme
+    @State private var selectedTab: Tab = .general
+
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             GeneralSettingsTab()
                 .tabItem {
-                    Label("General", systemImage: "gear")
-                        .accessibilityIdentifier("settings-tab-general")
+                    Label {
+                        Text("General")
+                    } icon: {
+                        Image(systemName: "gear").accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("General")
+                    .accessibilityIdentifier("settings-tab-general")
                 }
+                .tag(Tab.general)
 
-            ShortcutsSettingsTab()
+            ShortcutsSettingsTab(isSelected: selectedTab == .shortcuts)
                 .tabItem {
-                    Label("Shortcuts", systemImage: "keyboard")
-                        .accessibilityIdentifier("settings-tab-shortcuts")
+                    Label {
+                        Text("Shortcuts")
+                    } icon: {
+                        Image(systemName: "keyboard").accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Shortcuts")
+                    .accessibilityIdentifier("settings-tab-shortcuts")
                 }
+                .tag(Tab.shortcuts)
 
             AppearanceSettingsTab()
                 .tabItem {
-                    Label("Appearance", systemImage: "circle.lefthalf.filled")
-                        .accessibilityIdentifier("settings-tab-appearance")
+                    Label {
+                        Text("Appearance")
+                    } icon: {
+                        Image(systemName: "circle.lefthalf.filled").accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Appearance")
+                    .accessibilityIdentifier("settings-tab-appearance")
                 }
+                .tag(Tab.appearance)
 
-            HistorySettingsTab()
+            HistorySettingsTab(isSelected: selectedTab == .history)
                 .tabItem {
-                    Label("History", systemImage: "clock.arrow.circlepath")
-                        .accessibilityIdentifier("settings-tab-history")
+                    Label {
+                        Text("History")
+                    } icon: {
+                        Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("History")
+                    .accessibilityIdentifier("settings-tab-history")
                 }
+                .tag(Tab.history)
         }
         .frame(width: 500, height: 360)
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "effective-appearance-settings",
+                    label: "Settings effective appearance",
+                    value: colorScheme == .dark ? "dark" : "light"
+                )
+            }
+        }
+#endif
     }
 }
 
@@ -51,6 +100,7 @@ struct SettingsView: View {
 
 private struct GeneralSettingsTab: View {
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+    @FocusState private var isLanguagePickerFocused: Bool
 
     var body: some View {
         Form {
@@ -64,6 +114,7 @@ private struct GeneralSettingsTab: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .focused($isLanguagePickerFocused)
                 .accessibilityIdentifier("app-language-picker")
                 .accessibilityLabel("App Language")
                 .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
@@ -71,21 +122,42 @@ private struct GeneralSettingsTab: View {
                 Text("Changes apply immediately throughout NextPaste.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("app-language-description")
             }
         }
         .padding()
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "settings-language-focus",
+                    label: "Settings language focus",
+                    value: isLanguagePickerFocused ? "focused" : "unfocused"
+                )
+            }
+        }
+#endif
     }
 }
 
 // MARK: - Shortcuts (T014: global shortcut recorder)
 
 private struct ShortcutsSettingsTab: View {
+    private enum FocusTarget: String, Hashable {
+        case record = "global-shortcut-record-button"
+        case clear = "global-shortcut-clear-button"
+        case reset = "global-shortcut-reset-button"
+    }
+
     @EnvironmentObject private var preference: GlobalShortcutPreference
     @EnvironmentObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
+    @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+    let isSelected: Bool
     @State private var isRecording = false
     @State private var candidate: GlobalShortcut?
     @State private var validationError: GlobalShortcutValidationError?
     @State private var registrationError: Bool = false
+    @FocusState private var focusedTarget: FocusTarget?
 
     #if os(macOS)
     @State private var eventMonitor: Any?
@@ -108,10 +180,18 @@ private struct ShortcutsSettingsTab: View {
                             .foregroundStyle(.secondary)
                             .accessibilityIdentifier("global-shortcut-recording-hint")
                     } else if let validationError {
-                        Text(validationError.localizedDescription)
+                        Text(
+                            validationError.localizedDescription(
+                                language: appLanguagePreference.language
+                            )
+                        )
                             .foregroundStyle(.red)
                             .accessibilityIdentifier("global-shortcut-validation-error")
-                            .accessibilityLabel(validationError.localizedDescription)
+                            .accessibilityLabel(
+                                validationError.localizedDescription(
+                                    language: appLanguagePreference.language
+                                )
+                            )
                     } else if registrationError {
                         Text("Shortcut is already in use.")
                             .foregroundStyle(.red)
@@ -120,28 +200,42 @@ private struct ShortcutsSettingsTab: View {
                 }
 
                 HStack {
-                    Button(isRecording ? "Cancel Recording" : "Record Shortcut") {
+                    Button {
+                        focusedTarget = .record
                         if isRecording {
                             stopRecording()
                         } else {
                             startRecording()
                         }
+                    } label: {
+                        if isRecording {
+                            Text("Cancel Recording")
+                        } else {
+                            Text("Record Shortcut")
+                        }
                     }
+                    .focused($focusedTarget, equals: .record)
                     .accessibilityIdentifier("global-shortcut-record-button")
-                    .accessibilityLabel("Record Shortcut")
+                    .accessibilityLabel(
+                        isRecording ? Text("Cancel Recording") : Text("Record Shortcut")
+                    )
                     .accessibilityHint("Record a new global keyboard shortcut")
 
                     Button("Clear Shortcut") {
+                        focusedTarget = .clear
                         clearShortcut()
                     }
                     .disabled(preference.shortcut == nil)
+                    .focused($focusedTarget, equals: .clear)
                     .accessibilityIdentifier("global-shortcut-clear-button")
                     .accessibilityLabel("Clear Shortcut")
                     .accessibilityHint("Disable the global keyboard shortcut")
 
                     Button("Reset to Default") {
+                        focusedTarget = .reset
                         resetToDefault()
                     }
+                    .focused($focusedTarget, equals: .reset)
                     .accessibilityIdentifier("global-shortcut-reset-button")
                     .accessibilityLabel("Reset to Default")
                     .accessibilityHint("Restore the default global keyboard shortcut")
@@ -149,6 +243,26 @@ private struct ShortcutsSettingsTab: View {
             }
         }
         .padding()
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "settings-shortcuts-focus",
+                    label: "Settings shortcuts focus",
+                    value: focusedTarget?.rawValue ?? "none"
+                )
+            }
+        }
+#endif
+        .background {
+#if DEBUG && os(macOS)
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestTabKeyMonitor { movesBackward in
+                    moveUITestKeyboardFocus(backward: movesBackward)
+                }
+            }
+#endif
+        }
         .onDisappear {
             #if os(macOS)
             stopRecording()
@@ -158,10 +272,40 @@ private struct ShortcutsSettingsTab: View {
 
     private var currentShortcutDisplay: String {
         if isRecording, let candidate {
-            return candidate.displayString
+            return candidate.displayString(language: appLanguagePreference.language)
         }
-        return preference.shortcut?.displayString ?? String(localized: "None")
+        let language = appLanguagePreference.language
+        return preference.shortcut?.displayString(language: language)
+            ?? String(
+                localized: "None",
+                bundle: language.localizationBundle(),
+                locale: language.locale
+            )
     }
+
+#if DEBUG && os(macOS)
+    private func moveUITestKeyboardFocus(backward: Bool) -> Bool {
+        guard isSelected, isRecording == false else { return false }
+
+        switch (focusedTarget, backward) {
+        case (.record, false):
+            focusedTarget = preference.shortcut == nil ? .reset : .clear
+        case (.clear, false):
+            focusedTarget = .reset
+        case (.reset, false):
+            focusedTarget = .record
+        case (.record, true):
+            focusedTarget = .reset
+        case (.clear, true):
+            focusedTarget = .record
+        case (.reset, true):
+            focusedTarget = preference.shortcut == nil ? .record : .clear
+        case (nil, _):
+            return false
+        }
+        return true
+    }
+#endif
 
     private func startRecording() {
         validationError = nil
@@ -284,6 +428,7 @@ private struct ShortcutsSettingsTab: View {
 
 private struct AppearanceSettingsTab: View {
     @EnvironmentObject private var appearancePreference: AppearancePreference
+    @FocusState private var isAppearancePickerFocused: Bool
 
     var body: some View {
         Form {
@@ -296,24 +441,42 @@ private struct AppearanceSettingsTab: View {
                         Text(mode.displayNameKey).tag(mode)
                     }
                 }
+                .focused($isAppearancePickerFocused)
                 .accessibilityIdentifier("appearance-picker")
                 .accessibilityLabel("Appearance")
                 .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
             }
         }
         .padding()
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "settings-appearance-focus",
+                    label: "Settings appearance focus",
+                    value: isAppearancePickerFocused ? "focused" : "unfocused"
+                )
+            }
+        }
+#endif
     }
 }
 
 // MARK: - History
 
 private struct HistorySettingsTab: View {
+    private enum FocusTarget: String, Hashable {
+        case slider = "history-limit-slider"
+        case field = "history-limit-field"
+    }
+
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @Environment(\.modelContext) private var modelContext
+    let isSelected: Bool
     @State private var draftText = ""
     @State private var sliderValue = Double(HistoryLimit.defaultLimit.value)
     @State private var retentionErrorKey: LocalizedStringKey?
-    @FocusState private var isLimitFieldFocused: Bool
+    @FocusState private var focusedTarget: FocusTarget?
 
     var body: some View {
         Form {
@@ -331,11 +494,17 @@ private struct HistorySettingsTab: View {
                         in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
                         step: 1,
                         onEditingChanged: { isEditing in
+#if DEBUG && os(macOS)
+                            if DebugUITestLaunchEnvironment() != nil {
+                                focusedTarget = .slider
+                            }
+#endif
                             if isEditing == false {
                                 apply(HistoryLimit(Int(sliderValue.rounded())))
                             }
                         }
                     )
+                    .focused($focusedTarget, equals: .slider)
                     .accessibilityIdentifier("history-limit-slider")
                     .accessibilityLabel("Storage Limit")
                     .accessibilityValue("\(Int(sliderValue.rounded()))")
@@ -343,7 +512,7 @@ private struct HistorySettingsTab: View {
                     TextField("1–1000", text: $draftText)
                         .frame(width: 76)
                         .multilineTextAlignment(.trailing)
-                        .focused($isLimitFieldFocused)
+                        .focused($focusedTarget, equals: .field)
                         .onSubmit(commitDraft)
                         .accessibilityIdentifier("history-limit-field")
                         .accessibilityLabel("Storage Limit Value")
@@ -368,6 +537,26 @@ private struct HistorySettingsTab: View {
             }
         }
         .padding()
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "settings-history-focus",
+                    label: "Settings history focus",
+                    value: focusedTarget?.rawValue ?? "none"
+                )
+            }
+        }
+#endif
+        .background {
+#if DEBUG && os(macOS)
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestTabKeyMonitor { movesBackward in
+                    moveUITestKeyboardFocus(backward: movesBackward)
+                }
+            }
+#endif
+        }
         .onAppear {
             draftText = String(historyLimitPreference.limit.value)
             sliderValue = Double(historyLimitPreference.limit.value)
@@ -376,8 +565,8 @@ private struct HistorySettingsTab: View {
             draftText = String(newLimit.value)
             sliderValue = Double(newLimit.value)
         }
-        .onChange(of: isLimitFieldFocused) { _, isFocused in
-            if isFocused == false {
+        .onChange(of: focusedTarget) { oldTarget, newTarget in
+            if oldTarget == .field, newTarget != .field {
                 commitDraft()
             }
         }
@@ -394,6 +583,22 @@ private struct HistorySettingsTab: View {
         }
     }
 
+#if DEBUG && os(macOS)
+    private func moveUITestKeyboardFocus(backward _: Bool) -> Bool {
+        guard isSelected else { return false }
+
+        switch focusedTarget {
+        case .slider:
+            focusedTarget = .field
+        case .field:
+            focusedTarget = .slider
+        case nil:
+            return false
+        }
+        return true
+    }
+#endif
+
     private func apply(_ limit: HistoryLimit) {
         do {
             _ = try HistoryRetentionService(modelContext: modelContext).enforceLimit(limit: limit)
@@ -409,3 +614,78 @@ private struct HistorySettingsTab: View {
         }
     }
 }
+
+#if DEBUG && os(macOS)
+/// A Debug UI-test-only Tab router. macOS normally builds its key-view loop from
+/// the user's AppleKeyboardUIMode preference, which can omit buttons and sliders.
+/// Consuming Tab here makes the two asserted Settings focus chains deterministic
+/// without reading or mutating that persistent host preference. Space/Return are
+/// deliberately left to the real SwiftUI controls.
+private struct DebugUITestTabKeyMonitor: NSViewRepresentable {
+    let handleTab: (_ movesBackward: Bool) -> Bool
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(handleTab: handleTab)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        context.coordinator.attach(to: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        context.coordinator.handleTab = handleTab
+        context.coordinator.attach(to: nsView)
+    }
+
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        coordinator.detach(from: nsView)
+    }
+
+    @MainActor
+    final class Coordinator {
+        var handleTab: (_ movesBackward: Bool) -> Bool
+
+        private weak var view: NSView?
+        private var eventMonitor: Any?
+
+        init(handleTab: @escaping (_ movesBackward: Bool) -> Bool) {
+            self.handleTab = handleTab
+        }
+
+        func attach(to view: NSView) {
+            self.view = view
+            guard eventMonitor == nil else { return }
+
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard let self,
+                      event.keyCode == 0x30,
+                      let settingsWindow = self.view?.window,
+                      NSApp.keyWindow === settingsWindow else {
+                    return event
+                }
+
+                let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+                guard modifiers.isSubset(of: [.shift]) else { return event }
+                return self.handleTab(modifiers.contains(.shift)) ? nil : event
+            }
+        }
+
+        func detach(from view: NSView) {
+            guard self.view === view else { return }
+            self.view = nil
+            if let eventMonitor {
+                NSEvent.removeMonitor(eventMonitor)
+                self.eventMonitor = nil
+            }
+        }
+
+        deinit {
+            if let eventMonitor {
+                NSEvent.removeMonitor(eventMonitor)
+            }
+        }
+    }
+}
+#endif

@@ -70,6 +70,22 @@ struct AppearancePreferenceTests {
         defaults.removePersistentDomain(forName: suite)
     }
 
+    @Test(arguments: AppearanceMode.allCases)
+    func everyAppearanceModePersistsAcrossInstances(_ mode: AppearanceMode) {
+        let defaults = makeDefaults()
+        AppearancePreference(defaults: defaults).persist(mode)
+
+        #expect(AppearancePreference(defaults: defaults).mode == mode)
+    }
+
+    #if os(macOS)
+    @Test func appearanceModesMapToNativeAppKitAppearances() {
+        #expect(AppearanceMode.system.nsAppearance == nil)
+        #expect(AppearanceMode.light.nsAppearance?.name == .aqua)
+        #expect(AppearanceMode.dark.nsAppearance?.name == .darkAqua)
+    }
+    #endif
+
     @Test func invalidPersistedModeFallsBackToSystem() {
         let defaults = makeDefaults()
         defaults.set("unknown-appearance", forKey: AppearancePreference.storageKey)
