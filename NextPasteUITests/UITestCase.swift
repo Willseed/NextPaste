@@ -63,6 +63,26 @@ class UITestCase: XCTestCase {
 
     @MainActor
     @discardableResult
+    func launchTraceCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+    ) -> UITestAppLauncher.TraceLaunch {
+        let launch = UITestAppLauncher.makeTraceCaptureApp(
+            pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
+        launch.app.launch()
+        UITestAppLauncher.prepareMainWindow(in: launch.app)
+        addTeardownBlock {
+            self.closeApp(launch.app)
+        }
+        return launch
+    }
+
+    @MainActor
+    @discardableResult
     func launchOfflineCaptureApp(
         pollInterval: TimeInterval = 0.1,
         onDiskStore: UITestAppLauncher.OnDiskStore? = nil,

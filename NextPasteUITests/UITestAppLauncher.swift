@@ -257,6 +257,25 @@ enum UITestAppLauncher {
         return TraceLaunch(app: app, traceURL: traceURL)
     }
 
+    static func makeTraceCaptureApp(
+        pollInterval: TimeInterval = 0.1,
+        onDiskStore: OnDiskStore? = nil,
+        windowSizePreset: WindowSizePreset = .defaultSize
+    ) -> TraceLaunch {
+        let traceURL = makeTraceURL()
+        try? FileManager.default.removeItem(at: traceURL)
+
+        let app = makeAutoCaptureApp(
+            pollInterval: pollInterval,
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
+        app.launchArguments.append(rowActionTraceEnabledArgument)
+        app.launchEnvironment["NEXTPASTE_UI_TESTING"] = "1"
+        app.launchEnvironment[rowActionTraceFileEnvironmentKey] = traceURL.path
+        return TraceLaunch(app: app, traceURL: traceURL)
+    }
+
     static func launchTraceApp(
         onDiskStore: OnDiskStore? = nil,
         windowSizePreset: WindowSizePreset = .defaultSize

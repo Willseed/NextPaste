@@ -32,7 +32,23 @@
 
 import Testing
 import SwiftData
+#if os(macOS)
+import AppKit
+#endif
 @testable import NextPaste
+
+@MainActor
+private final class UnavailableSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
+    let failure: RowActionSafeBoundaryPreparationFailure
+
+    init(failure: RowActionSafeBoundaryPreparationFailure) {
+        self.failure = failure
+    }
+
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation {
+        .unavailable(failure)
+    }
+}
 
 // MARK: - T059 seam contract (test-local observation surface)
 
@@ -433,6 +449,65 @@ func nativePinMutationWaitsForLifecycleBoundary() async throws {
         "The terminal lifecycle state must record the completed boundary."
     )
 }
+
+@Test(
+    "unavailable native lifecycle rejects the command without snapshot, task, or mutation"
+)
+@MainActor
+func unavailableNativeLifecycleHasTerminalFailClosedOutcome() async throws {
+    let harness = try ReconciliationLifecycleTestHarness()
+    defer { harness.dispose() }
+    let observers = ReconciliationLifecycleObservers(harness.homeView)
+
+    await harness.awaitBodyInstalled()
+    harness.homeView.safeBoundaryAwaiter = UnavailableSafeBoundaryAwaiter(
+        failure: .tableUnavailable
+    )
+
+    let generationBefore = observers.generation
+    let taskBefore = observers.taskIdentity
+    harness.driveTogglePin()
+
+    let clipAfter = try #require(harness.refetchClipFresh())
+    #expect(clipAfter.isPinned == false)
+    #expect(clipAfter.sectionSortDate == nil)
+    #expect(observers.generation == generationBefore)
+    #expect(observers.taskIdentity == taskBefore)
+    #expect(observers.hasSnapshot == false)
+    #expect(harness.homeView.rowActionDisplayOrderSnapshotIDs == nil)
+    #expect(observers.safeBoundaryAwaitState == .unavailable)
+    #expect(observers.safeBoundaryPreparationFailure == .tableUnavailable)
+    #expect(observers.lastExitPath == .earlyExit)
+    #expect(observers.cleanupOwnershipTrace.ownerGeneration == nil)
+    #expect(observers.cleanupOwnershipTrace.clearingDecision == .earlyExit)
+    #expect(observers.cleanupOwnershipTrace.snapshotClearOwned == false)
+    #expect(harness.safeBoundary.totalWaitCount == 0)
+    #expect(harness.safeBoundary.pendingWaitCount == 0)
+}
+
+#if os(macOS)
+@Test("production adapter reports terminal unavailable reasons before accepting a wait")
+@MainActor
+func productionBoundaryPreparationFailsClosedWithoutPermanentWait() {
+    let missingTable = RowActionSafeBoundaryKVOAdapter(tableViewProvider: { nil })
+    switch missingTable.prepareToWaitForSafeBoundary() {
+    case .unavailable(.tableUnavailable):
+        break
+    default:
+        Issue.record("A missing exact NSTableView must be a terminal unavailable result.")
+    }
+
+    let inactiveTable = NSTableView()
+    #expect(inactiveTable.rowActionsVisible == false)
+    let hiddenActions = RowActionSafeBoundaryKVOAdapter(tableViewProvider: { inactiveTable })
+    switch hiddenActions.prepareToWaitForSafeBoundary() {
+    case .unavailable(.actionsAlreadyHidden):
+        break
+    default:
+        Issue.record("An already-hidden action surface must not be accepted as a safe boundary.")
+    }
+}
+#endif
 
 // MARK: - T015: snapshot eventually released after a successful reconciliation
 

@@ -59,6 +59,10 @@ private final class ReconciliationLifecycleStorage {
     /// Safe-boundary await state (T072 § 4). `.idle` until T025 wires the real
     /// await into the Task body.
     var safeBoundaryAwaitState: SafeBoundaryAwaitState = .idle
+    /// Terminal reason when synchronous lifecycle preparation could not prove
+    /// an exact active row-action surface. Such commands are rejected before
+    /// snapshot ownership or task generation begins.
+    var lastSafeBoundaryPreparationFailure: RowActionSafeBoundaryPreparationFailure?
     /// Last exit-path classification recorded by an exit path (T072 § 4).
     /// `nil` until an exit path runs and records its classification.
     var lastExitPath: ReconciliationOwnershipDecision? = nil
@@ -197,6 +201,7 @@ enum SafeBoundaryAwaitState: Equatable {
     case awaiting
     case resumed
     case cancelled
+    case unavailable
 }
 
 /// Read-only cleanup ownership trace (T072 § 4 Cleanup ownership trace).
@@ -1389,7 +1394,9 @@ struct HomeView: View {
         if waitsForNativeLifecycle {
             // The native handler owns no model mutation. Capture projection and
             // observation synchronously, then queue an immutable UUID command.
-            let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            guard let waitForSafeBoundary = prepareNativeRowActionBoundary() else {
+                return
+            }
             guard beginRowActionDisplayOrderSnapshot(targetItemID: clip.id) else {
                 reconciliationLifecycle.lastExitPath = .earlyExit
                 return
@@ -1486,7 +1493,9 @@ struct HomeView: View {
         if waitsForNativeLifecycle {
             // Keep the acted-on row and its Pin/Unpin configuration unchanged
             // until the native lifecycle owner releases publication.
-            let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
+            guard let waitForSafeBoundary = prepareNativeRowActionBoundary() else {
+                return
+            }
             guard beginRowActionDisplayOrderSnapshot(targetItemID: clip.id) else {
                 reconciliationLifecycle.lastExitPath = .earlyExit
                 return
@@ -1622,6 +1631,46 @@ struct HomeView: View {
     }
 
 #if os(macOS)
+    private func prepareNativeRowActionBoundary() -> RowActionSafeBoundaryWait? {
+        switch safeBoundaryAwaiter.prepareToWaitForSafeBoundary() {
+        case .prepared(let wait):
+            reconciliationLifecycle.lastSafeBoundaryPreparationFailure = nil
+            reconciliationLifecycle.safeBoundaryAwaitState = .idle
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .rowAction,
+                event: "safe-boundary.prepared",
+                directness: .direct
+            )
+#endif
+            return wait
+
+        case .unavailable(let failure):
+            // Preparation happens before opening the frozen projection and
+            // before accepting any command. This is a terminal fail-closed
+            // outcome, not a never-resuming task that strands ownership.
+            reconciliationLifecycle.lastSafeBoundaryPreparationFailure = failure
+            reconciliationLifecycle.safeBoundaryAwaitState = .unavailable
+            reconciliationLifecycle.lastExitPath = .earlyExit
+            reconciliationLifecycle.lastCleanupTrace = CleanupOwnershipTrace(
+                ownerGeneration: nil,
+                clearingDecision: .earlyExit,
+                snapshotClearOwned: false
+            )
+#if DEBUG
+            RowActionTraceRuntime.emit(
+                category: .rowAction,
+                event: "safe-boundary.unavailable",
+                directness: .direct,
+                payload: .init(state: [
+                    "reason": .string(failure.rawValue)
+                ])
+            )
+#endif
+            return nil
+        }
+    }
+
     private func updatePinScrollProjectionObservation(
         visibleItemIDs: [UUID],
         proxy: ScrollViewProxy
@@ -2038,12 +2087,12 @@ struct HomeView: View {
     #if os(macOS)
     internal var safeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
         get { safeBoundaryAwaiterHolder.awaiter }
-        set { safeBoundaryAwaiterHolder.awaiter = newValue }
+        nonmutating set { safeBoundaryAwaiterHolder.awaiter = newValue }
     }
     #else
     internal var safeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
         get { NoOpSafeBoundaryAwaiter.shared }
-        set { /* no-op on non-macOS; reconciliation is macOS-only */ }
+        nonmutating set { /* no-op on non-macOS; reconciliation is macOS-only */ }
     }
     #endif
 
@@ -2059,6 +2108,10 @@ struct HomeView: View {
     // until T025 wires the await into the Task body; tests cannot set this.
     internal var safeBoundaryAwaitState: SafeBoundaryAwaitState {
         reconciliationLifecycle.safeBoundaryAwaitState
+    }
+
+    internal var lastSafeBoundaryPreparationFailure: RowActionSafeBoundaryPreparationFailure? {
+        reconciliationLifecycle.lastSafeBoundaryPreparationFailure
     }
 
     // T072 § 4 Cleanup ownership trace: read-only trace of owner generation,
@@ -2847,6 +2900,17 @@ private struct RowActionTableViewResolver: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            resolve()
+        }
+
+        override func layout() {
+            super.layout()
+            // An initially empty history does not install this resolver until
+            // the first row arrives. AppKit can attach the representable before
+            // the enclosing SwiftUI List has finished creating its NSTableView,
+            // so both move callbacks legitimately resolve nil. The next public
+            // layout callback is the deterministic point at which the completed
+            // ancestor chain can be sampled; no timer or run-loop guess is used.
             resolve()
         }
 

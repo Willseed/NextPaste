@@ -12,6 +12,16 @@ import AppKit
 
 internal typealias RowActionSafeBoundaryWait = @MainActor @Sendable () async -> Void
 
+internal enum RowActionSafeBoundaryPreparationFailure: String, Equatable, Sendable {
+    case tableUnavailable = "table-unavailable"
+    case actionsAlreadyHidden = "actions-already-hidden"
+}
+
+internal enum RowActionSafeBoundaryPreparation {
+    case prepared(RowActionSafeBoundaryWait)
+    case unavailable(RowActionSafeBoundaryPreparationFailure)
+}
+
 /// Preparing and awaiting are intentionally separate. Preparation happens
 /// synchronously inside the native action handler while AppKit still reports
 /// its row actions as visible. Starting an unstructured Task first would leave
@@ -21,7 +31,7 @@ internal typealias RowActionSafeBoundaryWait = @MainActor @Sendable () async -> 
 /// projection, mutates SwiftData, changes a generation, or uses row indices.
 @MainActor
 internal protocol RowActionSafeBoundaryAwaiting: AnyObject {
-    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation
 }
 
 #if !os(macOS)
@@ -31,8 +41,8 @@ internal final class NoOpSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 
     private init() {}
 
-    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
-        return {}
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation {
+        return .prepared({})
     }
 }
 #endif
@@ -50,25 +60,27 @@ internal final class RowActionSafeBoundaryKVOAdapter: RowActionSafeBoundaryAwait
         self.tableViewProvider = tableViewProvider
     }
 
-    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation {
         let handle = SafeBoundaryWaitHandle()
 
         guard let tableView = tableViewProvider() else {
-            // Fail closed. Resolver absence is not evidence that AppKit has no
-            // active row-action state. Cancellation/view teardown releases the
-            // returned wait without publishing a mutation.
-            return { await handle.wait() }
+            // Fail closed with a terminal preparation result. Resolver absence
+            // is not evidence that AppKit has no active row-action state, but
+            // the caller must not freeze a projection or accept a command that
+            // can never reach a proven boundary.
+            return .unavailable(.tableUnavailable)
         }
 
         guard tableView.rowActionsVisible else {
-            // A false value does not prove private teardown has completed. Fail
-            // closed instead of publishing into an unknown lifecycle state.
-            return { await handle.wait() }
+            // A false value does not prove private teardown has completed. The
+            // visibility transition may already have been missed, so fail
+            // closed without accepting a command into a permanent wait.
+            return .unavailable(.actionsAlreadyHidden)
         }
 
         handle.startObservingAndPrearm(tableView: tableView)
 
-        return { await handle.wait() }
+        return .prepared({ await handle.wait() })
     }
 }
 

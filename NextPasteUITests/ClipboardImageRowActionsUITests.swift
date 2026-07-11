@@ -151,7 +151,8 @@ final class ClipboardImageRowActionsUITests: UITestCase {
 
     @MainActor
     func testRightSwipeRevealsUnpinActionForPinnedImageRow() throws {
-        let app = launchCaptureApp()
+        let trace = launchTraceCaptureApp()
+        let app = trace.app
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
         let fixture = UITestFixtures.ImageClipboard.olderPinTarget
@@ -160,6 +161,49 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         clipboard.assertImageRow(for: fixture)
 
         row.revealImagePinActionWithRightSwipe(forThumbnailDescription: fixture.thumbnailDescription).tap()
+        let traceRecords = try RowActionTraceLogParser.records(
+            at: trace.traceURL,
+            timeout: UITestAssertions.defaultTimeout
+        ) { records in
+            RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "action.tap",
+                requiresClipID: true
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "row-action",
+                event: "safe-boundary.prepared"
+            )
+            && RowActionTraceLogParser.containsEvent(
+                records,
+                category: "swiftdata",
+                event: "pin.save.after",
+                requiresClipID: true
+            )
+        }
+        let traceAttachment = XCTAttachment(
+            string: try String(contentsOf: trace.traceURL, encoding: .utf8)
+        )
+        traceAttachment.name = "Single-image native Pin lifecycle trace"
+        traceAttachment.lifetime = .keepAlways
+        add(traceAttachment)
+        XCTAssertTrue(
+            RowActionTraceLogParser.containsEvent(
+                traceRecords,
+                category: "row-action",
+                event: "action.tap"
+            ),
+            "Expected the native image Pin handler to emit its direct action-tap trace"
+        )
+        UITestAssertions.assertImagePinnedIconExists(in: app)
+        historyRobot(for: app).assertVisibleDatasetCounts(
+            total: 1,
+            text: 0,
+            image: 1,
+            pinned: 1
+        )
 
         let unpinButton = row.revealImagePinActionWithRightSwipe(
             forThumbnailDescription: fixture.thumbnailDescription,

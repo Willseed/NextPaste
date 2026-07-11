@@ -19,14 +19,15 @@ struct RowActionResolverFeedbackTests {
         let observeSource = try fragment(
             in: source,
             from: "private func observeRowActions(on tableView: NSTableView?)",
-            to: "private func beginRowActionDisplayOrderSnapshot()"
+            to: "private func beginRowActionDisplayOrderSnapshot("
         )
         let synchronousObserveSource = synchronousResolverObservationSection(from: observeSource)
         let resolverCanReachObservation = resolverSource.contains("func updateNSView")
             && resolverSource.contains("nsView.resolve()")
             && resolverSource.contains("viewDidMoveToSuperview")
             && resolverSource.contains("viewDidMoveToWindow")
-            && resolverSource.contains("onResolve?(resolvedTableView)")
+            && resolverSource.contains("override func layout()")
+            && resolverSource.contains("onResolve?(ObjectIdentifier(self), resolvedTableView)")
             && source.contains("observeRowActions(on: tableView)")
         let stateAssignments = recursiveChainStateNames.filter { stateName in
             source.contains("@State private var \(stateName)")

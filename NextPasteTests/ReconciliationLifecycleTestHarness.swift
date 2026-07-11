@@ -69,8 +69,8 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
     /// Number of waiters currently pending (observable). Get-only.
     var pendingWaitCount: Int { waiters.count }
 
-    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryWait {
-        return { await self.waitUntilReleased() }
+    func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation {
+        return .prepared({ await self.waitUntilReleased() })
     }
 
     private func waitUntilReleased() async {
@@ -201,7 +201,7 @@ final class ReconciliationLifecycleTestHarness {
         self.companionClip = companionClip
 
         let boundary = DeterministicSafeBoundaryAwaiter()
-        var view = HomeView()
+        let view = HomeView()
         // Inject the deterministic safe-boundary double through the single T072
         // seam. This mutates the shared `SafeBoundaryAwaiterHolder.awaiter`
         // (reference type) so the installed copy observes the same dependency.
@@ -427,6 +427,10 @@ struct ReconciliationLifecycleObservers {
 
     // Safe-boundary awaiting state
     var safeBoundaryAwaitState: SafeBoundaryAwaitState { homeView.safeBoundaryAwaitState }
+
+    var safeBoundaryPreparationFailure: RowActionSafeBoundaryPreparationFailure? {
+        homeView.lastSafeBoundaryPreparationFailure
+    }
 
     // Cleanup ownership trace
     var cleanupOwnershipTrace: CleanupOwnershipTrace { homeView.cleanupOwnershipTrace }
