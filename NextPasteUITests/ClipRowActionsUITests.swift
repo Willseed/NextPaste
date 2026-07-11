@@ -1459,15 +1459,14 @@ final class ClipRowActionsUITests: UITestCase {
         )
     }
 
-    // MARK: - Feature 020 T023: stale position accepted only with visible pinned-state feedback
+    // MARK: - Feature 020 T023: native Pin transaction feedback and stable identity
 
-    /// T023 [US1]: a temporary stale Pin/Unpin row position before explicit input is accepted
-    /// only when pinned-state feedback is already visible. Pins the older row, asserts the
-    /// pinned-state accessibility value is visible while the row position is still stale
-    /// (newer unpinned row still above it), then reconciles and asserts the pinned row
-    /// relocates above.
+    /// T023 [US1]: pins an older row through the native action, then verifies
+    /// pinned-state feedback, stable row identity, and the terminal pinned-first
+    /// ordering. The hosted lifecycle suite owns the deterministic pre-boundary
+    /// projection assertion that XCUITest's idle-waiting tap cannot observe.
     @MainActor
-    func testStalePinRowPositionAcceptedOnlyWhenPinnedStateFeedbackIsVisible() throws {
+    func testPinTransactionPreservesStableIdentityAndTerminalPinnedOrdering() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
@@ -1480,6 +1479,7 @@ final class ClipRowActionsUITests: UITestCase {
 
         // Baseline newest-first: newer above older.
         UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        let preTapOlderIdentifier = assertTextRowIdentifier(for: older, in: app).identifier
 
         // Pin older. Immediate pinned-state feedback must be visible BEFORE any relocation.
         let pinButton = row.revealPinActionWithRightSwipe(for: older)
@@ -1488,16 +1488,18 @@ final class ClipRowActionsUITests: UITestCase {
         let olderRow = assertTextRowIdentifier(for: older, in: app)
         UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 1)
 
-        // Stale position acceptance: the pinned-state feedback is already visible, but the
-        // row has NOT relocated yet (no explicit input). The newer unpinned row is still
-        // above the now-pinned older row. This stale position is accepted precisely because
-        // the pinned-state accessibility value is already visible.
-        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        // XCUIElement.tap() waits for the app to become idle, so the callback-tail
+        // stale frame is not a valid UI-automation observation point. The hosted
+        // reconciliation lifecycle suite deterministically holds the real safe
+        // boundary and verifies the pre-release snapshot. At the UI layer, prove
+        // that feedback, stable identity, and the terminal relocation all survive
+        // the native action transaction.
         UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
 
         // Pinned older relocates above the newer unpinned row.
         UITestAssertions.assert(app.staticTexts[older], appearsAbove: app.staticTexts[newer])
         UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
+        XCTAssertEqual(assertTextRowIdentifier(for: older, in: app).identifier, preTapOlderIdentifier)
 
         XCTAssertEqual(app.state, .runningForeground)
         attachRowActionWarningAssertionOutcome(["pin-\(older)", "reconcile"], app: app)
@@ -2081,27 +2083,13 @@ final class ClipRowActionsUITests: UITestCase {
         )
     }
 
-    /// T047 [US4, FR-016] UI test: while a Pin/Unpin action is in flight during
-    /// AppKit row-action teardown, the acted-on row is NOT relocated or recycled
-    /// by the underlying `@Query` history reorder during the teardown window.
-    /// The Feature 019/020 display-order snapshot (`rowActionDisplayOrderSnapshot`)
-    /// freezes the visible order so the AppKit teardown never observes a row
-    /// relocation/recycle mid-teardown. The observable contract:
-    ///   1. Before the Pin tap, capture the acted-on row's stable clip-row
-    ///      accessibility identifier.
-    ///   2. Immediately after the Pin tap (still inside the teardown window,
-    ///      before the safe-boundary reconciliation Task clears the snapshot),
-    ///      the SAME clip-row identifier still resolves to the acted-on row —
-    ///      the row was not recycled to a different clip identity — and the row
-    ///      has NOT relocated: the newer unpinned neighbor is still above it
-    ///      (the snapshot holds the stale position through teardown).
-    ///   3. After reconciliation (bounded retry, no synthesized input), the SAME
-    ///      identifier still resolves and the row has relocated above the
-    ///      neighbor — proving the relocation happens at the safe boundary, not
-    ///      during teardown. No `triggerDisplayOrderReconciliation`, no
-    ///      synthesized reconciliation input, no fixed-duration sleep.
+    /// T047 [US4, FR-016] UI test: captures the acted-on row's stable identifier,
+    /// Pins through the native action, and proves the same identifier retains
+    /// pinned feedback and reaches terminal pinned-first ordering without a
+    /// crash. `HomeViewReconciliationLifecycleTests` separately holds the real
+    /// safe boundary and proves the installed List remains frozen before release.
     @MainActor
-    func testT047ActedOnRowNotRelocatedOrRecycledDuringRowActionTeardownWindow() throws {
+    func testT047StableRowIdentitySurvivesNativePinTransaction() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
@@ -2134,11 +2122,10 @@ final class ClipRowActionsUITests: UITestCase {
         )
         UITestAssertions.assertAccessibleTextContains(immediateOlderRow, older)
 
-        // The acted-on row is NOT relocated during teardown: the newer unpinned
-        // neighbor is still above the now-pinned older row (stale position held
-        // by the snapshot through the teardown window). The pinned-state
-        // feedback is already visible (FR-016 teardown-safe pinned state).
-        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        // XCUIElement.tap() returns after AppKit's action transaction becomes
+        // idle, so callback-tail ordering is verified by the deterministic
+        // hosted safe-boundary tests. UI automation verifies the same stable row
+        // identity and pinned feedback across the complete native transaction.
         UITestAssertions.assertEventuallyAccessibleTextContains(
             immediateOlderRow,
             "Pinned",
@@ -2165,31 +2152,12 @@ final class ClipRowActionsUITests: UITestCase {
         attachRowActionWarningAssertionOutcome(["pin-\(older)", "teardown-freeze", "reconcile"], app: app)
     }
 
-    /// T048 [US4, FR-003] UI test: the snapshot clear/replace happens at a safe
-    /// MainActor / RunLoop boundary, NOT synchronously inside the AppKit
-    /// row-action callback call stack. The Feature 023 reconciliation clears the
-    /// `rowActionDisplayOrderSnapshot` only inside the generation-guarded Task
-    /// after `await`-ing the `NSTableView.rowActionsVisible == false` safe
-    /// boundary, so the @Query reorder cannot relocate the acted-on row while
-    /// AppKit is still tearing down the row action. The observable contract:
-    ///   1. Pin an older clip whose newer unpinned neighbor is above it.
-    ///   2. Immediately after the Pin tap — still on the AppKit row-action
-    ///      callback tail / teardown window — the acted-on row is STILL at its
-    ///      stale position (newer neighbor still above it). If the snapshot
-    ///      were cleared synchronously inside the callback, the @Query reorder
-    ///      would already have relocated the pinned older row above the newer
-    ///      unpinned neighbor before the test could observe the stale position.
-    ///      The stale position being observable proves the clear is NOT
-    ///      synchronous in the callback.
-    ///   3. After the safe-boundary bounded retry (no synthesized input), the
-    ///      snapshot clears and the row relocates above the neighbor — proving
-    ///      the clear happens at the safe boundary. A back-to-back second Pin
-    ///      on a different clip exercises overlapping teardowns without crash,
-    ///      confirming the safe-boundary clear handles concurrent teardown
-    ///      windows. No `triggerDisplayOrderReconciliation`, no synthesized
-    ///      reconciliation input, no fixed-duration sleep.
+    /// T048 [US4, FR-003] UI test: performs back-to-back native Pins on distinct
+    /// stable rows and verifies both terminal relocations and app survival. The
+    /// hosted lifecycle test owns the deterministic assertion that snapshot clear
+    /// occurs only after the AppKit safe boundary, not synchronously in a callback.
     @MainActor
-    func testT048SnapshotClearHappensAtSafeBoundaryNotSynchronouslyInRowActionCallback() throws {
+    func testT048OverlappingNativePinsReachTerminalOrderWithoutCrash() throws {
         let app = launchApp()
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
@@ -2211,12 +2179,11 @@ final class ClipRowActionsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
 
-        // Immediately after the tap — still on the AppKit callback tail — the
-        // snapshot is still active, so the @Query reorder has NOT relocated the
-        // acted-on row yet. The newer unpinned neighbor is still above the
-        // now-pinned older row. This stale position being observable is the
-        // negative proof that the clear is NOT synchronous inside the callback.
-        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+        // The hosted reconciliation lifecycle tests hold the injected real
+        // safe-boundary awaiter and prove the snapshot is not cleared in the
+        // callback. XCUITest's tap waits for idle, so this layer starts with the
+        // observable pinned feedback and validates the overlapping native action
+        // plus both terminal relocations below.
         let olderRow = assertTextRowIdentifier(for: older, in: app)
         UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 2)
 
