@@ -15,10 +15,24 @@ import SwiftData
 
 @MainActor
 struct HistoryRetentionService {
-    private let modelContext: ModelContext
+    typealias SaveContext = (ModelContext) throws -> Void
+    typealias RollbackContext = (ModelContext) -> Void
 
-    init(modelContext: ModelContext) {
+    private let modelContext: ModelContext
+    private let imageFileStore: ImageClipFileStore
+    private let saveContext: SaveContext
+    private let rollbackContext: RollbackContext
+
+    init(
+        modelContext: ModelContext,
+        imageFileStore: ImageClipFileStore = ImageClipFileStore(),
+        saveContext: @escaping SaveContext = { try $0.save() },
+        rollbackContext: @escaping RollbackContext = { $0.rollback() }
+    ) {
         self.modelContext = modelContext
+        self.imageFileStore = imageFileStore
+        self.saveContext = saveContext
+        self.rollbackContext = rollbackContext
     }
 
     /// Calculate the IDs of unpinned items that should be removed to satisfy
@@ -87,9 +101,9 @@ struct HistoryRetentionService {
         }
 
         do {
-            try modelContext.save()
+            try saveContext(modelContext)
         } catch {
-            modelContext.rollback()
+            rollbackContext(modelContext)
             throw error
         }
 
@@ -103,9 +117,8 @@ struct HistoryRetentionService {
     }
 
     private func removeImageAsset(_ imageFilename: String, thumbnailFilename: String?) {
-        let store = ImageClipFileStore()
         do {
-            try store.removeImageAsset(
+            try imageFileStore.removeImageAsset(
                 imageFilename: imageFilename,
                 thumbnailFilename: thumbnailFilename
             )

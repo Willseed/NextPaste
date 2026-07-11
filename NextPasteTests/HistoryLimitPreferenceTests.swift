@@ -27,7 +27,7 @@ struct HistoryLimitPreferenceTests {
         #expect(HistoryLimit.defaultLimit.value == 500)
     }
 
-    @Test(arguments: [1, 450, 1_000])
+    @Test(arguments: [1, 2, 450, 999, 1_000])
     func validValuesRemainUnchanged(_ rawValue: Int) {
         #expect(HistoryLimit(rawValue).value == rawValue)
     }
@@ -59,7 +59,8 @@ struct HistoryLimitPreferenceTests {
         (draft: "0", expected: 1),
         (draft: "-12", expected: 1),
         (draft: "1001", expected: 1_000),
-        (draft: "999999999999999999999999", expected: 1_000)
+        (draft: "999999999999999999999999", expected: 1_000),
+        (draft: "-999999999999999999999999", expected: 1)
     ])
     func commitAcceptsIntegersAndClampsOutOfRange(_ fixture: (draft: String, expected: Int)) {
         let result = HistoryLimitInputPolicy.commit(fixture.draft, current: HistoryLimit(500))
@@ -69,7 +70,10 @@ struct HistoryLimitPreferenceTests {
         #expect(result.normalizedText == String(fixture.expected))
     }
 
-    @Test(arguments: ["", "   ", "3.5", "abc", "12abc", "NaN", "∞", "+", "-"])
+    @Test(arguments: [
+        "", "   ", "1.0", "1.5", "3.5", "abc", "12abc", "#42", "１２",
+        "NaN", "∞", "+", "-"
+    ])
     func commitRestoresCurrentValueForEmptyOrUnparseableInput(_ draft: String) {
         let result = HistoryLimitInputPolicy.commit(draft, current: HistoryLimit(321))
 

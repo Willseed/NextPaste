@@ -208,4 +208,183 @@ struct HistoryRetentionServiceTests {
         #expect(remainingUnpinned.contains { $0.id == target.id })
         #expect(remainingUnpinned.contains { $0.id == otherItems[0].id } == false)
     }
+
+    @Test func retentionPreservesCanonicalNewestFirstOrder() throws {
+        let context = try makeContext()
+        _ = try SwiftDataTestSupport.seedClips(
+            ["oldest", "middle", "newest"],
+            in: context,
+            startTime: 100,
+            step: 100,
+            isPinned: false
+        )
+
+        _ = try HistoryRetentionService(modelContext: context).enforceLimit(limit: HistoryLimit(2))
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+
+        #expect(remaining.map(\.textContent) == ["newest", "middle"])
+    }
+
+    @Test func rapidLimitChangesEndAtLatestValidCapacity() throws {
+        let context = try makeContext()
+        _ = try SwiftDataTestSupport.seedClips(
+            (1...12).map { "item \($0)" },
+            in: context,
+            isPinned: false
+        )
+        let service = HistoryRetentionService(modelContext: context)
+
+        for limit in [10, 7, 9, 3] {
+            _ = try service.enforceLimit(limit: HistoryLimit(limit))
+        }
+
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(remaining.count == 3)
+        #expect(remaining.map(\.textContent) == ["item 12", "item 11", "item 10"])
+    }
+
+    @Test func limitOneKeepsOnlyTheNewestUnpinnedItem() throws {
+        let context = try makeContext()
+        _ = try SwiftDataTestSupport.seedClips(
+            ["oldest", "middle", "newest"],
+            in: context,
+            startTime: 100,
+            step: 100,
+            isPinned: false
+        )
+
+        let removed = try HistoryRetentionService(modelContext: context)
+            .enforceLimit(limit: HistoryLimit(1))
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+
+        #expect(removed == 2)
+        #expect(remaining.map(\.textContent) == ["newest"])
+    }
+
+    @Test func maximumLimitTrimsOnlyTheSingleOldestItemFromOneThousandAndOne() throws {
+        let context = try makeContext()
+        _ = try SwiftDataTestSupport.seedClips(
+            (1...1_001).map { "item \($0)" },
+            in: context,
+            isPinned: false
+        )
+
+        let removed = try HistoryRetentionService(modelContext: context)
+            .enforceLimit(limit: HistoryLimit(1_000))
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+
+        #expect(removed == 1)
+        #expect(remaining.count == 1_000)
+        #expect(remaining.first?.textContent == "item 1001")
+        #expect(remaining.last?.textContent == "item 2")
+    }
+
+    @Test func pinnedCountAboveTheLimitStillPreservesEveryPinnedItem() throws {
+        let context = try makeContext()
+        _ = try SwiftDataTestSupport.seedClips(
+            ["pinned 1", "pinned 2", "pinned 3"],
+            in: context,
+            isPinned: true
+        )
+        _ = try SwiftDataTestSupport.seedClips(
+            ["old unpinned", "new unpinned"],
+            in: context,
+            startTime: 10_000,
+            isPinned: false
+        )
+
+        _ = try HistoryRetentionService(modelContext: context)
+            .enforceLimit(limit: HistoryLimit(1))
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+
+        #expect(remaining.filter(\.isPinned).count == 3)
+        #expect(remaining.filter { $0.isPinned == false }.map(\.textContent) == ["new unpinned"])
+    }
+
+    @Test func SettingsViewDoesNotEnforceRetentionDuringBodyEvaluation() throws {
+        let sourceURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("NextPaste/SettingsView.swift")
+        let source = try String(contentsOf: sourceURL, encoding: .utf8)
+        let historyTab = try #require(source.range(of: "private struct HistorySettingsTab"))
+        let commit = try #require(
+            source.range(of: "private func commitDraft()", range: historyTab.lowerBound..<source.endIndex)
+        )
+        let apply = try #require(
+            source.range(of: "private func apply(_ limit: HistoryLimit)", range: commit.upperBound..<source.endIndex)
+        )
+        let bodyAndEventHandlers = source[historyTab.lowerBound..<commit.lowerBound]
+        let applyImplementation = source[apply.lowerBound...]
+
+        #expect(bodyAndEventHandlers.contains("HistoryRetentionService") == false)
+        #expect(applyImplementation.contains("HistoryRetentionService(modelContext: modelContext).enforceLimit"))
+    }
+
+    @Test func saveFailureRollsBackAllPendingRetentionDeletes() throws {
+        enum InjectedFailure: Error { case save }
+
+        let context = try makeContext()
+        let clips = try SwiftDataTestSupport.seedClips(
+            ["oldest", "middle", "newest"],
+            in: context,
+            isPinned: false
+        )
+        let service = HistoryRetentionService(
+            modelContext: context,
+            saveContext: { _ in throw InjectedFailure.save }
+        )
+
+        #expect(throws: InjectedFailure.self) {
+            try service.enforceLimit(limit: HistoryLimit(1))
+        }
+        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(Set(remaining.map(\.id)) == Set(clips.map(\.id)))
+    }
+
+    @Test func trimmingAnImageRemovesItsFilesAfterTheStoreSave() throws {
+        let context = try makeContext()
+        let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(named: "retention-image-cleanup")
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root) }
+        let fileStore = ImageClipFileStore(rootURL: root.rootURL)
+        let oldestID = UUID()
+        let asset = try fileStore.persistImageAsset(
+            clipID: oldestID,
+            sourceExtension: "png",
+            fullImageData: ImageTestFixtures.png.data,
+            thumbnailData: ImageTestFixtures.png.data
+        )
+        context.insert(ClipItem.imageClip(ImageClipInitialization(
+            id: oldestID,
+            metadata: ImageClipInitialization.Metadata(
+                hash: "retention-image",
+                dimensions: .init(width: 1, height: 1),
+                byteCount: ImageTestFixtures.png.data.count,
+                utType: ImageTestFixtures.png.typeIdentifier,
+                filename: asset.imageFilename,
+                thumbnail: .init(
+                    filename: asset.thumbnailFilename,
+                    description: "Retention image fixture"
+                )
+            ),
+            createdAt: Date(timeIntervalSince1970: 1),
+            isPinned: false
+        )))
+        context.insert(ClipItem(
+            textContent: "newest text",
+            createdAt: Date(timeIntervalSince1970: 2),
+            isPinned: false
+        ))
+        try context.save()
+
+        _ = try HistoryRetentionService(
+            modelContext: context,
+            imageFileStore: fileStore
+        ).enforceLimit(limit: HistoryLimit(1))
+
+        #expect(FileManager.default.fileExists(atPath: asset.imageURL.path) == false)
+        if let thumbnailURL = asset.thumbnailURL {
+            #expect(FileManager.default.fileExists(atPath: thumbnailURL.path) == false)
+        }
+    }
 }
