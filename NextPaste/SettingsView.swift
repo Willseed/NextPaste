@@ -25,7 +25,17 @@ struct SettingsView: View {
     }
 
     @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
     @State private var selectedTab: Tab = .general
+
+    private var settingsAccessibilityLabel: String {
+        let language = appLanguagePreference.language
+        return String(
+            localized: "Settings",
+            bundle: language.localizationBundle(),
+            locale: language.locale
+        )
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -93,6 +103,16 @@ struct SettingsView: View {
             }
         }
 #endif
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Settings")
+#if os(macOS)
+        .background {
+            WindowAccessibilityHostBridge(
+                label: settingsAccessibilityLabel,
+                identifier: "settings-content"
+            )
+        }
+#endif
     }
 }
 
@@ -114,6 +134,7 @@ private struct GeneralSettingsTab: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .focusable()
                 .focused($isLanguagePickerFocused)
                 .accessibilityIdentifier("app-language-picker")
                 .accessibilityLabel("App Language")
@@ -214,6 +235,7 @@ private struct ShortcutsSettingsTab: View {
                             Text("Record Shortcut")
                         }
                     }
+                    .focusable()
                     .focused($focusedTarget, equals: .record)
                     .accessibilityIdentifier("global-shortcut-record-button")
                     .accessibilityLabel(
@@ -226,7 +248,16 @@ private struct ShortcutsSettingsTab: View {
                         clearShortcut()
                     }
                     .disabled(preference.shortcut == nil)
+                    .focusable()
                     .focused($focusedTarget, equals: .clear)
+                    .onKeyPress(.space) {
+                        guard focusedTarget == .clear,
+                              preference.shortcut != nil else {
+                            return .ignored
+                        }
+                        clearShortcut()
+                        return .handled
+                    }
                     .accessibilityIdentifier("global-shortcut-clear-button")
                     .accessibilityLabel("Clear Shortcut")
                     .accessibilityHint("Disable the global keyboard shortcut")
@@ -235,6 +266,7 @@ private struct ShortcutsSettingsTab: View {
                         focusedTarget = .reset
                         resetToDefault()
                     }
+                    .focusable()
                     .focused($focusedTarget, equals: .reset)
                     .accessibilityIdentifier("global-shortcut-reset-button")
                     .accessibilityLabel("Reset to Default")
@@ -441,6 +473,7 @@ private struct AppearanceSettingsTab: View {
                         Text(mode.displayNameKey).tag(mode)
                     }
                 }
+                .focusable()
                 .focused($isAppearancePickerFocused)
                 .accessibilityIdentifier("appearance-picker")
                 .accessibilityLabel("Appearance")

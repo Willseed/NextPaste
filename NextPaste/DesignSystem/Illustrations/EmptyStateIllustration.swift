@@ -28,8 +28,10 @@ struct EmptyStateIllustration: View {
                 .foregroundStyle(appTheme.accentPinned.color)
                 .accessibilityHidden(true)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("empty-state-illustration")
-        .accessibilityLabel("Clipboard illustration")
+        .accessibilityRepresentation {
+            Image(systemName: DesignTokens.Icons.clipboard)
+                .accessibilityIdentifier("empty-state-illustration")
+                .accessibilityLabel("Clipboard illustration")
+        }
     }
 }

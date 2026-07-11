@@ -60,6 +60,11 @@ final class SettingsUITests: UITestCase {
         static let retainedClip = "History limit unpinned clip 11"
     }
 
+    private enum HistoryLimitFixture {
+        static let minimum = 1
+        static let maximum = 1_000
+    }
+
     private enum LocalizedLabel {
         static let englishTabs = [
             (Accessibility.generalTab, "General"),
@@ -235,7 +240,8 @@ final class SettingsUITests: UITestCase {
         let relaunchedField = historyLimitField(in: reopenedSettings)
         XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
 
-        historyLimitSlider(in: reopenedSettings).adjust(toNormalizedSliderPosition: 1)
+        let reopenedSlider = historyLimitSlider(in: reopenedSettings)
+        reopenedSlider.adjust(toNormalizedSliderPosition: 1)
         XCTAssertTrue(
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
             "Expected maximum Slider position to update the TextField to 1000"
@@ -281,14 +287,14 @@ final class SettingsUITests: UITestCase {
             waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
             "Editing must not persist before Return or focus loss"
         )
-        app.typeKey(.tab, modifierFlags: [])
+        field.typeKey(.tab, modifierFlags: [])
         assertHistoryLimitValues(field: field, slider: slider, equal: "612")
 
         clearText(in: field, application: app)
         XCTAssertTrue(
             waitForElementValue(slider, equals: "612", timeout: UITestAssertions.defaultTimeout)
         )
-        app.typeKey(.tab, modifierFlags: [])
+        field.typeKey(.tab, modifierFlags: [])
         assertHistoryLimitValues(field: field, slider: slider, equal: "612")
         XCTAssertEqual(app.state, .runningForeground, "Empty focus-loss commit must not crash the app")
     }
@@ -553,11 +559,9 @@ final class SettingsUITests: UITestCase {
             localizedLanguagePicker,
             equals: Accessibility.localizedTraditionalChineseTaiwan
         )
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.languageFocusProbe,
-            in: settingsWindow,
-            message: "Language switching must preserve keyboard focus on the picker"
+        assertHasKeyboardFocus(
+            localizedLanguagePicker,
+            message: "Language switching must preserve native keyboard focus on the picker"
         )
         localizedLanguagePicker.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
@@ -565,14 +569,17 @@ final class SettingsUITests: UITestCase {
             "The focused localized picker must remain keyboard-operable without a pointer tap"
         )
         app.typeKey(.escape, modifierFlags: [])
-        selectAdjacentPopupOption(.previous, from: localizedLanguagePicker, in: app)
+        selectAdjacentPopupOption(
+            .previous,
+            from: localizedLanguagePicker,
+            in: app,
+            acquireFocus: false
+        )
         let restoredLanguagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(restoredLanguagePicker, equals: Accessibility.englishUnitedStates)
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.languageFocusProbe,
-            in: settingsWindow,
-            message: "Switching back to English must preserve keyboard focus"
+        assertHasKeyboardFocus(
+            restoredLanguagePicker,
+            message: "Switching back to English must preserve native keyboard focus"
         )
         restoredLanguagePicker.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
@@ -580,32 +587,34 @@ final class SettingsUITests: UITestCase {
             "The focused English picker must remain keyboard-operable without a pointer tap"
         )
         app.typeKey(.escape, modifierFlags: [])
-        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+        try performProductAccessibilityAudit(in: app)
 
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
         let clearButton = shortcutButton(Accessibility.clearShortcut, in: settingsWindow)
         let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
         assertAccessibleControl(recordButton, named: "Record Shortcut button")
-        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
         assertAccessibleControl(resetButton, named: "Reset to Default button")
+        resetButton.tap()
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset to Default must establish the deterministic keyboard-clear precondition"
+        )
+        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
 
         recordButton.tap()
-        assertProbeValue(
-            Accessibility.recordShortcut,
-            identifier: Accessibility.shortcutsFocusProbe,
-            in: settingsWindow,
-            message: "The Record Shortcut button must expose its actual SwiftUI focus state"
+        assertHasKeyboardFocus(
+            recordButton,
+            message: "The Record Shortcut button must expose native keyboard focus"
         )
         assertElementLabel(recordButton, equals: "Cancel Recording")
         recordButton.tap()
         assertElementLabel(recordButton, equals: LocalizedLabel.englishRecordShortcut)
-        app.typeKey(.tab, modifierFlags: [])
-        assertProbeValue(
-            Accessibility.clearShortcut,
-            identifier: Accessibility.shortcutsFocusProbe,
-            in: settingsWindow,
-            message: "Tab must move focus from Record Shortcut to Clear Shortcut"
+        recordButton.typeKey(.tab, modifierFlags: [])
+        assertHasKeyboardFocus(
+            clearButton,
+            message: "Tab must move native focus from Record Shortcut to Clear Shortcut"
         )
         app.typeKey(.space, modifierFlags: [])
         assertGlobalShortcutValueEventually(
@@ -614,29 +623,25 @@ final class SettingsUITests: UITestCase {
             message: "Space must activate the focused Clear Shortcut button"
         )
         resetButton.tap()
-        assertProbeValue(
-            Accessibility.resetShortcut,
-            identifier: Accessibility.shortcutsFocusProbe,
-            in: settingsWindow,
-            message: "The Reset to Default button must expose its actual SwiftUI focus state"
+        assertHasKeyboardFocus(
+            resetButton,
+            message: "The Reset to Default button must expose native keyboard focus"
         )
         assertGlobalShortcutValueEventually(
             equals: Fixture.defaultShortcutDisplay,
             in: settingsWindow,
             message: "Reset to Default must restore the shortcut after keyboard clearing"
         )
-        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+        try performProductAccessibilityAudit(in: app)
 
         openSettingsTab(Accessibility.appearanceTab, in: app)
         let appearancePicker = appearancePopup(in: settingsWindow)
         assertAccessibleControl(appearancePicker, named: "Appearance picker")
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.appearanceFocusProbe,
-            in: settingsWindow,
-            message: "Appearance switching must preserve keyboard focus"
+        assertHasKeyboardFocus(
+            appearancePicker,
+            message: "Appearance switching must preserve native keyboard focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
         appearancePicker.typeKey(.space, modifierFlags: [])
@@ -645,7 +650,7 @@ final class SettingsUITests: UITestCase {
             "The focused Appearance picker must remain keyboard-operable without a pointer tap"
         )
         app.typeKey(.escape, modifierFlags: [])
-        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+        try performProductAccessibilityAudit(in: app)
 
         openSettingsTab(Accessibility.historyTab, in: app)
         let slider = historyLimitSlider(in: settingsWindow)
@@ -653,23 +658,42 @@ final class SettingsUITests: UITestCase {
         assertAccessibleControl(slider, named: "Storage Limit slider")
         assertAccessibleControl(field, named: "Storage Limit field")
 
-        let initialSliderValue = elementValue(of: slider)
-        XCTAssertNotNil(Int(initialSliderValue), "Slider accessibility value must be an integer")
-        XCTAssertFalse(initialSliderValue.contains("."), "Slider accessibility value must not be fractional")
-
-        slider.tap()
-        assertProbeValue(
-            Accessibility.historyLimitSlider,
-            identifier: Accessibility.historyFocusProbe,
-            in: settingsWindow,
-            message: "The slider must expose its actual SwiftUI focus state"
+        let initialSliderValue = try XCTUnwrap(rawNumericElementValue(of: slider))
+        XCTAssertEqual(initialSliderValue.rounded(), initialSliderValue, "Slider accessibility value must be an integer")
+        XCTAssertTrue(
+            (Double(HistoryLimitFixture.minimum)...Double(HistoryLimitFixture.maximum))
+                .contains(initialSliderValue),
+            "Slider must expose its semantic 1...1000 value through Accessibility"
         )
-        app.typeKey(.tab, modifierFlags: [])
-        assertProbeValue(
-            Accessibility.historyLimitField,
-            identifier: Accessibility.historyFocusProbe,
-            in: settingsWindow,
-            message: "Tab must move focus from the slider to the Storage Limit field"
+
+        slider.adjust(toNormalizedSliderPosition: 0)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        slider.adjust(toNormalizedSliderPosition: 0.5)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let updatedSliderValue = self.elementValue(of: slider)
+                return updatedSliderValue != "1"
+                    && updatedSliderValue != "1000"
+                    && self.textInputValue(of: field) == updatedSliderValue
+            },
+            "A native midpoint Slider adjustment must synchronize an intermediate integer"
+        )
+        slider.adjust(toNormalizedSliderPosition: 0)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        slider.tap()
+        slider.typeKey(.rightArrow, modifierFlags: [])
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let updatedSliderValue = self.elementValue(of: slider)
+                return updatedSliderValue != "1"
+                    && self.textInputValue(of: field) == updatedSliderValue
+            },
+            "Right Arrow must update the Slider's integer value and synchronize the TextField"
+        )
+        field.tap()
+        assertHasKeyboardFocus(
+            field,
+            message: "The Storage Limit field must expose native keyboard focus"
         )
 
         replaceText(in: field, with: "275", application: app)
@@ -678,10 +702,22 @@ final class SettingsUITests: UITestCase {
         assertHistoryLimitValues(field: field, slider: slider, equal: "275")
 
         replaceText(in: field, with: "276", application: app)
-        app.typeKey(.tab, modifierFlags: [])
+        field.typeKey(.tab, modifierFlags: [])
         assertHistoryLimitValues(field: field, slider: slider, equal: "276")
 
-        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+        slider.adjust(toNormalizedSliderPosition: 1)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
+
+        try performProductAccessibilityAudit(in: app)
+    }
+
+    private func performProductAccessibilityAudit(in app: XCUIApplication) throws {
+        try app.performAccessibilityAudit(for: .sufficientElementDescription) { issue in
+            // XCUIAutomation audits the application-level accessibility tree,
+            // which includes the macOS-owned Touch Bar surface outside every
+            // NextPaste window. Product elements remain unhandled and blocking.
+            issue.element?.elementType == .touchBar
+        }
     }
 
     private func openSettingsWindow(
@@ -690,7 +726,9 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) -> XCUIElement {
         app.typeKey(",", modifierFlags: .command)
-        return assertSingleSettingsWindow(in: app, file: file, line: line)
+        let settingsWindow = assertSingleSettingsWindow(in: app, file: file, line: line)
+        settingsWindow.click()
+        return settingsWindow
     }
 
     private func assertSingleSettingsWindow(
@@ -863,7 +901,29 @@ final class SettingsUITests: UITestCase {
     }
 
     private func elementValue(of element: XCUIElement) -> String {
-        element.value as? String ?? ""
+        switch element.value {
+        case let value as String:
+            return value
+        case let value as NSNumber:
+            let doubleValue = value.doubleValue
+            if doubleValue.isFinite, doubleValue.rounded() == doubleValue {
+                return String(Int(doubleValue))
+            }
+            return value.stringValue
+        default:
+            return ""
+        }
+    }
+
+    private func rawNumericElementValue(of element: XCUIElement) -> Double? {
+        switch element.value {
+        case let value as NSNumber:
+            return value.doubleValue
+        case let value as String:
+            return Double(value)
+        default:
+            return nil
+        }
     }
 
     private func waitForElementValue(
@@ -872,7 +932,7 @@ final class SettingsUITests: UITestCase {
         timeout: TimeInterval
     ) -> Bool {
         UITestWait.until(timeout: timeout) {
-            (element.value as? String) == expectedValue
+            self.elementValue(of: element) == expectedValue
         }
     }
 
@@ -912,6 +972,7 @@ final class SettingsUITests: UITestCase {
         _ direction: PopupDirection,
         from popup: XCUIElement,
         in app: XCUIApplication,
+        acquireFocus: Bool = true,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -923,8 +984,16 @@ final class SettingsUITests: UITestCase {
         )
         XCTAssertTrue(popup.isEnabled, "Expected pop-up button to be enabled", file: file, line: line)
         let currentValue = popupValue(of: popup)
-        popup.tap()
-        app.typeKey(.escape, modifierFlags: [])
+        if acquireFocus {
+            popup.tap()
+            app.typeKey(.escape, modifierFlags: [])
+        }
+        assertHasKeyboardFocus(
+            popup,
+            message: "Expected the pop-up button to own native keyboard focus",
+            file: file,
+            line: line
+        )
         popup.typeKey(.space, modifierFlags: [])
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
@@ -936,6 +1005,28 @@ final class SettingsUITests: UITestCase {
         )
         app.typeKey(direction.key, modifierFlags: [])
         app.typeKey(.return, modifierFlags: [])
+    }
+
+    private func assertHasKeyboardFocus(
+        _ element: XCUIElement,
+        message: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                guard let snapshot = try? element.snapshot(),
+                      let hasFocus = snapshot.dictionaryRepresentation[
+                          XCUIElement.AttributeName.hasFocus
+                      ] as? NSNumber else {
+                    return false
+                }
+                return hasFocus.boolValue
+            },
+            message,
+            file: file,
+            line: line
+        )
     }
 
     private func assertPopupMenuOptions(

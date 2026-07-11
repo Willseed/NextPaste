@@ -285,6 +285,16 @@ struct NextPasteApp: App {
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
         .frame(minWidth: 520, minHeight: 380)
 #if os(macOS)
+        .background {
+            WindowAccessibilityHostBridge(
+                label: String(
+                    localized: "Clips",
+                    bundle: appLanguagePreference.language.localizationBundle(),
+                    locale: appLanguagePreference.language.locale
+                ),
+                identifier: "main-content"
+            )
+        }
         // The coordinator is shared across WindowGroup scenes so OCR cache and
         // pasteboard intent ordering stay app-wide. Cancel only at the app-wide
         // inactive boundary; closing one window must not cancel another.

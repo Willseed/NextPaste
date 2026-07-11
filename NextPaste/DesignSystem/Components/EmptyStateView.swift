@@ -49,7 +49,6 @@ struct EmptyStateView: View {
         }
         .padding(DesignTokens.Spacing.xxLarge)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .contain)
     }
 
     private var headline: String {
