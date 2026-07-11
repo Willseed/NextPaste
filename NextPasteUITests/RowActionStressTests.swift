@@ -73,14 +73,17 @@ final class RowActionStressTests: UITestCase {
             actionOutcomes.append("repin-\(iteration): \(app.state)")
         }
 
-        // Final ordering check: all three should be pinned, newest-first.
+        // Final ordering check: all three should be pinned. Re-pinning the
+        // middle clip advances its sectionSortDate on every state-changing Pin,
+        // so FR-005 requires it to lead the pinned section, followed by the
+        // initially newest and initially oldest clips.
         UITestAssertions.assertEventuallyAccessibleTextContains(
             assertTextRowIdentifier(for: clips[1], in: app),
             "Pinned",
             timeout: 2
         )
-        UITestAssertions.assert(app.staticTexts[clips[2]], appearsAbove: app.staticTexts[clips[1]])
-        UITestAssertions.assert(app.staticTexts[clips[1]], appearsAbove: app.staticTexts[clips[0]])
+        UITestAssertions.assert(app.staticTexts[clips[1]], appearsAbove: app.staticTexts[clips[2]])
+        UITestAssertions.assert(app.staticTexts[clips[2]], appearsAbove: app.staticTexts[clips[0]])
 
         attachStressOutcome(
             scenario: "A",
