@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+readonly SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
 readonly SCHEME_NAME="NextPaste"
 readonly TEST_PLAN_NAME="NextPaste"
@@ -12,6 +12,7 @@ readonly DESTINATION="platform=macOS"
 readonly BUILD_CONFIGURATION="Debug"
 readonly LOCALIZATION_CATALOG="${REPO_ROOT}/NextPaste/Localizable.xcstrings"
 readonly VISION_INTEGRATION_SELECTOR="NextPasteTests/VisionImageTextRecognizerIntegrationTests"
+readonly APPEARANCE_INTEGRATION_SELECTOR="NextPasteTests/AppKitAppearanceIntegrationTests"
 
 DRY_RUN=0
 case "${1:-}" in
@@ -105,14 +106,14 @@ assert_no_repository_build_artifacts "preflight artifact gate"
 
 artifacts_root="${VERIFY_ARTIFACTS_DIR:-${TMPDIR:-/tmp}/NextPasteVerification}"
 /bin/mkdir -p "${artifacts_root}"
-artifacts_root="$(cd "${artifacts_root}" && pwd)"
+artifacts_root="$(cd -P "${artifacts_root}" && pwd -P)"
 case "${artifacts_root}/" in
   "${REPO_ROOT}/"*) fail "Verification output must be outside the repository: ${artifacts_root}" ;;
 esac
 readonly RUN_DIR="$(/usr/bin/mktemp -d "${artifacts_root}/run.XXXXXX")"
 derived_data_path="${VERIFY_DERIVED_DATA_PATH:-${RUN_DIR}/DerivedData}"
 /bin/mkdir -p "${derived_data_path}"
-derived_data_path="$(cd "${derived_data_path}" && pwd)"
+derived_data_path="$(cd -P "${derived_data_path}" && pwd -P)"
 case "${derived_data_path}/" in
   "${REPO_ROOT}/"*) fail "DerivedData must be outside the repository: ${derived_data_path}" ;;
 esac
@@ -238,7 +239,11 @@ run_build_phase() {
   /bin/echo "${label}: status=${build_status} errors=${error_count} warnings=${warning_count} analyzerWarnings=${analyzer_warning_count}"
   /bin/echo "${label} result bundle: ${result_bundle}"
 
-  if (( command_status != 0 || error_count != 0 )) || [[ "${build_status}" != "succeeded" ]]; then
+  if (( command_status != 0 \
+      || error_count != 0 \
+      || warning_count != 0 \
+      || analyzer_warning_count != 0 )) \
+      || [[ "${build_status}" != "succeeded" ]]; then
     /bin/echo "error: ${label} failed; see ${summary_path}" >&2
     if (( command_status != 0 )); then
       return "${command_status}"
@@ -352,10 +357,12 @@ run_build_phase TestBuild Debug "${DESTINATION}" \
 
 run_test_phase Unit Unit \
   -only-testing:NextPasteTests \
-  -skip-testing:"${VISION_INTEGRATION_SELECTOR}"
+  -skip-testing:"${VISION_INTEGRATION_SELECTOR}" \
+  -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
 
 run_test_phase Integration Integration \
-  -only-testing:"${VISION_INTEGRATION_SELECTOR}"
+  -only-testing:"${VISION_INTEGRATION_SELECTOR}" \
+  -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
 
 run_test_phase UI UI \
   -parallel-testing-enabled NO \
