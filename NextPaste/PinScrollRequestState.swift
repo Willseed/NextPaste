@@ -28,7 +28,8 @@ nonisolated struct PinScrollRequestState: Equatable, Sendable {
         generation &+= 1
 
         guard case .applied(let itemID, let desiredPinnedState) = result,
-              desiredPinnedState else {
+              desiredPinnedState,
+              expectedVisibleItemIDs.contains(itemID) else {
             pendingRequest = nil
             return
         }
@@ -72,26 +73,80 @@ nonisolated enum PinScrollVisibilityDecision: Equatable {
     case cancel
 }
 
+/// Projection-scoped visibility reported by SwiftUI's scroll container. The
+/// production caller records only values emitted by
+/// `onScrollTargetVisibilityChange`, whose array is the aggregate set of
+/// visible scroll targets for that update. This is materially different from
+/// inferring completeness after one peer row happens to publish a frame.
+///
+/// An offscreen row does not need to mount: once the container reports at least
+/// one visible target for the current non-empty projection, absence from that
+/// complete aggregate is an actionable offscreen result rather than an
+/// indefinite per-row callback wait.
+nonisolated struct PinScrollLayoutObservationState: Equatable, Sendable {
+    private(set) var projectionItemIDs: [UUID] = []
+    private(set) var visibleTargetIDs: Set<UUID> = []
+    private(set) var hasCurrentSnapshot = false
+
+    mutating func beginProjection(_ itemIDs: [UUID]) {
+        guard projectionItemIDs != itemIDs else { return }
+        projectionItemIDs = itemIDs
+        visibleTargetIDs.removeAll()
+        hasCurrentSnapshot = false
+    }
+
+    /// Records one complete aggregate emitted by the scroll container. A
+    /// non-empty projection cannot be ready while the aggregate is empty: a
+    /// transient empty callback during mounting must not classify every target
+    /// as offscreen. IDs outside the tagged projection are likewise rejected.
+    @discardableResult
+    mutating func recordCompleteVisibilitySnapshot(
+        visibleTargetIDs: [UUID],
+        projectionItemIDs: [UUID]
+    ) -> Bool {
+        guard self.projectionItemIDs == projectionItemIDs else {
+            return false
+        }
+
+        let projectionIDSet = Set(projectionItemIDs)
+        let visibleIDSet = Set(visibleTargetIDs)
+        guard visibleIDSet.isSubset(of: projectionIDSet),
+              projectionItemIDs.isEmpty || visibleIDSet.isEmpty == false else {
+            return false
+        }
+
+        self.visibleTargetIDs = visibleIDSet
+        hasCurrentSnapshot = true
+        return true
+    }
+
+    mutating func reset() {
+        projectionItemIDs.removeAll()
+        visibleTargetIDs.removeAll()
+        hasCurrentSnapshot = false
+    }
+}
+
 extension HistoryViewportVisibility {
-    /// Decides whether a stable item ID needs scrolling after the reordered list
-    /// has reached a visibility-update boundary. `viewportVisibleItemIDs` is
-    /// fed by SwiftUI's native scroll-visibility callback at a low threshold,
-    /// so a partially visible row does not trigger disruptive scrolling.
+    /// Decides whether a stable item ID needs scrolling after the reordered
+    /// lazy List's scroll container has emitted its aggregate visible-target
+    /// snapshot. A missing target in that current aggregate is an offscreen
+    /// lazy row and is safe to address through `ScrollViewProxy` by stable UUID.
     nonisolated static func pinScrollDecision(
         request: PinScrollRequest,
         visibleItemIDs: [UUID],
-        viewportVisibleItemIDs: Set<UUID>,
-        hasVisibilityObservation: Bool
+        visibleTargetIDs: Set<UUID>,
+        hasCurrentVisibilitySnapshot: Bool
     ) -> PinScrollVisibilityDecision {
         guard visibleItemIDs.contains(request.itemID) else {
             return .cancel
         }
 
-        guard hasVisibilityObservation else {
+        guard hasCurrentVisibilitySnapshot else {
             return .waitForLayout
         }
 
-        return viewportVisibleItemIDs.contains(request.itemID)
+        return visibleTargetIDs.contains(request.itemID)
             ? .noScroll
             : .scroll(request.itemID)
     }

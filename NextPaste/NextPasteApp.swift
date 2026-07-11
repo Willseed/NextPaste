@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 #if os(macOS)
 import AppKit
+#elseif canImport(UIKit)
+import UIKit
 #endif
 
 @main
@@ -17,7 +19,18 @@ struct NextPasteApp: App {
 
     nonisolated static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
 
+#if DEBUG && os(macOS)
+    @NSApplicationDelegateAdaptor(DebugUITestApplicationDelegate.self)
+    private var uiTestApplicationDelegate
+#endif
     let sharedModelContainer: ModelContainer
+#if DEBUG
+    private let uiTestLaunchEnvironment: DebugUITestLaunchEnvironment?
+#if os(macOS)
+    private let uiTestOCRRecognizer: DebugUITestImageTextRecognizer?
+#endif
+#endif
+    private let imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
     @StateObject private var historyLimitPreference: HistoryLimitPreference
     @StateObject private var appearancePreference: AppearancePreference
     @StateObject private var appLanguagePreference: AppLanguagePreference
@@ -29,18 +42,51 @@ struct NextPasteApp: App {
     init() {
 #if DEBUG
         RowActionTraceRuntime.startIfEnabled()
+        let uiTestLaunchEnvironment = DebugUITestLaunchEnvironment()
+#if os(macOS)
+        precondition(
+            ProcessInfo.processInfo.arguments.contains("-ui-testing") == false || uiTestLaunchEnvironment != nil,
+            "A Debug UI-test launch requires the complete isolated launch environment"
+        )
 #endif
+        self.uiTestLaunchEnvironment = uiTestLaunchEnvironment
+#if os(macOS)
+        let uiTestOCRRecognizer = uiTestLaunchEnvironment?.ocrFixture.map(DebugUITestImageTextRecognizer.init)
+        self.uiTestOCRRecognizer = uiTestOCRRecognizer
+#endif
+#endif
+        #if DEBUG && os(macOS)
+        if let uiTestOCRRecognizer {
+            imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator(
+                recognizer: uiTestOCRRecognizer,
+                pasteboardWriter: SystemClipboardTextWriter()
+            )
+        } else {
+            imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator()
+        }
+        #else
+        imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator()
+        #endif
         sharedModelContainer = Self.makeModelContainer(arguments: ProcessInfo.processInfo.arguments)
+#if DEBUG
         UITestHistorySeeder.seedIfNeeded(
             arguments: ProcessInfo.processInfo.arguments,
             container: sharedModelContainer
         )
+#endif
+#if DEBUG
+        let defaults = uiTestLaunchEnvironment?.defaults ?? .standard
+        if let initialLanguageRawValue = uiTestLaunchEnvironment?.initialLanguageRawValue {
+            defaults.set(initialLanguageRawValue, forKey: AppLanguagePreference.storageKey)
+        }
+#else
         let defaults = UserDefaults.standard
+#endif
         let limitPref = HistoryLimitPreference(defaults: defaults)
         let appearancePref = AppearancePreference(defaults: defaults)
         let languagePref = AppLanguagePreference(defaults: defaults)
 #if os(macOS)
-        let globalShortcutPref = GlobalShortcutPreference()
+        let globalShortcutPref = GlobalShortcutPreference(defaults: defaults)
         let globalShortcutLifecycleController = GlobalShortcutLifecycleController(
             preference: globalShortcutPref
         )
@@ -69,12 +115,18 @@ struct NextPasteApp: App {
         let schema = Schema([
             ClipItem.self,
         ])
+        let requestedStoreURL = configuredStoreURL(arguments: arguments)
         let modelConfiguration: ModelConfiguration
-        if let storeURL = uiTestOnDiskStoreURL(arguments: arguments) {
+        if let storeURL = requestedStoreURL {
             createDirectoryIfNeeded(forStoreAt: storeURL)
             modelConfiguration = ModelConfiguration(schema: schema, url: storeURL)
         } else {
+#if DEBUG
             let storesInMemory = isStoredInMemoryOnly ?? arguments.contains("-ui-testing")
+#else
+            // Release builds never let launch arguments select test storage.
+            let storesInMemory = isStoredInMemoryOnly ?? false
+#endif
             modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: storesInMemory)
         }
 
@@ -84,7 +136,7 @@ struct NextPasteApp: App {
             diagnostics.storeLoadFailed()
             return recoveredModelContainer(
                 schema: schema,
-                failedStoreURL: uiTestOnDiskStoreURL(arguments: arguments),
+                failedStoreURL: requestedStoreURL,
                 recoveryContainerFactory: recoveryContainerFactory
             )
         }
@@ -101,6 +153,18 @@ struct NextPasteApp: App {
             return nil
         }
         return URL(fileURLWithPath: path).standardizedFileURL
+    }
+
+    nonisolated private static func configuredStoreURL(arguments: [String]) -> URL? {
+#if DEBUG
+        if let storeURL = DebugUITestLaunchEnvironment(arguments: arguments)?.storeURL {
+            return storeURL
+        }
+        return uiTestOnDiskStoreURL(arguments: arguments)
+#else
+        // Test-store launch arguments are a Debug-only capability.
+        return nil
+#endif
     }
 
     nonisolated private static func createModelContainer(
@@ -165,20 +229,7 @@ struct NextPasteApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("NextPaste") {
-            ClipboardMonitorHostView {
-                ContentView()
-            }
-                .environmentObject(appearancePreference)
-                .environmentObject(historyLimitPreference)
-                .environmentObject(appLanguagePreference)
-#if os(macOS)
-                .environmentObject(globalShortcutLifecycleController)
-#endif
-                .environment(\.locale, appLanguagePreference.language.locale)
-                .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
-                .frame(minWidth: 520, minHeight: 380)
-        }
+        mainScene
 #if os(macOS)
         .defaultSize(width: 640, height: 480)
 #endif
@@ -202,6 +253,56 @@ struct NextPasteApp: App {
                 .environmentObject(globalShortcutLifecycleController)
                 .environment(\.locale, appLanguagePreference.language.locale)
                 .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
+        }
+#endif
+    }
+
+    private var mainScene: some Scene {
+        WindowGroup("NextPaste") {
+            mainWindowContent
+        }
+#if DEBUG && os(macOS)
+        .defaultLaunchBehavior(uiTestLaunchEnvironment == nil ? .automatic : .presented)
+        .restorationBehavior(uiTestLaunchEnvironment == nil ? .automatic : .disabled)
+#endif
+    }
+
+    @ViewBuilder
+    private var mainWindowContent: some View {
+        ClipboardMonitorHostView {
+            ContentView(imageTextRecognitionCoordinator: imageTextRecognitionCoordinator)
+        }
+        .environmentObject(appearancePreference)
+        .environmentObject(historyLimitPreference)
+        .environmentObject(appLanguagePreference)
+#if os(macOS)
+        .environmentObject(globalShortcutLifecycleController)
+#endif
+        .environment(\.locale, appLanguagePreference.language.locale)
+        .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
+        .frame(minWidth: 520, minHeight: 380)
+#if os(macOS)
+        // The coordinator is shared across WindowGroup scenes so OCR cache and
+        // pasteboard intent ordering stay app-wide. Cancel only at the app-wide
+        // inactive boundary; closing one window must not cancel another.
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didResignActiveNotification)) { _ in
+            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
+        }
+#elseif canImport(UIKit)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didEnterBackgroundNotification)) { _ in
+            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
+        }
+#endif
+#if DEBUG && os(macOS)
+        .overlay(alignment: .topLeading) {
+            if let uiTestOCRRecognizer {
+                UITestOCRCompletionControl(recognizer: uiTestOCRRecognizer)
+            }
+        }
+        .background {
+            if uiTestLaunchEnvironment != nil {
+                UITestWindowActivationView()
+            }
         }
 #endif
     }

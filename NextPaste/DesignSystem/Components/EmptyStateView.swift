@@ -9,6 +9,7 @@ struct EmptyStateView: View {
     enum Kind: Equatable {
         case history
         case search
+        case filter
     }
 
     @Environment(\.appTheme) private var appTheme
@@ -17,6 +18,8 @@ struct EmptyStateView: View {
     static let description = "Copy something to get started."
     static let searchHeadline = "No matching clips"
     static let searchDescription = "Try a different search."
+    static let filterHeadline = "No clips match this filter"
+    static let filterDescription = "Choose a different filter."
 
     let kind: Kind
 
@@ -29,19 +32,19 @@ struct EmptyStateView: View {
             EmptyStateIllustration()
 
             VStack(spacing: DesignTokens.Spacing.small) {
-                Text(headline)
+                Text(LocalizedStringKey(headline))
                     .font(DesignTokens.Typography.title.font)
                     .foregroundStyle(appTheme.textPrimary.color)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(titleAccessibilityIdentifier)
-                    .accessibilityLabel(headline)
+                    .accessibilityLabel(Text(LocalizedStringKey(headline)))
 
-                Text(description)
+                Text(LocalizedStringKey(description))
                     .font(DesignTokens.Typography.body.font)
                     .foregroundStyle(appTheme.textSecondary.color)
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(descriptionAccessibilityIdentifier)
-                    .accessibilityLabel(description)
+                    .accessibilityLabel(Text(LocalizedStringKey(description)))
             }
         }
         .padding(DesignTokens.Spacing.xxLarge)
@@ -55,6 +58,8 @@ struct EmptyStateView: View {
             Self.headline
         case .search:
             Self.searchHeadline
+        case .filter:
+            Self.filterHeadline
         }
     }
 
@@ -64,6 +69,8 @@ struct EmptyStateView: View {
             Self.description
         case .search:
             Self.searchDescription
+        case .filter:
+            Self.filterDescription
         }
     }
 
@@ -73,6 +80,8 @@ struct EmptyStateView: View {
             "empty-state-title"
         case .search:
             "search-empty-state-title"
+        case .filter:
+            "filter-empty-state-title"
         }
     }
 
@@ -82,6 +91,8 @@ struct EmptyStateView: View {
             "empty-state-description"
         case .search:
             "search-empty-state-description"
+        case .filter:
+            "filter-empty-state-description"
         }
     }
 }

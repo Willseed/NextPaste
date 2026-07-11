@@ -43,6 +43,21 @@ struct ClipRowViewTests {
         #expect(ClipRowView.presentationKind(for: legacyClip) == .text)
     }
 
+    @Test("text filtering uses the same non-image semantics as row presentation")
+    @MainActor
+    func textFilteringKeepsLegacyNonImageRows() {
+        #expect(HistoryFilter.text.includes(contentType: "text", isPinned: false))
+        #expect(HistoryFilter.text.includes(contentType: "legacy", isPinned: true))
+        #expect(HistoryFilter.text.includes(contentType: "image", isPinned: false) == false)
+        #expect(HistoryFilter.images.includes(contentType: "legacy", isPinned: false) == false)
+    }
+
+    @Test("filtered empty state has filter-specific accessible copy")
+    func filteredEmptyStateHasDedicatedCopy() {
+        #expect(EmptyStateView.filterHeadline == "No clips match this filter")
+        #expect(EmptyStateView.filterDescription == "Choose a different filter.")
+    }
+
     @Test("removes obsolete reveal-state flags while preserving shared routing")
     @MainActor
     func removesObsoleteRevealStateFlagsWhilePreservingSharedRouting() {

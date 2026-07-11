@@ -6,6 +6,7 @@
 //  behavior outside explicit `-ui-testing` launch arguments.
 //
 
+#if DEBUG
 import Foundation
 import CoreGraphics
 import ImageIO
@@ -17,7 +18,9 @@ enum UITestHistorySeeder {
     static let settingsHistoryLimitArgument = "-ui-test-seed-settings-history-limit"
     static let relaunchDatasetArgument = "-ui-test-seed-relaunch-dataset"
     static let rowActionScenarioBArgument = "-ui-test-seed-row-action-scenario-b"
+    static let pinScrollAutomationArgument = "-ui-test-seed-pin-scroll-automation"
     static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
+    static let pinScrollAutomationRowCount = 64
     static let relaunchTextClipCount = 400
     static let relaunchImageClipCount = 100
     static let relaunchDatasetCount = relaunchTextClipCount + relaunchImageClipCount
@@ -29,6 +32,9 @@ enum UITestHistorySeeder {
         }
         if arguments.contains(rowActionScenarioBArgument) {
             seedRowActionScenarioB(container: container)
+        }
+        if arguments.contains(pinScrollAutomationArgument) {
+            seedPinScrollAutomation(container: container)
         }
         deleteRelaunchImageIfRequested(arguments: arguments)
 
@@ -95,6 +101,59 @@ enum UITestHistorySeeder {
             try context.save()
         } catch {
             assertionFailure("Failed to seed row-action Scenario B fixture: \(error)")
+        }
+    }
+
+    /// A fresh, deterministic 64-row dataset for end-to-end Pin scrolling.
+    /// Stable UUIDs let XCUITest prove that the row returned to the viewport is
+    /// the exact persisted item acted on, rather than another row with similar
+    /// content. The fixture is installed only for an explicit Debug UI-test
+    /// launch and therefore cannot affect production history.
+    private static func seedPinScrollAutomation(container: ModelContainer) {
+        let context = ModelContext(container)
+        let baseDate = Date(timeIntervalSinceReferenceDate: 20_000)
+
+        for index in 0..<pinScrollAutomationRowCount {
+            context.insert(
+                ClipItem(
+                    id: deterministicID(kind: 3, index: index),
+                    textContent: pinScrollAutomationText(index: index),
+                    createdAt: baseDate.addingTimeInterval(TimeInterval(index)),
+                    isPinned: index == 58
+                )
+            )
+        }
+
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            assertionFailure("Failed to seed Pin-scroll automation fixture: \(error)")
+        }
+    }
+
+    private static func pinScrollAutomationText(index: Int) -> String {
+        switch index {
+        case 63:
+            return "Pin scroll rapid A visible row 63"
+        case 62:
+            return "Pin scroll rapid B visible row 62"
+        case 61:
+            return "Pin scroll rapid C visible row 61"
+        case 60:
+            return "Pin scroll then delete visible row 60"
+        case 59:
+            return "Pin scroll keyboard visible row 59"
+        case 58:
+            return "Pin scroll initially pinned unpin row 58"
+        case 56:
+            return "Pin scroll offscreen exact target row 56 search-visible"
+        case 55:
+            return "Pin scroll search visible target row 55 search-visible"
+        case 41...54:
+            return String(format: "Pin scroll search companion row %02d search-visible", index)
+        default:
+            return String(format: "Pin scroll automation filler row %02d", index)
         }
     }
 
@@ -259,3 +318,4 @@ enum UITestHistorySeeder {
         return data as Data
     }()
 }
+#endif

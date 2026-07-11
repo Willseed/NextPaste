@@ -3,6 +3,7 @@
 //  NextPasteTests
 //
 
+import Foundation
 import Testing
 @testable import NextPaste
 
@@ -78,5 +79,52 @@ struct ThemeContractTests {
         #expect(reducedMotion.animation(0.25) == nil)
         #expect(defaultMotion.duration(0.25) == 0.25)
         #expect(defaultMotion.animation(0.25) != nil)
+    }
+
+    @Test("Pin scrolling routes its animation through the Reduce Motion policy")
+    func pinScrollUsesAppMotionAnimationPolicy() throws {
+        let homeViewURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .appendingPathComponent("NextPaste/HomeView.swift")
+        let source = try String(contentsOf: homeViewURL, encoding: .utf8)
+
+        #expect(
+            source.contains(
+                "withAnimation(appMotion.animation(DesignTokens.Motion.pinToggle))"
+            )
+        )
+    }
+
+    @Test("decorative Settings and filter symbols are hidden from accessibility")
+    func decorativeControlSymbolsAreAccessibilityHidden() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let settingsSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/SettingsView.swift"),
+            encoding: .utf8
+        )
+        for symbol in ["gear", "keyboard", "circle.lefthalf.filled", "clock.arrow.circlepath"] {
+            #expect(
+                settingsSource.contains(
+                    "Image(systemName: \"\(symbol)\").accessibilityHidden(true)"
+                )
+            )
+        }
+
+        let homeSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/HomeView.swift"),
+            encoding: .utf8
+        )
+        let filterMenu = try #require(homeSource.range(of: "history-filter-menu"))
+        let filterStart = homeSource.index(
+            filterMenu.lowerBound,
+            offsetBy: -1_200,
+            limitedBy: homeSource.startIndex
+        ) ?? homeSource.startIndex
+        let filterSection = homeSource[filterStart..<filterMenu.upperBound]
+        #expect(filterSection.contains("Image(systemName: \"checkmark\")"))
+        #expect(filterSection.contains(".accessibilityHidden(true)"))
     }
 }

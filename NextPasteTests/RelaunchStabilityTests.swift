@@ -102,6 +102,76 @@ struct RelaunchStabilityTests {
         #expect(HomeView.canProcessPinMutation(hasCompletedInitialLoad: false) == false)
         #expect(HomeView.canProcessPinMutation(hasCompletedInitialLoad: true))
     }
+
+    @Test("UI-test fixtures storage and probes remain compile-time Debug gated")
+    func uiTestSurfacesRemainDebugOnly() throws {
+        let appSource = try source(at: "NextPaste/NextPasteApp.swift")
+        let seedCall = try #require(appSource.range(of: "UITestHistorySeeder.seedIfNeeded"))
+        let seedGuard = try #require(
+            appSource[..<seedCall.lowerBound].range(of: "#if DEBUG", options: .backwards)
+        )
+        let seedGuardEnd = try #require(appSource[seedCall.upperBound...].range(of: "#endif"))
+        #expect(seedGuard.lowerBound < seedCall.lowerBound)
+        #expect(seedGuardEnd.lowerBound > seedCall.upperBound)
+
+        let configuredStore = try #require(appSource.range(of: "private static func configuredStoreURL"))
+        let nextFunction = try #require(
+            appSource[configuredStore.upperBound...].range(of: "private static func createModelContainer")
+        )
+        let configuredStoreImplementation = appSource[configuredStore.lowerBound..<nextFunction.lowerBound]
+        #expect(configuredStoreImplementation.contains("#if DEBUG"))
+        #expect(configuredStoreImplementation.contains("#else"))
+        #expect(configuredStoreImplementation.contains("return nil"))
+
+        let seederSource = try source(at: "NextPaste/Debug/UITestHistorySeeder.swift")
+        #expect(seederSource.contains("#if DEBUG"))
+        #expect(seederSource.trimmingCharacters(in: .whitespacesAndNewlines).hasSuffix("#endif"))
+
+        let imageStoreSource = try source(at: "NextPaste/ImageClips/ImageClipFileStore.swift")
+        #expect(imageStoreSource.contains("DebugUITestLaunchEnvironment()?.dataDirectoryURL"))
+        #expect(imageStoreSource.contains("NextPasteApp.uiTestOnDiskStoreURL") == false)
+
+        for path in [
+            "NextPaste/ClipboardMonitorClient.swift",
+            "NextPaste/ClipboardWriter.swift",
+            "NextPaste/NewClipView.swift",
+        ] {
+            let launchSeamSource = try source(at: path)
+            #expect(launchSeamSource.contains("#if DEBUG"))
+            #expect(launchSeamSource.contains("DebugUITestLaunchEnvironment"))
+            #expect(launchSeamSource.contains("#else"))
+        }
+
+        let homeSource = try source(at: "NextPaste/HomeView.swift")
+        #expect(homeSource.contains("#if DEBUG && os(macOS)"))
+        #expect(homeSource.contains("DebugUITestLaunchEnvironment() != nil"))
+    }
+
+    @Test("shared OCR cancellation is owned by the app lifecycle rather than one window")
+    func sharedOCRCancellationUsesAppLifecycleBoundary() throws {
+        let homeSource = try source(at: "NextPaste/HomeView.swift")
+        let disappear = try #require(homeSource.range(of: ".onDisappear {"))
+        let nextViewSection = try #require(
+            homeSource[disappear.upperBound...].range(of: "private var visibleClips")
+        )
+        let homeLifecycle = homeSource[disappear.lowerBound..<nextViewSection.lowerBound]
+        #expect(homeLifecycle.contains("imageTextRecognitionCoordinator.cancelAll") == false)
+
+        let appSource = try source(at: "NextPaste/NextPasteApp.swift")
+        #expect(appSource.contains("NSApplication.didResignActiveNotification"))
+        #expect(appSource.contains("UIApplication.didEnterBackgroundNotification"))
+        #expect(appSource.contains("imageTextRecognitionCoordinator.cancelAll(clearCache: true)"))
+    }
+
+    private func source(at relativePath: String) throws -> String {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        return try String(
+            contentsOf: repositoryRoot.appendingPathComponent(relativePath),
+            encoding: .utf8
+        )
+    }
 }
 
 final class CapturingPersistenceLoadDiagnosticsSink: PersistenceLoadDiagnosticsSink, @unchecked Sendable {

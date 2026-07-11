@@ -16,14 +16,35 @@ struct ContentView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var appearancePreference: AppearancePreference
+    private let imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
+
+    @MainActor
+    init() {
+        self.init(imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator())
+    }
+
+    init(imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator) {
+        self.imageTextRecognitionCoordinator = imageTextRecognitionCoordinator
+    }
 
     var body: some View {
         NavigationViewWrapper {
-            HomeView()
+            HomeView(imageTextRecognitionCoordinator: imageTextRecognitionCoordinator)
         }
         .environment(\.appTheme, appTheme)
         .environment(\.appMotion, AppMotion(reduceMotion: reduceMotion))
         .background(appTheme.canvas.color)
+#if DEBUG && os(macOS)
+        .overlay(alignment: .bottomLeading) {
+            if DebugUITestLaunchEnvironment() != nil {
+                DebugUITestAccessibilityProbe(
+                    identifier: "effective-appearance-main",
+                    label: "Main window effective appearance",
+                    value: colorScheme == .dark ? "dark" : "light"
+                )
+            }
+        }
+#endif
     }
 
     private var appTheme: AppTheme {

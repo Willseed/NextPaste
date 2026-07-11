@@ -61,7 +61,12 @@ final class ClipboardMonitor {
         }
 
         lastObservedChangeCount = changeCount
-        _ = captureService.captureClipboardPayload(reader.currentPayload(), observedAt: now())
+        let outcome = captureService.captureClipboardPayload(reader.currentPayload(), observedAt: now())
+#if DEBUG && os(macOS)
+        if DebugUITestLaunchEnvironment() != nil {
+            DebugUITestClipboardMonitorProbe.shared.record(outcome)
+        }
+#endif
     }
 }
 

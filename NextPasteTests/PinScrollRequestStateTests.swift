@@ -41,6 +41,20 @@ struct PinScrollRequestStateTests {
         #expect(state.pendingRequest == nil)
     }
 
+    @Test("an applied Pin hidden by the current filter creates no scroll request")
+    func filterHiddenAppliedPinDoesNotRequestScrolling() {
+        let targetID = UUID()
+        let visiblePeerID = UUID()
+        var state = PinScrollRequestState()
+
+        state.record(
+            .applied(itemID: targetID, desiredPinnedState: true),
+            expectedVisibleItemIDs: [visiblePeerID]
+        )
+
+        #expect(state.pendingRequest == nil)
+    }
+
     @Test("missing, rollback, and invalid mutation outcomes cancel an older request")
     func failedMutationOutcomesCancelOlderRequest() {
         let priorID = UUID()
@@ -94,6 +108,96 @@ struct PinScrollRequestStateTests {
         #expect(state.pendingRequest?.itemID == latestID)
     }
 
+    @Test("rapid Pin A B C retains only C and stale completions cannot consume it")
+    func rapidPinsABCOnlyRetainC() {
+        let ids = [UUID(), UUID(), UUID()]
+        var state = PinScrollRequestState()
+        var staleRequests = [PinScrollRequest]()
+
+        for id in ids {
+            if let pending = state.pendingRequest { staleRequests.append(pending) }
+            state.record(
+                .applied(itemID: id, desiredPinnedState: true),
+                expectedVisibleItemIDs: ids
+            )
+        }
+
+        for stale in staleRequests { state.consume(stale) }
+        #expect(state.pendingRequest?.itemID == ids[2])
+        #expect(state.pendingRequest?.generation == 3)
+    }
+
+    @Test("a cancelled search-hidden request is not revived when search clears")
+    func clearingSearchDoesNotReviveCancelledRequest() {
+        let targetID = UUID()
+        let peerID = UUID()
+        var state = PinScrollRequestState()
+        state.record(
+            .applied(itemID: targetID, desiredPinnedState: true),
+            expectedVisibleItemIDs: [targetID, peerID]
+        )
+
+        state.reconcileProjection(with: [peerID])
+        #expect(state.pendingRequest == nil)
+        state.reconcileProjection(with: [targetID, peerID])
+        #expect(state.pendingRequest == nil)
+    }
+
+    @Test("view disappearance cancellation invalidates an outstanding request")
+    func viewDisappearanceInvalidatesPendingRequest() {
+        let targetID = UUID()
+        var state = PinScrollRequestState()
+        state.record(
+            .applied(itemID: targetID, desiredPinnedState: true),
+            expectedVisibleItemIDs: [targetID]
+        )
+        let stale = state.pendingRequest
+
+        state.cancel()
+        if let stale { state.consume(stale) }
+
+        #expect(state.pendingRequest == nil)
+        #expect(state.generation == 2)
+    }
+
+    @Test("visibility changes after window resize preserve the stable target decision")
+    func windowResizeReevaluatesStableTargetVisibility() {
+        let targetID = UUID()
+        let peerID = UUID()
+        let projection = [targetID, peerID]
+        let request = PinScrollRequest(
+            itemID: targetID,
+            generation: 1,
+            expectedVisibleItemIDs: projection
+        )
+        var layout = PinScrollLayoutObservationState()
+        layout.beginProjection(projection)
+        let acceptedSnapshot = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [peerID],
+            projectionItemIDs: projection
+        )
+        #expect(acceptedSnapshot)
+
+        #expect(HistoryViewportVisibility.pinScrollDecision(
+            request: request,
+            visibleItemIDs: projection,
+            visibleTargetIDs: layout.visibleTargetIDs,
+            hasCurrentVisibilitySnapshot: layout.hasCurrentSnapshot
+        ) == .scroll(targetID))
+
+        let acceptedResizedSnapshot = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [targetID, peerID],
+            projectionItemIDs: projection
+        )
+        #expect(acceptedResizedSnapshot)
+        #expect(HistoryViewportVisibility.pinScrollDecision(
+            request: request,
+            visibleItemIDs: projection,
+            visibleTargetIDs: layout.visibleTargetIDs,
+            hasCurrentVisibilitySnapshot: layout.hasCurrentSnapshot
+        ) == .noScroll)
+    }
+
     @Test("deletion or filtering cancels an unavailable target")
     func unavailableTargetCancelsRequest() {
         let itemID = UUID()
@@ -120,8 +224,27 @@ struct PinScrollRequestStateTests {
         let decision = HistoryViewportVisibility.pinScrollDecision(
             request: request,
             visibleItemIDs: [itemID],
-            viewportVisibleItemIDs: [itemID],
-            hasVisibilityObservation: true
+            visibleTargetIDs: [itemID],
+            hasCurrentVisibilitySnapshot: true
+        )
+
+        #expect(decision == .noScroll)
+    }
+
+    @Test("a partially visible target does not trigger a disruptive scroll")
+    func partiallyVisibleTargetDoesNotScroll() {
+        let itemID = UUID()
+        let request = PinScrollRequest(
+            itemID: itemID,
+            generation: 1,
+            expectedVisibleItemIDs: [itemID]
+        )
+
+        let decision = HistoryViewportVisibility.pinScrollDecision(
+            request: request,
+            visibleItemIDs: [itemID],
+            visibleTargetIDs: [itemID],
+            hasCurrentVisibilitySnapshot: true
         )
 
         #expect(decision == .noScroll)
@@ -130,17 +253,19 @@ struct PinScrollRequestStateTests {
     @Test("an offscreen lazy row requests scrolling by stable ID")
     func offscreenLazyRowRequestsScroll() {
         let itemID = UUID()
+        let visiblePeerID = UUID()
+        let projection = [visiblePeerID, itemID]
         let request = PinScrollRequest(
             itemID: itemID,
             generation: 1,
-            expectedVisibleItemIDs: [UUID(), itemID]
+            expectedVisibleItemIDs: projection
         )
 
         let decision = HistoryViewportVisibility.pinScrollDecision(
             request: request,
-            visibleItemIDs: [UUID(), itemID],
-            viewportVisibleItemIDs: [],
-            hasVisibilityObservation: true
+            visibleItemIDs: projection,
+            visibleTargetIDs: [visiblePeerID],
+            hasCurrentVisibilitySnapshot: true
         )
 
         #expect(decision == .scroll(itemID))
@@ -158,15 +283,15 @@ struct PinScrollRequestStateTests {
         let decision = HistoryViewportVisibility.pinScrollDecision(
             request: request,
             visibleItemIDs: [UUID()],
-            viewportVisibleItemIDs: [],
-            hasVisibilityObservation: true
+            visibleTargetIDs: [],
+            hasCurrentVisibilitySnapshot: false
         )
 
         #expect(decision == .cancel)
     }
 
-    @Test("missing visibility observation waits for layout instead of guessing")
-    func missingVisibilityObservationWaitsForLayout() {
+    @Test("missing current aggregate visibility waits instead of guessing")
+    func missingCurrentAggregateLayoutWaits() {
         let itemID = UUID()
         let request = PinScrollRequest(
             itemID: itemID,
@@ -177,11 +302,109 @@ struct PinScrollRequestStateTests {
         let decision = HistoryViewportVisibility.pinScrollDecision(
             request: request,
             visibleItemIDs: [itemID],
-            viewportVisibleItemIDs: [],
-            hasVisibilityObservation: false
+            visibleTargetIDs: [],
+            hasCurrentVisibilitySnapshot: false
         )
 
         #expect(decision == .waitForLayout)
+    }
+
+    @Test("a transient empty aggregate cannot classify every lazy target as offscreen")
+    func transientEmptyAggregateIsNotReady() {
+        let targetID = UUID()
+        let peerID = UUID()
+        let projection = [targetID, peerID]
+        var layout = PinScrollLayoutObservationState()
+        layout.beginProjection(projection)
+
+        let accepted = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [],
+            projectionItemIDs: projection
+        )
+
+        #expect(accepted == false)
+        #expect(layout.hasCurrentSnapshot == false)
+        #expect(layout.visibleTargetIDs.isEmpty)
+    }
+
+    @Test("an aggregate containing an ID outside its projection is rejected")
+    func unrelatedAggregateTargetIsRejected() {
+        let targetID = UUID()
+        let unrelatedID = UUID()
+        let projection = [targetID]
+        var layout = PinScrollLayoutObservationState()
+        layout.beginProjection(projection)
+
+        let accepted = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [unrelatedID],
+            projectionItemIDs: projection
+        )
+
+        #expect(accepted == false)
+        #expect(layout.hasCurrentSnapshot == false)
+    }
+
+    @Test("current aggregate visibility rejects stale order and can classify an unrealized target")
+    func aggregateLayoutAvoidsOffscreenTargetCallbackDeadlock() {
+        let targetID = UUID()
+        let peerID = UUID()
+        let oldProjection = [peerID, targetID]
+        let reorderedProjection = [targetID, peerID]
+        let request = PinScrollRequest(
+            itemID: targetID,
+            generation: 1,
+            expectedVisibleItemIDs: reorderedProjection
+        )
+        var layout = PinScrollLayoutObservationState()
+        layout.beginProjection(reorderedProjection)
+
+        #expect(HistoryViewportVisibility.pinScrollDecision(
+            request: request,
+            visibleItemIDs: reorderedProjection,
+            visibleTargetIDs: layout.visibleTargetIDs,
+            hasCurrentVisibilitySnapshot: layout.hasCurrentSnapshot
+        ) == .waitForLayout)
+
+        let acceptedStaleSnapshot = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [targetID],
+            projectionItemIDs: oldProjection
+        )
+        #expect(acceptedStaleSnapshot == false)
+        #expect(layout.hasCurrentSnapshot == false)
+
+        let acceptedCurrentSnapshot = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [peerID],
+            projectionItemIDs: reorderedProjection
+        )
+        #expect(acceptedCurrentSnapshot)
+        #expect(layout.visibleTargetIDs.contains(targetID) == false)
+        #expect(HistoryViewportVisibility.pinScrollDecision(
+            request: request,
+            visibleItemIDs: reorderedProjection,
+            visibleTargetIDs: layout.visibleTargetIDs,
+            hasCurrentVisibilitySnapshot: layout.hasCurrentSnapshot
+        ) == .scroll(targetID))
+    }
+
+    @Test("a pure reorder resets readiness until a new aggregate snapshot")
+    func pureReorderRequiresNewAggregateSnapshot() {
+        let targetID = UUID()
+        let peerID = UUID()
+        let oldProjection = [peerID, targetID]
+        let reorderedProjection = [targetID, peerID]
+        var layout = PinScrollLayoutObservationState()
+        layout.beginProjection(oldProjection)
+        let acceptedInitialSnapshot = layout.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: [targetID],
+            projectionItemIDs: oldProjection
+        )
+        #expect(acceptedInitialSnapshot)
+
+        layout.beginProjection(reorderedProjection)
+
+        #expect(layout.projectionItemIDs == reorderedProjection)
+        #expect(layout.visibleTargetIDs.isEmpty)
+        #expect(layout.hasCurrentSnapshot == false)
     }
 
     @Test("the old ordering waits, while a search or filter membership change cancels")

@@ -93,6 +93,49 @@ private struct ImageRestorationInput: Hashable, Sendable {
     let thumbnailFilename: String?
 }
 
+nonisolated enum HistoryFilter: String, CaseIterable, Identifiable, Sendable {
+    case all
+    case text
+    case images
+    case pinned
+    case unpinned
+
+    var id: Self { self }
+
+    var titleKey: String {
+        switch self {
+        case .all: "All Clips"
+        case .text: "Text Clips"
+        case .images: "Image Clips"
+        case .pinned: "Pinned Clips"
+        case .unpinned: "Unpinned Clips"
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        "history-filter-\(rawValue)"
+    }
+
+    /// The row renderer intentionally treats every legacy non-image content
+    /// type as text. Filtering and UI-test counts must use the same semantic
+    /// split so an older local row never disappears from the Text filter while
+    /// still rendering as a text row under All.
+    func includes(contentType: String, isPinned: Bool) -> Bool {
+        switch self {
+        case .all:
+            true
+        case .text:
+            contentType != "image"
+        case .images:
+            contentType == "image"
+        case .pinned:
+            isPinned
+        case .unpinned:
+            isPinned == false
+        }
+    }
+}
+
 // T073.1: read-only observability mirror for the row-action display-order
 // snapshot lifecycle. HomeView is a struct, and the production snapshot state
 // (`rowActionDisplayOrderSnapshot: [UUID]?`,
@@ -265,14 +308,14 @@ struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
-    @StateObject private var imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator()
+    @StateObject private var imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
     @State private var initialLoadState = InitialLoadState()
     @State private var imageRestorationStates: [UUID: ImageClipRestorationState] = [:]
     @State private var reportedMissingImageIDs: Set<UUID> = []
     @State private var isPresentingNewClip = false
     @State private var searchText = ""
+    @State private var historyFilter: HistoryFilter = .all
     // T002: single search presentation authority. `isSearchPresented` drives the
     // native `.searchable` field visibility; `isSearchFieldFocused` requests focus
     // on that same field. There is exactly one search field and one search-text
@@ -290,12 +333,20 @@ struct HomeView: View {
     @State private var headerFrame: CGRect = .null
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
-    @State private var hasAppliedLaunchWindowSize = false
     @State private var pinScrollRequestState = PinScrollRequestState()
-    @State private var visiblePinScrollClipIDs: Set<UUID> = []
-    @State private var hasVisibilityObservation = false
-    @State private var visibilityProjectionItemIDs: [UUID] = []
+    @State private var pinScrollLayoutObservationState = PinScrollLayoutObservationState()
     @State private var pinScrollTask: Task<Void, Never>?
+#if DEBUG && os(macOS)
+    @StateObject private var uiTestClipboardMonitorProbe = DebugUITestClipboardMonitorProbe.shared
+    // Content-free UI-test diagnostics. These values are updated only from the
+    // real Pin request/visibility/ScrollViewProxy path below; tests never call
+    // `scrollTo` or mutate this state directly.
+    @State private var uiTestPinScrollExecutionCount = 0
+    @State private var uiTestPinScrollLastItemID = "none"
+    @State private var uiTestPinScrollLastDecision = "none"
+    @State private var uiTestAppliedWindowSize = "pending"
+    @State private var uiTestRequestedWindowSize = "pending"
+#endif
     // Platform-neutral ID-first Pin/Unpin store. Only the native row-action
     // safe-boundary snapshot is macOS-specific.
     @State private var pinStore: PinStateMutationStore? = nil
@@ -325,6 +376,15 @@ struct HomeView: View {
     // `beginRowActionDisplayOrderSnapshot()` records the active generation.
     @State private var rowActionDisplayOrderSnapshotGenerationValue: Int? = nil
 #endif
+
+    @MainActor
+    init() {
+        self.init(imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator())
+    }
+
+    init(imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator) {
+        _imageTextRecognitionCoordinator = StateObject(wrappedValue: imageTextRecognitionCoordinator)
+    }
 
     // T024: generation-guarded reconciliation lifecycle state. Backed by
     // `ReconciliationLifecycleStorage` (a reference-type holder) so the
@@ -406,6 +466,30 @@ struct HomeView: View {
                             .accessibilityLabel("Clear Search")
                             .accessibilityHint("Clear the active search query")
                         }
+
+                        Menu {
+                            ForEach(HistoryFilter.allCases) { filter in
+                                Button {
+                                    historyFilter = filter
+                                } label: {
+                                    HStack {
+                                        Text(LocalizedStringKey(filter.titleKey))
+                                        if historyFilter == filter {
+                                            Image(systemName: "checkmark")
+                                                .accessibilityHidden(true)
+                                        }
+                                    }
+                                }
+                                .accessibilityIdentifier(filter.accessibilityIdentifier)
+                                .accessibilityLabel(Text(LocalizedStringKey(filter.titleKey)))
+                                .accessibilityAddTraits(historyFilter == filter ? .isSelected : [])
+                            }
+                        } label: {
+                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+                        }
+                        .accessibilityIdentifier("history-filter-menu")
+                        .accessibilityLabel("Filter Clipboard History")
+                        .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
 
                         Button {
                             isPresentingNewClip = true
@@ -537,23 +621,11 @@ struct HomeView: View {
                 validRequests: Set(imageTextRecognitionTaskKey)
             )
         }
-#if os(macOS)
-        .task {
-            await applyLaunchWindowSizeIfNeeded()
-        }
-#endif
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase != .active else { return }
-            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
-        }
         .onDisappear {
             copyFeedbackTask?.cancel()
             pinScrollTask?.cancel()
             pinScrollRequestState.cancel()
-            visiblePinScrollClipIDs.removeAll()
-            hasVisibilityObservation = false
-            visibilityProjectionItemIDs.removeAll()
-            imageTextRecognitionCoordinator.cancelAll(clearCache: true)
+            pinScrollLayoutObservationState.reset()
             #if os(macOS)
             rowActionResolverObservation.reset()
             #if DEBUG
@@ -634,11 +706,18 @@ struct HomeView: View {
     }
 
     private func restorableVisibleClips(_ candidateClips: [ClipItem]) -> [ClipItem] {
-        return candidateClips.filter { clip in
+        let restorableClips = candidateClips.filter { clip in
             guard clip.contentType == "image" else {
                 return true
             }
             return imageRestorationStates[clip.id] == .restorable
+        }
+
+        return restorableClips.filter { clip in
+            historyFilter.includes(
+                contentType: clip.contentType,
+                isPinned: clip.isPinned
+            )
         }
     }
 
@@ -950,12 +1029,22 @@ struct HomeView: View {
     private var historyContent: some View {
         Group {
             if visibleClips.isEmpty {
-                EmptyStateView(kind: searchText.isEmpty ? .history : .search)
+                EmptyStateView(kind: emptyStateKind)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 historyList
             }
         }
+    }
+
+    private var emptyStateKind: EmptyStateView.Kind {
+        if searchText.isEmpty == false {
+            return .search
+        }
+        if historyFilter != .all {
+            return .filter
+        }
+        return .history
     }
 
     private var historyList: some View {
@@ -973,15 +1062,11 @@ struct HomeView: View {
                         // Programmatic scrolling is always addressed by the stable
                         // persisted item UUID, never by this protective row-slot index.
                         .id(clip.id)
-                        .onScrollVisibilityChange(threshold: 0.01) { isVisible in
-                            updatePinScrollVisibility(
-                                for: clip.id,
-                                isVisible: isVisible,
-                                visibleItemIDs: rowIDs,
-                                proxy: proxy
-                            )
-                        }
                 }
+                // SwiftUI's scroll container now owns the completeness signal:
+                // its aggregate callback reports every currently visible UUID,
+                // while an unrealized lazy row is simply absent from that set.
+                .scrollTargetLayout()
             }
             .padding(DesignTokens.Spacing.small)
             .contentMargins(.top, historyTopInset, for: .scrollContent)
@@ -997,13 +1082,24 @@ struct HomeView: View {
 #endif
             .background(measuredFrameReader(for: .viewport))
             .accessibilityIdentifier("clip-history-list")
+            .onScrollTargetVisibilityChange(idType: UUID.self, threshold: 0.01) { visibleTargetIDs in
+                updatePinScrollVisibility(
+                    visibleTargetIDs,
+                    visibleItemIDs: rowIDs,
+                    proxy: proxy
+                )
+            }
             .onChange(of: rowIDs) { _, updatedIDs in
-                if visibilityProjectionItemIDs != updatedIDs {
-                    visibilityProjectionItemIDs = updatedIDs
-                    visiblePinScrollClipIDs.removeAll()
-                    hasVisibilityObservation = false
-                }
+                pinScrollLayoutObservationState.beginProjection(updatedIDs)
+                let requestBeforeReconciliation = pinScrollRequestState.pendingRequest
                 pinScrollRequestState.reconcileProjection(with: updatedIDs)
+                if let requestBeforeReconciliation,
+                   pinScrollRequestState.pendingRequest == nil {
+                    recordPinScrollDiagnostic(
+                        itemID: requestBeforeReconciliation.itemID,
+                        decision: "cancel"
+                    )
+                }
                 if let request = pinScrollRequestState.pendingRequest {
                     schedulePinScroll(
                         request,
@@ -1020,35 +1116,44 @@ struct HomeView: View {
                     proxy: proxy
                 )
             }
+            .onChange(of: listViewportFrame) { _, _ in
+                guard let request = pinScrollRequestState.pendingRequest else { return }
+                schedulePinScroll(
+                    request,
+                    visibleItemIDs: rowIDs,
+                    proxy: proxy
+                )
+            }
             .onScrollPhaseChange { _, newPhase in
                 if newPhase == .tracking || newPhase == .interacting {
+                    let cancelledRequest = pinScrollRequestState.pendingRequest
                     pinScrollTask?.cancel()
                     pinScrollRequestState.cancel()
+                    if let cancelledRequest {
+                        recordPinScrollDiagnostic(
+                            itemID: cancelledRequest.itemID,
+                            decision: "cancel"
+                        )
+                    }
                 }
             }
         }
     }
 
     private func updatePinScrollVisibility(
-        for itemID: UUID,
-        isVisible: Bool,
+        _ visibleTargetIDs: [UUID],
         visibleItemIDs: [UUID],
         proxy: ScrollViewProxy
     ) {
-        // Ignore callbacks retained by a row slot from the prior projection.
+        // The closure captures its projection. Reject a callback retained from
+        // an older body before accepting the container's complete aggregate.
         guard visibleItemIDs == visibleClips.map(\.id) else { return }
 
-        if visibilityProjectionItemIDs != visibleItemIDs {
-            visibilityProjectionItemIDs = visibleItemIDs
-            visiblePinScrollClipIDs.removeAll()
-            hasVisibilityObservation = false
-        }
-        hasVisibilityObservation = true
-        if isVisible {
-            visiblePinScrollClipIDs.insert(itemID)
-        } else {
-            visiblePinScrollClipIDs.remove(itemID)
-        }
+        pinScrollLayoutObservationState.beginProjection(visibleItemIDs)
+        guard pinScrollLayoutObservationState.recordCompleteVisibilitySnapshot(
+            visibleTargetIDs: visibleTargetIDs,
+            projectionItemIDs: visibleItemIDs
+        ) else { return }
 
         if let request = pinScrollRequestState.pendingRequest {
             schedulePinScroll(
@@ -1066,16 +1171,14 @@ struct HomeView: View {
     ) {
         pinScrollTask?.cancel()
         pinScrollTask = Task { @MainActor in
-            // One cooperative MainActor turn lets List publish its reordered
-            // children and native visibility callbacks. This is a layout barrier,
-            // not a fixed-duration delay.
-            await Task.yield()
             guard Task.isCancelled == false,
-                  pinScrollRequestState.isCurrent(request) else {
+                  pinScrollRequestState.isCurrent(request),
+                  visibleItemIDs == visibleClips.map(\.id) else {
                 return
             }
             guard Set(visibleItemIDs) == Set(request.expectedVisibleItemIDs) else {
                 pinScrollRequestState.cancel()
+                recordPinScrollDiagnostic(itemID: request.itemID, decision: "cancel")
                 return
             }
             // The same rows in the old order mean SwiftData/List has not yet
@@ -1085,27 +1188,37 @@ struct HomeView: View {
             let decision = HistoryViewportVisibility.pinScrollDecision(
                 request: request,
                 visibleItemIDs: visibleItemIDs,
-                viewportVisibleItemIDs: visiblePinScrollClipIDs,
-                hasVisibilityObservation: hasVisibilityObservation
+                visibleTargetIDs: pinScrollLayoutObservationState.visibleTargetIDs,
+                hasCurrentVisibilitySnapshot: pinScrollLayoutObservationState.hasCurrentSnapshot
+                    && pinScrollLayoutObservationState.projectionItemIDs == visibleItemIDs
             )
 
             switch decision {
             case .waitForLayout:
+                recordPinScrollDiagnostic(itemID: request.itemID, decision: "wait-for-layout")
                 return
             case .cancel:
                 pinScrollRequestState.cancel()
+                recordPinScrollDiagnostic(itemID: request.itemID, decision: "cancel")
             case .noScroll:
                 pinScrollRequestState.consume(request)
+                recordPinScrollDiagnostic(itemID: request.itemID, decision: "no-scroll")
             case .scroll(let itemID):
                 guard isCurrentPinnedScrollTarget(
                     itemID,
                     visibleItemIDs: visibleItemIDs
                 ) else {
                     pinScrollRequestState.cancel()
+                    recordPinScrollDiagnostic(itemID: itemID, decision: "cancel")
                     return
                 }
 
                 pinScrollRequestState.consume(request)
+                recordPinScrollDiagnostic(
+                    itemID: itemID,
+                    decision: "scroll",
+                    didExecuteScroll: true
+                )
                 withAnimation(appMotion.animation(DesignTokens.Motion.pinToggle)) {
                     proxy.scrollTo(itemID, anchor: .center)
                 }
@@ -1243,10 +1356,7 @@ struct HomeView: View {
         if clip.contentType == "image" {
             imageTextRecognitionCoordinator.remove(itemID: clip.id)
         }
-        if pinScrollRequestState.pendingRequest?.itemID == clip.id {
-            pinScrollTask?.cancel()
-            pinScrollRequestState.cancel()
-        }
+        cancelPendingPinScroll(for: clip.id)
 #if DEBUG
         let rowIdentity = traceRowIdentity(for: clip)
         let traceRowIndex = rowIdentity.rowIndex
@@ -1291,6 +1401,11 @@ struct HomeView: View {
         traceRowIndex: Int? = nil,
         traceRowViewID: String? = nil
     ) {
+        // A queued Pin followed by a queued Delete creates the Pin request only
+        // when this FIFO publication phase drains. Cancel again at the actual
+        // Delete boundary so that newly created request cannot survive long
+        // enough to execute against the removed stable ID.
+        cancelPendingPinScroll(for: clip.id)
         #if DEBUG
         _ = ClipDeletionAction(modelContext: effectiveReconciliationModelContext).delete(
             clip,
@@ -1300,6 +1415,13 @@ struct HomeView: View {
         #else
         _ = ClipDeletionAction(modelContext: effectiveReconciliationModelContext).delete(clip)
         #endif
+    }
+
+    private func cancelPendingPinScroll(for itemID: UUID) {
+        guard pinScrollRequestState.pendingRequest?.itemID == itemID else { return }
+        pinScrollTask?.cancel()
+        pinScrollRequestState.cancel()
+        recordPinScrollDiagnostic(itemID: itemID, decision: "cancel")
     }
 
     func scheduleTogglePin(_ clip: ClipItem) {
@@ -1383,6 +1505,31 @@ struct HomeView: View {
             result,
             expectedVisibleItemIDs: projectedVisibleClipIDsForPinScroll()
         )
+        if pinScrollRequestState.pendingRequest?.itemID == result.itemID {
+            recordPinScrollDiagnostic(itemID: result.itemID, decision: "pending")
+        } else {
+            recordPinScrollDiagnostic(itemID: result.itemID, decision: "not-requested")
+        }
+    }
+
+    private func recordPinScrollDiagnostic(
+        itemID: UUID,
+        decision: String,
+        didExecuteScroll: Bool = false
+    ) {
+#if DEBUG && os(macOS)
+        guard isUITesting else { return }
+        if didExecuteScroll {
+            uiTestPinScrollExecutionCount += 1
+        }
+        let stableID = itemID.uuidString
+        if uiTestPinScrollLastItemID != stableID {
+            uiTestPinScrollLastItemID = stableID
+        }
+        if uiTestPinScrollLastDecision != decision {
+            uiTestPinScrollLastDecision = decision
+        }
+#endif
     }
 
     private func projectedVisibleClipIDsForPinScroll() -> [UUID] {
@@ -1951,25 +2098,30 @@ struct HomeView: View {
                 deleteClip(clip)
             } label: {
                 Label(
-                    RowActionControlGroup.deleteActionLabel,
+                    LocalizedStringKey(RowActionControlGroup.deleteActionLabel),
                     systemImage: RowActionControlGroup.deleteActionSymbolName
                 )
             }
             .accessibilityIdentifier(RowActionControlGroup.deleteButtonIdentifier)
-            .accessibilityLabel(RowActionControlGroup.deleteActionLabel)
+            .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
                 scheduleTogglePin(clip)
             } label: {
                 Label(
-                    RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned),
+                    LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)),
                     systemImage: RowActionControlGroup.pinActionSymbolName(isPinned: clip.isPinned)
                 )
             }
             .tint(appTheme.accentPinned.color)
+            // Explicit focus eligibility keeps keyboard activation deterministic
+            // without depending on the host's AppleKeyboardUIMode preference.
+            .focusable(true)
             .accessibilityIdentifier(RowActionControlGroup.pinButtonIdentifier)
-            .accessibilityLabel(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))
+            .accessibilityLabel(
+                Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+            )
         }
     }
 
@@ -2035,6 +2187,40 @@ struct HomeView: View {
             .accessibilityIdentifier("retry-copy-image-text-menu-item")
             .accessibilityLabel("Retry Copy Image Text")
         }
+
+        Divider()
+
+        Button {
+            copyClip(clip)
+        } label: {
+            Label("Copy Original Image", systemImage: "photo.on.rectangle")
+        }
+        .accessibilityIdentifier("copy-original-image-menu-item")
+        .accessibilityLabel("Copy Original Image")
+
+        Button {
+            togglePinImmediately(clip)
+        } label: {
+            Label(
+                LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)),
+                systemImage: RowActionControlGroup.pinActionSymbolName(isPinned: clip.isPinned)
+            )
+        }
+        .accessibilityIdentifier("toggle-pin-image-menu-item")
+        .accessibilityLabel(
+            Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        )
+
+        Button(role: .destructive) {
+            deleteClipImmediately(clip)
+        } label: {
+            Label(
+                LocalizedStringKey(RowActionControlGroup.deleteActionLabel),
+                systemImage: RowActionControlGroup.deleteActionSymbolName
+            )
+        }
+        .accessibilityIdentifier("delete-image-menu-item")
+        .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
     }
 
     private var accessibilityMarkers: some View {
@@ -2042,18 +2228,70 @@ struct HomeView: View {
             accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
             accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
             accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
-#if os(macOS)
+#if DEBUG && os(macOS)
             if isUITesting {
                 accessibilityMarker(identifier: "history-visible-count", value: "\(visibleClips.count)", label: "Visible clip count")
                 accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
                 accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
                 accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
                 accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
+                accessibilityMarker(identifier: "history-filter-state", value: historyFilter.rawValue, label: "History filter state")
+                accessibilityMarker(
+                    identifier: "clipboard-monitor-observation-count",
+                    value: "\(uiTestClipboardMonitorProbe.observationCount)",
+                    label: "Clipboard monitor observation count"
+                )
+                accessibilityMarker(
+                    identifier: "clipboard-monitor-last-disposition",
+                    value: uiTestClipboardMonitorProbe.lastDisposition,
+                    label: "Clipboard monitor last disposition"
+                )
                 accessibilityMarker(
                     identifier: "history-visible-integrity-digest",
                     value: ClipDatasetIntegritySnapshot.digest(for: visibleClips),
                     label: "Content-free history integrity digest"
                 )
+            }
+            if isUITesting {
+                accessibilityMarker(
+                    identifier: "pin-scroll-execution-count",
+                    value: "\(uiTestPinScrollExecutionCount)",
+                    label: "Pin scroll execution count"
+                )
+                accessibilityMarker(
+                    identifier: "pin-scroll-last-item-id",
+                    value: uiTestPinScrollLastItemID,
+                    label: "Pin scroll last stable item identifier"
+                )
+                accessibilityMarker(
+                    identifier: "pin-scroll-last-decision",
+                    value: uiTestPinScrollLastDecision,
+                    label: "Pin scroll last decision"
+                )
+                accessibilityMarker(
+                    identifier: "pin-scroll-pending-item-id",
+                    value: pinScrollRequestState.pendingRequest?.itemID.uuidString ?? "none",
+                    label: "Pin scroll pending stable item identifier"
+                )
+                accessibilityMarker(
+                    identifier: "pin-scroll-visibility-readiness",
+                    value: pinScrollVisibilityIsReady ? "ready" : "pending",
+                    label: "Pin scroll aggregate visibility readiness"
+                )
+                accessibilityMarker(
+                    identifier: "ui-test-window-size-applied",
+                    value: uiTestAppliedWindowSize,
+                    label: "UI test window size applied"
+                )
+            }
+            if isUITesting {
+                ForEach(imageTextRecognitionTaskKey, id: \.itemID) { request in
+                    accessibilityMarker(
+                        identifier: "image-ocr-state-\(request.itemID.uuidString)",
+                        value: uiTestOCRStateValue(for: request),
+                        label: "Image OCR state"
+                    )
+                }
             }
 #endif
             // T004: announce the search result count for VoiceOver when a search is
@@ -2072,7 +2310,7 @@ struct HomeView: View {
     }
 
     private var visibleTextClipCount: Int {
-        visibleClips.filter { $0.contentType == "text" }.count
+        visibleClips.filter { $0.contentType != "image" }.count
     }
 
     private var visibleImageClipCount: Int {
@@ -2082,6 +2320,18 @@ struct HomeView: View {
     private var visiblePinnedClipCount: Int {
         visibleClips.filter(\.isPinned).count
     }
+
+#if DEBUG && os(macOS)
+    private func uiTestOCRStateValue(for request: ImageTextRecognitionRequest) -> String {
+        switch imageTextRecognitionCoordinator.state(for: request) {
+        case .idle: return "idle"
+        case .recognizing: return "recognizing"
+        case .recognized: return "recognized"
+        case .noText: return "noText"
+        case .failed: return "failed"
+        }
+    }
+#endif
 
     @ViewBuilder
     private var searchFieldAccessibilityResolver: some View {
@@ -2097,7 +2347,7 @@ struct HomeView: View {
 
     @ViewBuilder
     private var uiTestWindowSizeControls: some View {
-#if os(macOS)
+#if DEBUG && os(macOS)
         if isUITesting {
             VStack(alignment: .leading, spacing: 1) {
                 ForEach(HistoryUITestWindowSize.allCases) { preset in
@@ -2115,6 +2365,14 @@ struct HomeView: View {
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background {
+                if let launchWindowSizePreset {
+                    UITestWindowSizeResolver { window in
+                        applyWindowResize(to: launchWindowSizePreset, in: window)
+                    }
+                    .accessibilityHidden(true)
+                }
+            }
         }
 #endif
     }
@@ -2138,9 +2396,14 @@ struct HomeView: View {
         }
     }
 
-#if os(macOS)
+#if DEBUG && os(macOS)
+    private var pinScrollVisibilityIsReady: Bool {
+        pinScrollLayoutObservationState.hasCurrentSnapshot
+            && pinScrollLayoutObservationState.projectionItemIDs == visibleClips.map(\.id)
+    }
+
     private var isUITesting: Bool {
-        ProcessInfo.processInfo.arguments.contains("-ui-testing")
+        DebugUITestLaunchEnvironment() != nil
     }
 
     private var launchWindowSizePreset: HistoryUITestWindowSize? {
@@ -2152,40 +2415,38 @@ struct HomeView: View {
         return HistoryUITestWindowSize(rawValue: ProcessInfo.processInfo.arguments[presetIndex + 1])
     }
 
-    private func applyLaunchWindowSizeIfNeeded() async {
-        guard hasAppliedLaunchWindowSize == false,
-              let launchWindowSizePreset else {
-            return
-        }
-
-        hasAppliedLaunchWindowSize = true
-        await Task.yield()
-        scheduleWindowResize(to: launchWindowSizePreset)
-    }
-
     private func resizeMainWindow(to preset: HistoryUITestWindowSize) {
-        scheduleWindowResize(to: preset)
-    }
-
-    private func scheduleWindowResize(to preset: HistoryUITestWindowSize) {
-        DispatchQueue.main.async {
-            applyWindowResize(to: preset)
-        }
-    }
-
-    private func applyWindowResize(to preset: HistoryUITestWindowSize) {
         guard let window = NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first else {
+            uiTestAppliedWindowSize = "window-unavailable"
             return
         }
+        applyWindowResize(to: preset, in: window)
+    }
 
+    private func applyWindowResize(
+        to preset: HistoryUITestWindowSize,
+        in window: NSWindow
+    ) {
+        uiTestRequestedWindowSize = preset.rawValue
+        uiTestAppliedWindowSize = "resizing"
         let origin = window.frame.origin
         let contentRect = NSRect(origin: .zero, size: preset.contentSize)
         let frame = window.frameRect(forContentRect: contentRect)
-        guard window.frame.size != frame.size else {
-            return
+        if window.frame.size != frame.size {
+            window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
         }
 
-        window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
+        // The readiness marker is published only after AppKit has synchronously
+        // laid out a content view with the requested size. XCUITest additionally
+        // waits for the live scroll-target visibility snapshot, so it cannot
+        // race the SwiftUI list geometry after this native checkpoint.
+        window.contentView?.layoutSubtreeIfNeeded()
+        guard let actualSize = window.contentView?.bounds.size,
+              actualSize.approximatelyEquals(preset.contentSize) else {
+            uiTestAppliedWindowSize = "size-mismatch"
+            return
+        }
+        uiTestAppliedWindowSize = preset.rawValue
     }
 #endif
 }
@@ -2369,6 +2630,42 @@ private extension NSView {
         return nil
     }
 }
+
+#if DEBUG
+/// Resolves the real AppKit window at the native `viewDidMoveToWindow`
+/// boundary. Launch-size setup therefore has no yield, delay, or guessed
+/// main-queue turn before it can publish readiness.
+private struct UITestWindowSizeResolver: NSViewRepresentable {
+    let onResolve: (NSWindow) -> Void
+
+    func makeNSView(context _: Context) -> ResolverView {
+        let view = ResolverView()
+        view.onResolve = onResolve
+        return view
+    }
+
+    func updateNSView(_ nsView: ResolverView, context _: Context) {
+        nsView.onResolve = onResolve
+    }
+
+    final class ResolverView: NSView {
+        var onResolve: ((NSWindow) -> Void)?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            guard let window else { return }
+            onResolve?(window)
+        }
+    }
+}
+
+private extension NSSize {
+    func approximatelyEquals(_ other: NSSize, tolerance: CGFloat = 0.5) -> Bool {
+        abs(width - other.width) <= tolerance
+            && abs(height - other.height) <= tolerance
+    }
+}
+#endif
 
 private enum HistoryUITestWindowSize: String, CaseIterable, Identifiable {
     static let launchArgument = "-ui-test-window-size"
