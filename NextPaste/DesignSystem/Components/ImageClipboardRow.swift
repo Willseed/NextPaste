@@ -42,7 +42,14 @@ struct ImageClipboardRow: View {
             showsPinnedAccentMarker: false,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: presentation.rowAccessibilityIdentifier,
-                label: presentation.accessibilityLabel,
+                // AppKit exposes this SwiftUI container as an AXGroup and does
+                // not reliably surface AXValue for that role. Mirror the text
+                // row's state-bearing label so VoiceOver always announces the
+                // localized Pin/OCR interaction state from the real row element.
+                label: [
+                    presentation.accessibilityLabel,
+                    presentation.localizedAccessibilityValue(locale: locale)
+                ].joined(separator: ", "),
                 value: presentation.localizedAccessibilityValue(locale: locale)
             ),
             onCopy: onCopy,
