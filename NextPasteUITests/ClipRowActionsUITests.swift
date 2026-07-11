@@ -2334,17 +2334,23 @@ final class ClipRowActionsUITests: UITestCase {
     /// independent app lifecycles.
     static let feature023ConsecutiveRunCount = 50
 
-    /// Launches a fresh app instance for one consecutive-run iteration and
-    /// returns it. Each iteration gets its own app lifecycle so
-    /// teardown/snapshot-lifetime hazards are exercised across 50 independent
-    /// app states rather than within one. The caller is responsible for
-    /// closing the app at the end of each iteration via `closeApp`.
+    /// Executes one consecutive-run iteration with a unique store and app
+    /// lifecycle. The per-iteration store prevents the launch environment's
+    /// default per-test store from retaining rows across the 50 relaunches; the
+    /// closure owns deterministic app termination and store cleanup together.
     @MainActor
-    private func launchFreshAppForConsecutiveRun() -> XCUIApplication {
-        let app = UITestAppLauncher.makeApp()
+    private func withFreshAppForConsecutiveRun(
+        _ operation: (XCUIApplication) throws -> Void
+    ) throws {
+        let store = try UITestAppLauncher.makeOnDiskStore()
+        defer { store.remove() }
+
+        let app = UITestAppLauncher.makeApp(onDiskStore: store)
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
-        return app
+        defer { closeApp(app) }
+
+        try operation(app)
     }
 
     /// T052 UI test: CONSECUTIVE-RUN 50 executions of the Pin automatic
@@ -2358,10 +2364,10 @@ final class ClipRowActionsUITests: UITestCase {
     /// no synthesized reconciliation input, no fixed-duration sleep.
     @MainActor
     func testT052ConsecutiveRunPinAutomaticReconciliationFreshAppStatePerExecution() throws {
+        executionTimeAllowance = 60 * 60
         var outcomes: [String] = []
         for iteration in 1...Self.feature023ConsecutiveRunCount {
-            let app = launchFreshAppForConsecutiveRun()
-            defer { closeApp(app) }
+            try withFreshAppForConsecutiveRun { app in
 
             let history = historyRobot(for: app)
             let row = rowRobot(for: app)
@@ -2392,6 +2398,7 @@ final class ClipRowActionsUITests: UITestCase {
             )
             UITestAssertions.assertAppRunningWithoutCrash(app)
             outcomes.append("pin-\(iteration): \(app.state)")
+            }
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
@@ -2406,10 +2413,10 @@ final class ClipRowActionsUITests: UITestCase {
     /// reconciliation input, no fixed-duration sleep.
     @MainActor
     func testT053ConsecutiveRunUnpinAutomaticReconciliationFreshAppStatePerExecution() throws {
+        executionTimeAllowance = 60 * 60
         var outcomes: [String] = []
         for iteration in 1...Self.feature023ConsecutiveRunCount {
-            let app = launchFreshAppForConsecutiveRun()
-            defer { closeApp(app) }
+            try withFreshAppForConsecutiveRun { app in
 
             let history = historyRobot(for: app)
             let row = rowRobot(for: app)
@@ -2448,6 +2455,7 @@ final class ClipRowActionsUITests: UITestCase {
             )
             UITestAssertions.assertAppRunningWithoutCrash(app)
             outcomes.append("unpin-\(iteration): \(app.state)")
+            }
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
@@ -2462,10 +2470,10 @@ final class ClipRowActionsUITests: UITestCase {
     /// input, no fixed-duration sleep.
     @MainActor
     func testT054ConsecutiveRunDeleteAutomaticReconciliationFreshAppStatePerExecution() throws {
+        executionTimeAllowance = 60 * 60
         var outcomes: [String] = []
         for iteration in 1...Self.feature023ConsecutiveRunCount {
-            let app = launchFreshAppForConsecutiveRun()
-            defer { closeApp(app) }
+            try withFreshAppForConsecutiveRun { app in
 
             let history = historyRobot(for: app)
             let row = rowRobot(for: app)
@@ -2488,6 +2496,7 @@ final class ClipRowActionsUITests: UITestCase {
             XCTAssertTrue(app.staticTexts[survivor].exists, "T054 iteration \(iteration): survivor missing")
             UITestAssertions.assertAppRunningWithoutCrash(app)
             outcomes.append("delete-\(iteration): \(app.state)")
+            }
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
     }
