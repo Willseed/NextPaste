@@ -318,6 +318,7 @@ run_test_phase() {
 
 note "Preflight"
 "${XCTEST_METHOD_COUNTER}" --self-test
+"${SCRIPT_DIR}/check-macos-host-compatibility.sh" --self-test
 "${XCODEBUILD}" -version
 "${XCODEBUILD}" -list -json -project "${PROJECT_PATH}" > "${RUN_DIR}/xcodebuild-list.json"
 "${XCODEBUILD}" -project "${PROJECT_PATH}" -scheme "${SCHEME_NAME}" -showTestPlans > "${RUN_DIR}/test-plans.txt"
@@ -342,6 +343,9 @@ fi
 [[ "$(plist_value testTargets.1.target.name "${TEST_PLAN_PATH}")" == "NextPasteUITests" ]] || fail "Test plan is missing NextPasteUITests."
 [[ "$(plist_value testTargets.1.target.identifier "${TEST_PLAN_PATH}")" == "F6E915FC2FEBA509008C9AAA" ]] || fail "NextPasteUITests target identifier drifted."
 [[ "$(plist_value testTargets.1.parallelizable "${TEST_PLAN_PATH}")" == "false" ]] || fail "NextPasteUITests must remain serialized."
+
+note "macOS host compatibility"
+"${SCRIPT_DIR}/check-macos-host-compatibility.sh" "${RUN_DIR}/macos-host-compatibility.txt"
 
 note "Formatter"
 /bin/echo "Project not configured: no repository formatter command or configuration was found."

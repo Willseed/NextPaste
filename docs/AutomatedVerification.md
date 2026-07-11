@@ -91,6 +91,7 @@ The script resolves a full Xcode installation, honors an already-valid `DEVELOPE
 # Preflight/discovery
 xcodebuild -list -json -project NextPaste.xcodeproj
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste -showTestPlans
+Scripts/check-macos-host-compatibility.sh '<run-dir>/macos-host-compatibility.txt'
 
 # Debug product build (the script repeats this command with
 # `-configuration Release` and `DebugBuild`/`ReleaseBuild` result names)
@@ -185,6 +186,7 @@ directory:
 | Artifact | Purpose |
 | --- | --- |
 | `xcodebuild-list.json`, `test-plans.txt` | Project/scheme/Test Plan discovery evidence |
+| `macos-host-compatibility.txt` | Resolved app/unit/UI deployment targets and host compatibility evidence |
 | `DebugBuild.xcresult`, `DebugBuild-build-summary.json` | Debug product build evidence |
 | `ReleaseBuild.xcresult`, `ReleaseBuild-build-summary.json` | Release product build and test-surface isolation evidence |
 | `TestBuild.xcresult`, `TestBuild-build-summary.json` | Build-for-testing evidence |
@@ -213,7 +215,9 @@ gate's explicit `actionlint` and `ripgrep` dependencies. The blocking `Scripts/v
 a 350-minute timeout inside a 360-minute job, reserving time for `actions/upload-artifact@v4` under
 `if: always()`. The gate itself does not use `continue-on-error` or suppress a failing exit status.
 `Scripts/check-github-actions.sh` runs `actionlint -no-color` and fails closed on invalid YAML,
-expressions, or context placement.
+expressions, or context placement. `Scripts/check-macos-host-compatibility.sh` resolves Debug and
+Release settings for the app, unit-test, and UI-test targets and rejects any deployment target
+newer than macOS 26.0 or the active host before Xcode attempts test enumeration.
 
 ## Acceptance traceability
 
@@ -468,7 +472,7 @@ the real native Pin action; no test calls `scrollTo`.
 | REG-07 | No commented-out failure, empty test, always-true assertion, or unjustified retry | `Scripts/check-test-hygiene.sh` scans both test roots, detects empty XCTest and Swift Testing functions, and requires an exact reviewed UI-test loop-token inventory | **Static-validated.** Current executable scan passed. |
 | INFRA-01 | Shared Test Plan has Unit, Integration, UI, timeouts, and coverage | `NextPaste.xctestplan`; fail-closed script checks exact configuration/target counts, identities, coverage target, timeouts, and serialized UI execution | **Static-validated.** Plan parses and is discoverable before every run. |
 | INFRA-02 | Test Plan has no personal absolute path | Project-relative `container:NextPaste.xcodeproj` references only | **Static-validated.** |
-| INFRA-03 | One script runs formatter status, lint status, GitHub Actions validation, artifact preflight/postflight, Debug/Release builds, executable-method inventory, all test phases, localization, `.xcresult`, strict build/test summaries, and coverage | `Scripts/verify.sh`; `Scripts/count-xctest-methods.sh`; `Scripts/check-github-actions.sh` runs `actionlint -no-color` as a blocking preflight | **Static-validated.** Shell syntax, inventory self-test, workflow lint, and dry run are blocking preflights. |
+| INFRA-03 | One script runs formatter status, lint status, GitHub Actions validation, macOS host/deployment compatibility, artifact preflight/postflight, Debug/Release builds, executable-method inventory, all test phases, localization, `.xcresult`, strict build/test summaries, and coverage | `Scripts/verify.sh`; `Scripts/count-xctest-methods.sh`; `Scripts/check-macos-host-compatibility.sh`; `Scripts/check-github-actions.sh` runs `actionlint -no-color` as a blocking preflight | **Static-validated.** Shell syntax, comparator/inventory self-tests, resolved target settings, workflow lint, and dry run are blocking preflights. |
 | INFRA-04 | Formatter/lint handling is truthful | Script emits “Project not configured” for both | **Static-validated.** No formatter/lint config was found. |
 | INFRA-05 | Results are not committed | Fresh external temp run directory plus mandatory repository artifact preflight/postflight | **Mapped — gate-enforced.** |
 | INFRA-06 | Repository CI executes the complete verification gate | `.github/workflows/verify.yml` runs on push/pull request with `macos-26`, read-only contents permission, noninteractive Automation Mode preflight, explicit `actionlint`/`ripgrep` setup, blocking `Scripts/verify.sh`, bounded timeout headroom, and `actions/upload-artifact@v4` under `if: always()` | **Mapped — gate-enforced.** |
