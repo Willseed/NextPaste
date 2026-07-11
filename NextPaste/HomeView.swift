@@ -2195,7 +2195,26 @@ struct HomeView: View {
                 }
         } else {
             content()
+                .contextMenu {
+                    textRowContextMenuItems(for: clip)
+                }
         }
+    }
+
+    @ViewBuilder
+    private func textRowContextMenuItems(for clip: ClipItem) -> some View {
+        Button {
+            togglePinImmediately(clip)
+        } label: {
+            Label(
+                LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)),
+                systemImage: RowActionControlGroup.pinActionSymbolName(isPinned: clip.isPinned)
+            )
+        }
+        .accessibilityIdentifier("toggle-pin-text-menu-item")
+        .accessibilityLabel(
+            Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        )
     }
 
     @ViewBuilder

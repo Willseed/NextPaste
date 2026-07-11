@@ -24,6 +24,7 @@ NextPasteUITests/ImageOCRContextMenuUITests.swift|for imageRow: XCUIElement,
 NextPasteUITests/NativeSwipeDiagnostics.swift|for _ in 0..<refocusAttempts {
 NextPasteUITests/NativeSwipeDiagnostics.swift|for text in expected {
 NextPasteUITests/PinScrollAutomationUITests.swift|for _ in 0..<5 where markerValue(Marker.visibleItemIDs, in: app)?.contains(targetID) != true {
+NextPasteUITests/PinScrollAutomationUITests.swift|for attempt in 0...maximumPresses {
 NextPasteUITests/PinScrollAutomationUITests.swift|for index in indices {
 NextPasteUITests/PinScrollAutomationUITests.swift|for index in indices {
 NextPasteUITests/RelaunchStabilityUITests.swift|for index in 0..<10 {

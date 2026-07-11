@@ -225,17 +225,11 @@ final class PinScrollAutomationUITests: UITestCase {
         let targetID = UITestFixtures.PinScroll.id(index: targetIndex).uuidString
         let target = row(index: targetIndex, in: app)
 
-        let filterMenu = UITestAssertions.assertExists(
-            app.descendants(matching: .any)["history-filter-menu"],
-            "Expected the product history filter menu"
+        let filterMenu = selectHistoryFilter(
+            optionIdentifier: "history-filter-unpinned",
+            expectedState: "unpinned",
+            in: app
         )
-        filterMenu.tap()
-        UITestAssertions.assertExists(
-            app.descendants(matching: .any)["history-filter-unpinned"],
-            "Expected the real Unpinned filter option"
-        ).tap()
-
-        assertMarker(Marker.historyFilter, equals: "unpinned", in: app)
         UITestAssertions.assertEventuallyAccessibleTextContains(
             filterMenu,
             "Unpinned Clips",
@@ -260,18 +254,11 @@ final class PinScrollAutomationUITests: UITestCase {
     func testEmptyImageFilterExposesSelectedFilterAndDedicatedEmptyMessage() {
         let app = launchPinScrollFixture(windowSizePreset: .tall)
         let history = historyRobot(for: app)
-        let filterMenu = UITestAssertions.assertExists(
-            app.descendants(matching: .any)["history-filter-menu"],
-            "Expected the product history filter menu"
+        let filterMenu = selectHistoryFilter(
+            optionIdentifier: "history-filter-images",
+            expectedState: "images",
+            in: app
         )
-
-        filterMenu.tap()
-        UITestAssertions.assertExists(
-            app.descendants(matching: .any)["history-filter-images"],
-            "Expected the real Image filter option"
-        ).tap()
-
-        assertMarker(Marker.historyFilter, equals: "images", in: app)
         history.assertVisibleDatasetCounts(total: 0, text: 0, image: 0, pinned: 0)
         UITestAssertions.assertEventuallyAccessibleTextContains(
             filterMenu,
@@ -329,6 +316,55 @@ final class PinScrollAutomationUITests: UITestCase {
         )
     }
 
+    func testKeyboardFocusedContextMenuPinActivatesWithReturnAndAutoScrollsExactStableID() throws {
+        let app = launchPinScrollFixture(windowSizePreset: .tall)
+        let targetIndex = UITestFixtures.PinScroll.rapidAIndex
+        let targetID = UITestFixtures.PinScroll.id(index: targetIndex).uuidString
+        let target = row(index: targetIndex, in: app)
+        let originalIdentifier = target.identifier
+        target.rightClick()
+        let pinMenuItem = app.menuItems["toggle-pin-text-menu-item"]
+
+        UITestAssertions.assertExists(pinMenuItem, "Expected the native text-row Pin menu item")
+        XCTAssertTrue(pinMenuItem.isEnabled && pinMenuItem.isHittable)
+        UITestAssertions.assertAccessibleTextContains(pinMenuItem, "Pin")
+        UITestAssertions.assertAccessibleTextContains(target, "Unpinned")
+        assertMarker(Marker.executionCount, equals: "0", in: app)
+        assertMarker(Marker.lastItemID, equals: "none", in: app)
+        assertMarker(Marker.lastDecision, equals: "none", in: app)
+        assertMarker(Marker.pendingItemID, equals: "none", in: app)
+
+        try moveMenuSelection(to: pinMenuItem, in: app)
+        XCTAssertTrue(
+            pinMenuItem.isSelected,
+            "Keyboard-selection checkpoint: the exact native Pin menu item must be selected before Return"
+        )
+
+        // KEY-05: rightClick exposes the native menu, but activation itself is
+        // keyboard-only. Do not tap/click the menu item in this test.
+        app.typeKey(.return, modifierFlags: [])
+
+        assertMarker(Marker.lastItemID, equals: targetID, in: app)
+        assertMarker(Marker.lastDecision, equals: "scroll", in: app, timeout: Self.pinMutationTimeout)
+        assertMarker(Marker.executionCount, equals: "1", in: app)
+        assertMarker(Marker.pendingItemID, equals: "none", in: app)
+        XCTAssertTrue(
+            UITestWait.until(timeout: Self.pinMutationTimeout) {
+                self.markerValue(Marker.scrollPhase, in: app) == "idle"
+                    && self.markerValue(Marker.visibleItemIDs, in: app)?.contains(targetID) == true
+                    && target.isHittable
+            },
+            "Postcondition: keyboard Pin must settle with the exact stable target visible"
+        )
+        XCTAssertEqual(target.identifier, originalIdentifier)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            target,
+            "Pinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        XCTAssertEqual(app.state, .runningForeground)
+    }
+
     private func launchPinScrollFixture(
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
@@ -370,27 +406,38 @@ final class PinScrollAutomationUITests: UITestCase {
     ) -> XCUIElement {
         let target = row(index: index, in: app)
         let swipeSurface = app.staticTexts[UITestFixtures.PinScroll.text(index: index)]
-        XCTAssertTrue(target.exists && target.isHittable, "Action-surface checkpoint: target row must be hittable", file: file, line: line)
-        XCTAssertTrue(swipeSurface.exists && swipeSurface.isHittable, "Action-surface checkpoint: target content must be hittable", file: file, line: line)
+        assertNativeActionSurfaceReady(
+            target: target,
+            swipeSurface: swipeSurface,
+            in: app,
+            file: file,
+            line: line
+        )
         UITestAssertions.assertAccessibleTextContains(
             target,
             expectedLabel == "Unpin" ? "Pinned" : "Unpinned",
             file: file,
             line: line
         )
-        swipeSurface.swipeRight(velocity: .slow)
-
-        var resolvedButton: XCUIElement?
-        let revealed = UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-            resolvedButton = SwipeSynthesisRecorder.hittableActionButton(
-                identifier: "pin-clip-button",
-                alignedTo: target,
-                in: app
-            )
-            return resolvedButton != nil
-        }
-        XCTAssertTrue(revealed, "Action-surface checkpoint: one native swipe must reveal Pin", file: file, line: line)
-        guard let button = resolvedButton else {
+        let outcome = SwipeSynthesisRecorder.reveal(
+            on: [target, swipeSurface],
+            scopedTo: target,
+            buttonIdentifier: "pin-clip-button",
+            expectedLabel: expectedLabel,
+            direction: .right,
+            in: app,
+            file: file,
+            line: line
+        )
+        guard case .revealed(let button) = outcome else {
+            if case .failure(let failure) = outcome {
+                XCTFail(
+                    "Action-surface checkpoint: bounded native swipe synthesis failed "
+                        + "(issued=\(failure.swipeIssued), retries=\(failure.retryCount), duration=\(failure.duration))",
+                    file: file,
+                    line: line
+                )
+            }
             return app.buttons["pin-clip-button"]
         }
         return button
@@ -404,21 +451,118 @@ final class PinScrollAutomationUITests: UITestCase {
     ) -> XCUIElement {
         let target = row(index: index, in: app)
         let swipeSurface = app.staticTexts[UITestFixtures.PinScroll.text(index: index)]
-        XCTAssertTrue(target.exists && target.isHittable, "Action-surface checkpoint: target row must be hittable", file: file, line: line)
-        XCTAssertTrue(swipeSurface.exists && swipeSurface.isHittable, "Action-surface checkpoint: target content must be hittable", file: file, line: line)
-        swipeSurface.swipeLeft(velocity: .slow)
-
-        var resolvedButton: XCUIElement?
-        let revealed = UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-            resolvedButton = SwipeSynthesisRecorder.hittableActionButton(
-                identifier: "delete-clip-button",
-                alignedTo: target,
-                in: app
-            )
-            return resolvedButton != nil
+        assertNativeActionSurfaceReady(
+            target: target,
+            swipeSurface: swipeSurface,
+            in: app,
+            file: file,
+            line: line
+        )
+        let outcome = SwipeSynthesisRecorder.reveal(
+            on: [target, swipeSurface],
+            scopedTo: target,
+            buttonIdentifier: "delete-clip-button",
+            expectedLabel: "Delete",
+            direction: .left,
+            in: app,
+            file: file,
+            line: line
+        )
+        guard case .revealed(let button) = outcome else {
+            if case .failure(let failure) = outcome {
+                XCTFail(
+                    "Action-surface checkpoint: bounded native delete synthesis failed "
+                        + "(issued=\(failure.swipeIssued), retries=\(failure.retryCount), duration=\(failure.duration))",
+                    file: file,
+                    line: line
+                )
+            }
+            return app.buttons["delete-clip-button"]
         }
-        XCTAssertTrue(revealed, "Action-surface checkpoint: one native swipe must reveal Delete", file: file, line: line)
-        return resolvedButton ?? app.buttons["delete-clip-button"]
+        return button
+    }
+
+    private func assertNativeActionSurfaceReady(
+        target: XCUIElement,
+        swipeSurface: XCUIElement,
+        in app: XCUIApplication,
+        file: StaticString,
+        line: UInt
+    ) {
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                target.exists
+                    && target.isHittable
+                    && swipeSurface.exists
+                    && swipeSurface.isHittable
+                    && self.markerValue(Marker.visibilityReadiness, in: app) == "ready"
+                    && self.markerValue(Marker.scrollPhase, in: app) == "idle"
+            },
+            "Action-surface checkpoint: the row, native content, aggregate visibility, and scroll phase must all be ready",
+            file: file,
+            line: line
+        )
+    }
+
+    private func selectHistoryFilter(
+        optionIdentifier: String,
+        expectedState: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let filterMenu = UITestAssertions.assertExists(
+            app.descendants(matching: .any)["history-filter-menu"],
+            "Expected the product history filter menu",
+            file: file,
+            line: line
+        )
+        filterMenu.tap()
+
+        let option = UITestAssertions.assertExists(
+            app.menuItems[optionIdentifier],
+            "Expected filter option \(optionIdentifier)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                option.isEnabled && option.isHittable
+            },
+            "Expected filter option \(optionIdentifier) to become actionable",
+            file: file,
+            line: line
+        )
+        option.click()
+        assertMarker(Marker.historyFilter, equals: expectedState, in: app, file: file, line: line)
+        return filterMenu
+    }
+
+    private enum KeyboardMenuInteractionError: Error {
+        case actionSurfaceUnavailable(identifier: String)
+        case focusTraversalExhausted(identifier: String, maximumPresses: Int)
+    }
+
+    private func moveMenuSelection(
+        to element: XCUIElement,
+        in app: XCUIApplication,
+        maximumPresses: Int = 4
+    ) throws {
+        for attempt in 0...maximumPresses {
+            if element.isSelected {
+                return
+            }
+            guard attempt < maximumPresses else {
+                throw KeyboardMenuInteractionError.focusTraversalExhausted(
+                    identifier: element.identifier,
+                    maximumPresses: maximumPresses
+                )
+            }
+            guard element.exists, element.isEnabled, element.isHittable else {
+                throw KeyboardMenuInteractionError.actionSurfaceUnavailable(identifier: element.identifier)
+            }
+            app.typeKey(.downArrow, modifierFlags: [])
+        }
     }
 
     private func markerValue(_ identifier: String, in app: XCUIApplication) -> String? {
