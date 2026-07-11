@@ -27,14 +27,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/NextPasteVerification"
           automation_mode_status="$(/usr/bin/automationmodetool)"
-          printf '%s\n' "$automation_mode_status"
+          printf '%s\n' "$automation_mode_status" \
+            | tee "$RUNNER_TEMP/NextPasteVerification/automation-mode.log"
           if [[ "$automation_mode_status" != *"DOES NOT REQUIRE"* ]]; then
             echo "error: hosted runner requires interactive UI Automation authorization" >&2
             exit 1
           fi
 
       - name: Run complete verification
+        timeout-minutes: 350
         shell: bash
         env:
           VERIFY_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteVerification
