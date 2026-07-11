@@ -122,6 +122,13 @@ struct PinScrollRequestStateTests {
             )
         }
 
+        for stale in staleRequests {
+            #expect(state.isCurrent(stale) == false)
+        }
+        let latestRequest = state.pendingRequest
+        if let latestRequest {
+            #expect(state.isCurrent(latestRequest))
+        }
         for stale in staleRequests { state.consume(stale) }
         #expect(state.pendingRequest?.itemID == ids[2])
         #expect(state.pendingRequest?.generation == 3)

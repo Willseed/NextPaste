@@ -13,9 +13,8 @@ enum UITestFixtures {
         static let rapidBIndex = 62
         static let rapidCIndex = 61
         static let pinThenDeleteIndex = 60
-        static let keyboardIndex = 59
         static let initiallyPinnedIndex = 58
-        static let offscreenTargetIndex = 56
+        static let offscreenTargetIndex = 0
         static let searchVisibleTargetIndex = 55
         static let searchHiddenTargetIndex = rapidAIndex
 
@@ -39,14 +38,14 @@ enum UITestFixtures {
                 return "Pin scroll rapid C visible row 61"
             case pinThenDeleteIndex:
                 return "Pin scroll then delete visible row 60"
-            case keyboardIndex:
-                return "Pin scroll keyboard visible row 59"
             case initiallyPinnedIndex:
                 return "Pin scroll initially pinned unpin row 58"
             case offscreenTargetIndex:
-                return "Pin scroll offscreen exact target row 56 search-visible"
+                return "Pin scroll offscreen exact target row 00"
             case searchVisibleTargetIndex:
                 return "Pin scroll search visible target row 55 search-visible"
+            case 56:
+                return "Pin scroll search companion row 56 search-visible"
             case 41...54:
                 return String(format: "Pin scroll search companion row %02d search-visible", index)
             default:

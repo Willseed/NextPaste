@@ -333,6 +333,7 @@ struct HomeView: View {
     @State private var headerFrame: CGRect = .null
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
+    @State private var historyScrollPhase: ScrollPhase = .idle
     @State private var pinScrollRequestState = PinScrollRequestState()
     @State private var pinScrollLayoutObservationState = PinScrollLayoutObservationState()
     @State private var pinScrollTask: Task<Void, Never>?
@@ -344,8 +345,8 @@ struct HomeView: View {
     @State private var uiTestPinScrollExecutionCount = 0
     @State private var uiTestPinScrollLastItemID = "none"
     @State private var uiTestPinScrollLastDecision = "none"
+    @State private var uiTestPinScrollVisibleItemIDs = "none"
     @State private var uiTestAppliedWindowSize = "pending"
-    @State private var uiTestRequestedWindowSize = "pending"
 #endif
     // Platform-neutral ID-first Pin/Unpin store. Only the native row-action
     // safe-boundary snapshot is macOS-specific.
@@ -1051,6 +1052,12 @@ struct HomeView: View {
         let rows = visibleClips
         let rowIDs = rows.map(\.id)
         return ScrollViewReader { proxy in
+#if os(macOS)
+            let _ = updatePinScrollProjectionObservation(
+                visibleItemIDs: rowIDs,
+                proxy: proxy
+            )
+#endif
             List {
                 // Keep AppKit row slots stable while a Pin/Unpin mutation changes
                 // the pinned-first projection. The logical clip UUID remains on the
@@ -1063,9 +1070,8 @@ struct HomeView: View {
                         // persisted item UUID, never by this protective row-slot index.
                         .id(clip.id)
                 }
-                // SwiftUI's scroll container now owns the completeness signal:
-                // its aggregate callback reports every currently visible UUID,
-                // while an unrealized lazy row is simply absent from that set.
+                // Mark stable UUID targets for `ScrollViewProxy` and for the
+                // non-AppKit aggregate visibility callback below.
                 .scrollTargetLayout()
             }
             .padding(DesignTokens.Spacing.small)
@@ -1077,11 +1083,15 @@ struct HomeView: View {
             .background(
                 RowActionTableViewResolver { tableView in
                     observeRowActions(on: tableView)
+                    observePinScrollVisibility(
+                        on: tableView,
+                        visibleItemIDs: rowIDs,
+                        proxy: proxy
+                    )
                 }
+                .id(rowIDs)
             )
-#endif
-            .background(measuredFrameReader(for: .viewport))
-            .accessibilityIdentifier("clip-history-list")
+#else
             .onScrollTargetVisibilityChange(idType: UUID.self, threshold: 0.01) { visibleTargetIDs in
                 updatePinScrollVisibility(
                     visibleTargetIDs,
@@ -1089,10 +1099,22 @@ struct HomeView: View {
                     proxy: proxy
                 )
             }
+#endif
+            .background(measuredFrameReader(for: .viewport))
+            .accessibilityIdentifier("clip-history-list")
             .onChange(of: rowIDs) { _, updatedIDs in
                 pinScrollLayoutObservationState.beginProjection(updatedIDs)
                 let requestBeforeReconciliation = pinScrollRequestState.pendingRequest
                 pinScrollRequestState.reconcileProjection(with: updatedIDs)
+#if os(macOS)
+                // Body evaluation updates the observer's projected IDs before
+                // SwiftUI has necessarily published those rows into the
+                // backing NSTableView. Re-sample from this post-publication
+                // projection signal so a Pin request cannot remain stranded on
+                // the pre-reorder AppKit snapshot.
+                rowActionResolverObservation.pinScrollVisibilityObservation
+                    .requestSnapshot(invalidatePublishedSnapshot: true)
+#endif
                 if let requestBeforeReconciliation,
                    pinScrollRequestState.pendingRequest == nil {
                     recordPinScrollDiagnostic(
@@ -1100,31 +1122,9 @@ struct HomeView: View {
                         decision: "cancel"
                     )
                 }
-                if let request = pinScrollRequestState.pendingRequest {
-                    schedulePinScroll(
-                        request,
-                        visibleItemIDs: updatedIDs,
-                        proxy: proxy
-                    )
-                }
-            }
-            .onChange(of: pinScrollRequestState.pendingRequest) { _, request in
-                guard let request else { return }
-                schedulePinScroll(
-                    request,
-                    visibleItemIDs: rowIDs,
-                    proxy: proxy
-                )
-            }
-            .onChange(of: listViewportFrame) { _, _ in
-                guard let request = pinScrollRequestState.pendingRequest else { return }
-                schedulePinScroll(
-                    request,
-                    visibleItemIDs: rowIDs,
-                    proxy: proxy
-                )
             }
             .onScrollPhaseChange { _, newPhase in
+                historyScrollPhase = newPhase
                 if newPhase == .tracking || newPhase == .interacting {
                     let cancelledRequest = pinScrollRequestState.pendingRequest
                     pinScrollTask?.cancel()
@@ -1135,6 +1135,11 @@ struct HomeView: View {
                             decision: "cancel"
                         )
                     }
+                } else if newPhase == .idle {
+#if os(macOS)
+                    rowActionResolverObservation.pinScrollVisibilityObservation
+                        .requestSnapshot(invalidatePublishedSnapshot: true)
+#endif
                 }
             }
         }
@@ -1155,6 +1160,15 @@ struct HomeView: View {
             projectionItemIDs: visibleItemIDs
         ) else { return }
 
+#if DEBUG && os(macOS)
+        if isUITesting {
+            let diagnosticValue = visibleTargetIDs.map(\.uuidString).joined(separator: ",")
+            if diagnosticValue != uiTestPinScrollVisibleItemIDs {
+                uiTestPinScrollVisibleItemIDs = diagnosticValue
+            }
+        }
+#endif
+
         if let request = pinScrollRequestState.pendingRequest {
             schedulePinScroll(
                 request,
@@ -1173,7 +1187,8 @@ struct HomeView: View {
         pinScrollTask = Task { @MainActor in
             guard Task.isCancelled == false,
                   pinScrollRequestState.isCurrent(request),
-                  visibleItemIDs == visibleClips.map(\.id) else {
+                  visibleItemIDs == visibleClips.map(\.id),
+                  historyScrollPhase == .idle else {
                 return
             }
             guard Set(visibleItemIDs) == Set(request.expectedVisibleItemIDs) else {
@@ -1506,6 +1521,10 @@ struct HomeView: View {
             expectedVisibleItemIDs: projectedVisibleClipIDsForPinScroll()
         )
         if pinScrollRequestState.pendingRequest?.itemID == result.itemID {
+#if os(macOS)
+            rowActionResolverObservation.pinScrollVisibilityObservation
+                .requestSnapshot(invalidatePublishedSnapshot: true)
+#endif
             recordPinScrollDiagnostic(itemID: result.itemID, decision: "pending")
         } else {
             recordPinScrollDiagnostic(itemID: result.itemID, decision: "not-requested")
@@ -1600,6 +1619,38 @@ struct HomeView: View {
     }
 
 #if os(macOS)
+    private func updatePinScrollProjectionObservation(
+        visibleItemIDs: [UUID],
+        proxy: ScrollViewProxy
+    ) {
+        rowActionResolverObservation.pinScrollVisibilityObservation.updateProjection(
+            visibleItemIDs
+        ) { visibleTargetIDs in
+            updatePinScrollVisibility(
+                visibleTargetIDs,
+                visibleItemIDs: visibleItemIDs,
+                proxy: proxy
+            )
+        }
+    }
+
+    private func observePinScrollVisibility(
+        on tableView: NSTableView?,
+        visibleItemIDs: [UUID],
+        proxy: ScrollViewProxy
+    ) {
+        rowActionResolverObservation.pinScrollVisibilityObservation.update(
+            tableView: tableView,
+            projectionItemIDs: visibleItemIDs
+        ) { visibleTargetIDs in
+            updatePinScrollVisibility(
+                visibleTargetIDs,
+                visibleItemIDs: visibleItemIDs,
+                proxy: proxy
+            )
+        }
+    }
+
     private func observeRowActions(on tableView: NSTableView?) {
         let observation = rowActionResolverObservation
         guard let tableView else {
@@ -2279,6 +2330,16 @@ struct HomeView: View {
                     label: "Pin scroll aggregate visibility readiness"
                 )
                 accessibilityMarker(
+                    identifier: "pin-scroll-visible-item-ids",
+                    value: uiTestPinScrollVisibleItemIDs,
+                    label: "Visible Pin scroll stable item identifiers"
+                )
+                accessibilityMarker(
+                    identifier: "pin-scroll-phase",
+                    value: historyScrollPhase == .idle ? "idle" : "active",
+                    label: "Pin scroll phase"
+                )
+                accessibilityMarker(
                     identifier: "ui-test-window-size-applied",
                     value: uiTestAppliedWindowSize,
                     label: "UI test window size applied"
@@ -2427,7 +2488,6 @@ struct HomeView: View {
         to preset: HistoryUITestWindowSize,
         in window: NSWindow
     ) {
-        uiTestRequestedWindowSize = preset.rawValue
         uiTestAppliedWindowSize = "resizing"
         let origin = window.frame.origin
         let contentRect = NSRect(origin: .zero, size: preset.contentSize)
@@ -2436,11 +2496,11 @@ struct HomeView: View {
             window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
         }
 
-        // The readiness marker is published only after AppKit has synchronously
-        // laid out a content view with the requested size. XCUITest additionally
-        // waits for the live scroll-target visibility snapshot, so it cannot
-        // race the SwiftUI list geometry after this native checkpoint.
-        window.contentView?.layoutSubtreeIfNeeded()
+        // `UITestWindowSizeResolver` is itself updated from SwiftUI's layout
+        // pass. Calling `layoutSubtreeIfNeeded()` here re-enters NSHostingView
+        // layout and can eventually raise AppKit's constraint-loop exception.
+        // `setFrame` synchronously updates the content-view bounds; the separate
+        // UUID visibility marker remains the observable SwiftUI layout gate.
         guard let actualSize = window.contentView?.bounds.size,
               actualSize.approximatelyEquals(preset.contentSize) else {
             uiTestAppliedWindowSize = "size-mismatch"
@@ -2480,13 +2540,173 @@ private final class RowActionResolverObservationState {
     var rowActionsObservation: NSKeyValueObservation?
     weak var observedRowActionsTableView: NSTableView?
     var observedRowActionsTableViewID: ObjectIdentifier?
+    let pinScrollVisibilityObservation = PinScrollTableVisibilityObservation()
 
     func reset() {
         rowActionsObservation?.invalidate()
         rowActionsObservation = nil
         observedRowActionsTableView = nil
         observedRowActionsTableViewID = nil
+        pinScrollVisibilityObservation.reset()
     }
+}
+
+/// A macOS `List` is backed by `NSTableView` and keeps physical row slots
+/// index-stable while native row actions tear down. SwiftUI's UUID target
+/// visibility callback is not emitted for that configuration, so observe the
+/// public clip-view bounds notification and synchronously convert AppKit's
+/// current visible row range to the captured projection's persisted UUIDs.
+/// The row range is geometry only: no mutation, request, or scroll command
+/// stores or crosses an async boundary with an AppKit row number.
+@MainActor
+private final class PinScrollTableVisibilityObservation {
+    private weak var tableView: NSTableView?
+    private weak var clipView: NSClipView?
+    private var projectionItemIDs: [UUID] = []
+    private var notificationTokens: [NSObjectProtocol] = []
+    private var snapshotTask: Task<Void, Never>?
+    private var onVisibleTargetIDs: (([UUID]) -> Void)?
+    private var lastPublishedTargetIDs: [UUID]?
+
+    func update(
+        tableView: NSTableView?,
+        projectionItemIDs: [UUID],
+        onVisibleTargetIDs: @escaping ([UUID]) -> Void
+    ) {
+        self.onVisibleTargetIDs = onVisibleTargetIDs
+        let projectionChanged = self.projectionItemIDs != projectionItemIDs
+        self.projectionItemIDs = projectionItemIDs
+
+        guard let tableView else {
+            resetTableObservation()
+            return
+        }
+
+        if self.tableView !== tableView {
+            installObservation(for: tableView)
+        } else if projectionChanged {
+            lastPublishedTargetIDs = nil
+        }
+        scheduleSnapshot()
+    }
+
+    func updateProjection(
+        _ projectionItemIDs: [UUID],
+        onVisibleTargetIDs: @escaping ([UUID]) -> Void
+    ) {
+        self.onVisibleTargetIDs = onVisibleTargetIDs
+        guard self.projectionItemIDs != projectionItemIDs else {
+            scheduleSnapshot()
+            return
+        }
+        self.projectionItemIDs = projectionItemIDs
+        lastPublishedTargetIDs = nil
+        scheduleSnapshot()
+    }
+
+    func reset() {
+        snapshotTask?.cancel()
+        snapshotTask = nil
+        resetTableObservation()
+        projectionItemIDs.removeAll()
+        onVisibleTargetIDs = nil
+        lastPublishedTargetIDs = nil
+    }
+
+    func requestSnapshot(invalidatePublishedSnapshot: Bool = false) {
+        if invalidatePublishedSnapshot {
+            lastPublishedTargetIDs = nil
+        }
+        scheduleSnapshot()
+    }
+
+    private func installObservation(for tableView: NSTableView) {
+        resetTableObservation()
+        self.tableView = tableView
+        let clipView = tableView.enclosingScrollView?.contentView
+        self.clipView = clipView
+        tableView.postsFrameChangedNotifications = true
+        clipView?.postsBoundsChangedNotifications = true
+        clipView?.postsFrameChangedNotifications = true
+
+        let center = NotificationCenter.default
+        notificationTokens.append(center.addObserver(
+            forName: NSView.frameDidChangeNotification,
+            object: tableView,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in self?.scheduleSnapshot() }
+        })
+        if let clipView {
+            notificationTokens.append(center.addObserver(
+                forName: NSView.boundsDidChangeNotification,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.scheduleSnapshot() }
+            })
+            notificationTokens.append(center.addObserver(
+                forName: NSView.frameDidChangeNotification,
+                object: clipView,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.scheduleSnapshot() }
+            })
+        }
+        if let window = tableView.window {
+            notificationTokens.append(center.addObserver(
+                forName: NSWindow.didUpdateNotification,
+                object: window,
+                queue: .main
+            ) { [weak self] _ in
+                Task { @MainActor [weak self] in self?.scheduleSnapshot() }
+            })
+        }
+        lastPublishedTargetIDs = nil
+    }
+
+    private func resetTableObservation() {
+        snapshotTask?.cancel()
+        snapshotTask = nil
+        notificationTokens.forEach(NotificationCenter.default.removeObserver)
+        notificationTokens.removeAll()
+        tableView = nil
+        clipView = nil
+        lastPublishedTargetIDs = nil
+    }
+
+    private func scheduleSnapshot() {
+        snapshotTask?.cancel()
+        snapshotTask = Task { @MainActor [weak self] in
+            guard Task.isCancelled == false else { return }
+            self?.publishSnapshot()
+        }
+    }
+
+    private func publishSnapshot() {
+        guard let tableView,
+              tableView.numberOfRows == projectionItemIDs.count,
+              tableView.bounds.isEmpty == false else {
+            return
+        }
+
+        let visibleBounds = clipView.map { tableView.convert($0.bounds, from: $0) }
+            ?? tableView.bounds
+        let visibleRange = tableView.rows(in: visibleBounds)
+        guard visibleRange.location != NSNotFound,
+              visibleRange.length > 0,
+              visibleRange.location >= 0,
+              NSMaxRange(visibleRange) <= projectionItemIDs.count else {
+            return
+        }
+        let stableTargetIDs = (visibleRange.location..<NSMaxRange(visibleRange))
+            .map { projectionItemIDs[$0] }
+        guard stableTargetIDs != lastPublishedTargetIDs else { return }
+
+        lastPublishedTargetIDs = stableTargetIDs
+        onVisibleTargetIDs?(stableTargetIDs)
+    }
+
 }
 
 private struct RowActionTableViewResolver: NSViewRepresentable {

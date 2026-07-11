@@ -143,15 +143,17 @@ enum UITestHistorySeeder {
         case 60:
             return "Pin scroll then delete visible row 60"
         case 59:
-            return "Pin scroll keyboard visible row 59"
+            return "Pin scroll automation filler row 59"
         case 58:
             return "Pin scroll initially pinned unpin row 58"
         case 56:
-            return "Pin scroll offscreen exact target row 56 search-visible"
+            return "Pin scroll search companion row 56 search-visible"
         case 55:
             return "Pin scroll search visible target row 55 search-visible"
         case 41...54:
             return String(format: "Pin scroll search companion row %02d search-visible", index)
+        case 0:
+            return "Pin scroll offscreen exact target row 00"
         default:
             return String(format: "Pin scroll automation filler row %02d", index)
         }

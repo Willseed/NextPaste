@@ -115,6 +115,10 @@ nonisolated struct PinScrollLayoutObservationState: Equatable, Sendable {
             return false
         }
 
+        if hasCurrentSnapshot, self.visibleTargetIDs == visibleIDSet {
+            return true
+        }
+
         self.visibleTargetIDs = visibleIDSet
         hasCurrentSnapshot = true
         return true
