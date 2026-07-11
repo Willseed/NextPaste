@@ -1,0 +1,57 @@
+{
+  "configurations" : [
+    {
+      "id" : "5CB6EF74-4A33-4F85-A575-AE68842CE513",
+      "name" : "Unit",
+      "options" : {
+      }
+    },
+    {
+      "id" : "948760AF-C899-468C-A6B1-9E116300FA04",
+      "name" : "Integration",
+      "options" : {
+      }
+    },
+    {
+      "id" : "E98A6E63-36D6-49DC-AEE1-C675CA5211F0",
+      "name" : "UI",
+      "options" : {
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "codeCoverage" : true,
+    "codeCoverageTargets" : [
+      {
+        "containerPath" : "container:NextPaste.xcodeproj",
+        "identifier" : "F6E915E12FEBA508008C9AAA",
+        "name" : "NextPaste"
+      }
+    ],
+    "targetForVariableExpansion" : {
+      "containerPath" : "container:NextPaste.xcodeproj",
+      "identifier" : "F6E915E12FEBA508008C9AAA",
+      "name" : "NextPaste"
+    },
+    "testTimeoutsEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "parallelizable" : true,
+      "target" : {
+        "containerPath" : "container:NextPaste.xcodeproj",
+        "identifier" : "F6E915F22FEBA509008C9AAA",
+        "name" : "NextPasteTests"
+      }
+    },
+    {
+      "parallelizable" : false,
+      "target" : {
+        "containerPath" : "container:NextPaste.xcodeproj",
+        "identifier" : "F6E915FC2FEBA509008C9AAA",
+        "name" : "NextPasteUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
