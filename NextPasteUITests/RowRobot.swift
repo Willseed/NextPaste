@@ -610,9 +610,15 @@ struct RowRobot {
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        UITestAssertions.assertExists(
-            app.staticTexts[clipText],
-            "Expected text row label containing \(clipText)",
+        let row = textRow(
+            containing: clipText,
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        return UITestAssertions.assertExists(
+            row.staticTexts["clipboard-row-preview"],
+            "Expected stable preview gesture surface for \(clipText)",
             timeout: timeout,
             file: file,
             line: line

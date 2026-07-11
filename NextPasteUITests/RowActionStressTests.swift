@@ -333,6 +333,11 @@ final class RowActionStressTests: UITestCase {
     /// row-action taps and a no-crash check per action.
     @MainActor
     func testT041RapidInterleavedPinUnpinAcrossClipsStress() throws {
+        // Fifty rounds across three rows synthesize 150 native swipe/tap
+        // transactions. Keep the watchdog proportional to that fixed workload;
+        // the iteration count and terminal assertions remain unchanged.
+        executionTimeAllowance = 20 * 60
+
         let trace = UITestAppLauncher.makeTraceApp()
         let app = trace.app
         app.launch()
@@ -401,6 +406,11 @@ final class RowActionStressTests: UITestCase {
     /// `assertVisibleRemoval` to verify each deleted clip's row disappears (no stale row).
     @MainActor
     func testT042RapidDeleteStress() throws {
+        // Creating 51 rows through the real sheet and then deleting 50 through
+        // native row actions is intentionally heavier than XCTest's default
+        // UI-test budget. Assertions and iterations remain unchanged.
+        executionTimeAllowance = 20 * 60
+
         let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .tall)
         let app = trace.app
         app.launch()
@@ -416,11 +426,16 @@ final class RowActionStressTests: UITestCase {
             clips.append("T042 rapid delete target \(index)")
         }
         let survivor = "T042 rapid delete survivor"
-        try history.createTextClips(clips + [survivor])
+        // History is newest-first. Seed the survivor first and targets in
+        // reverse order so target 0, 1, ... is always the current visible top
+        // row as the preceding target is deleted. Identity still comes from
+        // each target's stable row, never from a row index.
+        try history.createTextClips([survivor] + Array(clips.reversed()))
         history.assertClipRowIdentifierExists()
 
         var actionOutcomes: [String] = []
         for (index, clip) in clips.enumerated() {
+            let targetRow = row.textRowElement(containing: clip)
             let deleteButton = row.revealDeleteActionWithLeftSwipe(for: clip)
             deleteButton.tap()
             XCTAssertEqual(
@@ -432,7 +447,7 @@ final class RowActionStressTests: UITestCase {
 
             // No stale row referencing the removed clip: the deleted clip's row must disappear.
             BoundedRetryUITestHelper.assertVisibleRemoval(
-                of: app.staticTexts[clip],
+                of: targetRow,
                 timeout: 5,
                 context: "T042 deleted clip \(clip) row removed (no stale row)",
                 app: app
@@ -440,9 +455,9 @@ final class RowActionStressTests: UITestCase {
         }
 
         // The survivor is never deleted and must remain present.
-        XCTAssertTrue(
-            app.staticTexts[survivor].waitForExistence(timeout: UITestAssertions.defaultTimeout),
-            "T042: expected survivor clip to remain present after rapid deletes"
+        _ = row.textRowElement(
+            containing: survivor,
+            timeout: UITestAssertions.defaultTimeout
         )
 
         attachStressOutcome(

@@ -53,13 +53,26 @@ enum SwipeSynthesisRecorder {
         var swipeIssued = false
 
         for candidate in candidates {
+            let candidateIsReady = UITestWait.until(
+                timeout: UITestAssertions.defaultTimeout
+            ) {
+                candidate.exists && candidate.isHittable
+            }
+            guard candidateIsReady else {
+                // A candidate receives one bounded Accessibility readiness
+                // wait before the gesture retries. Repeating the full timeout
+                // for every retry hides a geometry failure behind the stress
+                // test watchdog without creating any new observable state.
+                retryCount += 1
+                continue
+            }
+
             for _ in 0..<3 {
                 retryCount += 1
                 guard candidate.exists, candidate.isHittable else {
-                    // Row not hittable at swipe time: no swipe issued this
-                    // attempt. The outcome records swipeIssued == false so the
-                    // classifier can distinguish a visibility/setup problem from
-                    // a synthesis failure (FR-004, edge case 1).
+                    // The candidate became unavailable after readiness. Move
+                    // immediately to its next gesture surface; do not nest a
+                    // second full timeout inside the retry loop.
                     continue
                 }
 
