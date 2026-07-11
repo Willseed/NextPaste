@@ -17,16 +17,17 @@ struct RowActionDisplayOrderPolicyTests {
 
     // MARK: - T004: Snapshot-state unit coverage
 
-    @Test("display-order snapshot is declared as ID/order-only UUID metadata, not [ClipItem]")
+    @Test("display-order snapshot authority stores ID/order-only UUID metadata, not ClipItem values")
     func snapshotStateIsIDOrderOnlyNotClipItemArray() throws {
         let source = try homeViewSource()
         #expect(
-            source.contains("@State private var rowActionDisplayOrderSnapshot: [UUID]?"),
-            "Feature 020 (ADR-020) requires the snapshot to be ID/order-only (`[UUID]?`) so it never retains ClipItem content."
+            source.contains("private final class RowActionDisplayOrderState")
+                && source.contains("private(set) var snapshotIDs: [UUID]?"),
+            "Feature 020 requires one observable ID-only snapshot authority."
         )
         #expect(
-            source.contains("@State private var rowActionDisplayOrderSnapshot: [ClipItem]?") == false,
-            "The snapshot must not retain `[ClipItem]`; that would retain clipboard content, previews, and trace payloads."
+            source.contains("snapshotIDs: [ClipItem]?") == false,
+            "The snapshot authority must not retain ClipItem content, previews, or trace payloads."
         )
     }
 
@@ -35,23 +36,20 @@ struct RowActionDisplayOrderPolicyTests {
         let source = try homeViewSource()
         let activation = try fragment(
             in: source,
-            from: "private func beginRowActionDisplayOrderSnapshot()",
+            from: "private func beginRowActionDisplayOrderSnapshot(",
             to: "private func scheduleAutomaticReconciliation("
         )
-        // The activation extracts ID-only metadata via `visibleClips.map(\.id)` and
-        // assigns the snapshot from those identifiers. The landed refactor (T073.1)
-        // introduced an intermediate `snapshotIDs` constant because the same IDs are
-        // also mirrored into `reconciliationSnapshotObservation.snapshotIDs`; the
-        // protective intent is that the snapshot holds only identifiers, never the
-        // full `visibleClips` ([ClipItem]) array.
+        // The installed body publishes its exact visible UUID projection into a
+        // read-only environment mirror. The retained action entry point captures
+        // those UUIDs into the single observable List-driving authority.
         #expect(
-            activation.contains("visibleClips.map(\\.id)"),
-            "Snapshot activation must store only clip identifiers (`map(\\.id)`), not ClipItem instances."
+            activation.contains("reconciliationEnvironmentMirror.visibleClipIDs")
+                && activation.contains("rowActionDisplayOrderState.begin("),
+            "Snapshot activation must capture the installed body's UUID-only projection."
         )
         #expect(
-            activation.contains("rowActionDisplayOrderSnapshot = visibleClips\n") == false
-                && activation.contains("rowActionDisplayOrderSnapshot = visibleClips\r") == false,
-            "Snapshot activation must not assign the full `visibleClips` array."
+            activation.contains("snapshotIDs = visibleClips") == false,
+            "Snapshot activation must not retain the full ClipItem projection."
         )
     }
 
@@ -78,11 +76,10 @@ struct RowActionDisplayOrderPolicyTests {
         let source = try homeViewSource()
         let snapshotDeclarations = try fragment(
             in: source,
-            from: "@State private var rowActionDisplayOrderSnapshot",
-            to: "@State private var rowActionDisplayOrderSnapshotGenerationValue"
+            from: "private final class RowActionDisplayOrderState",
+            to: "// T072 § 4"
         )
-        // The declaration line itself must be the only @State in this fragment; it must not
-        // introduce persisted content, image payload, preview text, or interaction history.
+        // The authority may hold UUID order plus an ownership generation only.
         let prohibited = ["textContent", "imageFilename", "imageUTType", "previewText", "interactionHistory"]
         let leaked = prohibited.filter { snapshotDeclarations.contains($0) }
         #expect(
@@ -254,15 +251,15 @@ struct RowActionDisplayOrderPolicyTests {
     }
 
     /// The macOS snapshot/reconciliation implementation section: from
-    /// `beginRowActionDisplayOrderSnapshot()` through the end of
-    /// `clearRowActionDisplayOrderSnapshot()`. Prohibited-mechanism checks are scoped here so
+    /// `beginRowActionDisplayOrderSnapshot` through the end of
+    /// `clearRowActionDisplayOrderSnapshot`. Prohibited-mechanism checks are scoped here so
     /// pre-existing unrelated code (e.g. copy-feedback `Task.sleep`) and documentation comments
     /// that describe the original crash do not produce false positives.
     private func reconciliationSectionSource() throws -> String {
         let source = try homeViewSource()
         return try fragment(
             in: source,
-            from: "private func beginRowActionDisplayOrderSnapshot()",
+            from: "private func beginRowActionDisplayOrderSnapshot(",
             to: "#endif"
         )
     }

@@ -142,6 +142,13 @@ func t011NewOperationIncrementsReconciliationGeneration() async throws {
         afterDelete > afterSecond,
         "A Delete operation must increment reconciliationGeneration (FR-010)."
     )
+
+    await ReconciliationLifecycleAssertions.awaitCondition(
+        message: "The final operation must reach the lifecycle boundary before teardown."
+    ) { harness.safeBoundary.pendingWaitCount >= 1 }
+    harness.teardown()
+    harness.safeBoundary.releaseAll()
+    await probe.awaitReconciliationTaskCompletion()
 }
 
 // MARK: - T012: a new operation cancels the prior reconciliationTask before launching its own
@@ -157,6 +164,7 @@ func t012NewOperationCancelsPriorReconciliationTask() async throws {
     let probe: ReconciliationLifecycleProbe = harness.homeView
 
     await harness.awaitBodyInstalled()
+    #expect(harness.homeView.reconciliationRenderedClipIDs == harness.initialRenderedProjectionIDs)
     harness.driveTogglePin()
     // The first operation launches a reconciliationTask. A second operation
     // must cancel that prior task before storing its own (FR-009). T024.1 seam
@@ -387,8 +395,16 @@ func nativePinMutationWaitsForLifecycleBoundary() async throws {
         "Native Pin must not publish section ordering metadata before the lifecycle boundary."
     )
     #expect(
-        probe.hasRowActionDisplayOrderSnapshot,
-        "The pre-action display projection must remain owned until the lifecycle boundary."
+        harness.homeView.rowActionDisplayOrderSnapshotIDs == harness.initialRenderedProjectionIDs,
+        "The exact installed pre-action projection must remain authoritative until the lifecycle boundary."
+    )
+    #expect(
+        probe.rowActionDisplayOrderSnapshotGeneration == probe.reconciliationGeneration,
+        "The current reconciliation generation must own the installed List-driving snapshot."
+    )
+    #expect(
+        harness.homeView.reconciliationRenderedClipIDs == harness.initialRenderedProjectionIDs,
+        "The installed List projection must remain frozen while the lifecycle boundary is pending."
     )
 
     // Release the deterministic lifecycle boundary.
@@ -398,13 +414,19 @@ func nativePinMutationWaitsForLifecycleBoundary() async throws {
     let afterBoundary = try #require(harness.refetchClipFresh())
     #expect(afterBoundary.isPinned)
     #expect(afterBoundary.sectionSortDate != nil)
+    await harness.awaitRenderedProjection(harness.pinnedRenderedProjectionIDs)
+    #expect(
+        harness.homeView.reconciliationRenderedClipIDs == harness.pinnedRenderedProjectionIDs,
+        "After release, the installed List must publish the authoritative pinned-first order."
+    )
     #expect(
         observers.lastExitPath == .success,
         "A successful lifecycle-owned Pin must complete after the boundary."
     )
     #expect(
-        !probe.hasRowActionDisplayOrderSnapshot,
-        "The snapshot must be released only after mutation is safe to publish."
+        harness.homeView.rowActionDisplayOrderSnapshotIDs == nil
+            && probe.rowActionDisplayOrderSnapshotGeneration == nil,
+        "The authoritative snapshot and its owner must be released only after mutation is safe to publish."
     )
     #expect(
         observers.safeBoundaryAwaitState == .resumed,

@@ -16,10 +16,10 @@
 //      host (`NSHostingView`) so the hosted copy receives a real
 //      `@Environment(\.modelContext)` via `.modelContainer`. The held
 //      `HomeView` value is the same value installed in the host; SwiftUI's
-//      `@State` reference-type holders (generation, snapshot mirror, safe
-//      boundary awaiter) are seeded from this value's initial state and are
-//      therefore shared with the installed copy, so driving the held value's
-//      real entry points mutates the same observable holders.
+//      reference-type lifecycle holders and the authoritative observable
+//      display-order state are seeded from this value and therefore shared with
+//      the installed copy. Driving the held value's real entry points mutates
+//      the exact snapshot state read by the installed List.
 //    - Only the T072 `safeBoundaryAwaiter` seam is used for injection. No second
 //      injection point, no test-only reconciliation trigger.
 //    - Drivers call only real `internal` entry points (`scheduleTogglePin`,
@@ -139,8 +139,8 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 /// serializing the suite preserve per-test data isolation.
 ///
 /// The held `homeView` value is the same value installed in the host. SwiftUI's
-/// `@State` reference-type holders (`ReconciliationLifecycleStorage`,
-/// `ReconciliationSnapshotObservationStorage`, `SafeBoundaryAwaiterHolder`) are
+/// `@State` reference-type holders (`ReconciliationLifecycleStorage`, the
+/// authoritative observable display-order state, `SafeBoundaryAwaiterHolder`) are
 /// seeded from this value's initial state, so the installed copy shares the
 /// same holder instances. Driving the held value's real `scheduleTogglePin` /
 /// `deleteClip` entry points therefore mutates the same observable holders the
@@ -156,6 +156,7 @@ final class ReconciliationLifecycleTestHarness {
     let container: ModelContainer
     let context: ModelContext
     let clip: ClipItem
+    let companionClip: ClipItem
     let safeBoundary: DeterministicSafeBoundaryAwaiter
     let homeView: HomeView
 
@@ -186,11 +187,18 @@ final class ReconciliationLifecycleTestHarness {
         for existingClip in try context.fetch(FetchDescriptor<ClipItem>()) {
             context.delete(existingClip)
         }
-        let clip = ClipItem(textContent: clipText)
+        let baselineDate = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        let clip = ClipItem(textContent: clipText, createdAt: baselineDate)
+        let companionClip = ClipItem(
+            textContent: "lifecycle-newer-companion",
+            createdAt: baselineDate.addingTimeInterval(1)
+        )
         context.insert(clip)
+        context.insert(companionClip)
         try context.save()
         self.context = context
         self.clip = clip
+        self.companionClip = companionClip
 
         let boundary = DeterministicSafeBoundaryAwaiter()
         var view = HomeView()
@@ -212,8 +220,8 @@ final class ReconciliationLifecycleTestHarness {
         self.hostingView = host
         // Install the hosting view in a real off-screen `NSWindow` so SwiftUI
         // evaluates the body, `@Query` fetches against the in-memory container,
-        // and the shared `@State` reference holders (mirror, observation storage,
-        // safe-boundary cell) are populated from the hosted copy's environment.
+        // and the shared lifecycle/display-order holders plus safe-boundary cell
+        // are populated from the hosted copy's environment.
         // Without a window the body never evaluates and the held value's `@Query`
         // stays empty, so re-resolution / store mutation cannot be driven.
         let window = NSWindow(
@@ -308,13 +316,30 @@ extension ReconciliationLifecycleTestHarness {
     /// (the store, delete) and the Task-body UUID re-resolution observe the real
     /// hosted context instead of the held value's empty `@Environment` default.
     func awaitBodyInstalled() async {
-        let id = clip.id
+        let expectedIDs = [companionClip.id, clip.id]
         await ReconciliationLifecycleAssertions.awaitCondition(
             timeout: .seconds(3),
             message: "Hosted body must install and populate the environment mirror."
         ) { [weak self] in
             guard let self else { return false }
-            return self.homeView.reconciliationMirrorClipIDs.contains(id)
+            return self.homeView.reconciliationRenderedClipIDs == expectedIDs
+        }
+    }
+
+    var initialRenderedProjectionIDs: [UUID] {
+        [companionClip.id, clip.id]
+    }
+
+    var pinnedRenderedProjectionIDs: [UUID] {
+        [clip.id, companionClip.id]
+    }
+
+    func awaitRenderedProjection(_ expectedIDs: [UUID]) async {
+        await ReconciliationLifecycleAssertions.awaitCondition(
+            timeout: .seconds(3),
+            message: "Hosted body must render the expected stable-ID projection."
+        ) { [weak self] in
+            self?.homeView.reconciliationRenderedClipIDs == expectedIDs
         }
     }
 

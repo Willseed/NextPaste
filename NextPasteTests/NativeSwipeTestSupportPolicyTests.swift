@@ -11,7 +11,7 @@
 //      Pin/Unpin reveal path (FR-007).
 //    - `HomeView.swift` is unchanged for the production reconciliation mechanism
 //      (FR-006): `List {`, both `swipeActions(edge:)`, `allowsFullSwipe: false`,
-//      `rowActionDisplayOrderSnapshot: [UUID]?`, and a prepared lifecycle wait
+//      the ID-only `RowActionDisplayOrderState`, and a prepared lifecycle wait
 //      all remain.
 //
 //  Uses the Swift Testing module to match the NextPasteTests target
@@ -194,8 +194,9 @@ struct NativeSwipeTestSupportPolicyTests {
         #expect(source.contains("swipeActions(edge: .leading"), "Native leading swipeActions must remain (FR-006).")
         #expect(source.contains("allowsFullSwipe: false"), "allowsFullSwipe:false must remain (FR-006).")
         #expect(
-            source.contains("rowActionDisplayOrderSnapshot: [UUID]?"),
-            "The ID-only rowActionDisplayOrderSnapshot declaration must remain (FR-006)."
+            source.contains("private final class RowActionDisplayOrderState")
+                && source.contains("private(set) var snapshotIDs: [UUID]?"),
+            "The single observable ID-only display-order authority must remain (FR-006)."
         )
         #expect(
             source.contains("prepareToWaitForSafeBoundary()")

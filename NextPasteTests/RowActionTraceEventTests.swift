@@ -296,17 +296,18 @@ struct RowActionTraceEventTests {
         let source = try String(contentsOf: homeViewURL, encoding: .utf8)
 
         #expect(
-            source.contains("@State private var rowActionDisplayOrderSnapshot: [UUID]?"),
-            "Deferred-reconciliation snapshot must remain `[UUID]?` (ID/order-only)."
+            source.contains("private final class RowActionDisplayOrderState")
+                && source.contains("private(set) var snapshotIDs: [UUID]?"),
+            "Deferred-reconciliation snapshot authority must remain UUID-only."
         )
         #expect(
-            source.contains("@State private var rowActionDisplayOrderSnapshot: [ClipItem]?") == false,
-            "Snapshot must not retain `[ClipItem]`; that would retain clipboard content and previews."
+            source.contains("snapshotIDs: [ClipItem]?") == false,
+            "Snapshot must not retain ClipItem content or previews."
         )
 
         // The reconciliation section must not persist interaction history or content snapshots.
-        guard let reconciliationStart = source.range(of: "private func beginRowActionDisplayOrderSnapshot()"),
-              let reconciliationEnd = source.range(of: "private func clearRowActionDisplayOrderSnapshot()") else {
+        guard let reconciliationStart = source.range(of: "private func beginRowActionDisplayOrderSnapshot("),
+              let reconciliationEnd = source.range(of: "private func clearRowActionDisplayOrderSnapshot(") else {
             Issue.record("Expected reconciliation section markers in HomeView.swift")
             return
         }

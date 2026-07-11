@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import Observation
 import SwiftData
 import SwiftUI
 #if os(macOS)
@@ -136,41 +137,38 @@ nonisolated enum HistoryFilter: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-// T073.1: read-only observability mirror for the row-action display-order
-// snapshot lifecycle. HomeView is a struct, and the production snapshot state
-// (`rowActionDisplayOrderSnapshot: [UUID]?`,
-// `rowActionDisplayOrderSnapshotGenerationValue: Int?`) is value-type `@State`.
-// On an unhosted view (e.g. the bare `HomeView()` value driven by the lifecycle
-// tests), value-type `@State` writes are no-ops because SwiftUI installs
-// `@State` storage only on its internal view-graph copy, never on an externally
-// held view value. That makes the snapshot existence/generation unobservable
-// from a test handle, so T013/T014 cannot progress past "snapshot nil".
-//
-// This holder is a `@MainActor` reference type held by `@State` on HomeView, so
-// the same shared instance is observable both when HomeView is installed in
-// SwiftUI and when a bare value is probed. It ONLY mirrors read-only
-// observability (snapshot existence, generation token, optional ID order/count);
-// it never drives production behavior. The production source of truth remains
-// the value-type `@State` (`rowActionDisplayOrderSnapshot` /
-// `rowActionDisplayOrderSnapshotGenerationValue`), which `visibleClips` and the
-// real reconciliation mechanism continue to read/write. The mirror is written
-// alongside the production writes in `beginRowActionDisplayOrderSnapshot()` /
-// `clearRowActionDisplayOrderSnapshot()` and read only by the read-only seam
-// accessors (`hasRowActionDisplayOrderSnapshot`,
-// `rowActionDisplayOrderSnapshotGeneration`). Tests cannot mutate the holder
-// (no public setters / internal mutators beyond the two production call sites)
-// and the holder cannot drive production behavior.
+// Single ID-only authority for the row-action display projection. This object
+// is both observable by the installed SwiftUI tree and shared with lifecycle
+// entry points invoked on a retained HomeView value. `visibleClips` reads this
+// state directly, so hosted tests observe the exact state that drives the List
+// rather than a parallel reference mirror of value-type `@State`.
 @MainActor
-private final class ReconciliationSnapshotObservationStorage {
-    /// Mirror of `rowActionDisplayOrderSnapshot != nil` (FR-007).
-    var snapshotExists: Bool = false
-    /// Mirror of `rowActionDisplayOrderSnapshotGenerationValue` (FR-010).
-    var snapshotGeneration: Int? = nil
-    /// Optional mirror of the snapshot UUID order/count. Current tests do not
-    /// assert on ID order/count, but the mirror is kept so future T026
-    /// stale-generation coverage can observe the snapshot identity without
-    /// touching production state.
-    var snapshotIDs: [UUID]? = nil
+@Observable
+private final class RowActionDisplayOrderState {
+    private(set) var snapshotIDs: [UUID]?
+    private(set) var ownerGeneration: Int?
+
+    var hasSnapshot: Bool { snapshotIDs != nil }
+
+    func begin(ids: [UUID], ownerGeneration: Int) {
+        snapshotIDs = ids
+        self.ownerGeneration = ownerGeneration
+    }
+
+    func transferOwnership(to generation: Int) {
+        guard snapshotIDs != nil else { return }
+        ownerGeneration = generation
+    }
+
+    @discardableResult
+    func clear(ifOwnedBy expectedGeneration: Int? = nil) -> Bool {
+        if let expectedGeneration, ownerGeneration != expectedGeneration {
+            return false
+        }
+        snapshotIDs = nil
+        ownerGeneration = nil
+        return true
+    }
 }
 
 // T072 § 4: read-only observation value types for the lifecycle seam.
@@ -289,8 +287,11 @@ private final class ReconciliationEnvironmentMirror {
     var clips: [ClipItem] = []
     /// Live search text from the installed copy.
     var searchText: String = ""
-    /// Live row-action display-order snapshot IDs (production value-type `@State`).
-    var snapshotIDs: [UUID]? = nil
+    /// Exact IDs produced by the installed body's current `visibleClips` path.
+    /// This is read-only observation for hosted wiring tests and the source used
+    /// by retained-value row-action entry points to capture the installed List
+    /// projection instead of an unhosted `@Query` value.
+    var visibleClipIDs: [UUID] = []
 
     /// Re-resolve a target clip by UUID (FR-008) against the live dataset and
     /// confirm it is still visible under the active search query (FR-011).
@@ -353,14 +354,10 @@ struct HomeView: View {
     @State private var pinStore: PinStateMutationStore? = nil
 #if os(macOS)
     @State private var rowActionResolverObservation = RowActionResolverObservationState()
-    // Feature 019/020: transient display-order snapshot held while a native row-action
-    // mutation is in flight. While set, `visibleClips` returns ordering derived from this
-    // frozen identity/order metadata instead of the @Query-sorted `clips`, so the @Query
-    // reorder (from Pin/Unpin/Delete save) does NOT relocate or recycle the acted-on row
-    // during AppKit's row-action teardown. The crash stack (NSTableRowData animationDidEnd:
-    // -> _updateActionButtonPositionsForRowView: -> "rowActionsGroupView should be
-    // populated") is triggered by SwiftUI row.disappear recycling the row view before AppKit
-    // finishes the dismiss animation; freezing the display order prevents that recycling.
+    // Feature 019/020: transient ID-only display-order state held while a native
+    // row-action mutation is in flight. While set, `visibleClips` returns its
+    // ordering instead of the @Query order, so the acted-on physical row cannot
+    // relocate while AppKit tears down the action surface.
     //
     // Feature 020 (ADR-020): the snapshot is ID/order-only. It stores only transient
     // in-memory clip identity/order metadata so it never retains ClipItem content, row
@@ -371,11 +368,7 @@ struct HomeView: View {
     // `NSTableView.rowActionsVisible == false` safe boundary (Feature 023,
     // FR-003/FR-004), not by an input-event monitor. This is a RunLoop-internal
     // lifecycle signal, not a fixed delay or sleep.
-    @State private var rowActionDisplayOrderSnapshot: [UUID]? = nil
-    // T072: generation token the current row-action display-order snapshot was
-    // opened under, if any. Default nil; captured by the mechanism (T024) when
-    // `beginRowActionDisplayOrderSnapshot()` records the active generation.
-    @State private var rowActionDisplayOrderSnapshotGenerationValue: Int? = nil
+    @State private var rowActionDisplayOrderState = RowActionDisplayOrderState()
 #endif
 
     @MainActor
@@ -397,15 +390,6 @@ struct HomeView: View {
     // `scheduleAutomaticReconciliation(for:)` and
     // `beginRowActionDisplayOrderSnapshot()`.
     @State private var reconciliationLifecycle = ReconciliationLifecycleStorage()
-
-    // T073.1: read-only observability mirror holder for the row-action
-    // display-order snapshot lifecycle. See
-    // `ReconciliationSnapshotObservationStorage` for why this is a
-    // reference-type `@State` rather than value-type. Held by `@State` so a
-    // bare `HomeView()` value shares the same instance with the view-graph
-    // copy; the read-only seam accessors read this mirror while production
-    // behavior continues to use the value-type snapshot `@State`.
-    @State private var reconciliationSnapshotObservation = ReconciliationSnapshotObservationStorage()
 
     // T072 § 3: safe-boundary dependency injection holder. The ONLY non-read-only
     // test seam. Production defaults to the real KVO-backed adapter; lifecycle
@@ -657,7 +641,7 @@ struct HomeView: View {
         storage.teardownDidOccur = true
         storage.lastExitPath = .teardown
         storage.lastCleanupTrace = CleanupOwnershipTrace(
-            ownerGeneration: reconciliationSnapshotObservation.snapshotGeneration,
+            ownerGeneration: rowActionDisplayOrderState.ownerGeneration,
             clearingDecision: .teardown,
             snapshotClearOwned: true
         )
@@ -682,7 +666,7 @@ struct HomeView: View {
 
     private var visibleClips: [ClipItem] {
         #if os(macOS)
-        if let snapshotIDs = rowActionDisplayOrderSnapshot {
+        if let snapshotIDs = rowActionDisplayOrderState.snapshotIDs {
             // Feature 020 (ADR-020): the snapshot is ID/order-only. Reconcile it against
             // the live @Query `clips` so deleted rows drop out immediately (Delete visible
             // removal remains immediate) and no clip content, previews, or trace payloads
@@ -1393,7 +1377,10 @@ struct HomeView: View {
             // The native handler owns no model mutation. Capture projection and
             // observation synchronously, then queue an immutable UUID command.
             let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
-            beginRowActionDisplayOrderSnapshot()
+            guard beginRowActionDisplayOrderSnapshot(targetItemID: clip.id) else {
+                reconciliationLifecycle.lastExitPath = .earlyExit
+                return
+            }
             reconciliationLifecycle.pendingMutations.append(.delete(
                 itemID: clip.id,
                 traceRowIndex: traceRowIndex,
@@ -1487,7 +1474,10 @@ struct HomeView: View {
             // Keep the acted-on row and its Pin/Unpin configuration unchanged
             // until the native lifecycle owner releases publication.
             let waitForSafeBoundary = safeBoundaryAwaiter.prepareToWaitForSafeBoundary()
-            beginRowActionDisplayOrderSnapshot()
+            guard beginRowActionDisplayOrderSnapshot(targetItemID: clip.id) else {
+                reconciliationLifecycle.lastExitPath = .earlyExit
+                return
+            }
             reconciliationLifecycle.pendingMutations.append(.setPinned(
                 itemID: clip.id,
                 desiredState: targetPinnedState
@@ -1711,24 +1701,22 @@ struct HomeView: View {
 
     // Feature 019/020: freeze the visible display ordering so the @Query reorder caused by
     // the imminent Pin/Unpin/Delete save does not relocate or recycle the acted-on row
-    // during AppKit's native row-action teardown. See `rowActionDisplayOrderSnapshot`.
+    // during AppKit's native row-action teardown. See `rowActionDisplayOrderState`.
     // Feature 020 (ADR-020): the snapshot stores ID/order-only metadata, not [ClipItem].
-    private func beginRowActionDisplayOrderSnapshot() {
-        let snapshotIDs = visibleClips.map(\.id)
-        rowActionDisplayOrderSnapshot = snapshotIDs
-        // T024: record the generation token this snapshot was opened under, so
-        // stale-generation tasks can avoid clearing a snapshot they no longer
-        // own (FR-010; Plan § stale-task prevention). The stale-generation
-        // cleanup correctness itself lands with T026.
-        rowActionDisplayOrderSnapshotGenerationValue = reconciliationLifecycle.generation
-        // T073.1: mirror read-only observability into the reference-type
-        // holder so the seam accessors can observe snapshot existence /
-        // generation from a bare (unhosted) HomeView value, where value-type
-        // `@State` writes are no-ops. This does NOT drive production
-        // behavior; `visibleClips` continues to read the value-type snapshot.
-        reconciliationSnapshotObservation.snapshotExists = true
-        reconciliationSnapshotObservation.snapshotGeneration = reconciliationLifecycle.generation
-        reconciliationSnapshotObservation.snapshotIDs = snapshotIDs
+    @discardableResult
+    private func beginRowActionDisplayOrderSnapshot(targetItemID: UUID) -> Bool {
+        // Capture the exact projection last produced by the installed body. A
+        // retained HomeView test handle has no live @Query storage of its own,
+        // so recomputing `visibleClips` on that value would produce an empty,
+        // non-authoritative snapshot.
+        let snapshotIDs = reconciliationEnvironmentMirror.visibleClipIDs
+        guard snapshotIDs.contains(targetItemID) else { return false }
+
+        rowActionDisplayOrderState.begin(
+            ids: snapshotIDs,
+            ownerGeneration: reconciliationLifecycle.generation
+        )
+        return true
     }
 
     // FR-003: the dead `scheduleRowActionDisplayOrderReconciliation()` has been
@@ -1778,12 +1766,10 @@ struct HomeView: View {
         } else {
             storage.priorTaskWasCancelled = false
         }
-        // T073.2: capture the read-only observability holders (reference types
-        // held by `@State`; they do not reference `storage`/the task, so strong
-        // capture is cycle-free) so the task body can drive the snapshot
-        // lifecycle observable. The value-type `@State` snapshot itself is NOT
-        // touched here (see comment in the task body below).
-        let snapshotObservation = reconciliationSnapshotObservation
+        // Capture the single observable List-driving snapshot authority. It is
+        // cycle-free and shared by the installed view plus retained entry-point
+        // value used by hosted integration tests.
+        let displayOrderState = rowActionDisplayOrderState
         // T026: capture the live environment mirror so the Task body can
         // re-resolve the target clip by `targetClipID` (UUID) against the live
         // dataset after the safe-boundary await (FR-008, FR-011). The mirror is a
@@ -1795,18 +1781,17 @@ struct HomeView: View {
         let applyMutation: @MainActor (PendingRowActionMutation) -> Bool = { [self] mutation in
             applyPendingRowActionMutation(mutation)
         }
-        let releaseSnapshot: @MainActor () -> Void = { [self] in
-            clearRowActionDisplayOrderSnapshot()
+        let releaseSnapshot: @MainActor () -> Bool = { [self] in
+            clearRowActionDisplayOrderSnapshot(ifOwnedBy: capturedGeneration)
         }
         // T026: align the snapshot ownership token with this task's captured
         // generation. `beginRowActionDisplayOrderSnapshot()` records the
         // pre-bump generation; the snapshot is owned by the task launched here
         // (captured = post-bump), so the ownership token must equal
         // `capturedGeneration`. Without this alignment every task would appear
-        // stale (`snapshotGeneration != capturedGeneration`) and the current
+        // stale (`ownerGeneration != capturedGeneration`) and the current
         // task could never clear its own snapshot (FR-009, FR-010).
-        reconciliationSnapshotObservation.snapshotGeneration = capturedGeneration
-        rowActionDisplayOrderSnapshotGenerationValue = capturedGeneration
+        rowActionDisplayOrderState.transferOwnership(to: capturedGeneration)
         // T024 (FR-008): the only identity values carried across the async hop
         // are `capturedGeneration` and `targetClipID` (UUID). No index,
         // `IndexPath`, row position, or array count is captured.
@@ -1816,7 +1801,7 @@ struct HomeView: View {
             // injected `safeBoundaryAwaiter` dependency (FR-003, FR-004), then
             // re-validate by generation token (FR-010) and re-resolve the target
             // clip by `targetClipID` (FR-008, FR-011). No click, scroll, key, or
-            // mouse-move input is observed. The production value-type snapshot
+            // mouse-move input is observed. The authoritative observable snapshot
             // clear is owned by the success/missing-target exit paths; the
             // NSEvent monitor has been removed (T030).
             //
@@ -1836,7 +1821,7 @@ struct HomeView: View {
             // T028: owner generation of the currently-held snapshot, recorded with
             // every exit-path cleanup trace so tests can verify which exit cleared
             // (or did not clear) the snapshot and under what ownership (FR-012).
-            let ownerGeneration = snapshotObservation.snapshotGeneration
+            let ownerGeneration = displayOrderState.ownerGeneration
             if capturedGeneration != currentGeneration {
                 // Stale (superseded) task: a newer operation bumped the
                 // generation. Early exit without awaiting and without clearing
@@ -1897,7 +1882,7 @@ struct HomeView: View {
             // here unchanged from the pre-await guard so behavior is not
             // regressed.
             let currentGenerationAfter = storage?.generation ?? capturedGeneration
-            let snapshotGeneration = snapshotObservation.snapshotGeneration
+            let snapshotGeneration = displayOrderState.ownerGeneration
             if capturedGeneration != currentGenerationAfter
                 || snapshotGeneration != capturedGeneration
                 || Task.isCancelled {
@@ -1924,7 +1909,16 @@ struct HomeView: View {
             for mutation in pendingMutations {
                 _ = applyMutation(mutation)
             }
-            releaseSnapshot()
+            guard releaseSnapshot() else {
+                storage?.lastExitPath = .staleGeneration
+                storage?.lastCleanupTrace = CleanupOwnershipTrace(
+                    ownerGeneration: displayOrderState.ownerGeneration,
+                    clearingDecision: .staleGeneration,
+                    snapshotClearOwned: false
+                )
+                storage?.currentTaskDidFinish = true
+                return
+            }
 
             let decision: ReconciliationOwnershipDecision =
                 (!targetWasPresent || targetWasDelete) ? .missingTarget : .success
@@ -1968,17 +1962,9 @@ struct HomeView: View {
         }
     }
 
-    private func clearRowActionDisplayOrderSnapshot() {
-        // T030: the NSEvent input-event monitor is gone; this helper now only
-        // clears the production value-type snapshot and the read-only mirror.
-        rowActionDisplayOrderSnapshot = nil
-        rowActionDisplayOrderSnapshotGenerationValue = nil
-        // T073.1: clear the read-only observability mirror alongside the
-        // production value-type snapshot state. Does NOT drive production
-        // behavior; only keeps the seam accessors consistent.
-        reconciliationSnapshotObservation.snapshotExists = false
-        reconciliationSnapshotObservation.snapshotGeneration = nil
-        reconciliationSnapshotObservation.snapshotIDs = nil
+    @discardableResult
+    private func clearRowActionDisplayOrderSnapshot(ifOwnedBy generation: Int? = nil) -> Bool {
+        rowActionDisplayOrderState.clear(ifOwnedBy: generation)
     }
 #endif
 
@@ -1996,20 +1982,14 @@ struct HomeView: View {
     internal var priorReconciliationTaskWasCancelled: Bool { reconciliationLifecycle.priorTaskWasCancelled }
     internal var hasRowActionDisplayOrderSnapshot: Bool {
         #if os(macOS)
-        // T073.1: read the reference-type mirror so the seam is observable from
-        // a bare (unhosted) HomeView value. Production `visibleClips` continues
-        // to read the value-type `rowActionDisplayOrderSnapshot` directly, so
-        // this mirror never drives production behavior.
-        return reconciliationSnapshotObservation.snapshotExists
+        return rowActionDisplayOrderState.hasSnapshot
         #else
         return false
         #endif
     }
     internal var rowActionDisplayOrderSnapshotGeneration: Int? {
         #if os(macOS)
-        // T073.1: read the reference-type mirror (see
-        // `hasRowActionDisplayOrderSnapshot`).
-        return reconciliationSnapshotObservation.snapshotGeneration
+        return rowActionDisplayOrderState.ownerGeneration
         #else
         return nil
         #endif
@@ -2101,7 +2081,7 @@ struct HomeView: View {
         reconciliationEnvironmentMirror.modelContext = modelContext
         reconciliationEnvironmentMirror.clips = clips
         reconciliationEnvironmentMirror.searchText = searchText
-        reconciliationEnvironmentMirror.snapshotIDs = rowActionDisplayOrderSnapshot
+        reconciliationEnvironmentMirror.visibleClipIDs = visibleClips.map(\.id)
         // Body evaluation is the first point at which the installed view has
         // observed the current @Query result. Keep the shared reference holder
         // in sync for bare-view lifecycle tests; the installed task(id:) remains
@@ -2117,6 +2097,18 @@ struct HomeView: View {
     /// before releasing the safe-boundary awaiter. Read-only; never mutates state.
     internal var reconciliationMirrorClipIDs: [UUID] {
         reconciliationEnvironmentMirror.clips.map(\.id)
+    }
+
+    /// Exact installed-body projection used by `historyList`. This is read-only
+    /// hosted integration evidence; tests cannot mutate the projection.
+    internal var reconciliationRenderedClipIDs: [UUID] {
+        reconciliationEnvironmentMirror.visibleClipIDs
+    }
+
+    /// Exact UUID snapshot that drives `visibleClips` while AppKit owns a row
+    /// action. Read-only; mutation remains private to the lifecycle owner.
+    internal var rowActionDisplayOrderSnapshotIDs: [UUID]? {
+        rowActionDisplayOrderState.snapshotIDs
     }
     #endif
 
