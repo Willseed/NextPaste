@@ -1065,9 +1065,10 @@ struct HomeView: View {
             .background(appTheme.surface.color)
 #if os(macOS)
             .background(
-                RowActionTableViewResolver { tableView in
+                RowActionTableViewResolver { ownerID, tableView in
                     observeRowActions(on: tableView)
                     observePinScrollVisibility(
+                        ownerID: ownerID,
                         on: tableView,
                         visibleItemIDs: rowIDs,
                         proxy: proxy
@@ -1625,11 +1626,13 @@ struct HomeView: View {
     }
 
     private func observePinScrollVisibility(
+        ownerID: ObjectIdentifier,
         on tableView: NSTableView?,
         visibleItemIDs: [UUID],
         proxy: ScrollViewProxy
     ) {
         rowActionResolverObservation.pinScrollVisibilityObservation.update(
+            ownerID: ownerID,
             tableView: tableView,
             projectionItemIDs: visibleItemIDs
         ) { visibleTargetIDs in
@@ -2551,28 +2554,109 @@ private final class RowActionResolverObservationState {
 /// The row range is geometry only: no mutation, request, or scroll command
 /// stores or crosses an async boundary with an AppKit row number.
 @MainActor
+final class CoalescedMainActorSnapshotScheduler {
+    private var generation = 0
+    private var task: Task<Void, Never>?
+
+    var isScheduled: Bool {
+        task != nil
+    }
+
+    func schedule(_ operation: @escaping @MainActor () -> Void) {
+        guard task == nil else { return }
+
+        let scheduledGeneration = generation
+        task = Task { @MainActor [weak self] in
+            guard let self,
+                  Task.isCancelled == false,
+                  generation == scheduledGeneration else {
+                return
+            }
+
+            // Clear the slot before publishing. Any AppKit notification caused
+            // by the callback can schedule one follow-up snapshot, while a
+            // notification burst before this task runs remains coalesced.
+            task = nil
+            operation()
+        }
+    }
+
+    func cancel() {
+        generation &+= 1
+        task?.cancel()
+        task = nil
+    }
+}
+
+@MainActor
+final class PinScrollVisibilityObservationOwnership {
+    private(set) var currentOwnerID: ObjectIdentifier?
+
+    func install(ownerID: ObjectIdentifier) {
+        currentOwnerID = ownerID
+    }
+
+    func acceptsTeardown(from ownerID: ObjectIdentifier) -> Bool {
+        currentOwnerID == ownerID
+    }
+
+    func reset() {
+        currentOwnerID = nil
+    }
+}
+
+@MainActor
+enum RowActionResolverTableSelection {
+    static func resolve(
+        isAttached: Bool,
+        enclosingTableView: NSTableView?,
+        windowFallbackTableView: @autoclosure () -> NSTableView?
+    ) -> NSTableView? {
+        // During AppKit removal, `window` can remain non-nil after the resolver
+        // has left its superview. A detached resolver must report teardown
+        // instead of finding the replacement List's table through the window
+        // and reclaiming observation ownership with a stale identity.
+        guard isAttached else { return nil }
+        return enclosingTableView ?? windowFallbackTableView()
+    }
+}
+
+@MainActor
 private final class PinScrollTableVisibilityObservation {
     private weak var tableView: NSTableView?
     private weak var clipView: NSClipView?
     private var projectionItemIDs: [UUID] = []
     private var notificationTokens: [NSObjectProtocol] = []
-    private var snapshotTask: Task<Void, Never>?
+    private let snapshotScheduler = CoalescedMainActorSnapshotScheduler()
+    private let ownership = PinScrollVisibilityObservationOwnership()
     private var onVisibleTargetIDs: (([UUID]) -> Void)?
     private var lastPublishedTargetIDs: [UUID]?
 
     func update(
+        ownerID: ObjectIdentifier,
         tableView: NSTableView?,
         projectionItemIDs: [UUID],
         onVisibleTargetIDs: @escaping ([UUID]) -> Void
     ) {
+        guard let tableView else {
+            // SwiftUI may install the replacement resolver before it tears down
+            // the old `.id(rowIDs)` resolver. Ignore that stale nil callback so
+            // it cannot remove the replacement's observation and strand a Pin
+            // request in the pending state.
+            guard ownership.acceptsTeardown(from: ownerID) else { return }
+            resetTableObservation()
+            ownership.reset()
+            return
+        }
+
+        if ownership.currentOwnerID != ownerID {
+            resetTableObservation()
+            ownership.install(ownerID: ownerID)
+        }
+
         self.onVisibleTargetIDs = onVisibleTargetIDs
         let projectionChanged = self.projectionItemIDs != projectionItemIDs
         self.projectionItemIDs = projectionItemIDs
-
-        guard let tableView else {
-            resetTableObservation()
-            return
-        }
 
         if self.tableView !== tableView {
             installObservation(for: tableView)
@@ -2597,9 +2681,9 @@ private final class PinScrollTableVisibilityObservation {
     }
 
     func reset() {
-        snapshotTask?.cancel()
-        snapshotTask = nil
+        snapshotScheduler.cancel()
         resetTableObservation()
+        ownership.reset()
         projectionItemIDs.removeAll()
         onVisibleTargetIDs = nil
         lastPublishedTargetIDs = nil
@@ -2658,8 +2742,7 @@ private final class PinScrollTableVisibilityObservation {
     }
 
     private func resetTableObservation() {
-        snapshotTask?.cancel()
-        snapshotTask = nil
+        snapshotScheduler.cancel()
         notificationTokens.forEach(NotificationCenter.default.removeObserver)
         notificationTokens.removeAll()
         tableView = nil
@@ -2668,9 +2751,7 @@ private final class PinScrollTableVisibilityObservation {
     }
 
     private func scheduleSnapshot() {
-        snapshotTask?.cancel()
-        snapshotTask = Task { @MainActor [weak self] in
-            guard Task.isCancelled == false else { return }
+        snapshotScheduler.schedule { [weak self] in
             self?.publishSnapshot()
         }
     }
@@ -2702,7 +2783,7 @@ private final class PinScrollTableVisibilityObservation {
 }
 
 private struct RowActionTableViewResolver: NSViewRepresentable {
-    let onResolve: (NSTableView?) -> Void
+    let onResolve: (ObjectIdentifier, NSTableView?) -> Void
 
     func makeNSView(context _: Context) -> ResolverView {
         let view = ResolverView()
@@ -2716,7 +2797,7 @@ private struct RowActionTableViewResolver: NSViewRepresentable {
     }
 
     final class ResolverView: NSView {
-        var onResolve: ((NSTableView?) -> Void)?
+        var onResolve: ((ObjectIdentifier, NSTableView?) -> Void)?
 
         override func viewDidMoveToSuperview() {
             super.viewDidMoveToSuperview()
@@ -2729,11 +2810,15 @@ private struct RowActionTableViewResolver: NSViewRepresentable {
         }
 
         func resolve() {
-            onResolve?(resolvedTableView)
+            onResolve?(ObjectIdentifier(self), resolvedTableView)
         }
 
         private var resolvedTableView: NSTableView? {
-            enclosingTableView ?? window?.contentView?.firstDescendant(of: NSTableView.self)
+            RowActionResolverTableSelection.resolve(
+                isAttached: superview != nil,
+                enclosingTableView: enclosingTableView,
+                windowFallbackTableView: window?.contentView?.firstDescendant(of: NSTableView.self)
+            )
         }
 
         private var enclosingTableView: NSTableView? {

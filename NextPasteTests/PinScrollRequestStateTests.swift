@@ -5,6 +5,9 @@
 
 import Foundation
 import Testing
+#if os(macOS)
+import AppKit
+#endif
 @testable import NextPaste
 
 @Suite("Pin scroll request state")
@@ -431,3 +434,110 @@ struct PinScrollRequestStateTests {
         #expect(state.pendingRequest == nil)
     }
 }
+
+#if os(macOS)
+@MainActor
+@Suite("Pin scroll AppKit observation scheduling")
+struct PinScrollAppKitObservationSchedulingTests {
+    @Test("stale resolver teardown cannot clear the replacement owner")
+    func staleResolverTeardownIsRejected() {
+        let ownership = PinScrollVisibilityObservationOwnership()
+        let oldResolver = NSObject()
+        let replacementResolver = NSObject()
+        let oldOwnerID = ObjectIdentifier(oldResolver)
+        let replacementOwnerID = ObjectIdentifier(replacementResolver)
+
+        ownership.install(ownerID: oldOwnerID)
+        ownership.install(ownerID: replacementOwnerID)
+
+        #expect(ownership.acceptsTeardown(from: oldOwnerID) == false)
+        #expect(ownership.acceptsTeardown(from: replacementOwnerID))
+        #expect(ownership.currentOwnerID == replacementOwnerID)
+    }
+
+    @Test("a detached stale resolver cannot reclaim ownership through the window fallback")
+    func detachedStaleResolverCannotReclaimOwnership() {
+        let ownership = PinScrollVisibilityObservationOwnership()
+        let oldResolver = NSObject()
+        let replacementResolver = NSObject()
+        let oldOwnerID = ObjectIdentifier(oldResolver)
+        let replacementOwnerID = ObjectIdentifier(replacementResolver)
+        let replacementTableView = NSTableView()
+
+        ownership.install(ownerID: oldOwnerID)
+        ownership.install(ownerID: replacementOwnerID)
+
+        let staleResolution = RowActionResolverTableSelection.resolve(
+            isAttached: false,
+            enclosingTableView: nil,
+            windowFallbackTableView: replacementTableView
+        )
+        if staleResolution != nil {
+            ownership.install(ownerID: oldOwnerID)
+        }
+
+        #expect(staleResolution == nil)
+        #expect(ownership.currentOwnerID == replacementOwnerID)
+        #expect(ownership.acceptsTeardown(from: oldOwnerID) == false)
+    }
+
+    @Test("an attached resolver may use the window table fallback")
+    func attachedResolverUsesWindowFallback() {
+        let tableView = NSTableView()
+
+        let resolution = RowActionResolverTableSelection.resolve(
+            isAttached: true,
+            enclosingTableView: nil,
+            windowFallbackTableView: tableView
+        )
+
+        #expect(resolution === tableView)
+    }
+
+    @Test("notification bursts coalesce and publish the latest stored projection")
+    func notificationBurstPublishesLatestState() async {
+        let scheduler = CoalescedMainActorSnapshotScheduler()
+        var latestProjection = 0
+        var publicationCount = 0
+
+        let observedProjection = await withCheckedContinuation { continuation in
+            scheduler.schedule {
+                publicationCount += 1
+                continuation.resume(returning: latestProjection)
+            }
+
+            for projection in 1...100 {
+                latestProjection = projection
+                scheduler.schedule {
+                    publicationCount += 1
+                }
+            }
+        }
+
+        #expect(observedProjection == 100)
+        #expect(publicationCount == 1)
+        #expect(scheduler.isScheduled == false)
+    }
+
+    @Test("reset invalidates an old scheduled publication without cancelling its replacement")
+    func resetInvalidatesOnlyTheOldGeneration() async {
+        let scheduler = CoalescedMainActorSnapshotScheduler()
+        var stalePublicationRan = false
+
+        scheduler.schedule {
+            stalePublicationRan = true
+        }
+        scheduler.cancel()
+
+        let replacementRan = await withCheckedContinuation { continuation in
+            scheduler.schedule {
+                continuation.resume(returning: true)
+            }
+        }
+
+        #expect(replacementRan)
+        #expect(stalePublicationRan == false)
+        #expect(scheduler.isScheduled == false)
+    }
+}
+#endif
