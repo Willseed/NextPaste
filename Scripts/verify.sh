@@ -97,6 +97,7 @@ resolve_developer_dir
 readonly XCODEBUILD="${DEVELOPER_DIR}/usr/bin/xcodebuild"
 readonly XCRESULTTOOL="${DEVELOPER_DIR}/usr/bin/xcresulttool"
 readonly XCCOV="${DEVELOPER_DIR}/usr/bin/xccov"
+readonly XCTEST_METHOD_COUNTER="${SCRIPT_DIR}/count-xctest-methods.sh"
 
 [[ -d "${PROJECT_PATH}" ]] || fail "Missing Xcode project: ${PROJECT_PATH}"
 [[ -f "${TEST_PLAN_PATH}" ]] || fail "Missing Xcode test plan: ${TEST_PLAN_PATH}"
@@ -298,7 +299,7 @@ run_test_phase() {
   [[ -f "${inventory_path}" ]] || fail "${label} test enumeration did not produce ${inventory_path}."
   local enumeration_errors expected_test_count
   enumeration_errors="$(plist_value errors "${inventory_path}")"
-  expected_test_count="$(plist_value values.0.enabledTests "${inventory_path}")"
+  expected_test_count="$("${XCTEST_METHOD_COUNTER}" "${inventory_path}")"
   (( enumeration_errors == 0 )) || fail "${label} test enumeration reported ${enumeration_errors} errors."
   (( expected_test_count > 0 )) || fail "${label} test enumeration selected no tests."
   /bin/echo "${label}: enumerated=${expected_test_count} inventory=${inventory_path}"
@@ -316,6 +317,7 @@ run_test_phase() {
 }
 
 note "Preflight"
+"${XCTEST_METHOD_COUNTER}" --self-test
 "${XCODEBUILD}" -version
 "${XCODEBUILD}" -list -json -project "${PROJECT_PATH}" > "${RUN_DIR}/xcodebuild-list.json"
 "${XCODEBUILD}" -project "${PROJECT_PATH}" -scheme "${SCHEME_NAME}" -showTestPlans > "${RUN_DIR}/test-plans.txt"
