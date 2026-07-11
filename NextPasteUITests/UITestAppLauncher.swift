@@ -351,9 +351,12 @@ enum UITestAppLauncher {
             app.wait(for: .runningForeground, timeout: timeout),
             "NextPaste did not become foreground after launch (state: \(app.state.rawValue))"
         )
+        let readyButton = app.buttons[mainWindowReadyIdentifier]
         XCTAssertTrue(
-            app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: timeout),
-            "NextPaste launched without its main window.\n\(app.debugDescription)"
+            UITestWait.until(timeout: timeout) {
+                readyButton.exists && readyButton.isHittable
+            },
+            "NextPaste launched without a usable main window.\n\(app.debugDescription)"
         )
     }
 
@@ -402,9 +405,22 @@ enum UITestAppLauncher {
         timeout: TimeInterval = 2
     ) {
         let button = app.buttons[preset.accessibilityIdentifier]
-        if button.waitForExistence(timeout: timeout) {
-            button.tap()
-        }
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                button.exists && button.isHittable
+            },
+            "Expected the \(preset.rawValue) window-size control to become hittable"
+        )
+        guard button.exists, button.isHittable else { return }
+
+        button.tap()
+        let marker = app.descendants(matching: .any)["ui-test-window-size-applied"]
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                marker.exists && (marker.value as? String) == preset.rawValue
+            },
+            "Expected the app to apply the \(preset.rawValue) window size, got \(marker.value as? String ?? "absent")"
+        )
     }
 
     private static func makeTraceURL() -> URL {

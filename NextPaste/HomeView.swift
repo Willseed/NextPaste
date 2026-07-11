@@ -2301,7 +2301,14 @@ struct HomeView: View {
     }
 
     private var accessibilityMarkers: some View {
-        VStack {
+        // Accessibility-only diagnostics must never participate in the root
+        // layout's ideal size. In particular, the OCR marker collection can
+        // contain hundreds of entries for a restored image history. A VStack
+        // made that count inflate HomeView's ZStack, placing the real toolbar
+        // above the window even though every marker is visually one point.
+        // Overlay the markers in a fixed one-point surface so their identifiers
+        // and values remain queryable without affecting product geometry.
+        ZStack(alignment: .topLeading) {
             accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
             accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
             accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
@@ -2393,6 +2400,7 @@ struct HomeView: View {
                 )
             }
         }
+        .frame(width: 1, height: 1, alignment: .topLeading)
         .allowsHitTesting(false)
     }
 
@@ -2443,7 +2451,8 @@ struct HomeView: View {
                     } label: {
                         Text(preset.accessibilityLabel)
                             .font(.caption2)
-                            .frame(width: 1, height: 1)
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
                             .opacity(0.01)
                     }
                     .buttonStyle(.plain)
@@ -2451,6 +2460,7 @@ struct HomeView: View {
                     .accessibilityLabel(preset.accessibilityLabel)
                 }
             }
+            .padding(8)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background {
                 if let launchWindowSizePreset {
