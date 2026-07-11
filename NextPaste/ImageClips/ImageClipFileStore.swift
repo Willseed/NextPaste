@@ -147,12 +147,11 @@ struct ImageClipFileStore {
     }
 
     private nonisolated static func defaultRootURL(fileManager: FileManager) -> URL {
-        if let testStoreURL = NextPasteApp.uiTestOnDiskStoreURL(arguments: ProcessInfo.processInfo.arguments) {
-            return testStoreURL
-                .deletingLastPathComponent()
-                .appendingPathComponent("ImageStore", isDirectory: true)
-                .standardizedFileURL
+#if DEBUG
+        if let dataDirectoryURL = DebugUITestLaunchEnvironment()?.dataDirectoryURL {
+            return dataDirectoryURL
         }
+#endif
 
         let applicationSupport = fileManager
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)

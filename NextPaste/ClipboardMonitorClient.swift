@@ -64,21 +64,21 @@ struct ClipboardPasteboardReader {
     static let live = ClipboardPasteboardReader(
         currentChangeCount: {
 #if os(macOS)
-            NSPasteboard.general.changeCount
+            AppPasteboard.current.changeCount
 #else
             0
 #endif
         },
         currentPayload: {
 #if os(macOS)
-            Self.currentPayload(from: .general)
+            Self.currentPayload(from: AppPasteboard.current)
 #else
             nil
 #endif
         },
         currentString: {
 #if os(macOS)
-            NSPasteboard.general.string(forType: .string)
+            AppPasteboard.current.string(forType: .string)
 #else
             nil
 #endif
@@ -222,19 +222,52 @@ struct ClipboardMonitorScheduler {
 }
 
 struct ClipboardMonitorConfiguration {
+    static let defaultPollInterval: TimeInterval = 0.5
+
     let isEnabled: Bool
     let pollInterval: TimeInterval
 
     init(processInfo: ProcessInfo = .processInfo) {
-        self.isEnabled = processInfo.arguments.contains(UITestArgument.disableClipboardMonitor) == false
+        self.init(
+            arguments: processInfo.arguments,
+            environment: processInfo.environment
+        )
+    }
 
-        if let value = processInfo.argumentValue(for: UITestArgument.clipboardMonitorPollInterval),
+    /// Explicit configuration seam for unit tests and non-launch-argument
+    /// callers. Product launch arguments are resolved only by the initializer
+    /// that also validates a complete Debug UI-test environment.
+    init(isEnabled: Bool, pollInterval: TimeInterval) {
+        self.isEnabled = isEnabled
+        self.pollInterval = pollInterval
+    }
+
+    init(arguments: [String], environment: [String: String]) {
+#if DEBUG
+        guard DebugUITestLaunchEnvironment(
+            arguments: arguments,
+            environment: environment
+        ) != nil else {
+            self.init(isEnabled: true, pollInterval: Self.defaultPollInterval)
+            return
+        }
+
+        let pollInterval: TimeInterval
+        if let value = arguments.argumentValue(for: UITestArgument.clipboardMonitorPollInterval),
            let parsed = TimeInterval(value),
            parsed > 0 {
-            self.pollInterval = parsed
+            pollInterval = parsed
         } else {
-            self.pollInterval = 0.5
+            pollInterval = Self.defaultPollInterval
         }
+
+        self.init(
+            isEnabled: arguments.contains(UITestArgument.disableClipboardMonitor) == false,
+            pollInterval: pollInterval
+        )
+#else
+        self.init(isEnabled: true, pollInterval: Self.defaultPollInterval)
+#endif
     }
 }
 
@@ -243,12 +276,12 @@ enum UITestArgument {
     static let clipboardMonitorPollInterval = "-clipboard-monitor-poll-interval"
 }
 
-private extension ProcessInfo {
+private extension Array where Element == String {
     func argumentValue(for flag: String) -> String? {
-        guard let index = arguments.firstIndex(of: flag), arguments.indices.contains(index + 1) else {
+        guard let index = firstIndex(of: flag), indices.contains(index + 1) else {
             return nil
         }
 
-        return arguments[index + 1]
+        return self[index + 1]
     }
 }

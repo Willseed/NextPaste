@@ -32,8 +32,8 @@ actor SystemClipboardTextWriter: ClipboardTextWriting {
     private let simulatesFailure: Bool
 
     @MainActor
-    init(processInfo: ProcessInfo = .processInfo) {
-        simulatesFailure = processInfo.arguments.contains(ClipboardWriter.simulatedFailureArgument)
+    init(processInfo: ProcessInfo? = nil) {
+        simulatesFailure = ClipboardWriter.shouldSimulateFailure(processInfo: processInfo)
     }
 
     @discardableResult
@@ -49,19 +49,19 @@ actor SystemClipboardTextWriter: ClipboardTextWriting {
         // Snapshotting can wait on another app's lazy pasteboard provider. Do
         // that work first, then revalidate the user's latest intent immediately
         // before the non-suspending pasteboard mutation.
-        let snapshot = PasteboardSnapshot(.general)
+        let snapshot = PasteboardSnapshot(AppPasteboard.current)
         return await MainActor.run {
             guard ifStillCurrent() else { return false }
-            return MacPasteboardTextWriter.write(text, to: .general, restoring: snapshot)
+            return MacPasteboardTextWriter.write(text, to: AppPasteboard.current, restoring: snapshot)
         }
     }
 }
 #else
 @MainActor
 struct SystemClipboardTextWriter: ClipboardTextWriting {
-    private let processInfo: ProcessInfo
+    private let processInfo: ProcessInfo?
 
-    init(processInfo: ProcessInfo = .processInfo) {
+    init(processInfo: ProcessInfo? = nil) {
         self.processInfo = processInfo
     }
 
@@ -80,14 +80,13 @@ struct SystemClipboardTextWriter: ClipboardTextWriting {
 enum ClipboardWriter {
     static let simulatedFailureArgument = "-simulate-clipboard-failure"
 
-    static func copy(_ text: String, processInfo: ProcessInfo = .processInfo) -> Bool {
-        guard processInfo.arguments.contains(simulatedFailureArgument) == false else {
+    static func copy(_ text: String, processInfo: ProcessInfo? = nil) -> Bool {
+        guard shouldSimulateFailure(processInfo: processInfo) == false else {
             return false
         }
 
 #if os(macOS)
-        NSPasteboard.general.clearContents()
-        return NSPasteboard.general.setString(text, forType: .string)
+        return copy(text, to: AppPasteboard.current, processInfo: processInfo)
 #elseif canImport(UIKit)
         UIPasteboard.general.string = text
         return true
@@ -101,15 +100,15 @@ enum ClipboardWriter {
     /// written so meaningful internal spacing and line breaks remain intact.
     static func copyNonemptyText(
         _ text: String,
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo? = nil
     ) -> Bool {
         guard containsNonwhitespaceContent(text),
-              processInfo.arguments.contains(simulatedFailureArgument) == false else {
+              shouldSimulateFailure(processInfo: processInfo) == false else {
             return false
         }
 
 #if os(macOS)
-        return writeText(text, to: .general)
+        return writeText(text, to: AppPasteboard.current)
 #elseif canImport(UIKit)
         let originalItems = UIPasteboard.general.items
         UIPasteboard.general.string = text
@@ -127,9 +126,9 @@ enum ClipboardWriter {
         imageFilename: String,
         typeIdentifier: String,
         from imageFileStore: ImageClipFileStore = ImageClipFileStore(),
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo? = nil
     ) -> Bool {
-        guard processInfo.arguments.contains(simulatedFailureArgument) == false else {
+        guard shouldSimulateFailure(processInfo: processInfo) == false else {
             return false
         }
 
@@ -142,7 +141,11 @@ enum ClipboardWriter {
         }
 
 #if os(macOS)
-        return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: .general)
+        return writeImageData(
+            request.imageData,
+            typeIdentifier: request.typeIdentifier,
+            to: AppPasteboard.current
+        )
 #elseif canImport(UIKit)
         return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: .general)
 #else
@@ -151,15 +154,30 @@ enum ClipboardWriter {
     }
 
 #if os(macOS)
+    /// Named-pasteboard overload used by deterministic tests. Production calls
+    /// the same implementation with `AppPasteboard.current`.
+    static func copy(
+        _ text: String,
+        to pasteboard: NSPasteboard,
+        processInfo: ProcessInfo? = nil
+    ) -> Bool {
+        guard shouldSimulateFailure(processInfo: processInfo) == false else {
+            return false
+        }
+
+        pasteboard.clearContents()
+        return pasteboard.setString(text, forType: .string)
+    }
+
     /// Named-pasteboard overload for deterministic integration tests and local
     /// callers that must not touch `NSPasteboard.general`.
     static func copyNonemptyText(
         _ text: String,
         to pasteboard: NSPasteboard,
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo? = nil
     ) -> Bool {
         guard containsNonwhitespaceContent(text),
-              processInfo.arguments.contains(simulatedFailureArgument) == false else {
+              shouldSimulateFailure(processInfo: processInfo) == false else {
             return false
         }
 
@@ -171,9 +189,9 @@ enum ClipboardWriter {
         typeIdentifier: String,
         from imageFileStore: ImageClipFileStore,
         to pasteboard: NSPasteboard,
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo? = nil
     ) -> Bool {
-        guard processInfo.arguments.contains(simulatedFailureArgument) == false else {
+        guard shouldSimulateFailure(processInfo: processInfo) == false else {
             return false
         }
 
@@ -188,6 +206,38 @@ enum ClipboardWriter {
         return writeImageData(request.imageData, typeIdentifier: request.typeIdentifier, to: pasteboard)
     }
 #endif
+
+    /// Passing `processInfo` is an explicit dependency-injection seam used by
+    /// unit tests. App-global launch arguments are otherwise honored only for
+    /// a complete Debug UI-test launch and are inert in Release builds.
+    static func shouldSimulateFailure(processInfo: ProcessInfo?) -> Bool {
+        if let processInfo {
+            return processInfo.arguments.contains(simulatedFailureArgument)
+        }
+
+        return shouldSimulateFailureForApplicationLaunch(
+            arguments: ProcessInfo.processInfo.arguments,
+            environment: ProcessInfo.processInfo.environment
+        )
+    }
+
+    static func shouldSimulateFailureForApplicationLaunch(
+        arguments: [String],
+        environment: [String: String]
+    ) -> Bool {
+#if DEBUG
+        guard DebugUITestLaunchEnvironment(
+            arguments: arguments,
+            environment: environment
+        ) != nil else {
+            return false
+        }
+
+        return arguments.contains(simulatedFailureArgument)
+#else
+        return false
+#endif
+    }
 
     private static func isValidImageTypeIdentifier(_ typeIdentifier: String) -> Bool {
         let trimmedTypeIdentifier = typeIdentifier.trimmingCharacters(in: .whitespacesAndNewlines)

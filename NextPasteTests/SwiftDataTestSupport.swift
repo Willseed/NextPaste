@@ -35,7 +35,11 @@ enum SwiftDataTestSupport {
                 return baseDirectoryURL
             }
 
-            return URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+            let cachesDirectory = fileManager
+                .urls(for: .cachesDirectory, in: .userDomainMask)
+                .first ?? URL(fileURLWithPath: fileManager.currentDirectoryPath, isDirectory: true)
+            return cachesDirectory
+                .appendingPathComponent("NextPasteTests", isDirectory: true)
                 .appendingPathComponent(Self.defaultStoreDirectoryName, isDirectory: true)
                 .standardizedFileURL
         }

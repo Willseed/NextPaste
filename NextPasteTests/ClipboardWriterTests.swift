@@ -12,24 +12,30 @@ import AppKit
 
 @Suite("Clipboard writer", .serialized)
 struct ClipboardWriterTests {
-    @Test("copies text to the system pasteboard and reports success")
-    func copiesTextToSystemPasteboardAndReportsSuccess() {
-        let pasteboard = NSPasteboard.general
-        let snapshot = PasteboardSnapshot(pasteboard)
-        defer { snapshot.restore(to: pasteboard) }
+    @Test("copies text to an injected pasteboard and reports success")
+    func copiesTextToInjectedPasteboardAndReportsSuccess() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.text-copy.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
 
         let text = "NextPaste text copy regression"
 
         pasteboard.clearContents()
-        #expect(ClipboardWriter.copy(text, processInfo: ClipboardWriterTestSupport.processInfo()))
+        #expect(ClipboardWriter.copy(
+            text,
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.processInfo()
+        ))
         #expect(pasteboard.string(forType: .string) == text)
     }
 
     @Test("simulated text copy failure leaves existing clipboard content unchanged")
     func simulatedTextCopyFailureLeavesExistingClipboardContentUnchanged() {
-        let pasteboard = NSPasteboard.general
-        let snapshot = PasteboardSnapshot(pasteboard)
-        defer { snapshot.restore(to: pasteboard) }
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.failed-text-copy.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
 
         let originalText = "Existing text clipboard content"
 
@@ -38,6 +44,7 @@ struct ClipboardWriterTests {
 
         let didCopy = ClipboardWriter.copy(
             "Replacement text must not be written",
+            to: pasteboard,
             processInfo: ClipboardWriterTestSupport.simulatedFailureProcessInfo()
         )
 
@@ -77,6 +84,43 @@ struct ClipboardWriterTests {
             processInfo: ClipboardWriterTestSupport.processInfo()
         ) == false)
         #expect(pasteboard.string(forType: .string) == originalText)
+    }
+
+    @Test("nonempty text writer rejects an empty string without changing an injected pasteboard")
+    func nonemptyTextWriterRejectsEmptyStringWithoutChangingInjectedPasteboard() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.empty-string.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
+        let sentinel = "Existing clipboard sentinel"
+        pasteboard.clearContents()
+        #expect(pasteboard.setString(sentinel, forType: .string))
+
+        #expect(ClipboardWriter.copyNonemptyText(
+            "",
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.processInfo()
+        ) == false)
+        #expect(pasteboard.string(forType: .string) == sentinel)
+    }
+
+    @Test("named pasteboard text write clears incompatible prior representations")
+    func namedPasteboardWriterClearsPriorTypesAndWritesOnlyString() {
+        let pasteboard = NSPasteboard(
+            name: NSPasteboard.Name("com.nextpaste.tests.representation-replacement.\(UUID().uuidString)")
+        )
+        defer { pasteboard.clearContents() }
+        let customType = NSPasteboard.PasteboardType("com.nextpaste.tests.custom-data")
+        pasteboard.clearContents()
+        #expect(pasteboard.setData(Data([0x01, 0x02]), forType: customType))
+
+        #expect(ClipboardWriter.copyNonemptyText(
+            "Replacement text",
+            to: pasteboard,
+            processInfo: ClipboardWriterTestSupport.processInfo()
+        ))
+        #expect(pasteboard.string(forType: .string) == "Replacement text")
+        #expect(pasteboard.data(forType: customType) == nil)
     }
 
     @Test("simulated nonempty text failure leaves an injected pasteboard unchanged")

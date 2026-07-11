@@ -9,6 +9,8 @@ import SwiftData
 import SwiftUI
 
 struct NewClipView: View {
+    static let simulatedSaveFailureArgument = "-simulate-save-failure"
+
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
@@ -18,8 +20,32 @@ struct NewClipView: View {
 
     private let simulateSaveFailure: Bool
 
-    init(simulateSaveFailure: Bool = ProcessInfo.processInfo.arguments.contains("-simulate-save-failure")) {
-        self.simulateSaveFailure = simulateSaveFailure
+    /// `simulateSaveFailure` is an explicit injection seam for unit tests.
+    /// When omitted, the launch argument is honored only by a complete Debug
+    /// UI-test launch and cannot alter Release behavior.
+    init(simulateSaveFailure: Bool? = nil) {
+        self.simulateSaveFailure = simulateSaveFailure ?? Self.shouldSimulateSaveFailureForApplicationLaunch(
+            arguments: ProcessInfo.processInfo.arguments,
+            environment: ProcessInfo.processInfo.environment
+        )
+    }
+
+    static func shouldSimulateSaveFailureForApplicationLaunch(
+        arguments: [String],
+        environment: [String: String]
+    ) -> Bool {
+#if DEBUG
+        guard DebugUITestLaunchEnvironment(
+            arguments: arguments,
+            environment: environment
+        ) != nil else {
+            return false
+        }
+
+        return arguments.contains(simulatedSaveFailureArgument)
+#else
+        return false
+#endif
     }
 
     var body: some View {
