@@ -16,6 +16,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Install verification tools
+        shell: bash
+        run: brew install actionlint ripgrep
+
       - name: Run complete verification
         shell: bash
         env:

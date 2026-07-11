@@ -347,6 +347,9 @@ note "Formatter"
 note "Lint"
 /bin/echo "Project not configured: no repository lint command or SwiftLint configuration was found."
 
+note "GitHub Actions validation"
+"${SCRIPT_DIR}/check-github-actions.sh"
+
 note "Test-source hygiene"
 "${SCRIPT_DIR}/check-test-hygiene.sh"
 
