@@ -97,6 +97,12 @@ final class RowActionStressTests: UITestCase {
 
     @MainActor
     func testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly() throws {
+        // Twenty rounds intentionally synthesize more than 220 native scroll
+        // gestures plus row actions. Keep XCTest's watchdog proportional to
+        // this declared workload; the assertions and iteration count remain
+        // unchanged.
+        executionTimeAllowance = 20 * 60
+
         let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .tall)
         let app = trace.app
         app.launch()
@@ -592,6 +598,7 @@ final class RowActionStressTests: UITestCase {
 
     @MainActor
     func testFeature025HundredNativePinUnpinAfterRelaunchIncludesImageVariant() throws {
+        executionTimeAllowance = 45 * 60
         let store = try makeOnDiskStore()
         var app = launchFeature025SeededRelaunchApp(store: store)
         closeApp(app)
@@ -642,6 +649,7 @@ final class RowActionStressTests: UITestCase {
 
     @MainActor
     func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImages() throws {
+        executionTimeAllowance = 30 * 60
         let store = try makeOnDiskStore()
         var app = launchFeature025SeededRelaunchApp(store: store)
         closeApp(app)
