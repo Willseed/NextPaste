@@ -11,7 +11,10 @@ jobs:
   verify:
     name: Build and test
     runs-on: macos-26
-    timeout-minutes: 180
+    # The complete serial macOS UI suite includes the fixed 50/100-action
+    # stress workloads and currently takes more than three hours. Keep the
+    # blocking suite intact and use GitHub's six-hour hosted-job ceiling.
+    timeout-minutes: 360
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -19,6 +22,17 @@ jobs:
       - name: Install verification tools
         shell: bash
         run: brew install actionlint ripgrep
+
+      - name: Verify noninteractive UI automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          automation_mode_status="$(/usr/bin/automationmodetool)"
+          printf '%s\n' "$automation_mode_status"
+          if [[ "$automation_mode_status" != *"DOES NOT REQUIRE"* ]]; then
+            echo "error: hosted runner requires interactive UI Automation authorization" >&2
+            exit 1
+          fi
 
       - name: Run complete verification
         shell: bash
