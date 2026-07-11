@@ -7,14 +7,14 @@
 
 import XCTest
 
-final class EmptyTextClipUITests: XCTestCase {
+final class EmptyTextClipUITests: UITestCase {
     override func setUpWithError() throws {
-        continueAfterFailure = false
+        try super.setUpWithError()
     }
 
     @MainActor
     func testEmptySaveShowsValidationStaysOpenAndDoesNotInsertClip() throws {
-        let app = UITestAppLauncher.launchApp()
+        let app = launchApp()
         let editor = try openNewClip(in: app)
 
         app.buttons["save-clip-button"].tap()
@@ -30,7 +30,7 @@ final class EmptyTextClipUITests: XCTestCase {
 
     @MainActor
     func testWhitespaceSaveShowsValidationAndDoesNotInsertClip() throws {
-        let app = UITestAppLauncher.launchApp()
+        let app = launchApp()
         let editor = try openNewClip(in: app)
 
         editor.tap()
@@ -48,7 +48,7 @@ final class EmptyTextClipUITests: XCTestCase {
 
     @MainActor
     func testCancelDoesNotInsertDraftText() throws {
-        let app = UITestAppLauncher.launchApp()
+        let app = launchApp()
         let draftText = "Draft should not be saved"
         let editor = try openNewClip(in: app)
 

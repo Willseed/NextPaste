@@ -29,8 +29,12 @@ final class ClipboardImageAutoCaptureUITests: UITestCase {
         let initialImageRowCount = clipboard.imageRowCount()
 
         clipboard.background()
+        XCTAssertTrue(
+            app.wait(for: .runningBackground, timeout: UITestAssertions.defaultTimeout),
+            "Expected the app to enter the background before exercising image capture"
+        )
         clipboard.writeImageFixtureForAutoCapture(fixture)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        clipboard.waitForCapturedImage(fixture, expectedImageRowCount: initialImageRowCount + 1, timeout: 2)
 
         clipboard.reactivateAndOpenMainWindow()
 
@@ -48,7 +52,7 @@ final class ClipboardImageAutoCaptureUITests: UITestCase {
 
         clipboard.minimize()
         clipboard.writeImageFixtureForAutoCapture(fixture)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        clipboard.waitForCapturedImage(fixture, expectedImageRowCount: initialImageRowCount + 1, timeout: 2)
 
         clipboard.reactivateAndOpenMainWindow()
 

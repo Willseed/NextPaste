@@ -6,18 +6,15 @@
 //
 
 import XCTest
-#if os(macOS)
-import AppKit
-#endif
 
-final class CreateTextClipUITests: XCTestCase {
+final class CreateTextClipUITests: UITestCase {
     override func setUpWithError() throws {
-        continueAfterFailure = false
+        try super.setUpWithError()
     }
 
     @MainActor
     func testSavingTextClipDismissesAndShowsHistoryText() throws {
-        let app = UITestAppLauncher.launchApp()
+        let app = launchApp()
         let text = "Meeting notes: follow up with design on Friday"
         let editor = try openNewClip(in: app)
 
@@ -32,10 +29,7 @@ final class CreateTextClipUITests: XCTestCase {
 
     @MainActor
     func testFailedSaveShowsErrorMessageAndPreservesDraft() throws {
-        let app = UITestAppLauncher.makeApp()
-        app.launchArguments.append("-simulate-save-failure")
-        app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
+        let app = launchApp(extraArguments: ["-simulate-save-failure"])
         let text = "Draft that should stay visible"
         let editor = try openNewClip(in: app)
 
@@ -53,15 +47,11 @@ final class CreateTextClipUITests: XCTestCase {
 
     @MainActor
     func testManualFallbackRemainsAvailableAfterAutoCapture() throws {
-        let app = UITestAppLauncher.launchAutoCaptureApp()
+        let app = launchCaptureApp()
         let autoCapturedText = "Auto-captured before manual fallback"
         let manualText = "Manual fallback clip"
 
-        addTeardownBlock {
-            self.closeApp(app)
-        }
-
-        setClipboardString(autoCapturedText)
+        ClipboardRobot(app: app).setString(autoCapturedText)
         XCTAssertTrue(app.staticTexts[autoCapturedText].waitForExistence(timeout: 5))
 
         let editor = try openNewClip(in: app)
@@ -75,7 +65,7 @@ final class CreateTextClipUITests: XCTestCase {
 
     @MainActor
     func testManualCreationKeepsFirstVisibleRowFullyVisibleBelowFixedHeader() throws {
-        let app = UITestAppLauncher.launchApp(windowSizePreset: .small)
+        let app = launchApp(windowSizePreset: .small)
         let history = HistoryRobot(app: app)
 
         try history.createTextClip(UITestFixtures.History.initialVisibleBaseline)
@@ -88,7 +78,7 @@ final class CreateTextClipUITests: XCTestCase {
 
     @MainActor
     func testActiveSearchManualCreationShowsMatchingClipWithoutMovingNonMatchingRows() throws {
-        let app = UITestAppLauncher.launchApp(windowSizePreset: .small)
+        let app = launchApp(windowSizePreset: .small)
         let history = HistoryRobot(app: app)
 
         try history.createTextClip(UITestFixtures.Search.matchingText)
@@ -128,34 +118,6 @@ final class CreateTextClipUITests: XCTestCase {
         return editor
     }
 
-    private func setClipboardString(_ text: String) {
-#if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
-#endif
-    }
-
-    @MainActor
-    private func closeApp(_ app: XCUIApplication) {
-        guard app.state != .notRunning else {
-            return
-        }
-
-        app.activate()
-        app.typeKey("q", modifierFlags: .command)
-        if app.wait(for: .notRunning, timeout: 5) {
-            return
-        }
-
-#if os(macOS)
-        for runningApp in NSRunningApplication.runningApplications(withBundleIdentifier: "pylot.NextPaste") {
-            if runningApp.terminate() == false {
-                _ = runningApp.forceTerminate()
-            }
-        }
-#endif
-        _ = app.wait(for: .notRunning, timeout: 5)
-    }
 }
 
 private extension XCUIElement {

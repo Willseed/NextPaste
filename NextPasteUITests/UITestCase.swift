@@ -12,6 +12,10 @@ class UITestCase: XCTestCase {
     override func setUpWithError() throws {
         try super.setUpWithError()
         continueAfterFailure = false
+        try UITestLaunchEnvironmentRegistry.beginTest(named: name)
+        addTeardownBlock {
+            UITestLaunchEnvironmentRegistry.finishTest()
+        }
     }
 
     @MainActor
@@ -36,13 +40,21 @@ class UITestCase: XCTestCase {
     func launchCaptureApp(
         pollInterval: TimeInterval = 0.1,
         onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
-        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize,
+        ocrFixture: UITestOCRFixture? = nil,
+        extraEnvironment: [String: String] = [:]
     ) -> XCUIApplication {
-        let app = UITestAppLauncher.launchAutoCaptureApp(
+        let app = UITestAppLauncher.makeAutoCaptureApp(
             pollInterval: pollInterval,
             onDiskStore: onDiskStore,
             windowSizePreset: windowSizePreset
         )
+        ocrFixture?.configure(app)
+        for (key, value) in extraEnvironment {
+            app.launchEnvironment[key] = value
+        }
+        app.launch()
+        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
             self.closeApp(app)
         }

@@ -11,28 +11,35 @@ final class SettingsUITests: UITestCase {
     private enum Accessibility {
         static let settingsWindowIdentifier = "com_apple_SwiftUI_Settings_window"
 
-        static let generalTab = "General"
-        static let shortcutsTab = "Shortcuts"
-        static let appearanceTab = "Appearance"
-        static let historyTab = "History"
+        static let generalTab = "settings-tab-general"
+        static let shortcutsTab = "settings-tab-shortcuts"
+        static let appearanceTab = "settings-tab-appearance"
+        static let historyTab = "settings-tab-history"
 
-        static let appLanguage = "App Language"
+        static let appLanguagePicker = "app-language-picker"
+        static let appLanguageDescription = "app-language-description"
+        static let languageFocusProbe = "settings-language-focus"
+        static let shortcutsFocusProbe = "settings-shortcuts-focus"
+        static let appearanceFocusProbe = "settings-appearance-focus"
+        static let historyFocusProbe = "settings-history-focus"
         static let englishUnitedStates = "English (United States)"
-        static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
-        static let localizedEnglishUnitedStates = "英文（美國）"
         static let localizedTraditionalChineseTaiwan = "繁體中文（台灣）"
+        static let englishLanguageDescription = "Changes apply immediately throughout NextPaste."
         static let localizedLanguageDescription = "變更會立即套用至整個 NextPaste。"
-        static let recordShortcut = "Record Shortcut"
-        static let clearShortcut = "Clear Shortcut"
-        static let resetShortcut = "Reset to Default"
-        static let currentGlobalShortcut = "Current global shortcut"
+        static let recordShortcut = "global-shortcut-record-button"
+        static let clearShortcut = "global-shortcut-clear-button"
+        static let resetShortcut = "global-shortcut-reset-button"
+        static let currentGlobalShortcut = "global-shortcut-current-value"
+        static let shortcutValidationError = "global-shortcut-validation-error"
 
         static let followSystem = "Follow System"
         static let light = "Light"
         static let dark = "Dark"
-        static let appearanceLabel = "Appearance"
-        static let storageLimit = "Storage Limit"
-        static let storageLimitValue = "Storage Limit Value"
+        static let appearancePicker = "appearance-picker"
+        static let effectiveMainAppearance = "effective-appearance-main"
+        static let effectiveSettingsAppearance = "effective-appearance-settings"
+        static let historyLimitSlider = "history-limit-slider"
+        static let historyLimitField = "history-limit-field"
     }
 
     private enum Fixture {
@@ -45,6 +52,40 @@ final class SettingsUITests: UITestCase {
         static let pinnedClip = "Pinned history limit preservation clip"
         static let firstTrimmedClip = "History limit unpinned clip 01"
         static let retainedClip = "History limit unpinned clip 11"
+    }
+
+    private enum LocalizedLabel {
+        static let englishTabs = [
+            (Accessibility.generalTab, "General"),
+            (Accessibility.shortcutsTab, "Shortcuts"),
+            (Accessibility.appearanceTab, "Appearance"),
+            (Accessibility.historyTab, "History")
+        ]
+        static let traditionalChineseTabs = [
+            (Accessibility.generalTab, "一般"),
+            (Accessibility.shortcutsTab, "快速鍵"),
+            (Accessibility.appearanceTab, "外觀"),
+            (Accessibility.historyTab, "歷史記錄")
+        ]
+        static let englishRecordShortcut = "Record Shortcut"
+        static let traditionalChineseRecordShortcut = "錄製快速鍵"
+        static let traditionalChineseNone = "無"
+        static let traditionalChineseInvalidShortcut = "至少需要一個修飾鍵。"
+        static let traditionalChineseNewClipConflict = "此快速鍵與「新增剪貼簿項目」選單指令衝突。"
+    }
+
+    private enum PopupDirection {
+        case previous
+        case next
+
+        var key: XCUIKeyboardKey {
+            switch self {
+            case .previous:
+                return .upArrow
+            case .next:
+                return .downArrow
+            }
+        }
     }
 
     @MainActor
@@ -90,10 +131,11 @@ final class SettingsUITests: UITestCase {
         recordButton.tap()
         app.typeKey("9", modifierFlags: [])
 
-        UITestAssertions.assertExists(
-            staticText(in: settingsWindow, containing: Fixture.invalidShortcutError),
-            "Expected shortcut validation error"
+        let validationError = UITestAssertions.assertExists(
+            settingsWindow.staticTexts[Accessibility.shortcutValidationError],
+            "Expected shortcut validation error with its stable identifier"
         )
+        assertElementLabel(validationError, equals: Fixture.invalidShortcutError)
         XCTAssertEqual(
             currentGlobalShortcutValue(in: settingsWindow),
             originalShortcutValue,
@@ -114,24 +156,22 @@ final class SettingsUITests: UITestCase {
             "Expected Clear Shortcut button"
         )
         clearButton.tap()
-        assertStaticTextEventually(
+        assertGlobalShortcutValueEventually(
+            equals: "None",
             in: settingsWindow,
-            containing: "None",
             message: "Expected clearing the shortcut to restore the disabled state"
         )
-        XCTAssertEqual(currentGlobalShortcutValue(in: settingsWindow), "None")
 
         let resetButton = UITestAssertions.assertExists(
             settingsWindow.buttons[Accessibility.resetShortcut],
             "Expected Reset to Default button"
         )
         resetButton.tap()
-        assertStaticTextEventually(
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
             in: settingsWindow,
-            containing: Fixture.defaultShortcutDisplay,
             message: "Expected reset to restore the default shortcut"
         )
-        XCTAssertEqual(currentGlobalShortcutValue(in: settingsWindow), Fixture.defaultShortcutDisplay)
     }
 
     @MainActor
@@ -192,48 +232,183 @@ final class SettingsUITests: UITestCase {
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
             "Expected maximum Slider position to update the TextField to 1000"
         )
-
-        // Leave a conventional value for other UI tests sharing app defaults.
-        replaceText(in: relaunchedField, with: "500", application: relaunchedApp)
-        relaunchedApp.typeKey(.return, modifierFlags: [])
     }
 
     @MainActor
-    func testLanguageSelectionAppliesImmediatelyAndPersistsAcrossRelaunch() throws {
+    func testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.historyTab, in: app)
+        let field = historyLimitField(in: settingsWindow)
+        let slider = historyLimitSlider(in: settingsWindow)
+
+        commitHistoryLimit("437", field: field, slider: slider, app: app, expectedValue: "437")
+
+        for invalidDraft in ["letters", "1.5", "#$%"] {
+            replaceText(in: field, with: invalidDraft, application: app)
+            XCTAssertTrue(
+                waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+                "A temporary invalid draft must not alter the formal slider value"
+            )
+            app.typeKey(.return, modifierFlags: [])
+            assertHistoryLimitValues(field: field, slider: slider, equal: "437")
+        }
+
+        commitHistoryLimit("0", field: field, slider: slider, app: app, expectedValue: "1")
+        commitHistoryLimit("-17", field: field, slider: slider, app: app, expectedValue: "1")
+        commitHistoryLimit("1001", field: field, slider: slider, app: app, expectedValue: "1000")
+        commitHistoryLimit("437", field: field, slider: slider, app: app, expectedValue: "437")
+
+        clearText(in: field, application: app)
+        XCTAssertEqual(textInputValue(of: field), "")
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+            "An empty draft must not alter the formal slider value before commit"
+        )
+        app.typeKey(.return, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "437")
+
+        replaceText(in: field, with: "612", application: app)
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+            "Editing must not persist before Return or focus loss"
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "612")
+
+        clearText(in: field, application: app)
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "612", timeout: UITestAssertions.defaultTimeout)
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "612")
+        XCTAssertEqual(app.state, .runningForeground, "Empty focus-loss commit must not crash the app")
+    }
+
+    @MainActor
+    func testHistoryLimitSliderAndFieldSynchronizeAtBoundariesAndIntermediateInteger() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.historyTab, in: app)
+        let field = historyLimitField(in: settingsWindow)
+        let slider = historyLimitSlider(in: settingsWindow)
+
+        commitHistoryLimit("1", field: field, slider: slider, app: app, expectedValue: "1")
+        commitHistoryLimit("1000", field: field, slider: slider, app: app, expectedValue: "1000")
+
+        slider.adjust(toNormalizedSliderPosition: 0)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+
+        slider.adjust(toNormalizedSliderPosition: 0.5)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let sliderValue = self.elementValue(of: slider)
+                return sliderValue != "1"
+                    && sliderValue != "1000"
+                    && self.textInputValue(of: field) == sliderValue
+            },
+            "Expected the Slider's intermediate integer to update the TextField immediately"
+        )
+        let intermediateValue = elementValue(of: slider)
+        let intermediateInteger = try XCTUnwrap(Int(intermediateValue))
+        XCTAssertTrue((2...999).contains(intermediateInteger))
+        XCTAssertEqual(intermediateValue, String(intermediateInteger), "Slider accessibility value must not be fractional")
+        XCTAssertEqual(textInputValue(of: field), intermediateValue)
+
+        slider.adjust(toNormalizedSliderPosition: 1)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
+    }
+
+    @MainActor
+    func testLanguageSelectionAppliesBothDirectionsAndPersistsAcrossRelaunch() throws {
         let app = launchApp()
         var settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.generalTab, in: app)
 
-        let languagePicker = languagePopup(in: settingsWindow)
-        selectMenuOption(Accessibility.traditionalChineseTaiwan, from: languagePicker, in: app)
+        var languagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(languagePicker, equals: Accessibility.englishUnitedStates)
+        assertLanguageDescription(
+            Accessibility.englishLanguageDescription,
+            in: settingsWindow
+        )
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: app)
+
+        selectAdjacentPopupOption(.next, from: languagePicker, in: app)
+        languagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(languagePicker, equals: Accessibility.localizedTraditionalChineseTaiwan)
-        UITestAssertions.assertExists(
-            settingsWindow.staticTexts[Accessibility.localizedLanguageDescription],
-            "Expected the selected locale to update Settings immediately"
+        assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
+        assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
+        XCTAssertTrue(languagePicker.isEnabled)
+        XCTAssertTrue(languagePicker.isHittable)
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        assertElementLabel(
+            shortcutButton(Accessibility.recordShortcut, in: settingsWindow),
+            equals: LocalizedLabel.traditionalChineseRecordShortcut
         )
 
+        shortcutButton(Accessibility.clearShortcut, in: settingsWindow).tap()
+        assertGlobalShortcutValueEventually(
+            equals: LocalizedLabel.traditionalChineseNone,
+            in: settingsWindow,
+            message: "The cleared shortcut status must use the selected in-app locale"
+        )
+        shortcutButton(Accessibility.resetShortcut, in: settingsWindow).tap()
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset must restore the default before localized validation checks"
+        )
+
+        let localizedRecordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
+        localizedRecordButton.tap()
+        app.typeKey("9", modifierFlags: [])
+        assertElementLabel(
+            shortcutValidationError(in: settingsWindow),
+            equals: LocalizedLabel.traditionalChineseInvalidShortcut
+        )
+
+        localizedRecordButton.tap()
+        app.typeKey("n", modifierFlags: .command)
+        assertElementLabel(
+            shortcutValidationError(in: settingsWindow),
+            equals: LocalizedLabel.traditionalChineseNewClipConflict
+        )
         closeApp(app)
+
+        let traditionalChineseApp = launchApp()
+        settingsWindow = openSettingsWindow(in: traditionalChineseApp)
+        openSettingsTab(Accessibility.generalTab, in: traditionalChineseApp)
+        languagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(
+            languagePicker,
+            equals: Accessibility.localizedTraditionalChineseTaiwan
+        )
+        assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
+        assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: traditionalChineseApp)
+
+        selectAdjacentPopupOption(.previous, from: languagePicker, in: traditionalChineseApp)
+        languagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(languagePicker, equals: Accessibility.englishUnitedStates)
+        assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: traditionalChineseApp)
+        openSettingsTab(Accessibility.shortcutsTab, in: traditionalChineseApp)
+        assertElementLabel(
+            shortcutButton(Accessibility.recordShortcut, in: settingsWindow),
+            equals: LocalizedLabel.englishRecordShortcut
+        )
+
+        closeApp(traditionalChineseApp)
 
         let relaunchedApp = launchApp()
         settingsWindow = openSettingsWindow(in: relaunchedApp)
         openSettingsTab(Accessibility.generalTab, in: relaunchedApp)
         let relaunchedLanguagePicker = languagePopup(in: settingsWindow)
-        assertPopupValueEventually(
-            relaunchedLanguagePicker,
-            equals: Accessibility.localizedTraditionalChineseTaiwan
-        )
-
-        // Restore English so independent UI tests retain their existing labels.
-        selectMenuOption(
-            Accessibility.localizedEnglishUnitedStates,
-            from: relaunchedLanguagePicker,
-            in: relaunchedApp
-        )
         assertPopupValueEventually(relaunchedLanguagePicker, equals: Accessibility.englishUnitedStates)
+        assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: relaunchedApp)
     }
 
     @MainActor
-    func testAppearanceSelectionUpdatesCanvasAndSettingsPersistAcrossRelaunch() throws {
+    func testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight() throws {
         let app = launchApp()
 
         var settingsWindow = openSettingsWindow(in: app)
@@ -250,42 +425,199 @@ final class SettingsUITests: UITestCase {
             ]
         )
 
-        selectMenuOption(Accessibility.followSystem, from: appearancePicker, in: app)
-        assertPopupValueEventually(appearancePicker, equals: Accessibility.followSystem)
-        let systemCanvas = canvasValue(in: app)
-        XCTAssertFalse(systemCanvas.isEmpty, "Expected a baseline canvas value for Follow System")
-
-        selectMenuOption(Accessibility.dark, from: appearancePicker, in: app)
-        assertPopupValueEventually(appearancePicker, equals: Accessibility.dark)
-        assertCanvasValueEventually(Fixture.darkCanvas, in: app)
-
         selectMenuOption(Accessibility.light, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
+        assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
         assertCanvasValueEventually(Fixture.lightCanvas, in: app)
-
-        selectMenuOption(Accessibility.followSystem, from: appearancePicker, in: app)
-        assertPopupValueEventually(appearancePicker, equals: Accessibility.followSystem)
-        assertCanvasValueEventually(systemCanvas, in: app)
 
         selectMenuOption(Accessibility.dark, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.dark)
+        assertEffectiveAppearance("dark", in: app, settingsWindow: settingsWindow)
         assertCanvasValueEventually(Fixture.darkCanvas, in: app)
+        XCTAssertTrue(settingsWindow.isEnabled, "Settings must remain operable after appearance changes")
 
         closeApp(app)
 
-        let relaunchedApp = launchApp()
-        assertCanvasValueEventually(Fixture.darkCanvas, in: relaunchedApp)
+        let darkRelaunchApp = launchApp()
+        assertEffectiveAppearanceValue(
+            "dark",
+            identifier: Accessibility.effectiveMainAppearance,
+            in: darkRelaunchApp
+        )
+        assertCanvasValueEventually(Fixture.darkCanvas, in: darkRelaunchApp)
 
-        settingsWindow = openSettingsWindow(in: relaunchedApp)
-        openSettingsTab(Accessibility.appearanceTab, in: relaunchedApp)
+        settingsWindow = openSettingsWindow(in: darkRelaunchApp)
+        openSettingsTab(Accessibility.appearanceTab, in: darkRelaunchApp)
+        assertEffectiveAppearance("dark", in: darkRelaunchApp, settingsWindow: settingsWindow)
         XCTAssertEqual(
             popupValue(of: appearancePopup(in: settingsWindow)),
             Accessibility.dark,
             "Expected appearance preference to persist across relaunch"
         )
 
-        let relaunchedAppearancePopup = appearancePopup(in: settingsWindow)
-        selectMenuOption(Accessibility.followSystem, from: relaunchedAppearancePopup, in: relaunchedApp)
+        let darkRelaunchAppearancePopup = appearancePopup(in: settingsWindow)
+        selectMenuOption(Accessibility.light, from: darkRelaunchAppearancePopup, in: darkRelaunchApp)
+        assertPopupValueEventually(darkRelaunchAppearancePopup, equals: Accessibility.light)
+        assertEffectiveAppearance("light", in: darkRelaunchApp, settingsWindow: settingsWindow)
+        assertCanvasValueEventually(Fixture.lightCanvas, in: darkRelaunchApp)
+
+        closeApp(darkRelaunchApp)
+
+        let lightRelaunchApp = launchApp()
+        assertEffectiveAppearanceValue(
+            "light",
+            identifier: Accessibility.effectiveMainAppearance,
+            in: lightRelaunchApp
+        )
+        settingsWindow = openSettingsWindow(in: lightRelaunchApp)
+        openSettingsTab(Accessibility.appearanceTab, in: lightRelaunchApp)
+        assertEffectiveAppearance("light", in: lightRelaunchApp, settingsWindow: settingsWindow)
+        XCTAssertEqual(popupValue(of: appearancePopup(in: settingsWindow)), Accessibility.light)
+    }
+
+    @MainActor
+    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: app)
+        let languagePicker = languagePopup(in: settingsWindow)
+        assertAccessibleControl(languagePicker, named: "App Language picker")
+        selectAdjacentPopupOption(.next, from: languagePicker, in: app)
+        let localizedLanguagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(
+            localizedLanguagePicker,
+            equals: Accessibility.localizedTraditionalChineseTaiwan
+        )
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.languageFocusProbe,
+            in: settingsWindow,
+            message: "Language switching must preserve keyboard focus on the picker"
+        )
+        localizedLanguagePicker.typeKey(.space, modifierFlags: [])
+        UITestAssertions.assertExists(
+            app.menuItems[Accessibility.localizedTraditionalChineseTaiwan],
+            "The focused localized picker must remain keyboard-operable without a pointer tap"
+        )
+        app.typeKey(.escape, modifierFlags: [])
+        selectAdjacentPopupOption(.previous, from: localizedLanguagePicker, in: app)
+        let restoredLanguagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(restoredLanguagePicker, equals: Accessibility.englishUnitedStates)
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.languageFocusProbe,
+            in: settingsWindow,
+            message: "Switching back to English must preserve keyboard focus"
+        )
+        restoredLanguagePicker.typeKey(.space, modifierFlags: [])
+        UITestAssertions.assertExists(
+            app.menuItems[Accessibility.englishUnitedStates],
+            "The focused English picker must remain keyboard-operable without a pointer tap"
+        )
+        app.typeKey(.escape, modifierFlags: [])
+        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
+        let clearButton = shortcutButton(Accessibility.clearShortcut, in: settingsWindow)
+        let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
+        assertAccessibleControl(recordButton, named: "Record Shortcut button")
+        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
+        assertAccessibleControl(resetButton, named: "Reset to Default button")
+
+        recordButton.tap()
+        assertProbeValue(
+            Accessibility.recordShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: settingsWindow,
+            message: "The Record Shortcut button must expose its actual SwiftUI focus state"
+        )
+        assertElementLabel(recordButton, equals: "Cancel Recording")
+        recordButton.tap()
+        assertElementLabel(recordButton, equals: LocalizedLabel.englishRecordShortcut)
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.clearShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: settingsWindow,
+            message: "Tab must move focus from Record Shortcut to Clear Shortcut"
+        )
+        app.typeKey(.space, modifierFlags: [])
+        assertGlobalShortcutValueEventually(
+            equals: "None",
+            in: settingsWindow,
+            message: "Space must activate the focused Clear Shortcut button"
+        )
+        resetButton.tap()
+        assertProbeValue(
+            Accessibility.resetShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: settingsWindow,
+            message: "The Reset to Default button must expose its actual SwiftUI focus state"
+        )
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset to Default must restore the shortcut after keyboard clearing"
+        )
+        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+
+        openSettingsTab(Accessibility.appearanceTab, in: app)
+        let appearancePicker = appearancePopup(in: settingsWindow)
+        assertAccessibleControl(appearancePicker, named: "Appearance picker")
+        selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
+        assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.appearanceFocusProbe,
+            in: settingsWindow,
+            message: "Appearance switching must preserve keyboard focus"
+        )
+        assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
+        appearancePicker.typeKey(.space, modifierFlags: [])
+        UITestAssertions.assertExists(
+            app.menuItems[Accessibility.light],
+            "The focused Appearance picker must remain keyboard-operable without a pointer tap"
+        )
+        app.typeKey(.escape, modifierFlags: [])
+        try app.performAccessibilityAudit(for: .sufficientElementDescription)
+
+        openSettingsTab(Accessibility.historyTab, in: app)
+        let slider = historyLimitSlider(in: settingsWindow)
+        let field = historyLimitField(in: settingsWindow)
+        assertAccessibleControl(slider, named: "Storage Limit slider")
+        assertAccessibleControl(field, named: "Storage Limit field")
+
+        let initialSliderValue = elementValue(of: slider)
+        XCTAssertNotNil(Int(initialSliderValue), "Slider accessibility value must be an integer")
+        XCTAssertFalse(initialSliderValue.contains("."), "Slider accessibility value must not be fractional")
+
+        slider.tap()
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.historyFocusProbe,
+            in: settingsWindow,
+            message: "The slider must expose its actual SwiftUI focus state"
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.historyFocusProbe,
+            in: settingsWindow,
+            message: "Tab must move focus from the slider to the Storage Limit field"
+        )
+
+        replaceText(in: field, with: "275", application: app)
+        XCTAssertNotEqual(elementValue(of: slider), "275", "Draft input must wait for a keyboard commit")
+        app.typeKey(.return, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "275")
+
+        replaceText(in: field, with: "276", application: app)
+        app.typeKey(.tab, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "276")
+
+        try app.performAccessibilityAudit(for: .sufficientElementDescription)
     }
 
     private func openSettingsWindow(
@@ -325,34 +657,32 @@ final class SettingsUITests: UITestCase {
         expectedCount: Int,
         timeout: TimeInterval
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if settingsWindowCount(in: app) == expectedCount {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        UITestWait.until(timeout: timeout) {
+            self.settingsWindowCount(in: app) == expectedCount
         }
-
-        return settingsWindowCount(in: app) == expectedCount
     }
 
     private func openSettingsTab(
-        _ tabName: String,
+        _ tabIdentifier: String,
         in app: XCUIApplication,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let toolbarButton = app.toolbars.buttons[tabName]
-        let button = toolbarButton.waitForExistence(timeout: 1)
-            ? toolbarButton
-            : UITestAssertions.assertExists(
-                app.buttons[tabName],
-                "Expected Settings tab \(tabName)",
-                file: file,
-                line: line
-            )
-        button.tap()
+        settingsTabControl(identifier: tabIdentifier, in: app, file: file, line: line).tap()
+    }
+
+    private func settingsTabControl(
+        identifier: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.buttons[identifier],
+            "Expected Settings tab with identifier \(identifier)",
+            file: file,
+            line: line
+        )
     }
 
     private func appearancePopup(
@@ -360,10 +690,9 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        popupButton(
-            labeled: Accessibility.appearanceLabel,
-            in: settingsWindow,
-            message: "Expected Appearance pop-up button",
+        UITestAssertions.assertExists(
+            settingsWindow.descendants(matching: .popUpButton)[Accessibility.appearancePicker],
+            "Expected Appearance pop-up button with its stable identifier",
             file: file,
             line: line
         )
@@ -374,15 +703,9 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let identifiedPicker = settingsWindow.descendants(matching: .popUpButton)["app-language-picker"]
-        if identifiedPicker.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
-            return identifiedPicker
-        }
-
-        return popupButton(
-            labeled: Accessibility.appLanguage,
-            in: settingsWindow,
-            message: "Expected App Language pop-up button",
+        UITestAssertions.assertExists(
+            settingsWindow.descendants(matching: .popUpButton)[Accessibility.appLanguagePicker],
+            "Expected App Language pop-up button with its stable identifier",
             file: file,
             line: line
         )
@@ -394,7 +717,7 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) -> XCUIElement {
         UITestAssertions.assertExists(
-            settingsWindow.sliders["history-limit-slider"],
+            settingsWindow.sliders[Accessibility.historyLimitSlider],
             "Expected native Storage Limit slider",
             file: file,
             line: line
@@ -406,32 +729,36 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let identifiedField = settingsWindow.textFields["history-limit-field"]
-        if identifiedField.waitForExistence(timeout: UITestAssertions.defaultTimeout) {
-            return identifiedField
-        }
-
-        return UITestAssertions.assertExists(
-            settingsWindow.textFields.matching(
-                NSPredicate(format: "label == %@", Accessibility.storageLimitValue)
-            ).firstMatch,
-            "Expected editable Storage Limit value field",
+        UITestAssertions.assertExists(
+            settingsWindow.textFields[Accessibility.historyLimitField],
+            "Expected editable Storage Limit value field with its stable identifier",
             file: file,
             line: line
         )
     }
 
-    private func popupButton(
-        labeled label: String,
+    private func shortcutButton(
+        _ identifier: String,
         in settingsWindow: XCUIElement,
-        message: String,
-        file: StaticString,
-        line: UInt
+        file: StaticString = #filePath,
+        line: UInt = #line
     ) -> XCUIElement {
-        let predicate = NSPredicate(format: "label == %@", label)
-        return UITestAssertions.assertExists(
-            settingsWindow.descendants(matching: .popUpButton).matching(predicate).firstMatch,
-            message,
+        UITestAssertions.assertExists(
+            settingsWindow.buttons[identifier],
+            "Expected shortcut control with identifier \(identifier)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func shortcutValidationError(
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            settingsWindow.staticTexts[Accessibility.shortcutValidationError],
+            "Expected localized shortcut validation error",
             file: file,
             line: line
         )
@@ -441,19 +768,18 @@ final class SettingsUITests: UITestCase {
         popup.value as? String ?? ""
     }
 
+    private func elementValue(of element: XCUIElement) -> String {
+        element.value as? String ?? ""
+    }
+
     private func waitForElementValue(
         _ element: XCUIElement,
         equals expectedValue: String,
         timeout: TimeInterval
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if (element.value as? String) == expectedValue {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        UITestWait.until(timeout: timeout) {
+            (element.value as? String) == expectedValue
         }
-        return (element.value as? String) == expectedValue
     }
 
     private func assertPopupValueEventually(
@@ -463,14 +789,10 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if popupValue(of: popup) == expectedValue {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let matched = UITestWait.until(timeout: timeout) {
+            self.popupValue(of: popup) == expectedValue
         }
+        guard matched == false else { return }
 
         XCTAssertEqual(popupValue(of: popup), expectedValue, file: file, line: line)
     }
@@ -483,18 +805,43 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) {
         popup.tap()
-
-        let identifiedMenuItem = app.menuItems[option]
-        let menuItem = identifiedMenuItem.waitForExistence(timeout: 2)
-            ? identifiedMenuItem
-            : UITestAssertions.assertExists(
-                app.descendants(matching: .menuItem).matching(NSPredicate(format: "label == %@", option)).firstMatch,
-                "Expected menu option \(option)",
-                timeout: 2,
-                file: file,
-                line: line
-            )
+        let menuItem = UITestAssertions.assertExists(
+            app.menuItems[option],
+            "Expected menu option \(option)",
+            file: file,
+            line: line
+        )
         menuItem.tap()
+    }
+
+    private func selectAdjacentPopupOption(
+        _ direction: PopupDirection,
+        from popup: XCUIElement,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(
+            popup,
+            "Expected keyboard-operable pop-up button",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(popup.isEnabled, "Expected pop-up button to be enabled", file: file, line: line)
+        let currentValue = popupValue(of: popup)
+        popup.tap()
+        app.typeKey(.escape, modifierFlags: [])
+        popup.typeKey(.space, modifierFlags: [])
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                app.menuItems[currentValue].isHittable
+            },
+            "Space must open the focused pop-up button",
+            file: file,
+            line: line
+        )
+        app.typeKey(direction.key, modifierFlags: [])
+        app.typeKey(.return, modifierFlags: [])
     }
 
     private func assertPopupMenuOptions(
@@ -504,29 +851,18 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let currentValue = popupValue(of: popup)
         popup.tap()
 
         for option in options {
-            let identifiedMenuItem = app.menuItems[option]
-            if identifiedMenuItem.waitForExistence(timeout: 1) {
-                continue
-            }
-
             _ = UITestAssertions.assertExists(
-                app.descendants(matching: .menuItem).matching(NSPredicate(format: "label == %@", option)).firstMatch,
+                app.menuItems[option],
                 "Expected menu option \(option)",
-                timeout: 2,
                 file: file,
                 line: line
             )
         }
 
-        if currentValue.isEmpty == false, app.menuItems[currentValue].waitForExistence(timeout: 1) {
-            app.menuItems[currentValue].tap()
-        } else {
-            app.typeKey(.escape, modifierFlags: [])
-        }
+        app.typeKey(.escape, modifierFlags: [])
     }
 
     private func replaceText(
@@ -537,25 +873,79 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) {
         UITestAssertions.assertExists(field, "Expected editable text field", file: file, line: line)
-        let deadline = Date().addingTimeInterval(UITestAssertions.defaultTimeout)
+        field.tap()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeKey(.delete, modifierFlags: [])
+        field.typeText(text)
 
-        while Date() < deadline {
-            field.tap()
-            app.typeKey("a", modifierFlags: .command)
-            app.typeKey(.delete, modifierFlags: [])
-            field.typeText(text)
-
-            if waitForTextInputValue(field, equals: text, timeout: 0.5) {
-                return
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
+        let matched = waitForTextInputValue(
+            field,
+            equals: text,
+            timeout: UITestAssertions.defaultTimeout
+        )
+        guard matched == false else { return }
 
         XCTAssertEqual(
             textInputValue(of: field),
             text,
             "Expected text field value to update to \(text)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func clearText(
+        in field: XCUIElement,
+        application app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(field, "Expected editable text field", file: file, line: line)
+        field.tap()
+        app.typeKey("a", modifierFlags: .command)
+        app.typeKey(.delete, modifierFlags: [])
+        XCTAssertTrue(
+            waitForTextInputValue(field, equals: "", timeout: UITestAssertions.defaultTimeout),
+            "Expected the Storage Limit draft to be empty",
+            file: file,
+            line: line
+        )
+    }
+
+    private func commitHistoryLimit(
+        _ draft: String,
+        field: XCUIElement,
+        slider: XCUIElement,
+        app: XCUIApplication,
+        expectedValue: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        replaceText(in: field, with: draft, application: app, file: file, line: line)
+        app.typeKey(.return, modifierFlags: [])
+        assertHistoryLimitValues(
+            field: field,
+            slider: slider,
+            equal: expectedValue,
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertHistoryLimitValues(
+        field: XCUIElement,
+        slider: XCUIElement,
+        equal expectedValue: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                self.textInputValue(of: field) == expectedValue
+                    && self.elementValue(of: slider) == expectedValue
+            },
+            "Expected Storage Limit TextField and Slider to equal \(expectedValue); field=\(textInputValue(of: field)), slider=\(elementValue(of: slider))",
             file: file,
             line: line
         )
@@ -570,16 +960,9 @@ final class SettingsUITests: UITestCase {
         equals expectedValue: String,
         timeout: TimeInterval
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if textInputValue(of: field) == expectedValue {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        UITestWait.until(timeout: timeout) {
+            self.textInputValue(of: field) == expectedValue
         }
-
-        return textInputValue(of: field) == expectedValue
     }
 
     private func currentGlobalShortcutValue(
@@ -587,14 +970,9 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> String {
-        let predicate = NSPredicate(format: "label == %@", Accessibility.currentGlobalShortcut)
-        let valueElement = UITestAssertions.assertExists(
-            settingsWindow.staticTexts.matching(predicate).firstMatch,
-            "Expected Current global shortcut value",
-            file: file,
-            line: line
+        globalShortcutValue(
+            of: globalShortcutValueElement(in: settingsWindow, file: file, line: line)
         )
-        return valueElement.value as? String ?? valueElement.label
     }
 
     private func assertGlobalShortcutValueEventuallyDiffers(
@@ -605,57 +983,215 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> String {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            let currentValue = currentGlobalShortcutValue(in: settingsWindow, file: file, line: line)
-            if currentValue != originalValue {
-                return currentValue
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let valueElement = globalShortcutValueElement(in: settingsWindow, file: file, line: line)
+        _ = UITestWait.until(timeout: timeout) {
+            self.globalShortcutValue(of: valueElement) != originalValue
         }
 
-        let finalValue = currentGlobalShortcutValue(in: settingsWindow, file: file, line: line)
+        let finalValue = globalShortcutValue(of: valueElement)
         XCTAssertNotEqual(finalValue, originalValue, message, file: file, line: line)
         return finalValue
     }
 
-    private func staticText(
-        in element: XCUIElement,
-        containing text: String
-    ) -> XCUIElement {
-        let predicate = NSPredicate(
-            format: "label CONTAINS[c] %@ OR value CONTAINS[c] %@",
-            text,
-            text
-        )
-        return element.descendants(matching: .any).matching(predicate).firstMatch
-    }
-
-    private func assertStaticTextEventually(
-        in element: XCUIElement,
-        containing text: String,
+    private func assertGlobalShortcutValueEventually(
+        equals expectedValue: String,
+        in settingsWindow: XCUIElement,
         message: String,
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let target = staticText(in: element, containing: text)
-        XCTAssertTrue(target.waitForExistence(timeout: timeout), message, file: file, line: line)
-    }
-
-    private func canvasValue(
-        in app: XCUIApplication,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) -> String {
-        let canvas = UITestAssertions.assertExists(
-            app.descendants(matching: .any)["home-canvas"],
-            "Expected home canvas marker",
+        let valueElement = globalShortcutValueElement(in: settingsWindow, file: file, line: line)
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                self.globalShortcutValue(of: valueElement) == expectedValue
+            },
+            "\(message); observed \(globalShortcutValue(of: valueElement))",
             file: file,
             line: line
         )
-        return canvas.value as? String ?? ""
+    }
+
+    private func globalShortcutValueElement(
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            settingsWindow.staticTexts[Accessibility.currentGlobalShortcut],
+            "Expected Current global shortcut value with its stable identifier",
+            file: file,
+            line: line
+        )
+    }
+
+    private func globalShortcutValue(of element: XCUIElement) -> String {
+        element.value as? String ?? element.label
+    }
+
+    private func assertSettingsTabLabels(
+        _ expectedLabels: [(String, String)],
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for (identifier, expectedLabel) in expectedLabels {
+            let tab = settingsTabControl(
+                identifier: identifier,
+                in: app,
+                file: file,
+                line: line
+            )
+            XCTAssertEqual(
+                app.buttons.matching(identifier: identifier).count,
+                1,
+                "Expected one semantic Settings tab for \(identifier)",
+                file: file,
+                line: line
+            )
+            assertAccessibleControl(
+                tab,
+                named: "\(expectedLabel) Settings tab",
+                file: file,
+                line: line
+            )
+            assertElementLabel(tab, equals: expectedLabel, file: file, line: line)
+        }
+    }
+
+    private func assertElementLabel(
+        _ element: XCUIElement,
+        equals expectedLabel: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(
+            element,
+            "Expected element labeled \(expectedLabel)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                element.label == expectedLabel
+            },
+            "Expected accessibility label \(expectedLabel), got \(element.label)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertLanguageDescription(
+        _ expectedText: String,
+        in settingsWindow: XCUIElement,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let description = UITestAssertions.assertExists(
+            settingsWindow.descendants(matching: .any)[Accessibility.appLanguageDescription],
+            "Expected stable App Language description element",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                description.label == expectedText || (description.value as? String) == expectedText
+            },
+            "Expected localized language description \(expectedText)",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertEffectiveAppearance(
+        _ expectedValue: String,
+        in app: XCUIApplication,
+        settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertEffectiveAppearanceValue(
+            expectedValue,
+            identifier: Accessibility.effectiveMainAppearance,
+            in: app,
+            file: file,
+            line: line
+        )
+        assertEffectiveAppearanceValue(
+            expectedValue,
+            identifier: Accessibility.effectiveSettingsAppearance,
+            in: settingsWindow,
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertEffectiveAppearanceValue(
+        _ expectedValue: String,
+        identifier: String,
+        in root: XCUIElement,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let probe = UITestAssertions.assertExists(
+            root.descendants(matching: .any)[identifier],
+            "Expected effective appearance probe \(identifier)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                (probe.value as? String) == expectedValue
+            },
+            "Expected \(identifier) to report actual effective appearance \(expectedValue), got \(probe.value as? String ?? "<nil>")",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertAccessibleControl(
+        _ element: XCUIElement,
+        named name: String,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(element, "Expected \(name)", file: file, line: line)
+        XCTAssertFalse(
+            element.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            "\(name) must expose a nonempty accessibility label",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(element.isEnabled, "\(name) must be enabled", file: file, line: line)
+        XCTAssertTrue(element.isHittable, "\(name) must be pointer operable", file: file, line: line)
+    }
+
+    private func assertProbeValue(
+        _ expectedValue: String,
+        identifier: String,
+        in root: XCUIElement,
+        message: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let probe = UITestAssertions.assertExists(
+            root.descendants(matching: .any)[identifier],
+            "Expected focus probe \(identifier)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                (probe.value as? String) == expectedValue
+            },
+            "\(message); observed \(probe.value as? String ?? "<nil>")",
+            file: file,
+            line: line
+        )
     }
 
     private func assertCanvasValueEventually(
@@ -665,17 +1201,19 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if canvasValue(in: app, file: file, line: line) == expectedValue {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        let canvas = UITestAssertions.assertExists(
+            app.descendants(matching: .any)["home-canvas"],
+            "Expected home canvas marker",
+            file: file,
+            line: line
+        )
+        let matched = UITestWait.until(timeout: timeout) {
+            (canvas.value as? String) == expectedValue
         }
+        guard matched == false else { return }
 
         XCTAssertEqual(
-            canvasValue(in: app, file: file, line: line),
+            canvas.value as? String,
             expectedValue,
             file: file,
             line: line

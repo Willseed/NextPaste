@@ -43,9 +43,12 @@ final class ClipboardImageRowActionsUITests: UITestCase {
             app.menuItems["copy-image-text-menu-item"],
             "Expected the native image OCR context-menu item while OCR is idle"
         )
-        XCTAssertEqual(copyImageTextItem.label, "Copy Image Text")
+        XCTAssertEqual(UITestAssertions.accessibleText(of: copyImageTextItem), "Copy Image Text")
         XCTAssertTrue(copyImageTextItem.isEnabled, "Expected idle OCR action to be enabled")
         XCTAssertTrue(copyImageTextItem.isHittable, "Expected idle OCR action to be keyboard/mouse actionable")
+        XCTAssertTrue(menuItem("copy-original-image-menu-item", in: app).isEnabled)
+        XCTAssertTrue(menuItem("toggle-pin-image-menu-item", in: app).isEnabled)
+        XCTAssertTrue(menuItem("delete-image-menu-item", in: app).isEnabled)
 
         // Dismiss without invoking OCR. This test validates the native menu
         // surface and existing row actions; it intentionally has no dependency
@@ -83,6 +86,14 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         XCTAssertTrue(deleteButton.isEnabled)
         XCTAssertTrue(deleteButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+    }
+
+    @MainActor
+    private func menuItem(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        UITestAssertions.assertExists(
+            app.menuItems[identifier],
+            "Expected native image Context Menu item \(identifier)"
+        )
     }
     #endif
 
@@ -510,7 +521,8 @@ private extension ClipboardRobot {
         line: UInt = #line
     ) -> Data? {
 #if os(macOS)
-        return NSPasteboard.general.data(forType: NSPasteboard.PasteboardType(fixture.typeIdentifier))
+        return UITestAppLauncher.pasteboard(for: app)
+            .data(forType: NSPasteboard.PasteboardType(fixture.typeIdentifier))
 #else
         XCTFail("Image pasteboard assertions are only supported on macOS UI tests", file: file, line: line)
         return nil
@@ -539,15 +551,8 @@ private extension ClipboardRobot {
         file: StaticString,
         line: UInt
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if imageData(for: fixture, file: file, line: line) == expectedData {
-                return true
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        UITestWait.until(timeout: timeout) {
+            imageData(for: fixture, file: file, line: line) == expectedData
         }
-
-        return imageData(for: fixture, file: file, line: line) == expectedData
     }
 }

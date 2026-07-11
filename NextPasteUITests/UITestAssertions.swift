@@ -13,6 +13,10 @@ enum UITestAssertions {
             return element.label
         }
 
+        if !element.title.isEmpty {
+            return element.title
+        }
+
         return element.value as? String ?? ""
     }
 
@@ -68,15 +72,10 @@ enum UITestAssertions {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText) {
-                return
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.02))
+        let matched = UITestWait.until(timeout: timeout) {
+            combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText)
         }
+        guard matched == false else { return }
 
         XCTAssertTrue(
             combinedAccessibilityText(of: element).localizedCaseInsensitiveContains(expectedText),
@@ -224,17 +223,9 @@ enum UITestAssertions {
         in app: XCUIApplication,
         timeout: TimeInterval = defaultTimeout
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if imageRowCount(in: app) == expectedCount {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        UITestWait.until(timeout: timeout) {
+            imageRowCount(in: app) == expectedCount
         }
-
-        return imageRowCount(in: app) == expectedCount
     }
 
     static func imageRow(
@@ -436,17 +427,7 @@ enum UITestAssertions {
     }
 
     static func waitForDisappearance(of element: XCUIElement, timeout: TimeInterval = defaultTimeout) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if element.exists == false {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
-        }
-
-        return false
+        element.waitForNonExistence(timeout: timeout)
     }
 
     static func assert(
@@ -576,17 +557,10 @@ enum UITestAssertions {
         toAppearAbove lowerElement: XCUIElement,
         timeout: TimeInterval = defaultTimeout
     ) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if upperElement.exists, lowerElement.exists, upperElement.frame.minY < lowerElement.frame.minY {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        UITestWait.until(timeout: timeout) {
+            upperElement.exists && lowerElement.exists
+                && upperElement.frame.minY < lowerElement.frame.minY
         }
-
-        return false
     }
 
     static func elementFrameDescription(_ element: XCUIElement) -> String {
@@ -703,17 +677,9 @@ enum UITestAssertions {
     }
 
     private static func waitForVisibleSquareFrame(of element: XCUIElement, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if hasVisibleSquareFrame(element) {
-                return true
-            }
-
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        UITestWait.until(timeout: timeout) {
+            hasVisibleSquareFrame(element)
         }
-
-        return hasVisibleSquareFrame(element)
     }
 
     private static func hasVisibleSquareFrame(_ element: XCUIElement) -> Bool {

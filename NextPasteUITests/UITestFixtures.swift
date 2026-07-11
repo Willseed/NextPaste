@@ -6,6 +6,71 @@
 import Foundation
 
 enum UITestFixtures {
+    enum PinScroll {
+        static let rowCount = 64
+
+        static let rapidAIndex = 63
+        static let rapidBIndex = 62
+        static let rapidCIndex = 61
+        static let pinThenDeleteIndex = 60
+        static let keyboardIndex = 59
+        static let initiallyPinnedIndex = 58
+        static let offscreenTargetIndex = 56
+        static let searchVisibleTargetIndex = 55
+        static let searchHiddenTargetIndex = rapidAIndex
+
+        static let searchVisibleQuery = "search-visible"
+
+        static func id(index: Int) -> UUID {
+            deterministicID(kind: 3, index: index)
+        }
+
+        static func rowIdentifier(index: Int) -> String {
+            "clip-row-\(id(index: index).uuidString)"
+        }
+
+        static func text(index: Int) -> String {
+            switch index {
+            case rapidAIndex:
+                return "Pin scroll rapid A visible row 63"
+            case rapidBIndex:
+                return "Pin scroll rapid B visible row 62"
+            case rapidCIndex:
+                return "Pin scroll rapid C visible row 61"
+            case pinThenDeleteIndex:
+                return "Pin scroll then delete visible row 60"
+            case keyboardIndex:
+                return "Pin scroll keyboard visible row 59"
+            case initiallyPinnedIndex:
+                return "Pin scroll initially pinned unpin row 58"
+            case offscreenTargetIndex:
+                return "Pin scroll offscreen exact target row 56 search-visible"
+            case searchVisibleTargetIndex:
+                return "Pin scroll search visible target row 55 search-visible"
+            case 41...54:
+                return String(format: "Pin scroll search companion row %02d search-visible", index)
+            default:
+                return String(format: "Pin scroll automation filler row %02d", index)
+            }
+        }
+
+        private static func deterministicID(kind: UInt8, index: Int) -> UUID {
+            var bytes = [UInt8](repeating: 0, count: 16)
+            bytes[0] = 0x25
+            bytes[1] = kind
+            let indexBytes = withUnsafeBytes(of: UInt64(index).bigEndian) { Array($0) }
+            for offset in 0..<8 {
+                bytes[8 + offset] = indexBytes[offset]
+            }
+            return UUID(uuid: (
+                bytes[0], bytes[1], bytes[2], bytes[3],
+                bytes[4], bytes[5], bytes[6], bytes[7],
+                bytes[8], bytes[9], bytes[10], bytes[11],
+                bytes[12], bytes[13], bytes[14], bytes[15]
+            ))
+        }
+    }
+
     enum History {
         static let olderText = "Older local clip"
         static let newerText = "Newer local clip"

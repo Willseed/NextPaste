@@ -2,11 +2,9 @@
 //  BoundedRetryUITestHelper.swift
 //  NextPasteUITests
 //
-//  Feature 023 (T065): shared bounded-retry UI test helper. Provides the only
-//  synchronization strategy allowed for UI scenario tests: an explicit named
-//  timeout, an observable polling condition expressed in terms of UI order or
-//  visible removal (never elapsed time), and a diagnosable failure message that
-//  reports observed order, expected order, and elapsed retry count.
+//  Feature 023 (T065): shared observable-state UI test helper. Uses XCTest
+//  predicate expectations for bounded waiting and reports the final observed
+//  state when an assertion times out.
 //
 //  Constraints (FR-004, SC-008, Plan § Test contract changes):
 //  - No fixed-duration `sleep`, `Task.sleep`, `Thread.sleep`, or `usleep`.
@@ -19,12 +17,6 @@
 import XCTest
 
 enum BoundedRetryUITestHelper {
-    /// Polling interval used between observable-condition checks. This is a
-    /// run-loop yield, not a fixed-duration synchronization wait: the loop exits
-    /// as soon as the observable condition is satisfied or the named timeout
-    /// expires.
-    private static let pollingInterval: TimeInterval = 0.05
-
     // MARK: - Order-based bounded retry (Pin / Unpin)
 
     /// Waits for `upperElement` to appear above `lowerElement` within `timeout`,
@@ -43,17 +35,11 @@ enum BoundedRetryUITestHelper {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-        var retryCount = 0
-
-        while Date() < deadline {
-            retryCount += 1
-            if upperElement.exists, lowerElement.exists,
-               upperElement.frame.minY < lowerElement.frame.minY {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(pollingInterval))
+        let didReachExpectedOrder = UITestWait.until(timeout: timeout) {
+            upperElement.exists && lowerElement.exists
+                && upperElement.frame.minY < lowerElement.frame.minY
         }
+        guard didReachExpectedOrder == false else { return }
 
         let observedOrder = describeOrder(upper: upperElement, lower: lowerElement)
         let visibleRows = UITestAssertions.visibleClipRowsDescription(in: app)
@@ -62,7 +48,6 @@ enum BoundedRetryUITestHelper {
             BoundedRetry order assertion failed: \(context)
             Expected: \(upperElement.label) appears above \(lowerElement.label)
             Observed: \(observedOrder)
-            Elapsed retry count: \(retryCount)
             Timeout: \(timeout)s
 
             Visible clip rows:
@@ -90,16 +75,10 @@ enum BoundedRetryUITestHelper {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-        var retryCount = 0
-
-        while Date() < deadline {
-            retryCount += 1
-            if !element.exists {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(pollingInterval))
+        let didDisappear = UITestWait.until(timeout: timeout) {
+            element.exists == false
         }
+        guard didDisappear == false else { return }
 
         let visibleRows = UITestAssertions.visibleClipRowsDescription(in: app)
         XCTFail(
@@ -107,7 +86,6 @@ enum BoundedRetryUITestHelper {
             BoundedRetry visible-removal assertion failed: \(context)
             Expected: \(element.label) to be removed from the visible list
             Observed: element still exists (exists=\(element.exists))
-            Elapsed retry count: \(retryCount)
             Timeout: \(timeout)s
 
             Visible clip rows:
@@ -133,29 +111,21 @@ enum BoundedRetryUITestHelper {
         context: String,
         app: XCUIApplication,
         action: () -> Void,
-        condition: () -> Bool,
+        condition: @escaping () -> Bool,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
         action()
 
-        let deadline = Date().addingTimeInterval(timeout)
-        var retryCount = 0
-
-        while Date() < deadline {
-            retryCount += 1
-            if condition() {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(pollingInterval))
-        }
+        let didSatisfyCondition = UITestWait.until(timeout: timeout, condition: condition)
+        guard didSatisfyCondition == false else { return }
 
         let visibleRows = UITestAssertions.visibleClipRowsDescription(in: app)
         XCTFail(
             """
             BoundedRetry runThenAwait failed: \(context)
             Expected: observable condition satisfied
-            Observed: condition not met after \(retryCount) retries
+            Observed: condition was not met
             Timeout: \(timeout)s
 
             Visible clip rows:

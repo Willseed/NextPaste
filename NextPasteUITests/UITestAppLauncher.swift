@@ -6,6 +6,176 @@
 //
 
 import XCTest
+#if os(macOS)
+import AppKit
+#endif
+
+struct UITestLaunchEnvironment: Sendable {
+    static let identifierKey = "NEXTPASTE_UI_TEST_ID"
+    static let defaultsSuiteKey = "NEXTPASTE_UI_TEST_DEFAULTS_SUITE"
+    static let storeURLKey = "NEXTPASTE_UI_TEST_STORE_URL"
+    static let dataDirectoryKey = "NEXTPASTE_UI_TEST_DATA_DIRECTORY"
+    static let pasteboardNameKey = "NEXTPASTE_UI_TEST_PASTEBOARD_NAME"
+    static let ocrScenarioKey = "NEXTPASTE_UI_TEST_OCR_SCENARIO"
+    static let ocrTextKey = "NEXTPASTE_UI_TEST_OCR_TEXT"
+    static let initialLanguageKey = "NEXTPASTE_UI_TEST_INITIAL_LANGUAGE"
+
+    let identifier: String
+    let rootURL: URL
+    let storeURL: URL
+    let dataDirectoryURL: URL
+    let defaultsSuiteName: String
+    let pasteboardName: String
+
+    init(testName: String) throws {
+        let uuid = UUID().uuidString.lowercased()
+        let readableName = Self.sanitizedPathComponent(testName)
+        let identifier = "\(readableName)-\(uuid)"
+        let rootURL = Self.appContainerTemporaryDirectory
+            .appendingPathComponent("NextPasteUITests", isDirectory: true)
+            .appendingPathComponent(identifier, isDirectory: true)
+            .standardizedFileURL
+
+        self.identifier = identifier
+        self.rootURL = rootURL
+        self.storeURL = rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
+        self.dataDirectoryURL = rootURL.appendingPathComponent("ImageStore", isDirectory: true)
+        self.defaultsSuiteName = "pylot.NextPaste.UITests.\(uuid)"
+        self.pasteboardName = "pylot.NextPaste.UITests.\(uuid).pasteboard"
+
+        try FileManager.default.createDirectory(at: dataDirectoryURL, withIntermediateDirectories: true)
+        clearPersistentState()
+    }
+
+    @MainActor
+    func configure(_ app: XCUIApplication, onDiskStore: UITestAppLauncher.OnDiskStore?) {
+        let selectedStoreURL = onDiskStore?.storeURL ?? storeURL
+        let selectedDataDirectoryURL = onDiskStore.map {
+            $0.rootURL.appendingPathComponent("ImageStore", isDirectory: true).standardizedFileURL
+        } ?? dataDirectoryURL
+
+        do {
+            try FileManager.default.createDirectory(
+                at: selectedDataDirectoryURL,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            XCTFail("Unable to create isolated UI-test data directory: \(error)")
+        }
+
+        app.launchArguments.append(contentsOf: [
+            UITestAppLauncher.uiTestOnDiskStoreArgument,
+            selectedStoreURL.path
+        ])
+        app.launchEnvironment[Self.identifierKey] = identifier
+        app.launchEnvironment[Self.defaultsSuiteKey] = defaultsSuiteName
+        app.launchEnvironment[Self.storeURLKey] = selectedStoreURL.path
+        app.launchEnvironment[Self.dataDirectoryKey] = selectedDataDirectoryURL.path
+        app.launchEnvironment[Self.pasteboardNameKey] = pasteboardName
+    }
+
+    func cleanup() {
+        clearPersistentState()
+        try? FileManager.default.removeItem(at: rootURL)
+    }
+
+    private func clearPersistentState() {
+        UserDefaults().removePersistentDomain(forName: defaultsSuiteName)
+#if os(macOS)
+        let pasteboard = NSPasteboard(name: NSPasteboard.Name(pasteboardName))
+        pasteboard.clearContents()
+#endif
+    }
+
+    private static let appContainerTemporaryDirectory = URL(
+        fileURLWithPath: "/Users/Shared/NextPasteUITests",
+        isDirectory: true
+    ).standardizedFileURL
+
+    private static func sanitizedPathComponent(_ value: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        let scalars = value.unicodeScalars.map { scalar in
+            allowed.contains(scalar) ? Character(String(scalar)) : "-"
+        }
+        let result = String(scalars).trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+        return result.isEmpty ? "ui-test" : String(result.prefix(80))
+    }
+}
+
+enum UITestOCRFixture {
+    case success(String)
+    case noText
+    case failure
+    case suspended(String)
+
+    @MainActor
+    func configure(_ app: XCUIApplication) {
+        switch self {
+        case .success(let text):
+            app.launchEnvironment[UITestLaunchEnvironment.ocrScenarioKey] = "success"
+            app.launchEnvironment[UITestLaunchEnvironment.ocrTextKey] = text
+        case .noText:
+            app.launchEnvironment[UITestLaunchEnvironment.ocrScenarioKey] = "noText"
+        case .failure:
+            app.launchEnvironment[UITestLaunchEnvironment.ocrScenarioKey] = "failure"
+        case .suspended(let text):
+            app.launchEnvironment[UITestLaunchEnvironment.ocrScenarioKey] = "suspended"
+            app.launchEnvironment[UITestLaunchEnvironment.ocrTextKey] = text
+        }
+    }
+}
+
+enum UITestLaunchEnvironmentRegistry {
+    private static let lock = NSLock()
+    private nonisolated(unsafe) static var activeEnvironment: UITestLaunchEnvironment?
+
+    static func beginTest(named testName: String) throws {
+        let environment = try UITestLaunchEnvironment(testName: testName)
+        let previous = replaceActiveEnvironment(with: environment)
+        previous?.cleanup()
+    }
+
+    static func currentOrCreate() throws -> UITestLaunchEnvironment {
+        lock.lock()
+        if let activeEnvironment {
+            lock.unlock()
+            return activeEnvironment
+        }
+        lock.unlock()
+
+        let environment = try UITestLaunchEnvironment(testName: "implicit-ui-test")
+        lock.lock()
+        if let activeEnvironment {
+            lock.unlock()
+            environment.cleanup()
+            return activeEnvironment
+        }
+        activeEnvironment = environment
+        lock.unlock()
+        return environment
+    }
+
+    static func current() -> UITestLaunchEnvironment? {
+        lock.lock()
+        defer { lock.unlock() }
+        return activeEnvironment
+    }
+
+    static func finishTest() {
+        let environment = replaceActiveEnvironment(with: nil)
+        environment?.cleanup()
+    }
+
+    private static func replaceActiveEnvironment(
+        with environment: UITestLaunchEnvironment?
+    ) -> UITestLaunchEnvironment? {
+        lock.lock()
+        defer { lock.unlock() }
+        let previous = activeEnvironment
+        activeEnvironment = environment
+        return previous
+    }
+}
 
 @MainActor
 enum UITestAppLauncher {
@@ -38,6 +208,7 @@ enum UITestAppLauncher {
     static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
     static let relaunchDatasetSeedArgument = "-ui-test-seed-relaunch-dataset"
     static let rowActionScenarioBSeedArgument = "-ui-test-seed-row-action-scenario-b"
+    static let pinScrollAutomationSeedArgument = "-ui-test-seed-pin-scroll-automation"
     static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
     static let clipboardMonitorDisabledArgument = "-disable-clipboard-monitor"
     static let clipboardMonitorPollIntervalArgument = "-clipboard-monitor-poll-interval"
@@ -63,11 +234,11 @@ enum UITestAppLauncher {
         if enableClipboardMonitor == false {
             app.launchArguments.append(clipboardMonitorDisabledArgument)
         }
-        if let onDiskStore {
-            app.launchArguments.append(contentsOf: [
-                uiTestOnDiskStoreArgument,
-                onDiskStore.storeURL.path
-            ])
+
+        do {
+            try UITestLaunchEnvironmentRegistry.currentOrCreate().configure(app, onDiskStore: onDiskStore)
+        } catch {
+            XCTFail("Unable to create isolated UI-test launch environment: \(error)")
         }
         return app
     }
@@ -153,21 +324,18 @@ enum UITestAppLauncher {
     }
 
     static func makeOnDiskStore() throws -> OnDiskStore {
-        // The on-disk store must live where the sandboxed app (pylot.NextPaste,
-        // ENABLE_APP_SANDBOX = YES) can read and write. A path inside the test
-        // runner's own container (NSTemporaryDirectory() here) is denied to the
-        // app by the sandbox, which forces ModelContainer load failure and an
-        // in-memory fallback — so captures never survive relaunch. The app's
-        // own container tmp is writable by the app; the UI test runner is not
-        // app-sandboxed, so it can create and tear down the directory here too.
-        // This mirrors makeTraceURL()'s app-container temp location.
-        let appContainerTemporaryDirectory = URL(fileURLWithPath: "/Users/\(NSUserName())", isDirectory: true)
-            .appendingPathComponent("Library/Containers/pylot.NextPaste/Data/tmp", isDirectory: true)
-            .standardizedFileURL
+        // Debug macOS builds grant only this dedicated shared test root to the
+        // sandboxed app and UI-test runner. Keeping relaunch stores here avoids
+        // both the user's Application Support data and either process's private
+        // container while remaining removable by the test teardown.
+        let appContainerTemporaryDirectory = URL(
+            fileURLWithPath: "/Users/Shared/NextPasteUITests",
+            isDirectory: true
+        ).standardizedFileURL
         let rootURL = appContainerTemporaryDirectory
             .appendingPathComponent("NextPaste-025-ui-store-\(UUID().uuidString)", isDirectory: true)
             .standardizedFileURL
-        try? FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         return OnDiskStore(
             rootURL: rootURL,
             storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
@@ -178,53 +346,31 @@ enum UITestAppLauncher {
         in app: XCUIApplication,
         timeout: TimeInterval = 5
     ) {
-        ensureForeground(app, timeout: timeout)
-
-        let readyButton = app.buttons[mainWindowReadyIdentifier]
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if readyButton.waitForExistence(timeout: 1) {
-                return
-            }
-
-            openMainWindowIfNeeded(in: app)
-            ensureForeground(app, timeout: 1)
-        }
-
-        _ = readyButton.waitForExistence(timeout: 1)
+        app.activate()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: timeout),
+            "NextPaste did not become foreground after launch (state: \(app.state.rawValue))"
+        )
+        XCTAssertTrue(
+            app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: timeout),
+            "NextPaste launched without its main window.\n\(app.debugDescription)"
+        )
     }
 
     static func openMainWindowIfNeeded(in app: XCUIApplication) {
-        ensureForeground(app)
-
-        if app.buttons[mainWindowReadyIdentifier].waitForExistence(timeout: 1) {
-            return
-        }
-
-        guard !app.windows.element(boundBy: 0).exists else { return }
-
-        let fileMenu = app.menuBars.menuBarItems["File"]
-        guard fileMenu.waitForExistence(timeout: 2) else { return }
-
-        fileMenu.click()
-        let newWindowItem = app.menuItems["New NextPaste Window"]
-        if newWindowItem.waitForExistence(timeout: 2) {
-            newWindowItem.click()
-        }
-
-        ensureForeground(app)
+        prepareMainWindow(in: app)
     }
 
-    private static func ensureForeground(
-        _ app: XCUIApplication,
-        timeout: TimeInterval = 5
-    ) {
-        if app.state != .runningForeground {
-            app.activate()
-            _ = app.wait(for: .runningForeground, timeout: timeout)
+#if os(macOS)
+    static func pasteboard(for app: XCUIApplication) -> NSPasteboard {
+        guard let name = app.launchEnvironment[UITestLaunchEnvironment.pasteboardNameKey],
+              name.isEmpty == false else {
+            XCTFail("XCUIApplication is missing its isolated pasteboard configuration")
+            return NSPasteboard(name: NSPasteboard.Name("pylot.NextPaste.UITests.invalid"))
         }
+        return NSPasteboard(name: NSPasteboard.Name(name))
     }
+#endif
 
     static func background(_: XCUIApplication) {
 #if os(macOS)
@@ -267,9 +413,20 @@ enum UITestAppLauncher {
             return URL(fileURLWithPath: path)
         }
 
-        let userHomeURL = URL(fileURLWithPath: "/Users/\(NSUserName())", isDirectory: true)
-        let appContainerTemporaryDirectory = userHomeURL
-            .appendingPathComponent("Library/Containers/pylot.NextPaste/Data/tmp", isDirectory: true)
+        if let environment = UITestLaunchEnvironmentRegistry.current() {
+            let traceDirectory = environment.rootURL.appendingPathComponent("Traces", isDirectory: true)
+            do {
+                try FileManager.default.createDirectory(at: traceDirectory, withIntermediateDirectories: true)
+            } catch {
+                XCTFail("Unable to create isolated UI-test trace directory: \(error)")
+            }
+            return traceDirectory.appendingPathComponent("row-actions-\(UUID().uuidString).jsonl")
+        }
+
+        let appContainerTemporaryDirectory = URL(
+            fileURLWithPath: "/Users/Shared/NextPasteUITests",
+            isDirectory: true
+        )
         return appContainerTemporaryDirectory
             .appendingPathComponent("nextpaste-row-action-trace-\(UUID().uuidString).jsonl")
     }

@@ -97,17 +97,22 @@ final class RelaunchStabilityUITests: UITestCase {
 #else
         let buildConfiguration = "Release"
 #endif
+#if os(macOS)
+        let hostName = Host.current().localizedName ?? "unknown"
+#else
+        let hostName = "Apple mobile destination"
+#endif
         let attachment = XCTAttachment(string: """
         Relaunch dataset: \(Fixture.textCount) text + \(Fixture.imageCount) image clips
         Image fixture byte size: \(imageByteCount) bytes
-        Host: \(Host.current().localizedName ?? "unknown")
+        Host: \(hostName)
         OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
         Build configuration: \(buildConfiguration)
         Baseline measurement: \(elapsed) seconds
         Elapsed launch-to-list-loaded: \(elapsed)
         """)
         attachment.name = "Relaunch launch budget measurement"
-        attachment.lifetime = .keepAlways
+        attachment.lifetime = XCTAttachment.Lifetime.keepAlways
         add(attachment)
 
         XCTAssertLessThanOrEqual(elapsed, 3.0)
@@ -301,14 +306,11 @@ final class RelaunchStabilityUITests: UITestCase {
     }
 
     private func traceContainsEvent(_ event: String, traceURL: URL, timeout: TimeInterval) -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        while Date() < deadline {
-            if let text = try? String(contentsOf: traceURL, encoding: .utf8),
-               text.contains("\"event\":\"\(event)\"") {
-                return true
+        UITestWait.until(timeout: timeout) {
+            guard let text = try? String(contentsOf: traceURL, encoding: .utf8) else {
+                return false
             }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+            return text.contains("\"event\":\"\(event)\"")
         }
-        return false
     }
 }

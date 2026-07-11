@@ -496,14 +496,10 @@ struct HistoryRobot {
         file: StaticString,
         line: UInt
     ) {
-        let deadline = Date().addingTimeInterval(timeout)
-
-        while Date() < deadline {
-            if markerValue(identifier: identifier) == expectedValue {
-                return
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+        let matched = UITestWait.until(timeout: timeout) {
+            markerValue(identifier: identifier) == expectedValue
         }
+        guard matched == false else { return }
 
         XCTAssertEqual(
             markerValue(identifier: identifier),

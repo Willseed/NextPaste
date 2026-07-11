@@ -8,6 +8,11 @@
 import XCTest
 
 final class ClipboardAutoCaptureUITests: UITestCase {
+    private enum MonitorMarker {
+        static let observationCount = "clipboard-monitor-observation-count"
+        static let lastDisposition = "clipboard-monitor-last-disposition"
+    }
+
     @MainActor
     func testAutoCaptureRefreshesHistoryWithoutManualSave() throws {
         let app = launchCaptureApp()
@@ -23,8 +28,12 @@ final class ClipboardAutoCaptureUITests: UITestCase {
         let clipboard = clipboardRobot(for: app)
 
         clipboard.background()
+        XCTAssertTrue(
+            app.wait(for: .runningBackground, timeout: UITestAssertions.defaultTimeout),
+            "Expected the app to enter the background before exercising clipboard capture"
+        )
         clipboard.setString(UITestFixtures.ClipboardCapture.backgrounded)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        clipboard.waitForCapturedText(UITestFixtures.ClipboardCapture.backgrounded, timeout: 2)
 
         clipboard.reactivateAndOpenMainWindow()
 
@@ -35,10 +44,24 @@ final class ClipboardAutoCaptureUITests: UITestCase {
     func testAutoCaptureContinuesWhileMinimized() throws {
         let app = launchCaptureApp()
         let clipboard = clipboardRobot(for: app)
+        let mainWindow = app.windows.firstMatch
+        let mainWindowReadyControl = app.buttons["new-clip-button"]
+
+        XCTAssertTrue(mainWindow.exists && mainWindow.isHittable)
+        XCTAssertTrue(mainWindowReadyControl.isHittable)
 
         clipboard.minimize()
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                app.state != .notRunning
+                    && mainWindow.isHittable == false
+                    && mainWindowReadyControl.isHittable == false
+            },
+            "Expected the main window to become non-interactive before mutating the clipboard"
+        )
         clipboard.setString(UITestFixtures.ClipboardCapture.minimized)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        clipboard.waitForCapturedText(UITestFixtures.ClipboardCapture.minimized, timeout: 2)
+        XCTAssertFalse(mainWindowReadyControl.isHittable)
 
         clipboard.reactivateAndOpenMainWindow()
 
@@ -52,14 +75,79 @@ final class ClipboardAutoCaptureUITests: UITestCase {
         let history = historyRobot(for: app)
 
         clipboard.capture(UITestFixtures.ClipboardCapture.distinctValue, timeout: 2)
+        history.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 0)
 
-        let initialRowCount = history.clipRowCount()
+        let beforeBlank = monitorObservationCount(in: app)
         clipboard.setString(UITestFixtures.ClipboardCapture.blankWhitespace)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        clipboard.setString(UITestFixtures.ClipboardCapture.distinctValue)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        XCTAssertEqual(clipboard.string(), UITestFixtures.ClipboardCapture.blankWhitespace)
+        waitForMonitorObservation(
+            after: beforeBlank,
+            disposition: "ignored-empty-or-whitespace",
+            in: app
+        )
+        history.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 0)
+        history.assertRowDoesNotExist(withText: UITestFixtures.ClipboardCapture.blankWhitespace)
 
-        XCTAssertEqual(history.clipRowCount(), initialRowCount)
+        let beforeDuplicate = monitorObservationCount(in: app)
+        clipboard.setString(UITestFixtures.ClipboardCapture.distinctValue)
+        XCTAssertEqual(clipboard.string(), UITestFixtures.ClipboardCapture.distinctValue)
+        waitForMonitorObservation(
+            after: beforeDuplicate,
+            disposition: "ignored-duplicate",
+            in: app
+        )
+        history.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 0)
+        history.assertRowExists(withText: UITestFixtures.ClipboardCapture.distinctValue)
+    }
+
+    @MainActor
+    private func monitorObservationCount(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Int {
+        let marker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[MonitorMarker.observationCount],
+            "Expected the content-free clipboard monitor observation probe",
+            file: file,
+            line: line
+        )
+        let rawValue = marker.value as? String ?? marker.label
+        let count = Int(rawValue)
+        XCTAssertNotNil(count, "Clipboard monitor observation count must be an integer", file: file, line: line)
+        return count ?? -1
+    }
+
+    @MainActor
+    private func waitForMonitorObservation(
+        after priorCount: Int,
+        disposition: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let countMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[MonitorMarker.observationCount],
+            "Expected the clipboard monitor count probe",
+            file: file,
+            line: line
+        )
+        let dispositionMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[MonitorMarker.lastDisposition],
+            "Expected the clipboard monitor disposition probe",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: 2) {
+                let rawCount = countMarker.value as? String ?? countMarker.label
+                let observedDisposition = dispositionMarker.value as? String ?? dispositionMarker.label
+                return (Int(rawCount) ?? -1) > priorCount && observedDisposition == disposition
+            },
+            "Expected the real clipboard monitor to report \(disposition) after count \(priorCount)",
+            file: file,
+            line: line
+        )
     }
 
     @MainActor
@@ -110,12 +198,11 @@ final class ClipboardAutoCaptureUITests: UITestCase {
         history.assertRowExists(withText: UITestFixtures.Search.matchingCapture)
 
         clipboard.setString(UITestFixtures.Search.nonMatchingCapture)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
-        history.assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingCapture)
-
         history.clearSearch()
             .assertRowExists(withText: UITestFixtures.Search.matchingCapture)
             .assertRowExists(withText: UITestFixtures.Search.nonMatchingCapture)
+        history.enterSearchQuery(UITestFixtures.Search.autoCaptureQuery)
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingCapture)
     }
 
     @MainActor
@@ -149,7 +236,9 @@ final class ClipboardAutoCaptureUITests: UITestCase {
         let matchingFirstVisibleRowIdentifier = history.firstVisibleClipRow().identifier
 
         clipboard.setString(UITestFixtures.Search.nonMatchingCapture)
-        RunLoop.current.run(until: Date().addingTimeInterval(1))
+        history.clearSearch()
+            .assertRowExists(withText: UITestFixtures.Search.nonMatchingCapture)
+        history.enterSearchQuery(UITestFixtures.Search.autoCaptureQuery)
 
         history
             .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingCapture)

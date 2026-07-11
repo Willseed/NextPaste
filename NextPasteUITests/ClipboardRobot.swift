@@ -23,8 +23,9 @@ struct ClipboardRobot {
         line: UInt = #line
     ) {
 #if os(macOS)
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(text, forType: .string)
+        let pasteboard = UITestAppLauncher.pasteboard(for: app)
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
 #else
         XCTFail("Clipboard string fixtures are only supported on macOS UI tests", file: file, line: line)
 #endif
@@ -35,7 +36,7 @@ struct ClipboardRobot {
         line: UInt = #line
     ) -> String? {
 #if os(macOS)
-        NSPasteboard.general.string(forType: .string)
+        UITestAppLauncher.pasteboard(for: app).string(forType: .string)
 #else
         XCTFail("Clipboard string assertions are only supported on macOS UI tests", file: file, line: line)
         return nil
@@ -80,9 +81,10 @@ struct ClipboardRobot {
             return
         }
 
-        NSPasteboard.general.clearContents()
+        let pasteboard = UITestAppLauncher.pasteboard(for: app)
+        pasteboard.clearContents()
         XCTAssertTrue(
-            NSPasteboard.general.setData(data, forType: NSPasteboard.PasteboardType(fixture.typeIdentifier)),
+            pasteboard.setData(data, forType: NSPasteboard.PasteboardType(fixture.typeIdentifier)),
             "Expected image fixture \(fixture.name) to be written to the pasteboard",
             file: file,
             line: line

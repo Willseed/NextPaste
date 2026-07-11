@@ -74,16 +74,15 @@ enum RowActionTraceLogParser {
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> [RowActionTraceRecord] {
-        let deadline = Date().addingTimeInterval(timeout)
         var lastRecords: [RowActionTraceRecord] = []
+        let matched = UITestWait.until(timeout: timeout) {
+            guard let records = try? parseIfPresent(at: url) else { return false }
+            lastRecords = records
+            return records.count >= minimumCount
+        }
+        if matched { return lastRecords }
 
-        repeat {
-            lastRecords = try parseIfPresent(at: url)
-            if lastRecords.count >= minimumCount {
-                return lastRecords
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-        } while Date() < deadline
+        lastRecords = try parseIfPresent(at: url)
 
         XCTFail(
             "Expected at least \(minimumCount) row-action trace records at \(url.path), found \(lastRecords.count)",
@@ -119,20 +118,19 @@ enum RowActionTraceLogParser {
     static func records(
         at url: URL,
         timeout: TimeInterval = 3,
-        until predicate: ([RowActionTraceRecord]) -> Bool,
+        until predicate: @escaping ([RowActionTraceRecord]) -> Bool,
         file: StaticString = #filePath,
         line: UInt = #line
     ) throws -> [RowActionTraceRecord] {
-        let deadline = Date().addingTimeInterval(timeout)
         var lastRecords: [RowActionTraceRecord] = []
+        let matched = UITestWait.until(timeout: timeout) {
+            guard let records = try? parseIfPresent(at: url) else { return false }
+            lastRecords = records
+            return predicate(records)
+        }
+        if matched { return lastRecords }
 
-        repeat {
-            lastRecords = try parseIfPresent(at: url)
-            if predicate(lastRecords) {
-                return lastRecords
-            }
-            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
-        } while Date() < deadline
+        lastRecords = try parseIfPresent(at: url)
 
         XCTFail(
             "Expected row-action trace condition to become true at \(url.path), found \(lastRecords.count) records",

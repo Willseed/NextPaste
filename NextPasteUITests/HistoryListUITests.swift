@@ -124,8 +124,14 @@ final class HistoryListUITests: UITestCase {
             .medium,
             .tall
         ] {
+            let priorFrame = app.windows.element(boundBy: 0).frame
             UITestAppLauncher.resizeMainWindow(in: app, to: preset)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            XCTAssertTrue(
+                UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                    app.windows.element(boundBy: 0).frame.size != priorFrame.size
+                },
+                "Expected the main window to reach the requested \(preset.rawValue) size"
+            )
 
             try history.createTextClip("Resize visibility clip \(preset.rawValue)")
             history
