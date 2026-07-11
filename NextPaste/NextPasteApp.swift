@@ -83,7 +83,10 @@ struct NextPasteApp: App {
         let defaults = UserDefaults.standard
 #endif
         let limitPref = HistoryLimitPreference(defaults: defaults)
-        let appearancePref = AppearancePreference(defaults: defaults)
+        let appearancePref = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: SystemApplicationAppearanceApplier()
+        )
         let languagePref = AppLanguagePreference(defaults: defaults)
 #if os(macOS)
         let globalShortcutPref = GlobalShortcutPreference(defaults: defaults)

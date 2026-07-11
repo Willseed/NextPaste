@@ -36,6 +36,8 @@ final class SettingsUITests: UITestCase {
         static let light = "Light"
         static let dark = "Dark"
         static let appearancePicker = "appearance-picker"
+        static let nativeAppearanceOverride = "native-appearance-override"
+        static let effectiveNativeAppearance = "effective-appearance-native"
         static let effectiveMainAppearance = "effective-appearance-main"
         static let effectiveSettingsAppearance = "effective-appearance-settings"
         static let historyLimitSlider = "history-limit-slider"
@@ -434,11 +436,14 @@ final class SettingsUITests: UITestCase {
         assertPopupValueEventually(appearancePicker, equals: Accessibility.dark)
         assertEffectiveAppearance("dark", in: app, settingsWindow: settingsWindow)
         assertCanvasValueEventually(Fixture.darkCanvas, in: app)
-        XCTAssertTrue(settingsWindow.isEnabled, "Settings must remain operable after appearance changes")
+        let updatedAppearancePicker = appearancePopup(in: settingsWindow)
+        XCTAssertTrue(updatedAppearancePicker.isEnabled, "Appearance picker must remain enabled after appearance changes")
+        XCTAssertTrue(updatedAppearancePicker.isHittable, "Appearance picker must remain operable after appearance changes")
 
         closeApp(app)
 
         let darkRelaunchApp = launchApp()
+        assertNativeApplicationAppearance("dark", in: darkRelaunchApp)
         assertEffectiveAppearanceValue(
             "dark",
             identifier: Accessibility.effectiveMainAppearance,
@@ -464,6 +469,7 @@ final class SettingsUITests: UITestCase {
         closeApp(darkRelaunchApp)
 
         let lightRelaunchApp = launchApp()
+        assertNativeApplicationAppearance("light", in: lightRelaunchApp)
         assertEffectiveAppearanceValue(
             "light",
             identifier: Accessibility.effectiveMainAppearance,
@@ -473,6 +479,45 @@ final class SettingsUITests: UITestCase {
         openSettingsTab(Accessibility.appearanceTab, in: lightRelaunchApp)
         assertEffectiveAppearance("light", in: lightRelaunchApp, settingsWindow: settingsWindow)
         XCTAssertEqual(popupValue(of: appearancePopup(in: settingsWindow)), Accessibility.light)
+    }
+
+    @MainActor
+    func testFollowSystemClearsNativeOverrideAndPersistsAcrossRelaunch() throws {
+        let app = launchApp()
+        var settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.appearanceTab, in: app)
+        let appearancePicker = appearancePopup(in: settingsWindow)
+
+        selectMenuOption(Accessibility.dark, from: appearancePicker, in: app)
+        assertPopupValueEventually(appearancePicker, equals: Accessibility.dark)
+        assertEffectiveAppearance("dark", in: app, settingsWindow: settingsWindow)
+
+        selectMenuOption(Accessibility.followSystem, from: appearancePicker, in: app)
+        assertPopupValueEventually(appearancePicker, equals: Accessibility.followSystem)
+        assertFollowSystemAppearance(in: app, settingsWindow: settingsWindow)
+
+        closeApp(app)
+
+        let relaunchedApp = launchApp()
+        assertEffectiveAppearanceValue(
+            "system",
+            identifier: Accessibility.nativeAppearanceOverride,
+            in: relaunchedApp
+        )
+        let relaunchedNativeAppearance = nativeEffectiveAppearance(in: relaunchedApp)
+        assertEffectiveAppearanceValue(
+            relaunchedNativeAppearance,
+            identifier: Accessibility.effectiveMainAppearance,
+            in: relaunchedApp
+        )
+
+        settingsWindow = openSettingsWindow(in: relaunchedApp)
+        openSettingsTab(Accessibility.appearanceTab, in: relaunchedApp)
+        assertPopupValueEventually(
+            appearancePopup(in: settingsWindow),
+            equals: Accessibility.followSystem
+        )
+        assertFollowSystemAppearance(in: relaunchedApp, settingsWindow: settingsWindow)
     }
 
     @MainActor
@@ -677,11 +722,41 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        UITestAssertions.assertExists(
-            app.buttons[identifier],
-            "Expected Settings tab with identifier \(identifier)",
+        let query = settingsTabQuery(identifier: identifier, in: app)
+        return UITestAssertions.assertExists(
+            query.firstMatch,
+            "Expected native Settings tab for logical identifier \(identifier)",
             file: file,
             line: line
+        )
+    }
+
+    private func settingsTabQuery(
+        identifier: String,
+        in app: XCUIApplication
+    ) -> XCUIElementQuery {
+        let localizedTitles: [String]
+        switch identifier {
+        case Accessibility.generalTab:
+            localizedTitles = ["General", "一般"]
+        case Accessibility.shortcutsTab:
+            localizedTitles = ["Shortcuts", "快速鍵"]
+        case Accessibility.appearanceTab:
+            localizedTitles = ["Appearance", "外觀"]
+        case Accessibility.historyTab:
+            localizedTitles = ["History", "歷史記錄"]
+        default:
+            XCTFail("Unknown Settings tab logical identifier \(identifier)")
+            localizedTitles = []
+        }
+
+        return app.buttons.matching(
+            NSPredicate(
+                format: "identifier == %@ OR label IN %@ OR title IN %@",
+                identifier,
+                localizedTitles,
+                localizedTitles
+            )
         )
     }
 
@@ -1043,7 +1118,7 @@ final class SettingsUITests: UITestCase {
                 line: line
             )
             XCTAssertEqual(
-                app.buttons.matching(identifier: identifier).count,
+                settingsTabQuery(identifier: identifier, in: app).count,
                 1,
                 "Expected one semantic Settings tab for \(identifier)",
                 file: file,
@@ -1112,6 +1187,12 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
+        assertNativeApplicationAppearance(
+            expectedValue,
+            in: app,
+            file: file,
+            line: line
+        )
         assertEffectiveAppearanceValue(
             expectedValue,
             identifier: Accessibility.effectiveMainAppearance,
@@ -1126,6 +1207,79 @@ final class SettingsUITests: UITestCase {
             file: file,
             line: line
         )
+    }
+
+    private func assertNativeApplicationAppearance(
+        _ expectedValue: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertEffectiveAppearanceValue(
+            expectedValue,
+            identifier: Accessibility.nativeAppearanceOverride,
+            in: app,
+            file: file,
+            line: line
+        )
+        assertEffectiveAppearanceValue(
+            expectedValue,
+            identifier: Accessibility.effectiveNativeAppearance,
+            in: app,
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertFollowSystemAppearance(
+        in app: XCUIApplication,
+        settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertEffectiveAppearanceValue(
+            "system",
+            identifier: Accessibility.nativeAppearanceOverride,
+            in: app,
+            file: file,
+            line: line
+        )
+        let nativeAppearance = nativeEffectiveAppearance(in: app, file: file, line: line)
+        assertEffectiveAppearanceValue(
+            nativeAppearance,
+            identifier: Accessibility.effectiveMainAppearance,
+            in: app,
+            file: file,
+            line: line
+        )
+        assertEffectiveAppearanceValue(
+            nativeAppearance,
+            identifier: Accessibility.effectiveSettingsAppearance,
+            in: settingsWindow,
+            file: file,
+            line: line
+        )
+    }
+
+    private func nativeEffectiveAppearance(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> String {
+        let probe = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[Accessibility.effectiveNativeAppearance],
+            "Expected native effective appearance probe",
+            file: file,
+            line: line
+        )
+        let value = probe.value as? String ?? ""
+        XCTAssertTrue(
+            value == "light" || value == "dark",
+            "Expected native effective appearance to be light or dark, got \(value)",
+            file: file,
+            line: line
+        )
+        return value
     }
 
     private func assertEffectiveAppearanceValue(

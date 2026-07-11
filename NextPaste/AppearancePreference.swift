@@ -53,6 +53,38 @@ enum AppearanceMode: String, Codable, CaseIterable, Sendable {
     #endif
 }
 
+/// Applies an appearance preference at the native application boundary.
+/// Keeping this boundary injectable prevents pure preference tests from
+/// mutating the process-wide `NSApplication` singleton.
+@MainActor
+protocol ApplicationAppearanceApplying {
+    func apply(_ mode: AppearanceMode)
+}
+
+/// The production adapter for the platform application appearance.
+@MainActor
+struct SystemApplicationAppearanceApplier: ApplicationAppearanceApplying {
+    #if os(macOS)
+    private let application: NSApplication
+
+    init() {
+        self.application = NSApplication.shared
+    }
+
+    init(application: NSApplication) {
+        self.application = application
+    }
+    #else
+    init() {}
+    #endif
+
+    func apply(_ mode: AppearanceMode) {
+        #if os(macOS)
+        application.appearance = mode.nsAppearance
+        #endif
+    }
+}
+
 /// T022: typed store for the appearance preference. `@MainActor`.
 @MainActor
 final class AppearancePreference: ObservableObject {
@@ -61,26 +93,27 @@ final class AppearancePreference: ObservableObject {
     @Published private(set) var mode: AppearanceMode
 
     private let defaults: UserDefaults
+    private let applicationAppearanceApplier: any ApplicationAppearanceApplying
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        applicationAppearanceApplier: any ApplicationAppearanceApplying
+    ) {
+        let persistedMode = Self.load(from: defaults) ?? .system
         self.defaults = defaults
-        self.mode = Self.load(from: defaults) ?? .system
+        self.applicationAppearanceApplier = applicationAppearanceApplier
+        self.mode = persistedMode
+        applicationAppearanceApplier.apply(persistedMode)
     }
 
     func persist(_ mode: AppearanceMode) {
-        self.mode = mode
         defaults.set(mode.rawValue, forKey: Self.storageKey)
-        applyToApplication(mode)
+        applicationAppearanceApplier.apply(mode)
+        self.mode = mode
     }
 
     private static func load(from defaults: UserDefaults) -> AppearanceMode? {
         guard let raw = defaults.string(forKey: storageKey) else { return nil }
         return AppearanceMode(rawValue: raw)
-    }
-
-    private func applyToApplication(_ mode: AppearanceMode) {
-        #if os(macOS)
-        NSApplication.shared.appearance = mode.nsAppearance
-        #endif
     }
 }

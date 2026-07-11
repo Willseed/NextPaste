@@ -8,7 +8,19 @@
 import Testing
 import Foundation
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 @testable import NextPaste
+
+@MainActor
+private final class RecordingApplicationAppearanceApplier: ApplicationAppearanceApplying {
+    private(set) var appliedModes: [AppearanceMode] = []
+
+    func apply(_ mode: AppearanceMode) {
+        appliedModes.append(mode)
+    }
+}
 
 @MainActor
 struct AppearancePreferenceTests {
@@ -19,8 +31,14 @@ struct AppearancePreferenceTests {
     }
 
     @Test func defaultIsSystem() {
-        let pref = AppearancePreference(defaults: makeDefaults())
+        let applier = RecordingApplicationAppearanceApplier()
+        let pref = AppearancePreference(
+            defaults: makeDefaults(),
+            applicationAppearanceApplier: applier
+        )
+
         #expect(pref.mode == .system)
+        #expect(applier.appliedModes == [.system])
     }
 
     @Test func systemRoundTripsThroughCodable() throws {
@@ -61,11 +79,20 @@ struct AppearancePreferenceTests {
         let defaults = UserDefaults(suiteName: suite)!
         defaults.removePersistentDomain(forName: suite)
 
-        let pref1 = AppearancePreference(defaults: defaults)
+        let firstApplier = RecordingApplicationAppearanceApplier()
+        let pref1 = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: firstApplier
+        )
         pref1.persist(.dark)
 
-        let pref2 = AppearancePreference(defaults: defaults)
+        let relaunchedApplier = RecordingApplicationAppearanceApplier()
+        let pref2 = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: relaunchedApplier
+        )
         #expect(pref2.mode == .dark)
+        #expect(relaunchedApplier.appliedModes == [.dark])
 
         defaults.removePersistentDomain(forName: suite)
     }
@@ -73,9 +100,34 @@ struct AppearancePreferenceTests {
     @Test(arguments: AppearanceMode.allCases)
     func everyAppearanceModePersistsAcrossInstances(_ mode: AppearanceMode) {
         let defaults = makeDefaults()
-        AppearancePreference(defaults: defaults).persist(mode)
+        let initialApplier = RecordingApplicationAppearanceApplier()
+        AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: initialApplier
+        ).persist(mode)
 
-        #expect(AppearancePreference(defaults: defaults).mode == mode)
+        let relaunchedApplier = RecordingApplicationAppearanceApplier()
+        let relaunchedPreference = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: relaunchedApplier
+        )
+
+        #expect(relaunchedPreference.mode == mode)
+        #expect(relaunchedApplier.appliedModes == [mode])
+    }
+
+    @Test(arguments: AppearanceMode.allCases)
+    func everyAppearanceModeAppliesImmediatelyThroughInjectedBoundary(_ mode: AppearanceMode) {
+        let applier = RecordingApplicationAppearanceApplier()
+        let preference = AppearancePreference(
+            defaults: makeDefaults(),
+            applicationAppearanceApplier: applier
+        )
+
+        preference.persist(mode)
+
+        #expect(preference.mode == mode)
+        #expect(applier.appliedModes == [.system, mode])
     }
 
     #if os(macOS)
@@ -90,9 +142,51 @@ struct AppearancePreferenceTests {
         let defaults = makeDefaults()
         defaults.set("unknown-appearance", forKey: AppearancePreference.storageKey)
 
-        let preference = AppearancePreference(defaults: defaults)
+        let applier = RecordingApplicationAppearanceApplier()
+        let preference = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: applier
+        )
 
         #expect(preference.mode == .system)
         #expect(preference.mode.preferredColorScheme == nil)
+        #expect(applier.appliedModes == [.system])
     }
 }
+
+#if os(macOS)
+@Suite("AppKit appearance integration", .serialized)
+@MainActor
+struct AppKitAppearanceIntegrationTests {
+    @Test("persisted and immediate modes reach the real NSApplication appearance")
+    func persistedAndImmediateModesReachRealApplicationAppearance() {
+        let application = NSApplication.shared
+        let originalAppearance = application.appearance
+        let suite = "nextpaste-appkit-appearance-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defaults.removePersistentDomain(forName: suite)
+        defaults.set(AppearanceMode.dark.rawValue, forKey: AppearancePreference.storageKey)
+
+        defer {
+            application.appearance = originalAppearance
+            defaults.removePersistentDomain(forName: suite)
+        }
+
+        let preference = AppearancePreference(
+            defaults: defaults,
+            applicationAppearanceApplier: SystemApplicationAppearanceApplier(application: application)
+        )
+
+        #expect(preference.mode == .dark)
+        #expect(application.appearance?.name == .darkAqua)
+        #expect(application.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua)
+
+        preference.persist(.light)
+        #expect(application.appearance?.name == .aqua)
+        #expect(application.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .aqua)
+
+        preference.persist(.system)
+        #expect(application.appearance == nil)
+    }
+}
+#endif

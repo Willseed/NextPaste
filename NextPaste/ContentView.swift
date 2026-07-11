@@ -37,11 +37,23 @@ struct ContentView: View {
 #if DEBUG && os(macOS)
         .overlay(alignment: .bottomLeading) {
             if DebugUITestLaunchEnvironment() != nil {
-                DebugUITestAccessibilityProbe(
-                    identifier: "effective-appearance-main",
-                    label: "Main window effective appearance",
-                    value: colorScheme == .dark ? "dark" : "light"
-                )
+                VStack(alignment: .leading, spacing: 0) {
+                    DebugUITestAccessibilityProbe(
+                        identifier: "native-appearance-override",
+                        label: "Native application appearance override",
+                        value: DebugUITestApplicationAppearanceState.overrideValue
+                    )
+                    DebugUITestAccessibilityProbe(
+                        identifier: "effective-appearance-native",
+                        label: "Native application effective appearance",
+                        value: DebugUITestApplicationAppearanceState.effectiveValue
+                    )
+                    DebugUITestAccessibilityProbe(
+                        identifier: "effective-appearance-main",
+                        label: "Main window effective appearance",
+                        value: colorScheme == .dark ? "dark" : "light"
+                    )
+                }
             }
         }
 #endif

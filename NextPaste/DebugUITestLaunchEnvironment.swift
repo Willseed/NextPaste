@@ -280,6 +280,27 @@ struct DebugUITestAccessibilityProbe: View {
     }
 }
 
+/// Read-only visibility into the real AppKit application appearance used by
+/// deterministic UI assertions. Production behavior is never routed through
+/// this probe.
+@MainActor
+enum DebugUITestApplicationAppearanceState {
+    static var overrideValue: String {
+        guard let appearance = NSApplication.shared.appearance else {
+            return "system"
+        }
+        return effectiveValue(for: appearance)
+    }
+
+    static var effectiveValue: String {
+        effectiveValue(for: NSApplication.shared.effectiveAppearance)
+    }
+
+    private static func effectiveValue(for appearance: NSAppearance) -> String {
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? "dark" : "light"
+    }
+}
+
 /// Content-free observation of the real clipboard monitor poll path. UI tests
 /// use this only to prove that an ignored payload was actually consumed before
 /// writing the next fixture; clipboard text and image metadata are never kept.
