@@ -380,6 +380,41 @@ enum UITestAppLauncher {
     }
 
     static func openMainWindowIfNeeded(in app: XCUIApplication) {
+        app.activate()
+        let readyButton = app.buttons[mainWindowReadyIdentifier]
+        if readyButton.exists && readyButton.isHittable {
+            return
+        }
+
+#if os(macOS)
+        // Activating a minimized macOS application does not deminiaturize its
+        // window. Locate the native Window menu by the public
+        // `makeKeyAndOrderFront:` action exposed through Accessibility, which
+        // avoids depending on the host's localized "Window" title.
+        let makeKeyAndOrderFrontIdentifier = "makeKeyAndOrderFront:"
+        let windowMenu = app.menuBars.menuBarItems
+            .containing(.menuItem, identifier: makeKeyAndOrderFrontIdentifier)
+            .firstMatch
+        if windowMenu.waitForExistence(timeout: 2) {
+            windowMenu.click()
+            let mainWindowItem = app.menuItems
+                .matching(identifier: makeKeyAndOrderFrontIdentifier)
+                .firstMatch
+            if mainWindowItem.waitForExistence(timeout: 2), mainWindowItem.isHittable {
+                mainWindowItem.click()
+            }
+        }
+
+        // A WindowGroup always exposes the standard New Window command. If a
+        // host does not expose the existing window menu item to XCUITest, open
+        // a usable main window through that native keyboard command.
+        if UITestWait.until(timeout: 2, condition: {
+            readyButton.exists && readyButton.isHittable
+        }) == false {
+            app.typeKey("n", modifierFlags: [.command])
+        }
+#endif
+
         prepareMainWindow(in: app)
     }
 
@@ -404,17 +439,16 @@ enum UITestAppLauncher {
     static func minimize(_ app: XCUIApplication) {
 #if os(macOS)
         app.activate()
-        let windowMenu = app.menuBars.menuBarItems["Window"]
-        if windowMenu.waitForExistence(timeout: 2) {
-            windowMenu.click()
-            let minimizeItem = app.menuItems["Minimize"]
-            if minimizeItem.waitForExistence(timeout: 2) {
-                minimizeItem.click()
-                return
-            }
-        }
-
+        let readyButton = app.buttons[mainWindowReadyIdentifier]
         app.typeKey("m", modifierFlags: [.command])
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                app.state != .notRunning
+                    && readyButton.exists
+                    && readyButton.isHittable == false
+            },
+            "Expected Command-M to make the main window non-interactive"
+        )
 #endif
     }
 
