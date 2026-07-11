@@ -129,11 +129,11 @@ struct GlobalShortcutValidatorTests {
             modifiers: [.command]
         )
         let error = GlobalShortcutValidator.validate(shortcut)
-        guard case .conflictsWithMenuCommand(let name) = error else {
+        guard case .conflictsWithMenuCommand(let command) = error else {
             Issue.record("Expected conflictsWithMenuCommand, got \(String(describing: error))")
             return
         }
-        #expect(name == "New Clip")
+        #expect(command == .newClip)
     }
 
     @Test func commandQConflictsWithQuitMenu() {
@@ -143,11 +143,11 @@ struct GlobalShortcutValidatorTests {
             modifiers: [.command]
         )
         let error = GlobalShortcutValidator.validate(shortcut)
-        guard case .conflictsWithMenuCommand(let name) = error else {
+        guard case .conflictsWithMenuCommand(let command) = error else {
             Issue.record("Expected conflictsWithMenuCommand")
             return
         }
-        #expect(name == "Quit")
+        #expect(command == .quit)
     }
 
     @Test func optionCommandDeleteConflictsWithClearUnpinnedMenu() {
@@ -157,11 +157,68 @@ struct GlobalShortcutValidatorTests {
             modifiers: [.command, .option]
         )
         let error = GlobalShortcutValidator.validate(shortcut)
-        guard case .conflictsWithMenuCommand(let name) = error else {
+        guard case .conflictsWithMenuCommand(let command) = error else {
             Issue.record("Expected conflictsWithMenuCommand")
             return
         }
-        #expect(name == "Clear Unpinned History")
+        #expect(command == .clearUnpinnedHistory)
+    }
+
+    @Test func validationMessagesResolveFromExplicitInAppLocale() {
+        let bundle = Bundle(for: ClipItem.self)
+
+        #expect(
+            GlobalShortcutValidationError.noModifier.localizedDescription(
+                language: .englishUnitedStates,
+                bundle: bundle
+            ) == "At least one modifier is required."
+        )
+        #expect(
+            GlobalShortcutValidationError.noModifier.localizedDescription(
+                language: .traditionalChineseTaiwan,
+                bundle: bundle
+            ) == "至少需要一個修飾鍵。"
+        )
+    }
+
+    @Test func reservedCommandMessagesLocalizeTemplateAndCommandFromSameExplicitLocale() {
+        let bundle = Bundle(for: ClipItem.self)
+        let error = GlobalShortcutValidationError.conflictsWithMenuCommand(.newClip)
+
+        #expect(
+            error.localizedDescription(
+                language: .englishUnitedStates,
+                bundle: bundle
+            ) == "This shortcut conflicts with the New Clip menu command."
+        )
+        #expect(
+            error.localizedDescription(
+                language: .traditionalChineseTaiwan,
+                bundle: bundle
+            ) == "此快速鍵與「新增剪貼簿項目」選單指令衝突。"
+        )
+    }
+
+    @Test func shortcutDisplayResolvesSpecialKeyFromExplicitInAppLocale() {
+        let bundle = Bundle(for: ClipItem.self)
+        let shortcut = GlobalShortcut(
+            keyCode: 0x31,
+            keyCharacter: "space",
+            modifiers: [.command, .shift]
+        )
+
+        #expect(
+            shortcut.displayString(
+                language: .englishUnitedStates,
+                bundle: bundle
+            ) == "Command+Shift+Space"
+        )
+        #expect(
+            shortcut.displayString(
+                language: .traditionalChineseTaiwan,
+                bundle: bundle
+            ) == "Command+Shift+空白鍵"
+        )
     }
 
     // MARK: Codable

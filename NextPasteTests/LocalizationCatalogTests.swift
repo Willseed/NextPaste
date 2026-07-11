@@ -8,30 +8,84 @@
 
 import Foundation
 import Testing
+@testable import NextPaste
 
 struct LocalizationCatalogTests {
     private let featureBilingualKeys: Set<String> = [
         "1–1000",
+        "A single key without modifiers cannot be a shortcut.",
+        "All Clips",
         "Appearance",
         "App Language",
+        "At least one modifier is required.",
+        "Cancel Recording",
         "Changes apply immediately throughout NextPaste.",
+        "Choose a different filter.",
+        "Clear All History",
+        "Clear Shortcut",
+        "Clear Unpinned History",
+        "Close",
+        "Command",
+        "Command-, is used for Settings.",
+        "Command-F is used for search.",
+        "Control",
+        "Copy",
         "Copy Image Text",
+        "Copy Original Image",
+        "Current global shortcut",
         "Dark",
+        "Delete",
+        "Disable the global keyboard shortcut",
         "English (United States)",
-        "Image Text Recognition Failed",
+        "Escape",
+        "Filter",
+        "Filter Clipboard History",
+        "Find…",
         "Follow System",
+        "General",
+        "Global Shortcut",
+        "History",
         "History limit could not be applied. Try again.",
+        "Image Clips",
+        "Image Text Recognition Failed",
         "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
         "Language",
         "Light",
+        "Minimize",
+        "New Clip",
+        "No clips match this filter",
         "No Text Found in Image",
+        "None",
+        "Option",
+        "Option alone cannot be a shortcut.",
+        "Pin",
+        "Pinned",
+        "Pinned Clips",
+        "Press a key combination…",
+        "Quit",
+        "Record Shortcut",
+        "Record a new global keyboard shortcut",
         "Recognizing Image Text",
         "Recognizing Image Text…",
+        "Reset to Default",
+        "Restore the default global keyboard shortcut",
+        "Return",
         "Retry Copy Image Text",
+        "Settings",
+        "Shift",
+        "Shortcut is already in use.",
+        "Shortcuts",
+        "Space",
         "Storage Limit",
         "Storage Limit Range",
         "Storage Limit Value",
-        "Traditional Chinese (Taiwan)"
+        "Tab",
+        "Text Clips",
+        "This shortcut conflicts with the %@ menu command.",
+        "Traditional Chinese (Taiwan)",
+        "Unpin",
+        "Unpinned",
+        "Unpinned Clips"
     ]
 
     private struct Catalog: Decodable {
@@ -104,6 +158,7 @@ struct LocalizationCatalogTests {
             "Cancel",
             "Cancel Recording",
             "Changes apply immediately throughout NextPaste.",
+            "Choose a different filter.",
             "Clear %lld Unpinned Item",
             "Clear %lld Unpinned Items",
             "Clear All History",
@@ -121,7 +176,9 @@ struct LocalizationCatalogTests {
             "Command-F is used for search.",
             "Command-, is used for Settings.",
             "Control",
+            "Copy",
             "Copy Image Text",
+            "Copy Original Image",
             "Current global shortcut",
             "Custom",
             "Custom (%lld)",
@@ -155,10 +212,13 @@ struct LocalizationCatalogTests {
             "Minimize",
             "New Clip",
             "New Text Clip",
+            "No clips match this filter",
             "None",
             "No Text Found in Image",
             "Option",
             "Option alone cannot be a shortcut.",
+            "Pin",
+            "Pinned",
             "Press a key combination…",
             "Quit",
             "Record Shortcut",
@@ -197,6 +257,8 @@ struct LocalizationCatalogTests {
             "This will permanently delete all %lld items, including %lld pinned item. This action cannot be undone.",
             "This will permanently delete all %lld items, including %lld pinned items. This action cannot be undone.",
             "Unlimited",
+            "Unpin",
+            "Unpinned",
             "Visual placeholder",
             "A single key without modifiers cannot be a shortcut."
         ]
@@ -226,8 +288,8 @@ struct LocalizationCatalogTests {
             // translatable strings; the completeness contract applies only to
             // entries that actually declare localizations.
             // Existing English-only entries intentionally use the String Catalog
-            // fallback in zh-Hant. Every string introduced by the language/storage
-            // settings work is explicitly bilingual.
+            // fallback in zh-Hant. Settings, shortcut, and branch-owned image-action
+            // strings are explicitly bilingual.
             let entriesToValidate = locale == "en"
                 ? catalog.strings
                 : catalog.strings.filter { featureBilingualKeys.contains($0.key) }
@@ -268,5 +330,39 @@ struct LocalizationCatalogTests {
                 }
             }
         }
+    }
+
+    @Test func compiledAppBundleContainsEveryFeatureStringForBothLocales() throws {
+        let appBundle = Bundle(for: ClipItem.self)
+        let catalog = try loadCatalog()
+
+        for locale in ["en", "zh-Hant"] {
+            guard let localeDirectoryURL = appBundle.url(forResource: locale, withExtension: "lproj"),
+                  let localizedBundle = Bundle(url: localeDirectoryURL) else {
+                Issue.record("Built app bundle has no \(locale).lproj localization resource")
+                continue
+            }
+
+            for key in featureBilingualKeys {
+                let expected = try #require(catalog.strings[key]?.localizations?[locale]?.stringUnit?.value)
+                let compiled = localizedBundle.localizedString(
+                    forKey: key,
+                    value: "__NEXTPASTE_MISSING_LOCALIZATION__",
+                    table: "Localizable"
+                )
+                #expect(compiled == expected)
+            }
+        }
+    }
+
+    @Test func unknownLocaleFallsBackToANonemptyLocalizedValue() {
+        let value = String(
+            localized: "Copy Original Image",
+            defaultValue: "Copy Original Image",
+            bundle: Bundle(for: ClipItem.self),
+            locale: Locale(identifier: "zz-ZZ")
+        )
+
+        #expect(value.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty == false)
     }
 }

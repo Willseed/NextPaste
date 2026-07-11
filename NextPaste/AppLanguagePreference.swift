@@ -37,6 +37,22 @@ enum AppLanguage: String, Codable, CaseIterable, Sendable {
         Locale(identifier: localeIdentifier)
     }
 
+    /// Returns a bundle rooted at this language's concrete `.lproj` directory.
+    /// Foundation's `String(localized:bundle:locale:)` uses `locale` for value
+    /// formatting but a root bundle can still follow the process's preferred
+    /// localization. Selecting the localized sub-bundle makes the in-app
+    /// preference, rather than the process language, authoritative.
+    func localizationBundle(in bundle: Bundle = .main) -> Bundle {
+        let candidates = [localizationIdentifier, Self.defaultLanguage.localizationIdentifier]
+        for identifier in candidates {
+            if let url = bundle.url(forResource: identifier, withExtension: "lproj"),
+               let localizedBundle = Bundle(url: url) {
+                return localizedBundle
+            }
+        }
+        return bundle
+    }
+
     /// A SwiftUI localization key deliberately resolved by the receiving
     /// view's environment locale, so changing the in-app language updates the
     /// picker labels instead of capturing the process locale at construction.

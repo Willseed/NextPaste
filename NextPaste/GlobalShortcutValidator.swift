@@ -10,34 +10,112 @@
 
 import Foundation
 
+nonisolated enum GlobalShortcutReservedMenuCommand: String, Equatable, Sendable {
+    case find
+    case settings
+    case newClip
+    case quit
+    case close
+    case minimize
+    case clearUnpinnedHistory
+    case clearAllHistory
+
+    func localizedName(
+        locale: Locale,
+        bundle: Bundle = .main
+    ) -> String {
+        switch self {
+        case .find:
+            String(localized: "Find…", bundle: bundle, locale: locale)
+        case .settings:
+            String(localized: "Settings", bundle: bundle, locale: locale)
+        case .newClip:
+            String(localized: "New Clip", bundle: bundle, locale: locale)
+        case .quit:
+            String(localized: "Quit", bundle: bundle, locale: locale)
+        case .close:
+            String(localized: "Close", bundle: bundle, locale: locale)
+        case .minimize:
+            String(localized: "Minimize", bundle: bundle, locale: locale)
+        case .clearUnpinnedHistory:
+            String(localized: "Clear Unpinned History", bundle: bundle, locale: locale)
+        case .clearAllHistory:
+            String(localized: "Clear All History", bundle: bundle, locale: locale)
+        }
+    }
+}
+
 enum GlobalShortcutValidationError: Error, Equatable, Sendable {
     case noModifier
     case pureOptionOnly
     case conflictsWithCommandF
     case conflictsWithCommandComma
-    case conflictsWithMenuCommand(String)
+    case conflictsWithMenuCommand(GlobalShortcutReservedMenuCommand)
     case forbiddenSingleKey
 
-    /// User-facing, localizable message. Uses `String(localized:)` so the String
-    /// Catalog manages translations.
-    var localizedDescription: String {
+    /// User-facing message resolved against the selected in-app locale. Keeping
+    /// the semantic error independent from the process locale lets a visible
+    /// validation result update immediately when App Language changes.
+    func localizedDescription(
+        locale: Locale,
+        bundle: Bundle = .main
+    ) -> String {
         switch self {
         case .noModifier:
-            return String(localized: "At least one modifier is required.")
+            return String(
+                localized: "At least one modifier is required.",
+                bundle: bundle,
+                locale: locale
+            )
         case .pureOptionOnly:
-            return String(localized: "Option alone cannot be a shortcut.")
+            return String(
+                localized: "Option alone cannot be a shortcut.",
+                bundle: bundle,
+                locale: locale
+            )
         case .conflictsWithCommandF:
-            return String(localized: "Command-F is used for search.")
+            return String(
+                localized: "Command-F is used for search.",
+                bundle: bundle,
+                locale: locale
+            )
         case .conflictsWithCommandComma:
-            return String(localized: "Command-, is used for Settings.")
-        case .conflictsWithMenuCommand(let name):
-            return String.localizedStringWithFormat(
-                String(localized: "This shortcut conflicts with the %@ menu command."),
-                name
+            return String(
+                localized: "Command-, is used for Settings.",
+                bundle: bundle,
+                locale: locale
+            )
+        case .conflictsWithMenuCommand(let command):
+            return String(
+                format: String(
+                    localized: "This shortcut conflicts with the %@ menu command.",
+                    bundle: bundle,
+                    locale: locale
+                ),
+                locale: locale,
+                command.localizedName(locale: locale, bundle: bundle)
             )
         case .forbiddenSingleKey:
-            return String(localized: "A single key without modifiers cannot be a shortcut.")
+            return String(
+                localized: "A single key without modifiers cannot be a shortcut.",
+                bundle: bundle,
+                locale: locale
+            )
         }
+    }
+
+    func localizedDescription(
+        language: AppLanguage,
+        bundle: Bundle = .main
+    ) -> String {
+        localizedDescription(
+            locale: language.locale,
+            bundle: language.localizationBundle(in: bundle)
+        )
+    }
+
+    var localizedDescription: String {
+        localizedDescription(locale: .current)
     }
 }
 
@@ -65,15 +143,15 @@ enum GlobalShortcutValidator {
 
     /// Reserved menu command display names for error messages, keyed by a
     /// normalized signature (keyCharacter + sorted modifiers).
-    private static let reservedMenuCommandNames: [String: String] = [
-        "f|command": String(localized: "Find…"),
-        ",|command": String(localized: "Settings"),
-        "n|command": String(localized: "New Clip"),
-        "q|command": String(localized: "Quit"),
-        "w|command": String(localized: "Close"),
-        "m|command": String(localized: "Minimize"),
-        "delete|command+option": String(localized: "Clear Unpinned History"),
-        "delete|command+option+shift": String(localized: "Clear All History"),
+    private static let reservedMenuCommands: [String: GlobalShortcutReservedMenuCommand] = [
+        "f|command": .find,
+        ",|command": .settings,
+        "n|command": .newClip,
+        "q|command": .quit,
+        "w|command": .close,
+        "m|command": .minimize,
+        "delete|command+option": .clearUnpinnedHistory,
+        "delete|command+option+shift": .clearAllHistory,
     ]
 
     /// Validate a candidate shortcut. Returns `nil` if valid, otherwise the
@@ -100,8 +178,8 @@ enum GlobalShortcutValidator {
         }
 
         // Check against all reserved menu shortcuts.
-        if let menuName = conflictingMenuCommandName(for: shortcut) {
-            return .conflictsWithMenuCommand(menuName)
+        if let menuCommand = conflictingMenuCommand(for: shortcut) {
+            return .conflictsWithMenuCommand(menuCommand)
         }
 
         return nil
@@ -111,9 +189,11 @@ enum GlobalShortcutValidator {
         shortcut.modifiers == [.command] && shortcut.keyCharacter == key
     }
 
-    private static func conflictingMenuCommandName(for shortcut: GlobalShortcut) -> String? {
+    private static func conflictingMenuCommand(
+        for shortcut: GlobalShortcut
+    ) -> GlobalShortcutReservedMenuCommand? {
         let sortedModifiers = shortcut.modifiers.map { $0.rawValue }.sorted().joined(separator: "+")
         let signature = "\(shortcut.keyCharacter)|\(sortedModifiers)"
-        return reservedMenuCommandNames[signature]
+        return reservedMenuCommands[signature]
     }
 }

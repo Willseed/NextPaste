@@ -26,6 +26,12 @@ struct AppLanguagePreferenceTests {
         #expect(AppLanguage.traditionalChineseTaiwan.localizationIdentifier == "zh-Hant")
     }
 
+    @Test(arguments: AppLanguage.allCases)
+    func supportedLanguagesRoundTripThroughCodable(_ language: AppLanguage) throws {
+        let encoded = try JSONEncoder().encode(language)
+        #expect(try JSONDecoder().decode(AppLanguage.self, from: encoded) == language)
+    }
+
     @Test func missingValueDefaultsToEnglishAndRepairsStorage() {
         let defaults = makeDefaults()
         let preference = AppLanguagePreference(defaults: defaults)
@@ -48,6 +54,16 @@ struct AppLanguagePreferenceTests {
     @Test func unknownLegacyValueFallsBackAndRepairsStorage() {
         let defaults = makeDefaults()
         defaults.set("unknown-language", forKey: AppLanguagePreference.storageKey)
+
+        let preference = AppLanguagePreference(defaults: defaults)
+
+        #expect(preference.language == .englishUnitedStates)
+        #expect(defaults.string(forKey: AppLanguagePreference.storageKey) == "en_us")
+    }
+
+    @Test func nonStringPersistedValueFallsBackWithoutCrashingAndRepairsStorage() {
+        let defaults = makeDefaults()
+        defaults.set(Data([0xFF, 0x00]), forKey: AppLanguagePreference.storageKey)
 
         let preference = AppLanguagePreference(defaults: defaults)
 

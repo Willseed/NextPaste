@@ -21,12 +21,19 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
         case control
         case shift
 
-        var displayName: String {
+        func displayName(
+            locale: Locale,
+            bundle: Bundle = .main
+        ) -> String {
             switch self {
-            case .command: return String(localized: "Command")
-            case .option: return String(localized: "Option")
-            case .control: return String(localized: "Control")
-            case .shift: return String(localized: "Shift")
+            case .command:
+                return String(localized: "Command", bundle: bundle, locale: locale)
+            case .option:
+                return String(localized: "Option", bundle: bundle, locale: locale)
+            case .control:
+                return String(localized: "Control", bundle: bundle, locale: locale)
+            case .shift:
+                return String(localized: "Shift", bundle: bundle, locale: locale)
             }
         }
 
@@ -59,23 +66,26 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
         self.modifiers = modifiers
     }
 
-    var displayString: String {
+    func displayString(
+        locale: Locale,
+        bundle: Bundle = .main
+    ) -> String {
         let modifierNames = Modifier.allCases
             .filter { modifiers.contains($0) }
-            .map { $0.displayName }
+            .map { $0.displayName(locale: locale, bundle: bundle) }
             .joined(separator: "+")
         let displayKey: String
         switch keyCharacter {
         case "space":
-            displayKey = String(localized: "Space")
+            displayKey = String(localized: "Space", bundle: bundle, locale: locale)
         case "return":
-            displayKey = String(localized: "Return")
+            displayKey = String(localized: "Return", bundle: bundle, locale: locale)
         case "delete":
-            displayKey = String(localized: "Delete")
+            displayKey = String(localized: "Delete", bundle: bundle, locale: locale)
         case "escape":
-            displayKey = String(localized: "Escape")
+            displayKey = String(localized: "Escape", bundle: bundle, locale: locale)
         case "tab":
-            displayKey = String(localized: "Tab")
+            displayKey = String(localized: "Tab", bundle: bundle, locale: locale)
         default:
             displayKey = keyCharacter.uppercased()
         }
@@ -83,5 +93,19 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
             return displayKey
         }
         return "\(modifierNames)+\(displayKey)"
+    }
+
+    func displayString(
+        language: AppLanguage,
+        bundle: Bundle = .main
+    ) -> String {
+        displayString(
+            locale: language.locale,
+            bundle: language.localizationBundle(in: bundle)
+        )
+    }
+
+    var displayString: String {
+        displayString(locale: .current)
     }
 }
