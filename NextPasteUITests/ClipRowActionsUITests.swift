@@ -488,7 +488,7 @@ final class ClipRowActionsUITests: UITestCase {
         history.assertClipRowIdentifierExists()
 
         _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.recentlyActiveDismissed)
-        row.dismissRevealedSwipeActions()
+        row.dismissRevealedSwipeActions(on: app.staticTexts[UITestFixtures.RowActions.recentlyActiveDismissed])
 
         let pinButton = row.revealPinActionWithRightSwipe(for: UITestFixtures.RowActions.thirdPinOlder)
         pinButton.tap()
@@ -1159,9 +1159,9 @@ final class ClipRowActionsUITests: UITestCase {
         )
         history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
 
-        // Escape drives native snap-back. Synchronization is the action's actual
-        // disappearance, not a fixed-duration wait.
-        row.dismissRevealedSwipeActions()
+        // The opposite native swipe drives snap-back. Synchronization is the
+        // action's actual disappearance, not a fixed-duration wait.
+        row.dismissRevealedSwipeActions(on: app.staticTexts[pinTarget])
         XCTAssertEqual(app.state, .runningForeground)
         UITestAssertions.assertEventuallyAccessibleTextContains(
             assertTextRowIdentifier(for: pinTarget, in: app),
@@ -2053,7 +2053,7 @@ final class ClipRowActionsUITests: UITestCase {
         )
 
         _ = row.revealDeleteActionWithLeftSwipe(for: UITestFixtures.RowActions.recentlyActiveDismissed)
-        row.dismissRevealedSwipeActions()
+        row.dismissRevealedSwipeActions(on: app.staticTexts[UITestFixtures.RowActions.recentlyActiveDismissed])
 
         bundle = classifiedPinAndTap(row, clipText: "T046 dismiss-then-pin older", app: app, preSwipeBundle: bundle)
         XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 pin-after-dismissed-action")

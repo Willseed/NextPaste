@@ -77,7 +77,9 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         XCTAssertTrue(pinButton.isEnabled)
         XCTAssertTrue(pinButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
-        row.dismissRevealedSwipeActions()
+        row.dismissRevealedSwipeActions(
+            on: row.imageRowElement(withThumbnailDescription: fixture.thumbnailDescription)
+        )
 
         let deleteButton = row.revealImageDeleteActionWithLeftSwipe(
             forThumbnailDescription: fixture.thumbnailDescription

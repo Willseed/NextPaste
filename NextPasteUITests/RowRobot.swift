@@ -415,17 +415,25 @@ struct RowRobot {
 
     @discardableResult
     func dismissRevealedSwipeActions(
+        on swipeSurface: XCUIElement,
         timeout: TimeInterval = UITestAssertions.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> Self {
         let pinButton = app.buttons[Accessibility.pinButtonIdentifier]
         let deleteButton = app.buttons[Accessibility.deleteButtonIdentifier]
-        app.typeKey(.escape, modifierFlags: [])
+        XCTAssertTrue(swipeSurface.exists && swipeSurface.isHittable, "Expected a hittable row surface for native dismissal", file: file, line: line)
+        if pinButton.exists && pinButton.isHittable {
+            swipeSurface.swipeLeft(velocity: .slow)
+        } else if deleteButton.exists && deleteButton.isHittable {
+            swipeSurface.swipeRight(velocity: .slow)
+        } else {
+            XCTFail("Expected one revealed native swipe action before dismissal", file: file, line: line)
+        }
         XCTAssertTrue(
             UITestAssertions.waitForDisappearance(of: pinButton, timeout: timeout)
                 && UITestAssertions.waitForDisappearance(of: deleteButton, timeout: timeout),
-            "Expected native swipe actions to dismiss after Escape",
+            "Expected native swipe actions to dismiss after the opposite swipe",
             file: file,
             line: line
         )
