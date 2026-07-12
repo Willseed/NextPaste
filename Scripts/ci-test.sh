@@ -90,7 +90,8 @@ resolve_developer_dir() {
   [[ -x "${candidate}/usr/bin/xcodebuild" ]] || fail "xcodebuild is unavailable in ${candidate}"
   [[ -x "${candidate}/usr/bin/xcresulttool" ]] || fail "xcresulttool is unavailable in ${candidate}"
   [[ -x "${candidate}/usr/bin/xccov" ]] || fail "xccov is unavailable in ${candidate}"
-  export DEVELOPER_DIR="${candidate}"
+  export DEVELOPER_DIR="${candidate}" || return "${?}"
+  return 0
 }
 
 resolve_developer_dir
@@ -137,9 +138,10 @@ require_external_directory() {
   local directory="$2"
   case "${directory}/" in
     "${REPO_ROOT}/"*) fail "${purpose} must be outside the repository: ${directory}" ;;
-    /*) return 0 ;;
+    /*) ;;
     *) fail "unable to classify ${purpose} path '${directory}': expected an absolute path" ;;
   esac
+  return 0
 }
 
 require_external_directory "CI artifacts" "${artifacts_root}"

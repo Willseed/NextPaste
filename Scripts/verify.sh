@@ -48,9 +48,10 @@ require_external_directory() {
   local directory="$2"
   case "${directory}/" in
     "${REPO_ROOT}/"*) fail "${purpose} must be outside the repository: ${directory}" ;;
-    /*) return 0 ;;
+    /*) ;;
     *) fail "unable to classify ${purpose} path '${directory}': expected an absolute path" ;;
   esac
+  return 0
 }
 
 assert_no_repository_build_artifacts() {
@@ -101,7 +102,8 @@ resolve_developer_dir() {
   [[ -x "${candidate}/usr/bin/xcresulttool" ]] || fail "DEVELOPER_DIR does not contain xcresulttool: ${candidate}"
   [[ -x "${candidate}/usr/bin/xccov" ]] || fail "DEVELOPER_DIR does not contain xccov: ${candidate}"
 
-  export DEVELOPER_DIR="${candidate}"
+  export DEVELOPER_DIR="${candidate}" || return "${?}"
+  return 0
 }
 
 resolve_developer_dir
