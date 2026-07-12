@@ -200,8 +200,11 @@ struct DebugUITestSurfaceIsolationTests {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
+        let homeViewURL = repositoryRoot
+            .appendingPathComponent("NextPaste", isDirectory: true)
+            .appendingPathComponent("HomeView.swift", isDirectory: false)
         let homeViewSource = try String(
-            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/HomeView.swift"),
+            contentsOf: homeViewURL,
             encoding: .utf8
         )
 

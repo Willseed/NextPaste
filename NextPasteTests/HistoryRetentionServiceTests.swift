@@ -305,7 +305,8 @@ struct HistoryRetentionServiceTests {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("NextPaste/SettingsView.swift")
+            .appendingPathComponent("NextPaste", isDirectory: true)
+            .appendingPathComponent("SettingsView.swift", isDirectory: false)
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
         let historyTab = try #require(source.range(of: "private struct HistorySettingsTab"))
         let commit = try #require(
