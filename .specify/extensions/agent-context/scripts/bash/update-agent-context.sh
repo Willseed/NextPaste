@@ -53,9 +53,9 @@ if [[ -z "$_python" ]]; then
   echo "  To resolve: pip install pyyaml (or install it into the environment used by python3)." >&2
   exit 0
 fi
-_case_insensitive_context_files=0
 case "$(uname -s 2>/dev/null || true)" in
   MINGW*|MSYS*|CYGWIN*) _case_insensitive_context_files=1 ;;
+  *) _case_insensitive_context_files=0 ;;
 esac
 
 # Parse extension config once; emit context files as JSON, followed by marker strings.
