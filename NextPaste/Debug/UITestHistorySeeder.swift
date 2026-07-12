@@ -18,6 +18,8 @@ enum UITestHistorySeeder {
     static let settingsHistoryLimitArgument = "-ui-test-seed-settings-history-limit"
     static let relaunchDatasetArgument = "-ui-test-seed-relaunch-dataset"
     static let rowActionScenarioBArgument = "-ui-test-seed-row-action-scenario-b"
+    static let rowActionScenarioBReadinessFileArgument = "-ui-test-row-action-scenario-b-seed-readiness-file"
+    static let rowActionScenarioBReadinessRunIDArgument = "-ui-test-row-action-scenario-b-seed-readiness-run-id"
     static let pinScrollAutomationArgument = "-ui-test-seed-pin-scroll-automation"
     static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"
     static let pinScrollAutomationRowCount = 64
@@ -25,6 +27,9 @@ enum UITestHistorySeeder {
     static let relaunchImageClipCount = 100
     static let relaunchDatasetCount = relaunchTextClipCount + relaunchImageClipCount
     static let relaunchImageFixtureByteCount: Int = relaunchImageFixtureData.count
+    private static let rowActionScenarioBFixtureVersion = "row-action-scenario-b-v1"
+    private static let rowActionScenarioBExpectedCount = 8
+    private static let rowActionScenarioBFixtureDigest = "4b3cdd89b47bd3a31e5bc354ca8af1cd01b784f3a1dd4a4e6f6ee17a3808047a"
 
     static func seedIfNeeded(arguments: [String], container: ModelContainer) {
         if arguments.contains(relaunchDatasetArgument) {
@@ -76,6 +81,12 @@ enum UITestHistorySeeder {
     /// uses a fresh in-memory container, so no setup swipe contaminates the
     /// lifecycle under test and every iteration restores the same geometry.
     private static func seedRowActionScenarioB(container: ModelContainer) {
+        let arguments = ProcessInfo.processInfo.arguments
+        guard let readiness = rowActionScenarioBReadinessConfiguration(arguments: arguments) else {
+            assertionFailure("Scenario B seeding requires a dedicated readiness destination and run identifier")
+            return
+        }
+
         let context = ModelContext(container)
         let baseDate = Date(timeIntervalSinceReferenceDate: 10_000)
         let rows: [(text: String, offset: TimeInterval, pinned: Bool)] = [
@@ -89,8 +100,9 @@ enum UITestHistorySeeder {
             ("Scroll pin pinned newer clip", 7, true),
         ]
 
-        for row in rows {
+        for (index, row) in rows.enumerated() {
             context.insert(ClipItem(
+                id: deterministicID(kind: 4, index: index),
                 textContent: row.text,
                 createdAt: baseDate.addingTimeInterval(row.offset),
                 isPinned: row.pinned
@@ -99,9 +111,102 @@ enum UITestHistorySeeder {
 
         do {
             try context.save()
+            let persistedRows = try context.fetch(FetchDescriptor<ClipItem>())
+            let persistedDigest = ClipDatasetIntegritySnapshot.digest(for: persistedRows)
+            guard persistedRows.count == rowActionScenarioBExpectedCount,
+                  persistedDigest == rowActionScenarioBFixtureDigest else {
+                throw RowActionScenarioBSeedFailure.persistedFixtureMismatch
+            }
+            try publishRowActionScenarioBReadiness(
+                .ready(persistedCount: persistedRows.count, fixtureDigest: persistedDigest),
+                to: readiness
+            )
         } catch {
+            context.rollback()
+            try? publishRowActionScenarioBReadiness(.error, to: readiness)
             assertionFailure("Failed to seed row-action Scenario B fixture: \(error)")
         }
+    }
+
+    private struct RowActionScenarioBReadinessConfiguration {
+        let fileURL: URL
+        let runID: String
+    }
+
+    private struct RowActionScenarioBReadinessMarker: Encodable {
+        let schemaVersion: Int
+        let fixtureVersion: String
+        let runID: String
+        let state: String
+        let expectedCount: Int
+        let persistedCount: Int?
+        let fixtureDigest: String
+        let errorCode: String?
+    }
+
+    private enum RowActionScenarioBReadinessPublication {
+        case ready(persistedCount: Int, fixtureDigest: String)
+        case error
+    }
+
+    private enum RowActionScenarioBSeedFailure: Error {
+        case persistedFixtureMismatch
+    }
+
+    private static func rowActionScenarioBReadinessConfiguration(
+        arguments: [String]
+    ) -> RowActionScenarioBReadinessConfiguration? {
+        guard let fileArgumentIndex = arguments.firstIndex(of: rowActionScenarioBReadinessFileArgument),
+              arguments.indices.contains(fileArgumentIndex + 1),
+              let runIDArgumentIndex = arguments.firstIndex(of: rowActionScenarioBReadinessRunIDArgument),
+              arguments.indices.contains(runIDArgumentIndex + 1) else {
+            return nil
+        }
+
+        let filePath = arguments[fileArgumentIndex + 1]
+        let runID = arguments[runIDArgumentIndex + 1]
+        guard filePath.isEmpty == false, runID.isEmpty == false else {
+            return nil
+        }
+        return RowActionScenarioBReadinessConfiguration(
+            fileURL: URL(fileURLWithPath: filePath, isDirectory: false),
+            runID: runID
+        )
+    }
+
+    private static func publishRowActionScenarioBReadiness(
+        _ publication: RowActionScenarioBReadinessPublication,
+        to configuration: RowActionScenarioBReadinessConfiguration
+    ) throws {
+        let marker: RowActionScenarioBReadinessMarker
+        switch publication {
+        case .ready(let persistedCount, let fixtureDigest):
+            marker = RowActionScenarioBReadinessMarker(
+                schemaVersion: 1,
+                fixtureVersion: rowActionScenarioBFixtureVersion,
+                runID: configuration.runID,
+                state: "ready",
+                expectedCount: rowActionScenarioBExpectedCount,
+                persistedCount: persistedCount,
+                fixtureDigest: fixtureDigest,
+                errorCode: nil
+            )
+        case .error:
+            marker = RowActionScenarioBReadinessMarker(
+                schemaVersion: 1,
+                fixtureVersion: rowActionScenarioBFixtureVersion,
+                runID: configuration.runID,
+                state: "error",
+                expectedCount: rowActionScenarioBExpectedCount,
+                persistedCount: nil,
+                fixtureDigest: rowActionScenarioBFixtureDigest,
+                errorCode: "seed-or-save-failed"
+            )
+        }
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        try encoder.encode(marker).write(to: configuration.fileURL, options: .atomic)
     }
 
     /// A fresh, deterministic 64-row dataset for end-to-end Pin scrolling.

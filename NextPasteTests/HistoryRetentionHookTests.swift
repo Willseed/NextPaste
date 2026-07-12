@@ -2,7 +2,8 @@
 //  HistoryRetentionHookTests.swift
 //  NextPasteTests
 //
-//  T019/T020 — post-capture and post-unpin retention hook coverage.
+//  Post-capture retention hook coverage. Pin/Unpin intentionally has no
+//  retention hook: changing pin state must never delete history or resources.
 //
 
 import Testing
@@ -100,59 +101,27 @@ struct HistoryRetentionHookTests {
         #expect(remaining.filter { $0.isPinned == false }.count == 1)
     }
 
-    // MARK: T020 — post-unpin retention
-
-    @Test func postUnpinRetentionHookIsCalledAfterSuccessfulUnpin() throws {
-        let context = try SwiftDataTestSupport.makeInMemoryContext()
-        let clips = try SwiftDataTestSupport.seedClips(["p1"], in: context, isPinned: true)
-        let store = PinStateMutationStore(modelContext: context)
-
-        var unpinRetained: UUID?
-        store.postUnpinRetention = { itemID, _ in unpinRetained = itemID }
-
-        _ = store.setPinned(false, for: clips[0].id)
-
-        #expect(unpinRetained == clips[0].id)
-    }
-
-    @Test func postUnpinRetentionHookIsNotCalledAfterPin() throws {
-        let context = try SwiftDataTestSupport.makeInMemoryContext()
-        let clips = try SwiftDataTestSupport.seedClips(["u1"], in: context, isPinned: false)
-        let store = PinStateMutationStore(modelContext: context)
-
-        var unpinRetained: UUID?
-        store.postUnpinRetention = { itemID, _ in unpinRetained = itemID }
-
-        _ = store.setPinned(true, for: clips[0].id)
-
-        #expect(unpinRetained == nil)
-    }
-
-    @Test func postUnpinRetentionProtectsJustUnpinnedItem() throws {
-        let context = try SwiftDataTestSupport.makeInMemoryContext()
-        // Seed 5 pinned clips.
-        let clips = try SwiftDataTestSupport.seedClips(
-            ["p1", "p2", "p3", "p4", "p5"],
-            in: context,
-            isPinned: true
+    @Test func pinMutationAuthorityAndHomeViewWiringContainNoRetentionHook() throws {
+        let repositoryRoot = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let storeSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/PinStateMutationStore.swift"),
+            encoding: .utf8
         )
-        let store = PinStateMutationStore(modelContext: context)
+        let homeViewSource = try String(
+            contentsOf: repositoryRoot.appendingPathComponent("NextPaste/HomeView.swift"),
+            encoding: .utf8
+        )
+        let ensurePinStoreStart = try #require(homeViewSource.range(of: "private func ensurePinStore()"))
+        let ensurePinStoreEnd = try #require(
+            homeViewSource.range(of: "#if os(macOS)", range: ensurePinStoreStart.upperBound..<homeViewSource.endIndex)
+        )
+        let ensurePinStore = homeViewSource[ensurePinStoreStart.lowerBound..<ensurePinStoreEnd.lowerBound]
 
-        // Wire retention with a limit of 2; protect the just-unpinned item.
-        store.postUnpinRetention = { itemID, ctx in
-            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(
-                limit: HistoryLimit(2),
-                protectedItemID: itemID
-            )
-        }
-
-        // Unpin p1 (the oldest). It should be protected from removal.
-        _ = store.setPinned(false, for: clips[0].id)
-
-        let remaining = try SwiftDataTestSupport.fetchHistory(in: context)
-        let unpinned = remaining.filter { $0.isPinned == false }
-        // The just-unpinned p1 should still be present.
-        #expect(unpinned.contains { $0.id == clips[0].id })
-        #expect(unpinned.count <= 2)
+        #expect(storeSource.contains("postUnpinRetention") == false)
+        #expect(storeSource.contains("HistoryRetentionService") == false)
+        #expect(ensurePinStore.contains("postUnpinRetention") == false)
+        #expect(ensurePinStore.contains("HistoryRetentionService") == false)
     }
 }

@@ -1018,7 +1018,9 @@ final class ClipRowActionsUITests: UITestCase {
         let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .small)
         let app = trace.app
         app.launchArguments.append(UITestAppLauncher.rowActionScenarioBSeedArgument)
+        let seedReadiness = try configureScenarioBSeedReadiness(on: app)
         app.launch()
+        try assertScenarioBSeedReady(seedReadiness)
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock { self.closeApp(app) }
         let history = historyRobot(for: app)
@@ -1125,10 +1127,13 @@ final class ClipRowActionsUITests: UITestCase {
 
     @MainActor
     func testRevealAndDismissPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash() throws {
-        let app = launchApp(
-            extraArguments: [UITestAppLauncher.rowActionScenarioBSeedArgument],
-            windowSizePreset: .small
-        )
+        let app = UITestAppLauncher.makeApp(windowSizePreset: .small)
+        app.launchArguments.append(UITestAppLauncher.rowActionScenarioBSeedArgument)
+        let seedReadiness = try configureScenarioBSeedReadiness(on: app)
+        app.launch()
+        try assertScenarioBSeedReady(seedReadiness)
+        UITestAppLauncher.prepareMainWindow(in: app)
+        addTeardownBlock { self.closeApp(app) }
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
         let pinTarget = UITestFixtures.RowActions.scrollPinTarget
@@ -1189,6 +1194,147 @@ final class ClipRowActionsUITests: UITestCase {
             context: "reveal-only preserves pinned order"
         )
         attachRowActionWarningAssertionOutcome(["reveal-only-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    private static let scenarioBSeedReadinessFileArgument =
+        "-ui-test-row-action-scenario-b-seed-readiness-file"
+    private static let scenarioBSeedReadinessRunIDArgument =
+        "-ui-test-row-action-scenario-b-seed-readiness-run-id"
+    private static let scenarioBFixtureVersion = "row-action-scenario-b-v1"
+    private static let scenarioBFixtureDigest =
+        "4b3cdd89b47bd3a31e5bc354ca8af1cd01b784f3a1dd4a4e6f6ee17a3808047a"
+    private static let scenarioBExpectedCount = 8
+
+    private struct ScenarioBSeedReadinessExpectation {
+        let markerURL: URL
+        let runID: String
+    }
+
+    private struct ScenarioBSeedReadinessMarker: Decodable {
+        let schemaVersion: Int
+        let fixtureVersion: String
+        let runID: String
+        let state: String
+        let expectedCount: Int
+        let persistedCount: Int?
+        let fixtureDigest: String
+        let errorCode: String?
+    }
+
+    private enum ScenarioBSeedReadinessObservation: CustomStringConvertible {
+        case absent
+        case error(ScenarioBSeedReadinessMarker)
+        case ready(ScenarioBSeedReadinessMarker)
+        case stale(observedRunID: String, state: String)
+        case malformed
+
+        var isPublished: Bool {
+            if case .absent = self {
+                return false
+            }
+            return true
+        }
+
+        var description: String {
+            switch self {
+            case .absent:
+                return "absent"
+            case .error(let marker):
+                return "error(code: \(marker.errorCode ?? "missing"))"
+            case .ready(let marker):
+                return "ready(count: \(marker.persistedCount.map(String.init) ?? "missing"), digest: \(marker.fixtureDigest))"
+            case .stale(let observedRunID, let state):
+                return "stale(runID: \(observedRunID), state: \(state))"
+            case .malformed:
+                return "malformed"
+            }
+        }
+    }
+
+    private enum ScenarioBSeedReadinessFailure: Error {
+        case notReady
+    }
+
+    @MainActor
+    private func configureScenarioBSeedReadiness(
+        on app: XCUIApplication
+    ) throws -> ScenarioBSeedReadinessExpectation {
+        let launchEnvironment = try XCTUnwrap(
+            UITestLaunchEnvironmentRegistry.current(),
+            "Checkpoint 1: expected an isolated UI-test launch environment"
+        )
+        let markerURL = launchEnvironment.rootURL
+            .appendingPathComponent("row-action-scenario-b-seed-readiness.json", isDirectory: false)
+        try? FileManager.default.removeItem(at: markerURL)
+        let runID = UUID().uuidString.lowercased()
+        app.launchArguments.append(contentsOf: [
+            Self.scenarioBSeedReadinessFileArgument,
+            markerURL.path,
+            Self.scenarioBSeedReadinessRunIDArgument,
+            runID
+        ])
+        return ScenarioBSeedReadinessExpectation(markerURL: markerURL, runID: runID)
+    }
+
+    @MainActor
+    private func assertScenarioBSeedReady(
+        _ expectation: ScenarioBSeedReadinessExpectation,
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        var observation = scenarioBSeedReadinessObservation(for: expectation)
+        if observation.isPublished == false {
+            _ = UITestWait.until(timeout: timeout) {
+                observation = self.scenarioBSeedReadinessObservation(for: expectation)
+                return observation.isPublished
+            }
+        }
+
+        guard case .ready(let marker) = observation else {
+            XCTFail(
+                "Checkpoint 3 seed readiness failed before window/dataset/action assertions: \(observation)",
+                file: file,
+                line: line
+            )
+            throw ScenarioBSeedReadinessFailure.notReady
+        }
+
+        guard marker.schemaVersion == 1,
+              marker.fixtureVersion == Self.scenarioBFixtureVersion,
+              marker.expectedCount == Self.scenarioBExpectedCount,
+              marker.persistedCount == Self.scenarioBExpectedCount,
+              marker.fixtureDigest == Self.scenarioBFixtureDigest else {
+            XCTFail(
+                "Checkpoint 3 seed readiness published incompatible count/digest/version: \(observation)",
+                file: file,
+                line: line
+            )
+            throw ScenarioBSeedReadinessFailure.notReady
+        }
+    }
+
+    private func scenarioBSeedReadinessObservation(
+        for expectation: ScenarioBSeedReadinessExpectation
+    ) -> ScenarioBSeedReadinessObservation {
+        guard FileManager.default.fileExists(atPath: expectation.markerURL.path) else {
+            return .absent
+        }
+        guard let data = try? Data(contentsOf: expectation.markerURL),
+              let marker = try? JSONDecoder().decode(ScenarioBSeedReadinessMarker.self, from: data) else {
+            return .malformed
+        }
+        guard marker.runID == expectation.runID else {
+            return .stale(observedRunID: marker.runID, state: marker.state)
+        }
+        switch marker.state {
+        case "ready":
+            return .ready(marker)
+        case "error":
+            return .error(marker)
+        default:
+            return .malformed
+        }
     }
 
     @MainActor

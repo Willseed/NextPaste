@@ -1873,22 +1873,6 @@ struct HomeView: View {
             modelContext: effectiveReconciliationModelContext,
             diagnostics: diagnostics
         )
-        // T020: wire post-unpin retention. After a successful unpin, enforce the
-        // history limit with the just-unpinned item protected from immediate
-        // removal. The limit comes from the shared lifecycle controller's provider.
-        store.postUnpinRetention = { itemID, context in
-            guard let limit = ClipboardMonitorLifecycleController.shared.historyLimitProvider?() else {
-                return
-            }
-            do {
-                _ = try HistoryRetentionService(modelContext: context).enforceLimit(
-                    limit: limit,
-                    protectedItemID: itemID
-                )
-            } catch {
-                NSLog("NextPaste could not enforce history retention after Unpin: %@", String(describing: error))
-            }
-        }
         pinStore = store
         return store
     }

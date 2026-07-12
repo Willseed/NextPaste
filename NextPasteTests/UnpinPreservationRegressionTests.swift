@@ -3,10 +3,9 @@
 //  NextPasteTests
 //
 //  Regression coverage for the non-destructive Unpin contract. These tests
-//  exercise the production-wired flow (PinStateMutationStore with its
-//  postUnpinRetention hook resolved to HistoryRetentionService, plus the
-//  PinStateSnapshotProjector) to prove that cancelling a pin never deletes,
-//  duplicates, or loses the underlying clip — including at the history limit,
+//  exercise the production PinStateMutationStore and PinStateSnapshotProjector
+//  to prove that cancelling a pin never deletes, duplicates, or loses the
+//  underlying clip — including at the history limit,
 //  under rapid pin/unpin, and after persistence.
 //
 
@@ -26,7 +25,7 @@ struct UnpinPreservationRegressionTests {
         let pinned = try SwiftDataTestSupport.seedClips(["p1", "p2"], in: context, isPinned: true)
         _ = try SwiftDataTestSupport.seedClips(["u1", "u2"], in: context, isPinned: false)
 
-        let store = makeProductionWiredStore(in: context, limit: 500)
+        let store = makePinStore(in: context)
         let countBefore = try SwiftDataTestSupport.fetchHistory(in: context).count
 
         _ = store.setPinned(false, for: pinned[0].id)
@@ -38,10 +37,10 @@ struct UnpinPreservationRegressionTests {
         #expect(target?.isPinned == false, "Unpin must only flip the pinned state")
     }
 
-    // MARK: - At-capacity protection
+    // MARK: - At/over-capacity preservation
 
-    @Test("Unpin at the history limit protects the just-unpinned item and trims an older other item")
-    func unpinAtCapacityProtectsJustUnpinnedItem() throws {
+    @Test("Unpin at the history limit preserves every item and does not run retention")
+    func unpinAtCapacityPreservesEveryItem() throws {
         let context = try SwiftDataTestSupport.makeInMemoryContext()
         // One pinned item that is OLDER than the unpinned items (created first).
         let pinned = try SwiftDataTestSupport.seedClips(
@@ -58,16 +57,23 @@ struct UnpinPreservationRegressionTests {
             isPinned: false
         )
 
-        let store = makeProductionWiredStore(in: context, limit: 3)
+        let before = try SwiftDataTestSupport.fetchHistory(in: context)
+        let beforeIDs = Set(before.map(\.id))
+        let beforeStates = Dictionary(uniqueKeysWithValues: before.map { ($0.id, CompleteClipState($0)) })
+        let store = makePinStore(in: context)
 
         _ = store.setPinned(false, for: pinned[0].id)
 
         let after = try SwiftDataTestSupport.fetchHistory(in: context)
         let unpinned = after.filter { $0.isPinned == false }
         #expect(unpinned.contains { $0.id == pinned[0].id }, "The just-unpinned item must be preserved")
-        #expect(unpinned.count == 3, "Unpinned capacity stays at the limit (3), not 4")
-        // The oldest OTHER unpinned item (u1) is trimmed, not the just-unpinned one.
-        #expect(after.contains { $0.textContent == "u1" } == false, "The oldest other item is trimmed")
+        #expect(unpinned.count == 4, "Unpin may put history over its configured limit; it must not trim")
+        #expect(after.count == before.count)
+        #expect(Set(after.map(\.id)) == beforeIDs)
+        #expect(after.contains { $0.textContent == "u1" }, "Unpin must not trim an older unrelated item")
+        for clip in after where clip.id != pinned[0].id {
+            #expect(CompleteClipState(clip) == beforeStates[clip.id], "Unpin must not mutate unrelated history")
+        }
     }
 
     // MARK: - Rapid pin/unpin
@@ -78,7 +84,7 @@ struct UnpinPreservationRegressionTests {
         let clips = try SwiftDataTestSupport.seedClips(["only"], in: context, isPinned: false)
         let targetID = clips[0].id
 
-        let store = makeProductionWiredStore(in: context, limit: 500)
+        let store = makePinStore(in: context)
 
         // A burst of alternating state requests, exactly as a fast user would.
         _ = store.setPinned(true, for: targetID)
@@ -115,7 +121,7 @@ struct UnpinPreservationRegressionTests {
             isPinned: false
         )
 
-        let store = makeProductionWiredStore(in: context, limit: 500)
+        let store = makePinStore(in: context)
         _ = store.setPinned(false, for: pinned[0].id) // unpin the older pinned item
 
         let clips = try SwiftDataTestSupport.fetchHistory(in: context)
@@ -129,6 +135,38 @@ struct UnpinPreservationRegressionTests {
         #expect(snapshot.orderedItemIDs.contains(pinned[0].id), "The unpinned item stays visible")
     }
 
+    @Test("Search and filtering only project Unpin results without mutating persisted history")
+    func searchAndFilteringRemainPureProjectionsAfterUnpin() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let target = try SwiftDataTestSupport.seedClips(
+            ["needle target"],
+            in: context,
+            startTime: 100,
+            isPinned: true
+        )[0]
+        _ = try SwiftDataTestSupport.seedClips(
+            ["unrelated one", "unrelated two"],
+            in: context,
+            startTime: 200,
+            isPinned: false
+        )
+        let before = try SwiftDataTestSupport.fetchHistory(in: context)
+        let beforeIDs = Set(before.map(\.id))
+        let store = makePinStore(in: context)
+
+        _ = store.setPinned(false, for: target.id)
+        let authoritative = try SwiftDataTestSupport.fetchHistory(in: context)
+        let searchSnapshot = store.projectVisible(clips: authoritative, searchQuery: "needle")
+        let directFilter = ClipItem.filteredHistory(authoritative, matching: "needle")
+
+        #expect(searchSnapshot.orderedItemIDs == [target.id])
+        #expect(directFilter.map(\.id) == [target.id])
+        let afterProjection = try SwiftDataTestSupport.fetchHistory(in: context)
+        #expect(afterProjection.count == before.count)
+        #expect(Set(afterProjection.map(\.id)) == beforeIDs)
+        #expect(afterProjection.first { $0.id == target.id }?.isPinned == false)
+    }
+
     // MARK: - Persistence
 
     @Test("Unpin state persists after save and refetch")
@@ -137,7 +175,7 @@ struct UnpinPreservationRegressionTests {
         let pinned = try SwiftDataTestSupport.seedClips(["p1"], in: context, isPinned: true)
         let targetID = pinned[0].id
 
-        let store = makeProductionWiredStore(in: context, limit: 500)
+        let store = makePinStore(in: context)
         _ = store.setPinned(false, for: targetID)
 
         // Re-resolve by the stable ID, the way the UI does after a mutation.
@@ -167,23 +205,34 @@ struct UnpinPreservationRegressionTests {
             baseItems.forEach(context.insert)
             try context.save()
 
-            let store = makeProductionWiredStore(in: context, limit: 500)
-            let countBefore = try SwiftDataTestSupport.fetchHistory(in: context).count
+            let store = makePinStore(in: context)
+            let before = try SwiftDataTestSupport.fetchHistory(in: context)
+            let targetPayloadBefore = PreservedClipPayload(target)
+            let unrelatedBefore = Dictionary(uniqueKeysWithValues: before
+                .filter { $0.id != target.id }
+                .map { ($0.id, CompleteClipState($0)) })
 
             _ = store.setPinned(false, for: target.id)
 
             let after = try SwiftDataTestSupport.fetchHistory(in: context)
-            #expect(after.count == countBefore, "Unpin must not change item count")
+            #expect(after.count == before.count, "Unpin must not change item count")
+            #expect(Set(after.map(\.id)) == Set(before.map(\.id)), "Unpin must preserve every stable ID")
 
             let reloaded = try #require(after.first { $0.id == target.id })
             #expect(reloaded.id == target.id)
+            #expect(PreservedClipPayload(reloaded) == targetPayloadBefore)
             kind.assertContentMatches(original: target, reloaded: reloaded)
             #expect(reloaded.isPinned == false, "\(kind.rawValue) clip should be unpinned")
+            #expect(reloaded.pinnedSortOrder == 0)
+            #expect(reloaded.sectionSortDate != nil)
             #expect(after.filter { $0.id == target.id }.count == 1, "No duplicates should be created for \(kind.rawValue) clips")
+            for clip in after where clip.id != target.id {
+                #expect(CompleteClipState(clip) == unrelatedBefore[clip.id], "Unpin must not mutate unrelated \(kind.rawValue) rows")
+            }
         }
     }
 
-    @Test("文字、圖片、檔案快速切換釘選/取消釘選不會重複、不會刪除、最終只存最後狀態")
+    @Test("文字、圖片、檔案快速切換與 repin 不會重複或刪除且最後狀態生效")
     func rapidPinUnpinTextImageFileSwitchesDoNotDuplicateOrDelete() throws {
         for kind in UnpinRegressionClipKind.allCases {
             let context = try SwiftDataTestSupport.makeInMemoryContext()
@@ -200,17 +249,22 @@ struct UnpinPreservationRegressionTests {
             }
             try context.save()
 
-            let store = makeProductionWiredStore(in: context, limit: 500)
+            let store = makePinStore(in: context)
+            let before = try SwiftDataTestSupport.fetchHistory(in: context)
+            let targetPayloadBefore = PreservedClipPayload(target)
             for index in 0..<12 {
                 let desiredPinned = index % 2 == 0
                 _ = store.setPinned(desiredPinned, for: target.id)
             }
+            _ = store.setPinned(true, for: target.id)
 
             let after = try SwiftDataTestSupport.fetchHistory(in: context)
-            #expect(after.count == 3, "Rapid switch should not change total rows for \(kind.rawValue)")
+            #expect(after.count == before.count, "Rapid switch should not change total rows for \(kind.rawValue)")
+            #expect(Set(after.map(\.id)) == Set(before.map(\.id)), "Rapid switch must preserve all IDs for \(kind.rawValue)")
             let reloaded = try #require(after.first { $0.id == target.id })
             #expect(reloaded.id == target.id)
-            #expect(reloaded.isPinned == false, "Final state should match last desired state for \(kind.rawValue)")
+            #expect(PreservedClipPayload(reloaded) == targetPayloadBefore)
+            #expect(reloaded.isPinned, "Final repin should be the last desired state for \(kind.rawValue)")
             #expect(after.filter { $0.id == target.id }.count == 1, "\(kind.rawValue) should not duplicate under rapid switching")
         }
     }
@@ -234,16 +288,78 @@ struct UnpinPreservationRegressionTests {
             unpinned.forEach(context.insert)
             try context.save()
 
-            let store = makeProductionWiredStore(in: context, limit: 3)
+            let before = try SwiftDataTestSupport.fetchHistory(in: context)
+            let beforeIDs = Set(before.map(\.id))
+            let beforeStates = Dictionary(uniqueKeysWithValues: before.map { ($0.id, CompleteClipState($0)) })
+            let targetPayloadBefore = PreservedClipPayload(pinned)
+            let store = makePinStore(in: context)
             _ = store.setPinned(false, for: pinned.id)
 
             let after = try SwiftDataTestSupport.fetchHistory(in: context)
             let unpinnedAfter = after.filter { !$0.isPinned }
             let survived = after.first { $0.id == pinned.id }
-            #expect(survived != nil, "Capacity protection should preserve unpinned \(kind.rawValue) target")
+            #expect(survived != nil, "Unpin should preserve the \(kind.rawValue) target at capacity")
             #expect(unpinnedAfter.contains { $0.id == pinned.id }, "\(kind.rawValue) target should be present among unpinned items")
-            #expect(unpinnedAfter.count == 3, "Unpinned capacity should stay at 3 for \(kind.rawValue) scenario")
-            #expect(after.filter { $0.id == pinned.id }.count == 1, "No duplicates after capacity rebalancing for \(kind.rawValue)")
+            #expect(unpinnedAfter.count == 4, "Unpin must not trim at capacity for \(kind.rawValue)")
+            #expect(after.count == before.count, "Unpin must keep total count stable for \(kind.rawValue)")
+            #expect(Set(after.map(\.id)) == beforeIDs, "Unpin must preserve every ID for \(kind.rawValue)")
+            #expect(after.filter { $0.id == pinned.id }.count == 1, "No duplicates after Unpin for \(kind.rawValue)")
+            #expect(survived.map(PreservedClipPayload.init) == targetPayloadBefore)
+            for clip in after where clip.id != pinned.id {
+                #expect(CompleteClipState(clip) == beforeStates[clip.id], "Unpin must not mutate unrelated capacity rows")
+            }
+        }
+    }
+
+    @Test("At and above the limit Unpin preserves real image, thumbnail, and file resources")
+    func unpinAtAndAboveLimitPreservesRealResourcesAndEveryRecord() throws {
+        let configuredLimit = HistoryLimit(3).value
+
+        for existingUnpinnedCount in [configuredLimit, configuredLimit + 2] {
+            let context = try SwiftDataTestSupport.makeInMemoryContext()
+            let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+                named: "unpin-real-resources-\(existingUnpinnedCount)"
+            )
+            defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root) }
+            let fixtures = try makeResourceBackedFixtures(root: root, isPinned: true)
+            fixtures.clips.forEach(context.insert)
+            for index in 0..<existingUnpinnedCount {
+                context.insert(ClipItem(
+                    textContent: "existing-unpinned-\(existingUnpinnedCount)-\(index)",
+                    createdAt: Date(timeIntervalSince1970: 500 + Double(index)),
+                    isPinned: false
+                ))
+            }
+            try context.save()
+
+            let before = try SwiftDataTestSupport.fetchHistory(in: context)
+            let beforeIDs = Set(before.map(\.id))
+            let beforeStates = Dictionary(uniqueKeysWithValues: before.map { ($0.id, CompleteClipState($0)) })
+            let payloadsBefore = Dictionary(uniqueKeysWithValues: fixtures.clips.map {
+                ($0.id, PreservedClipPayload($0))
+            })
+            let store = makePinStore(in: context)
+
+            for clip in fixtures.clips {
+                _ = store.setPinned(false, for: clip.id)
+            }
+
+            let after = try SwiftDataTestSupport.fetchHistory(in: context)
+            #expect(after.count == before.count, "Unpin must not trim when history begins with \(existingUnpinnedCount) unpinned rows")
+            #expect(Set(after.map(\.id)) == beforeIDs)
+            for fixture in fixtures.clips {
+                let reloaded = try #require(after.first { $0.id == fixture.id })
+                #expect(reloaded.isPinned == false)
+                #expect(PreservedClipPayload(reloaded) == payloadsBefore[fixture.id])
+            }
+            let fixtureIDs = Set(fixtures.clips.map(\.id))
+            for clip in after where fixtureIDs.contains(clip.id) == false {
+                #expect(CompleteClipState(clip) == beforeStates[clip.id], "Unpin must not mutate unrelated over-limit rows")
+            }
+            for (resourceURL, expectedData) in fixtures.resourceData {
+                #expect(FileManager.default.fileExists(atPath: resourceURL.path), "Unpin removed real resource at \(resourceURL.path)")
+                #expect(try Data(contentsOf: resourceURL) == expectedData)
+            }
         }
     }
 
@@ -251,49 +367,159 @@ struct UnpinPreservationRegressionTests {
     func textImageAndFileUnpinPersistsAfterRestart() throws {
         let storeURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
         defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: storeURL) }
+        let resourceRoot = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "unpin-on-disk-restart-resources"
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(resourceRoot) }
 
         let container = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
         let context = ModelContext(container)
-        let fixtures = UnpinRegressionClipKind.allCases.map {
-            makeFixture(kind: $0, createdAt: Date(timeIntervalSince1970: 100 + Double($0.index)), isPinned: true)
-        }
+        let fixtures = try makeResourceBackedFixtures(root: resourceRoot, isPinned: true)
 
-        fixtures.forEach(context.insert)
+        fixtures.clips.forEach(context.insert)
         try context.save()
 
-        let store = makeProductionWiredStore(in: context, limit: 500)
-        for fixture in fixtures {
+        let store = makePinStore(in: context)
+        for fixture in fixtures.clips {
             _ = store.setPinned(false, for: fixture.id)
         }
 
         let reloadedContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
         let reloadedContext = ModelContext(reloadedContainer)
         let reloaded = try SwiftDataTestSupport.fetchHistory(in: reloadedContext)
-        #expect(reloaded.count == fixtures.count, "All clips should remain after restart")
+        #expect(reloaded.count == fixtures.clips.count, "All clips should remain after restart")
+        #expect(Set(reloaded.map(\.id)) == Set(fixtures.clips.map(\.id)))
 
-        for fixture in fixtures {
+        for fixture in fixtures.clips {
             let clip = try #require(reloaded.first { $0.id == fixture.id })
             #expect(clip.id == fixture.id, "Stable ID should persist for restart check: \(fixture.id)")
             #expect(clip.isPinned == false, "Restarted state should keep \(kind(for: clip.id).rawValue) clip unpinned")
             kind(for: fixture.id).assertContentMatches(original: fixture, reloaded: clip)
+            #expect(PreservedClipPayload(clip) == PreservedClipPayload(fixture))
+        }
+        for (resourceURL, expectedData) in fixtures.resourceData {
+            #expect(FileManager.default.fileExists(atPath: resourceURL.path))
+            #expect(try Data(contentsOf: resourceURL) == expectedData)
         }
     }
 
     // MARK: - Helpers
 
-    /// Builds a PinStateMutationStore wired exactly like production: the
-    /// post-unpin retention hook enforces the supplied history limit with the
-    /// just-unpinned item protected from immediate removal.
-    private func makeProductionWiredStore(in context: ModelContext, limit: Int) -> PinStateMutationStore {
-        let store = PinStateMutationStore(modelContext: context)
-        let historyLimit = HistoryLimit(limit)
-        store.postUnpinRetention = { itemID, ctx in
-            _ = try? HistoryRetentionService(modelContext: ctx).enforceLimit(
-                limit: historyLimit,
-                protectedItemID: itemID
-            )
+    private func makePinStore(in context: ModelContext) -> PinStateMutationStore {
+        PinStateMutationStore(modelContext: context)
+    }
+
+    private struct PreservedClipPayload: Equatable {
+        let id: UUID
+        let contentType: String
+        let textContent: String
+        let createdAt: Date
+        let updatedAt: Date
+        let imageHash: String?
+        let imageWidth: Int?
+        let imageHeight: Int?
+        let imageByteCount: Int?
+        let imageUTType: String?
+        let imageFilename: String?
+        let thumbnailFilename: String?
+        let thumbnailDescription: String?
+
+        init(_ clip: ClipItem) {
+            id = clip.id
+            contentType = clip.contentType
+            textContent = clip.textContent
+            createdAt = clip.createdAt
+            updatedAt = clip.updatedAt
+            imageHash = clip.imageHash
+            imageWidth = clip.imageWidth
+            imageHeight = clip.imageHeight
+            imageByteCount = clip.imageByteCount
+            imageUTType = clip.imageUTType
+            imageFilename = clip.imageFilename
+            thumbnailFilename = clip.thumbnailFilename
+            thumbnailDescription = clip.thumbnailDescription
         }
-        return store
+    }
+
+    private struct CompleteClipState: Equatable {
+        let payload: PreservedClipPayload
+        let isPinned: Bool
+        let pinnedSortOrder: Int
+        let sectionSortDate: Date?
+
+        init(_ clip: ClipItem) {
+            payload = PreservedClipPayload(clip)
+            isPinned = clip.isPinned
+            pinnedSortOrder = clip.pinnedSortOrder
+            sectionSortDate = clip.sectionSortDate
+        }
+    }
+
+    private struct ResourceBackedFixtures {
+        let clips: [ClipItem]
+        let resourceData: [URL: Data]
+    }
+
+    private func makeResourceBackedFixtures(
+        root: SwiftDataTestSupport.TemporaryImageFileStoreRoot,
+        isPinned: Bool
+    ) throws -> ResourceBackedFixtures {
+        let imageFixture = ImageTestFixtures.png
+        let thumbnailFixture = ImageTestFixtures.screenshotStyle
+        let fileStore = ImageClipFileStore(rootURL: root.rootURL)
+        let imageAsset = try fileStore.persistImageAsset(
+            clipID: UnpinRegressionClipKind.image.identifier,
+            sourceExtension: imageFixture.fileExtension,
+            fullImageData: imageFixture.data,
+            thumbnailData: thumbnailFixture.data
+        )
+        let thumbnailURL = try #require(imageAsset.thumbnailURL)
+        let imageClip = ClipItem.imageClip(
+            ImageClipInitialization(
+                id: UnpinRegressionClipKind.image.identifier,
+                metadata: .init(
+                    hash: "sha256-real-image-fixture",
+                    dimensions: .init(width: imageFixture.width, height: imageFixture.height),
+                    byteCount: imageFixture.byteCount,
+                    utType: imageFixture.typeIdentifier,
+                    filename: imageAsset.imageFilename,
+                    thumbnail: .init(
+                        filename: imageAsset.thumbnailFilename,
+                        description: imageFixture.thumbnailDescription
+                    )
+                ),
+                createdAt: Date(timeIntervalSince1970: 101),
+                isPinned: isPinned
+            )
+        )
+
+        let filesDirectory = root.rootURL.appendingPathComponent("Files", isDirectory: true)
+        try FileManager.default.createDirectory(at: filesDirectory, withIntermediateDirectories: true)
+        let fileURL = filesDirectory.appendingPathComponent("unpin-resource.txt", isDirectory: false)
+        let fileData = Data("real file resource preserved by Unpin".utf8)
+        try fileData.write(to: fileURL, options: .atomic)
+        let fileClip = ClipItem(
+            id: UnpinRegressionClipKind.file.identifier,
+            contentType: "file",
+            textContent: fileURL.path,
+            createdAt: Date(timeIntervalSince1970: 102),
+            isPinned: isPinned
+        )
+        let textClip = ClipItem(
+            id: UnpinRegressionClipKind.text.identifier,
+            textContent: "text-target",
+            createdAt: Date(timeIntervalSince1970: 100),
+            isPinned: isPinned
+        )
+
+        return ResourceBackedFixtures(
+            clips: [textClip, imageClip, fileClip],
+            resourceData: [
+                imageAsset.imageURL: imageFixture.data,
+                thumbnailURL: thumbnailFixture.data,
+                fileURL: fileData
+            ]
+        )
     }
 
     private enum UnpinRegressionClipKind: String, CaseIterable {
