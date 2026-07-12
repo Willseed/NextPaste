@@ -239,6 +239,7 @@ final class SettingsUITests: UITestCase {
             "Expected parseable high input to clamp to 1000"
         )
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0)
         XCTAssertTrue(
             waitForTextInputValue(field, equals: "1", timeout: UITestAssertions.defaultTimeout),
@@ -261,6 +262,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
 
         let reopenedSlider = historyLimitSlider(in: reopenedSettings)
+        assertSliderInteractionGeometry(reopenedSlider, in: reopenedSettings)
         reopenedSlider.adjust(toNormalizedSliderPosition: 1)
         XCTAssertTrue(
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
@@ -307,14 +309,38 @@ final class SettingsUITests: UITestCase {
             waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
             "Editing must not persist before Return or focus loss"
         )
-        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "The edited Storage Limit field must own focus before testing focus-loss commit"
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "Tab must move focus from the Storage Limit field to the slider"
+        )
         assertHistoryLimitValues(field: field, slider: slider, equal: "612")
 
         clearText(in: field, application: app)
         XCTAssertTrue(
             waitForElementValue(slider, equals: "612", timeout: UITestAssertions.defaultTimeout)
         )
-        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "The empty Storage Limit draft must remain focused before focus-loss normalization"
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "Tab must leave the empty Storage Limit draft through the native focus path"
+        )
         assertHistoryLimitValues(field: field, slider: slider, equal: "612")
         XCTAssertEqual(app.state, .runningForeground, "Empty focus-loss commit must not crash the app")
     }
@@ -330,9 +356,11 @@ final class SettingsUITests: UITestCase {
         commitHistoryLimit("1", field: field, slider: slider, app: app, expectedValue: "1")
         commitHistoryLimit("1000", field: field, slider: slider, app: app, expectedValue: "1000")
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0.5)
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
@@ -349,6 +377,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertEqual(intermediateValue, String(intermediateInteger), "Slider accessibility value must not be fractional")
         XCTAssertEqual(textInputValue(of: field), intermediateValue)
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 1)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
     }
@@ -581,9 +610,11 @@ final class SettingsUITests: UITestCase {
             localizedLanguagePicker,
             equals: Accessibility.localizedTraditionalChineseTaiwan
         )
-        assertHasKeyboardFocus(
-            localizedLanguagePicker,
-            message: "Language switching must preserve native keyboard focus on the picker"
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.languageFocusProbe,
+            in: app,
+            message: "Language switching must preserve keyboard focus on the picker"
         )
         localizedLanguagePicker.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
@@ -599,9 +630,11 @@ final class SettingsUITests: UITestCase {
         )
         let restoredLanguagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(restoredLanguagePicker, equals: Accessibility.englishUnitedStates)
-        assertHasKeyboardFocus(
-            restoredLanguagePicker,
-            message: "Switching back to English must preserve native keyboard focus"
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.languageFocusProbe,
+            in: app,
+            message: "Switching back to English must preserve keyboard focus"
         )
         restoredLanguagePicker.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
@@ -661,9 +694,11 @@ final class SettingsUITests: UITestCase {
         assertAccessibleControl(appearancePicker, named: "Appearance picker")
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
-        assertHasKeyboardFocus(
-            appearancePicker,
-            message: "Appearance switching must preserve native keyboard focus"
+        assertProbeValue(
+            "focused",
+            identifier: Accessibility.appearanceFocusProbe,
+            in: app,
+            message: "Appearance switching must preserve keyboard focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
         appearancePicker.typeKey(.space, modifierFlags: [])
@@ -688,8 +723,10 @@ final class SettingsUITests: UITestCase {
             "Slider must expose its semantic 1...1000 value through Accessibility"
         )
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0.5)
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
@@ -700,6 +737,7 @@ final class SettingsUITests: UITestCase {
             },
             "A native midpoint Slider adjustment must synchronize an intermediate integer"
         )
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         slider.tap()
@@ -724,9 +762,22 @@ final class SettingsUITests: UITestCase {
         assertHistoryLimitValues(field: field, slider: slider, equal: "275")
 
         replaceText(in: field, with: "276", application: app)
-        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "The Storage Limit field must own focus before its keyboard focus-loss commit"
+        )
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "Tab must move Storage Limit focus to the slider"
+        )
         assertHistoryLimitValues(field: field, slider: slider, equal: "276")
 
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 1)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
 
@@ -891,6 +942,44 @@ final class SettingsUITests: UITestCase {
         )
     }
 
+    private func assertSliderInteractionGeometry(
+        _ slider: XCUIElement,
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        UITestAssertions.assertExists(
+            slider,
+            "Expected the Storage Limit slider before checking drag geometry",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            slider.isHittable,
+            "The Storage Limit slider must be hittable before synthesizing a drag",
+            file: file,
+            line: line
+        )
+
+        let sliderFrame = slider.frame
+        let windowFrame = settingsWindow.frame
+        let minimumHorizontalInset: CGFloat = 4
+        XCTAssertGreaterThan(
+            sliderFrame.minX,
+            windowFrame.minX + minimumHorizontalInset,
+            "The Slider's minimum thumb needs an inset from the Settings window edge; slider=\(sliderFrame), window=\(windowFrame)",
+            file: file,
+            line: line
+        )
+        XCTAssertLessThan(
+            sliderFrame.maxX,
+            windowFrame.maxX - minimumHorizontalInset,
+            "The Slider's maximum thumb needs an inset from the Settings window edge; slider=\(sliderFrame), window=\(windowFrame)",
+            file: file,
+            line: line
+        )
+    }
+
     private func shortcutButton(
         _ identifier: String,
         in settingsWindow: XCUIElement,
@@ -1010,9 +1099,24 @@ final class SettingsUITests: UITestCase {
             popup.tap()
             app.typeKey(.escape, modifierFlags: [])
         }
-        assertHasKeyboardFocus(
-            popup,
-            message: "Expected the pop-up button to own native keyboard focus",
+        let focusProbeIdentifier: String
+        if popup.identifier == Accessibility.appLanguagePicker {
+            focusProbeIdentifier = Accessibility.languageFocusProbe
+        } else if popup.identifier == Accessibility.appearancePicker {
+            focusProbeIdentifier = Accessibility.appearanceFocusProbe
+        } else {
+            XCTFail(
+                "No FocusState probe is registered for pop-up button \(popup.identifier)",
+                file: file,
+                line: line
+            )
+            return
+        }
+        assertProbeValue(
+            "focused",
+            identifier: focusProbeIdentifier,
+            in: app,
+            message: "Expected the pop-up button to own keyboard focus",
             file: file,
             line: line
         )

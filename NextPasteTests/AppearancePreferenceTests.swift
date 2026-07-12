@@ -16,9 +16,12 @@ import AppKit
 @MainActor
 private final class RecordingApplicationAppearanceApplier: ApplicationAppearanceApplying {
     private(set) var appliedModes: [AppearanceMode] = []
+    private(set) var observedModesAtApply: [AppearanceMode?] = []
+    var observePublishedMode: (() -> AppearanceMode?)?
 
     func apply(_ mode: AppearanceMode) {
         appliedModes.append(mode)
+        observedModesAtApply.append(observePublishedMode?())
     }
 }
 
@@ -128,6 +131,20 @@ struct AppearancePreferenceTests {
 
         #expect(preference.mode == mode)
         #expect(applier.appliedModes == [.system, mode])
+    }
+
+    @Test func modePublishesBeforeNativeAppearanceIsApplied() {
+        let applier = RecordingApplicationAppearanceApplier()
+        let preference = AppearancePreference(
+            defaults: makeDefaults(),
+            applicationAppearanceApplier: applier
+        )
+        applier.observePublishedMode = { [weak preference] in preference?.mode }
+
+        preference.persist(.dark)
+
+        #expect(applier.observedModesAtApply.count == 2)
+        #expect(applier.observedModesAtApply[1] == .dark)
     }
 
     #if os(macOS)

@@ -115,8 +115,8 @@ final class AppearancePreference: ObservableObject {
 
     func persist(_ mode: AppearanceMode) {
         defaults.set(mode.rawValue, forKey: Self.storageKey)
-        applicationAppearanceApplier.apply(mode)
         self.mode = mode
+        applicationAppearanceApplier.apply(mode)
     }
 
     private static func load(from defaults: UserDefaults) -> AppearanceMode? {

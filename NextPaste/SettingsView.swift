@@ -543,6 +543,7 @@ private struct HistorySettingsTab: View {
                     .accessibilityValue("\(Int(sliderValue.rounded()))")
 
                     TextField("1–1000", text: $draftText)
+                        .labelsHidden()
                         .frame(width: 76)
                         .multilineTextAlignment(.trailing)
                         .focused($focusedTarget, equals: .field)
@@ -550,6 +551,7 @@ private struct HistorySettingsTab: View {
                         .accessibilityIdentifier("history-limit-field")
                         .accessibilityLabel("Storage Limit Value")
                 }
+                .padding(.horizontal, DesignTokens.Spacing.small)
 
                 Text("Keep up to \(Int(sliderValue.rounded())) unpinned clipboard items. Pinned items are always kept.")
                     .font(.caption)
