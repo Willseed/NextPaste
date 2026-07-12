@@ -7,7 +7,7 @@ readonly SCRIPT_DIR
 REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
 readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
-readonly SCHEME_NAME="NextPaste"
+readonly SCHEME_NAME="NextPasteCI"
 readonly TEST_PLAN_NAME="NextPaste"
 readonly TEST_PLAN_PATH="${REPO_ROOT}/NextPaste.xctestplan"
 readonly DESTINATION="platform=macOS"

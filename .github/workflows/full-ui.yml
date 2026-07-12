@@ -14,7 +14,7 @@ permissions:
 
 env:
   # Keep manual/nightly shards on the same stable host-compatible toolchain as
-  # the blocking smoke workflow so LLDB preflight and UI launch are equivalent.
+  # the blocking smoke workflow so build and UI launch behavior are equivalent.
   DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
 
 jobs:

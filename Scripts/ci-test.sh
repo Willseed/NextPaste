@@ -7,7 +7,8 @@ readonly SCRIPT_DIR
 REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
 readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
-readonly SCHEME_NAME="NextPaste"
+readonly SCHEME_NAME="NextPasteCI"
+readonly CI_SCHEME_PATH="${PROJECT_PATH}/xcshareddata/xcschemes/${SCHEME_NAME}.xcscheme"
 readonly TEST_PLAN_NAME="NextPaste"
 readonly SHARD_MANIFEST="${SCRIPT_DIR}/ui-test-shards.txt"
 readonly BUILD_CONFIGURATION="Debug"
@@ -104,6 +105,28 @@ case "${HOST_ARCH}" in
   *) fail "unsupported macOS runner architecture: ${HOST_ARCH}" ;;
 esac
 readonly DESTINATION="platform=macOS,arch=${HOST_ARCH}"
+
+validate_ci_scheme_launchers() {
+  [[ -f "${CI_SCHEME_PATH}" ]] || fail "missing shared CI scheme: ${CI_SCHEME_PATH}"
+  [[ -x /usr/bin/xmllint ]] || fail "xmllint is required to validate the shared CI scheme"
+
+  local action debugger_identifier launcher_identifier
+  for action in TestAction LaunchAction; do
+    debugger_identifier="$(
+      /usr/bin/xmllint --xpath "string(/Scheme/${action}/@selectedDebuggerIdentifier)" "${CI_SCHEME_PATH}"
+    )"
+    launcher_identifier="$(
+      /usr/bin/xmllint --xpath "string(/Scheme/${action}/@selectedLauncherIdentifier)" "${CI_SCHEME_PATH}"
+    )"
+    [[ -z "${debugger_identifier}" ]] \
+      || fail "${SCHEME_NAME} ${action} must not attach a debugger: ${debugger_identifier}"
+    [[ "${launcher_identifier}" == "Xcode.IDEFoundation.Launcher.PosixSpawn" ]] \
+      || fail "${SCHEME_NAME} ${action} must use PosixSpawn: ${launcher_identifier:-unset}"
+  done
+  return 0
+}
+
+validate_ci_scheme_launchers
 
 artifacts_root="${CI_ARTIFACTS_DIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/NextPasteCI}"
 /bin/mkdir -p "${artifacts_root}"
@@ -365,27 +388,20 @@ assert_no_swiftui_runtime_warnings() {
   fi
 }
 
-note "Toolchain and LLDB preflight"
+note "Toolchain and automation preflight"
 {
   /bin/echo "DEVELOPER_DIR=${DEVELOPER_DIR}"
   /usr/bin/xcode-select -p
   "${XCODEBUILD}" -version
   /usr/bin/xcrun --find xcodebuild
-  /usr/bin/xcrun --find lldb
-  /usr/bin/xcrun lldb --version
   /usr/bin/sw_vers
   /usr/bin/uname -m
   /usr/bin/automationmodetool
 } 2>&1 | /usr/bin/tee "${RUN_DIR}/preflight.log"
 
 resolved_xcodebuild="$(DEVELOPER_DIR="${DEVELOPER_DIR}" /usr/bin/xcrun --find xcodebuild)"
-resolved_lldb="$(DEVELOPER_DIR="${DEVELOPER_DIR}" /usr/bin/xcrun --find lldb)"
 [[ "${resolved_xcodebuild}" == "${DEVELOPER_DIR}"/* ]] \
   || fail "xcrun xcodebuild does not resolve inside DEVELOPER_DIR: ${resolved_xcodebuild}"
-[[ "${resolved_lldb}" == "${DEVELOPER_DIR}"/* ]] \
-  || fail "xcrun lldb does not resolve inside DEVELOPER_DIR: ${resolved_lldb}"
-DEVELOPER_DIR="${DEVELOPER_DIR}" /usr/bin/xcrun lldb --version >/dev/null \
-  || fail "LLDB is unavailable; refusing to start UI tests"
 automation_mode_status="$(/usr/bin/automationmodetool)"
 if (( DRY_RUN == 0 )) && [[ "${automation_mode_status}" != *"DOES NOT REQUIRE"* ]]; then
   fail "UI Automation requires interactive authorization on this host; refusing to start UI tests"
