@@ -437,10 +437,12 @@ enum UITestAppLauncher {
             windowMenu.click()
             let mainWindowItem = app.menuItems
                 .matching(identifier: makeKeyAndOrderFrontIdentifier)
-                .matching(NSPredicate(format: "label == %@", "NextPaste"))
+                .matching(NSPredicate(format: "title == %@", app.title))
                 .firstMatch
             if mainWindowItem.waitForExistence(timeout: 2), mainWindowItem.isHittable {
                 mainWindowItem.click()
+            } else {
+                app.typeKey(.escape, modifierFlags: [])
             }
         }
 
