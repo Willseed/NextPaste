@@ -34,8 +34,11 @@ ok "specs/README.md present"
 
 status_of() { # dir -> status value (lowercased)
   local f="$1/spec.md"
+  local pipeline_status
   [[ -f "$f" ]] || { echo ""; return 0; }
   grep -m1 -iE '^\*\*Status\*\*:' "$f" | sed -E 's/^\*\*Status\*\*:[[:space:]]*//I' | tr '[:upper:]' '[:lower:]' | tr -d '[:space:]'
+  pipeline_status=$?
+  return "${pipeline_status}"
 }
 
 allowed_status() {
