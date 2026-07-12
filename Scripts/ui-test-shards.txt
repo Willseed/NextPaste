@@ -1,0 +1,19 @@
+# Stable, exhaustive full-UI suite assignment. Each production UI test class
+# must appear exactly once; Scripts/ci-test.sh validates this before building.
+1 NextPasteUITests
+1 NextPasteUITestsLaunchTests
+1 HistoryListUITests
+1 VisualIdentityUITests
+1 EmptyTextClipUITests
+1 CreateTextClipUITests
+1 SearchAccessibilityUITests
+1 HistoryClearUITests
+2 SettingsUITests
+2 RelaunchStabilityUITests
+3 ClipboardAutoCaptureUITests
+3 ClipboardImageAutoCaptureUITests
+3 ClipboardImageRowActionsUITests
+3 ImageOCRContextMenuUITests
+4 ClipRowActionsUITests
+4 PinScrollAutomationUITests
+4 RowActionStressTests
