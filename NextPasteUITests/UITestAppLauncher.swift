@@ -10,6 +10,29 @@ import XCTest
 import AppKit
 #endif
 
+struct UITestPathConfiguration: Sendable {
+    let artifactRootURL: URL
+
+    init(artifactRootURL: URL) {
+        self.artifactRootURL = artifactRootURL.standardizedFileURL
+    }
+
+    static var systemDefault: Self {
+#if os(macOS)
+        let sharedDirectoryURL = FileManager.default.urls(
+            for: .sharedPublicDirectory,
+            in: .localDomainMask
+        ).first ?? FileManager.default.temporaryDirectory
+#else
+        let sharedDirectoryURL = FileManager.default.temporaryDirectory
+#endif
+        return Self(
+            artifactRootURL: sharedDirectoryURL
+                .appendingPathComponent("NextPasteUITests", isDirectory: true)
+        )
+    }
+}
+
 struct UITestLaunchEnvironment: Sendable {
     static let identifierKey = "NEXTPASTE_UI_TEST_ID"
     static let defaultsSuiteKey = "NEXTPASTE_UI_TEST_DEFAULTS_SUITE"
@@ -29,12 +52,14 @@ struct UITestLaunchEnvironment: Sendable {
     let defaultsSuiteName: String
     let pasteboardName: String
 
-    init(testName: String) throws {
+    init(
+        testName: String,
+        pathConfiguration: UITestPathConfiguration = .systemDefault
+    ) throws {
         let uuid = UUID().uuidString.lowercased()
         let readableName = Self.sanitizedPathComponent(testName)
         let identifier = "\(readableName)-\(uuid)"
-        let rootURL = Self.appContainerTemporaryDirectory
-            .appendingPathComponent("NextPasteUITests", isDirectory: true)
+        let rootURL = pathConfiguration.artifactRootURL
             .appendingPathComponent(identifier, isDirectory: true)
             .standardizedFileURL
 
@@ -89,11 +114,6 @@ struct UITestLaunchEnvironment: Sendable {
 #endif
     }
 
-    private static let appContainerTemporaryDirectory = URL(
-        fileURLWithPath: "/Users/Shared/NextPasteUITests",
-        isDirectory: true
-    ).standardizedFileURL
-
     private static func sanitizedPathComponent(_ value: String) -> String {
         let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
         let scalars = value.unicodeScalars.map { scalar in
@@ -131,8 +151,14 @@ enum UITestLaunchEnvironmentRegistry {
     private static let lock = NSLock()
     private nonisolated(unsafe) static var activeEnvironment: UITestLaunchEnvironment?
 
-    static func beginTest(named testName: String) throws {
-        let environment = try UITestLaunchEnvironment(testName: testName)
+    static func beginTest(
+        named testName: String,
+        pathConfiguration: UITestPathConfiguration = .systemDefault
+    ) throws {
+        let environment = try UITestLaunchEnvironment(
+            testName: testName,
+            pathConfiguration: pathConfiguration
+        )
         let previous = replaceActiveEnvironment(with: environment)
         previous?.cleanup()
     }
@@ -247,9 +273,10 @@ enum UITestAppLauncher {
 
     static func makeTraceApp(
         onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize
+        windowSizePreset: WindowSizePreset = .defaultSize,
+        traceDirectoryURL: URL? = nil
     ) -> TraceLaunch {
-        let traceURL = makeTraceURL()
+        let traceURL = makeTraceURL(traceDirectoryURL: traceDirectoryURL)
         try? FileManager.default.removeItem(at: traceURL)
 
         let app = makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
@@ -262,9 +289,10 @@ enum UITestAppLauncher {
     static func makeTraceCaptureApp(
         pollInterval: TimeInterval = 0.1,
         onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize
+        windowSizePreset: WindowSizePreset = .defaultSize,
+        traceDirectoryURL: URL? = nil
     ) -> TraceLaunch {
-        let traceURL = makeTraceURL()
+        let traceURL = makeTraceURL(traceDirectoryURL: traceDirectoryURL)
         try? FileManager.default.removeItem(at: traceURL)
 
         let app = makeAutoCaptureApp(
@@ -280,9 +308,14 @@ enum UITestAppLauncher {
 
     static func launchTraceApp(
         onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize
+        windowSizePreset: WindowSizePreset = .defaultSize,
+        traceDirectoryURL: URL? = nil
     ) -> TraceLaunch {
-        let launch = makeTraceApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
+        let launch = makeTraceApp(
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset,
+            traceDirectoryURL: traceDirectoryURL
+        )
         launch.app.launch()
         prepareMainWindow(in: launch.app)
         return launch
@@ -344,16 +377,14 @@ enum UITestAppLauncher {
         return app
     }
 
-    static func makeOnDiskStore() throws -> OnDiskStore {
+    static func makeOnDiskStore(
+        pathConfiguration: UITestPathConfiguration = .systemDefault
+    ) throws -> OnDiskStore {
         // Debug macOS builds grant only this dedicated shared test root to the
         // sandboxed app and UI-test runner. Keeping relaunch stores here avoids
         // both the user's Application Support data and either process's private
         // container while remaining removable by the test teardown.
-        let appContainerTemporaryDirectory = URL(
-            fileURLWithPath: "/Users/Shared/NextPasteUITests",
-            isDirectory: true
-        ).standardizedFileURL
-        let rootURL = appContainerTemporaryDirectory
+        let rootURL = pathConfiguration.artifactRootURL
             .appendingPathComponent("NextPaste-025-ui-store-\(UUID().uuidString)", isDirectory: true)
             .standardizedFileURL
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
@@ -478,7 +509,24 @@ enum UITestAppLauncher {
         )
     }
 
-    private static func makeTraceURL() -> URL {
+    static func makeTraceURL(
+        traceDirectoryURL: URL? = nil,
+        fallbackPathConfiguration: UITestPathConfiguration = .systemDefault
+    ) -> URL {
+        if let traceDirectoryURL {
+            do {
+                try FileManager.default.createDirectory(
+                    at: traceDirectoryURL,
+                    withIntermediateDirectories: true
+                )
+            } catch {
+                XCTFail("Unable to create custom UI-test trace directory: \(error)")
+            }
+            return traceDirectoryURL
+                .appendingPathComponent("row-actions-\(UUID().uuidString).jsonl")
+                .standardizedFileURL
+        }
+
         if let path = ProcessInfo.processInfo.environment[uiTestRowActionTraceFileEnvironmentKey],
            path.isEmpty == false {
             return URL(fileURLWithPath: path)
@@ -494,11 +542,8 @@ enum UITestAppLauncher {
             return traceDirectory.appendingPathComponent("row-actions-\(UUID().uuidString).jsonl")
         }
 
-        let appContainerTemporaryDirectory = URL(
-            fileURLWithPath: "/Users/Shared/NextPasteUITests",
-            isDirectory: true
-        )
-        return appContainerTemporaryDirectory
+        return fallbackPathConfiguration.artifactRootURL
             .appendingPathComponent("nextpaste-row-action-trace-\(UUID().uuidString).jsonl")
+            .standardizedFileURL
     }
 }

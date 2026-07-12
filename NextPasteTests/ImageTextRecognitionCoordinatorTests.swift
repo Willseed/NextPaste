@@ -457,8 +457,10 @@ struct ImageTextRecognitionCoordinatorTests {
             imageFilename: "new.png",
             imageFingerprint: "new-fingerprint"
         )
-        let oldURL = URL(fileURLWithPath: "/tmp/old.png")
-        let newURL = URL(fileURLWithPath: "/tmp/new.png")
+        let generationDirectoryURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("stale-generation-fixture", isDirectory: true)
+        let oldURL = imageURL(named: "old.png", directoryURL: generationDirectoryURL)
+        let newURL = imageURL(named: "new.png", directoryURL: generationDirectoryURL)
 
         _ = await coordinator.requestCopy(
             oldRequest,
@@ -642,8 +644,15 @@ struct ImageTextRecognitionCoordinatorTests {
         ))
     }
 
-    private func imageURL(index: Int) -> URL {
-        URL(fileURLWithPath: "/tmp/image-\(index).png")
+    private func imageURL(
+        index: Int,
+        directoryURL: URL = FileManager.default.temporaryDirectory
+    ) -> URL {
+        imageURL(named: "image-\(index).png", directoryURL: directoryURL)
+    }
+
+    private func imageURL(named filename: String, directoryURL: URL) -> URL {
+        directoryURL.appendingPathComponent(filename, isDirectory: false).standardizedFileURL
     }
 
     private func expectInvocationCount(

@@ -37,15 +37,24 @@ struct DebugUITestSurfaceIsolationTests {
     }
 
     @Test("complete Debug UI-test environment enables its launch-argument seams")
-    func completeDebugUITestEnvironmentEnablesLaunchArgumentSeams() {
+    func completeDebugUITestEnvironmentEnablesLaunchArgumentSeams() throws {
         let monitor = ClipboardMonitorConfiguration(
             arguments: Self.simulationArguments,
             environment: Self.completeEnvironment
         )
 
 #if DEBUG
+        let defaultStorageFixture = LaunchStorageFixture()
+        let debugEnvironment = try #require(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: Self.completeEnvironment
+            )
+        )
         #expect(monitor.isEnabled == false)
         #expect(monitor.pollInterval == 0.125)
+        #expect(debugEnvironment.storeURL == defaultStorageFixture.storeURL)
+        #expect(debugEnvironment.dataDirectoryURL == defaultStorageFixture.dataDirectoryURL)
         #expect(
             ClipboardWriter.shouldSimulateFailureForApplicationLaunch(
                 arguments: Self.simulationArguments,
@@ -206,6 +215,28 @@ struct DebugUITestSurfaceIsolationTests {
             "Only the layout preference callback and function declaration may reference the readiness recorder"
         )
     }
+
+    @Test("custom UI-test storage URLs propagate through the Debug launch environment")
+    func customStorageURLsPropagateThroughDebugLaunchEnvironment() throws {
+        let customRootURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("custom-surface-isolation", isDirectory: true)
+        let storageFixture = LaunchStorageFixture(rootDirectoryURL: customRootURL)
+        let environment = Self.makeCompleteEnvironment(storageFixture: storageFixture)
+        let configuration = try #require(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: environment
+            )
+        )
+
+        #expect(configuration.storeURL == storageFixture.storeURL)
+        #expect(configuration.dataDirectoryURL == storageFixture.dataDirectoryURL)
+        #expect(environment[DebugUITestLaunchEnvironment.storeURLKey] == storageFixture.storeURL.path)
+        #expect(
+            environment[DebugUITestLaunchEnvironment.dataDirectoryKey]
+                == storageFixture.dataDirectoryURL.path
+        )
+    }
 #endif
 
     private static let simulationArguments = [
@@ -217,13 +248,19 @@ struct DebugUITestSurfaceIsolationTests {
         NewClipView.simulatedSaveFailureArgument
     ]
 
-    private static let completeEnvironment = [
-        "NEXTPASTE_UI_TEST_ID": "surface-isolation",
-        "NEXTPASTE_UI_TEST_DEFAULTS_SUITE": "pylot.NextPaste.Tests.surface-isolation",
-        "NEXTPASTE_UI_TEST_STORE_URL": "/tmp/NextPaste-surface-isolation.store",
-        "NEXTPASTE_UI_TEST_DATA_DIRECTORY": "/tmp/NextPaste-surface-isolation-images",
-        "NEXTPASTE_UI_TEST_PASTEBOARD_NAME": "pylot.NextPaste.Tests.surface-isolation.pasteboard"
-    ]
+    private static let completeEnvironment = makeCompleteEnvironment()
+
+    private static func makeCompleteEnvironment(
+        storageFixture: LaunchStorageFixture = LaunchStorageFixture()
+    ) -> [String: String] {
+        [
+            DebugUITestLaunchEnvironment.identifierKey: "surface-isolation",
+            DebugUITestLaunchEnvironment.defaultsSuiteKey: "pylot.NextPaste.Tests.surface-isolation",
+            DebugUITestLaunchEnvironment.storeURLKey: storageFixture.storeURL.path,
+            DebugUITestLaunchEnvironment.dataDirectoryKey: storageFixture.dataDirectoryURL.path,
+            DebugUITestLaunchEnvironment.pasteboardNameKey: "pylot.NextPaste.Tests.surface-isolation.pasteboard"
+        ]
+    }
 
     private static let incompleteEnvironments: [[String: String]] = {
         var environments: [[String: String]] = [[:]]
@@ -234,4 +271,18 @@ struct DebugUITestSurfaceIsolationTests {
         }
         return environments
     }()
+
+    private struct LaunchStorageFixture {
+        let storeURL: URL
+        let dataDirectoryURL: URL
+
+        init(rootDirectoryURL: URL = FileManager.default.temporaryDirectory) {
+            storeURL = rootDirectoryURL
+                .appendingPathComponent("NextPaste-surface-isolation.store", isDirectory: false)
+                .standardizedFileURL
+            dataDirectoryURL = rootDirectoryURL
+                .appendingPathComponent("NextPaste-surface-isolation-images", isDirectory: true)
+                .standardizedFileURL
+        }
+    }
 }
