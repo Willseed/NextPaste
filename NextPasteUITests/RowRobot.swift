@@ -236,14 +236,8 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let row = textRow(containing: clipText, file: file, line: line)
-        return revealPinAction(
-            on: [
-                row,
-                textSwipeElement(containing: clipText, file: file, line: line)
-            ],
-            scopedTo: row,
-            rowDescription: clipText,
+        revealPinActionWithRightSwipe(
+            for: clipText,
             expectedLabel: expectedLabel,
             file: file,
             line: line
@@ -256,14 +250,8 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let row = textRow(containing: clipText, file: file, line: line)
-        return revealDeleteAction(
-            on: [
-                row,
-                textSwipeElement(containing: clipText, file: file, line: line)
-            ],
-            scopedTo: row,
-            rowDescription: clipText,
+        revealDeleteActionWithLeftSwipe(
+            for: clipText,
             file: file,
             line: line
         )
@@ -275,11 +263,8 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
-        return revealDeleteAction(
-            on: [row],
-            scopedTo: row,
-            rowDescription: thumbnailDescription,
+        revealImageDeleteActionWithLeftSwipe(
+            forThumbnailDescription: thumbnailDescription,
             file: file,
             line: line
         )
@@ -292,11 +277,8 @@ struct RowRobot {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
-        let row = imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line)
-        return revealPinAction(
-            on: [row],
-            scopedTo: row,
-            rowDescription: thumbnailDescription,
+        revealImagePinActionWithRightSwipe(
+            forThumbnailDescription: thumbnailDescription,
             expectedLabel: expectedLabel,
             file: file,
             line: line
