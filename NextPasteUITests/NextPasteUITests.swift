@@ -16,6 +16,16 @@ final class NextPasteUITests: UITestCase {
         let app = UITestAppLauncher.makeApp()
 
         XCTAssertEqual(environment.rootURL.deletingLastPathComponent(), expectedEnvironmentRootURL)
+#if os(macOS)
+        XCTAssertEqual(
+            Array(expectedEnvironmentRootURL.pathComponents.suffix(3)),
+            ["Users", "Shared", "NextPasteUITests"]
+        )
+        XCTAssertFalse(
+            expectedEnvironmentRootURL.path.contains(".xctrunner"),
+            "The default artifact root must be visible to both sandboxed test processes"
+        )
+#endif
         XCTAssertEqual(
             app.launchEnvironment[UITestLaunchEnvironment.storeURLKey],
             environment.storeURL.path

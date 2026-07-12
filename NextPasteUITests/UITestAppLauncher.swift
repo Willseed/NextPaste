@@ -19,10 +19,15 @@ struct UITestPathConfiguration: Sendable {
 
     static var systemDefault: Self {
 #if os(macOS)
-        let sharedDirectoryURL = FileManager.default.urls(
-            for: .sharedPublicDirectory,
-            in: .localDomainMask
-        ).first ?? FileManager.default.temporaryDirectory
+        // The UI-test runner is sandboxed, so search-path lookup can resolve to
+        // its private container. Build the system Shared directory from the
+        // filesystem root to match the app's debug-only sandbox entitlement.
+        let sharedDirectoryURL = URL(
+            fileURLWithPath: NSOpenStepRootDirectory(),
+            isDirectory: true
+        )
+        .appendingPathComponent("Users", isDirectory: true)
+        .appendingPathComponent("Shared", isDirectory: true)
 #else
         let sharedDirectoryURL = FileManager.default.temporaryDirectory
 #endif

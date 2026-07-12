@@ -227,28 +227,12 @@ run_with_watchdog() {
     "${command[@]}" 2>&1 | /usr/bin/tee "${log_path}"
   ) &
   ACTIVE_PID=$!
-  local started deadline now status timed_out=0 infrastructure_failed=0
+  local started deadline now status timed_out=0
   started="$(/bin/date +%s)"
   deadline=$((started + timeout_seconds))
 
   while /bin/kill -0 "${ACTIVE_PID}" 2>/dev/null; do
     now="$(/bin/date +%s)"
-    if [[ -f "${log_path}" ]] \
-        && /usr/bin/grep -Eiq 'DebuggerLLDB[.]DebuggerVersionStore[.]StoreError|no debugger version' "${log_path}"; then
-      infrastructure_failed=1
-      /bin/echo "error: ${label} reported an unusable LLDB debugger version; terminating immediately" \
-        | /usr/bin/tee -a "${log_path}" >&2
-      /usr/bin/touch "${RUN_DIR}/${label// /-}.lldb-infrastructure-failure"
-      terminate_tree "${ACTIVE_PID}" TERM
-      local lldb_grace_deadline=$((now + 10))
-      while /bin/kill -0 "${ACTIVE_PID}" 2>/dev/null && (( $(/bin/date +%s) < lldb_grace_deadline )); do
-        /bin/sleep 1
-      done
-      if /bin/kill -0 "${ACTIVE_PID}" 2>/dev/null; then
-        terminate_tree "${ACTIVE_PID}" KILL
-      fi
-      break
-    fi
     if (( now >= deadline )); then
       timed_out=1
       /bin/echo "error: ${label} exceeded ${timeout_seconds}s; terminating xcodebuild and descendants" \
@@ -273,10 +257,6 @@ run_with_watchdog() {
   if (( timed_out )); then
     collect_crash_reports
     return 124
-  fi
-  if (( infrastructure_failed )); then
-    collect_crash_reports
-    return 70
   fi
   return "${status}"
 }
