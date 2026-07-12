@@ -952,7 +952,11 @@ struct HomeView: View {
     }
 
     // The primary action keeps the default (prominent) button style at every
-    // width so "New Clip" is always the visually strongest control.
+    // width so "New Clip" is always the visually strongest control. It is
+    // intentionally always labeled (icon + "New Clip") at every density tier,
+    // including `.minimal`; the labeled control is short enough that the 520 pt
+    // minimum window width floor (`NextPasteApp.mainWindowContent`) guarantees
+    // it renders fully without truncation, so no icon-only fallback is needed.
     private var newClipControl: some View {
         Button {
             isPresentingNewClip = true
@@ -1064,10 +1068,17 @@ struct HomeView: View {
                     Button {
                         historyFilter = filter
                     } label: {
-                        Text(LocalizedStringKey(filter.titleKey))
+                        HStack {
+                            Text(LocalizedStringKey(filter.titleKey))
+                            if historyFilter == filter {
+                                Image(systemName: "checkmark")
+                                    .accessibilityHidden(true)
+                            }
+                        }
                     }
                     .accessibilityIdentifier(filter.accessibilityIdentifier)
                     .accessibilityLabel(Text(LocalizedStringKey(filter.titleKey)))
+                    .accessibilityAddTraits(historyFilter == filter ? .isSelected : [])
                 }
             } label: {
                 Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
