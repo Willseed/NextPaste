@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
 readonly MAXIMUM_MACOS_DEPLOYMENT_TARGET="26.0"
 readonly TARGETS=(NextPaste NextPasteTests NextPasteUITests)
@@ -17,6 +19,7 @@ fail() {
 version_is_at_most() {
   local required="$1"
   local available="$2"
+  local comparison_status=0
 
   [[ "${required}" =~ ^[0-9]+([.][0-9]+){0,2}$ ]] || return 2
   [[ "${available}" =~ ^[0-9]+([.][0-9]+){0,2}$ ]] || return 2
@@ -33,15 +36,20 @@ version_is_at_most() {
       }
       exit 0
     }
-  '
+  ' || comparison_status="${?}"
+  return "${comparison_status}"
 }
 
 if [[ "${1:-}" == "--self-test" ]]; then
   version_is_at_most 26.0 26.0
   version_is_at_most 26.0 26.4
   version_is_at_most 26.4 26.4.1
-  ! version_is_at_most 26.5 26.4
-  ! version_is_at_most 27.0 26.9
+  if version_is_at_most 26.5 26.4; then
+    fail "self-test expected macOS 26.5 to exceed 26.4"
+  fi
+  if version_is_at_most 27.0 26.9; then
+    fail "self-test expected macOS 27.0 to exceed 26.9"
+  fi
   /bin/echo "macOS host compatibility comparator self-test passed."
   exit 0
 fi
