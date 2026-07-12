@@ -92,12 +92,10 @@ final class SettingsUITests: UITestCase {
         case next
 
         var key: XCUIKeyboardKey {
-            switch self {
-            case .previous:
+            if case .previous = self {
                 return .upArrow
-            case .next:
-                return .downArrow
             }
+            return .downArrow
         }
     }
 
