@@ -75,7 +75,7 @@ NextPasteUITests/SettingsUITests.swift|for invalidDraft in ["letters", "1.5", "#
 NextPasteUITests/SettingsUITests.swift|for option in options {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for _ in 0..<3 {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for button in app.buttons.matching(identifier: identifier).allElementsBoundByIndex {
-NextPasteUITests/SwipeSynthesisRecorder.swift|for candidate in candidates {
+NextPasteUITests/SwipeSynthesisRecorder.swift|for candidate in context.gestureCandidates {
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,

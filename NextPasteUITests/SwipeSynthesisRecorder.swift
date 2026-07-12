@@ -17,6 +17,20 @@
 
 import XCTest
 
+struct SwipeSynthesisContext {
+    enum Direction {
+        case right
+        case left
+    }
+
+    let gestureCandidates: [XCUIElement]
+    let targetedRow: XCUIElement
+    let actionButtonIdentifier: String
+    let expectedAccessibleLabel: String
+    let direction: Direction
+    let application: XCUIApplication
+}
+
 enum SwipeSynthesisRecorder {
     /// Result of a native swipe reveal attempt: either the revealed,
     /// hittable action button aligned to the targeted row, or a synthesis
@@ -24,11 +38,6 @@ enum SwipeSynthesisRecorder {
     enum Outcome {
         case revealed(XCUIElement)
         case failure(SwipeSynthesisOutcome)
-    }
-
-    enum Direction {
-        case right
-        case left
     }
 
     /// Reveal a Pin/Delete action button via native `swipeRight()`/`swipeLeft()`
@@ -39,12 +48,7 @@ enum SwipeSynthesisRecorder {
     /// (FR-004).
     @MainActor
     static func reveal(
-        on candidates: [XCUIElement],
-        scopedTo rowScope: XCUIElement,
-        buttonIdentifier: String,
-        expectedLabel: String,
-        direction: Direction,
-        in app: XCUIApplication,
+        context: SwipeSynthesisContext,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> Outcome {
@@ -52,7 +56,7 @@ enum SwipeSynthesisRecorder {
         var retryCount = 0
         var swipeIssued = false
 
-        for candidate in candidates {
+        for candidate in context.gestureCandidates {
             let candidateIsReady = UITestWait.until(
                 timeout: UITestAssertions.defaultTimeout
             ) {
@@ -76,7 +80,7 @@ enum SwipeSynthesisRecorder {
                     continue
                 }
 
-                switch direction {
+                switch context.direction {
                 case .right:
                     candidate.swipeRight()
                 case .left:
@@ -87,14 +91,19 @@ enum SwipeSynthesisRecorder {
                 var revealedButton: XCUIElement?
                 let didReveal = UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
                     revealedButton = hittableActionButton(
-                        identifier: buttonIdentifier,
-                        alignedTo: rowScope,
-                        in: app
+                        identifier: context.actionButtonIdentifier,
+                        alignedTo: context.targetedRow,
+                        in: context.application
                     )
                     return revealedButton != nil
                 }
                 if didReveal, let button = revealedButton {
-                    UITestAssertions.assertAccessibleTextContains(button, expectedLabel, file: file, line: line)
+                    UITestAssertions.assertAccessibleTextContains(
+                        button,
+                        context.expectedAccessibleLabel,
+                        file: file,
+                        line: line
+                    )
                     return .revealed(button)
                 }
             }

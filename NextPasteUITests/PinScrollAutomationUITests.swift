@@ -420,12 +420,14 @@ final class PinScrollAutomationUITests: UITestCase {
             line: line
         )
         let outcome = SwipeSynthesisRecorder.reveal(
-            on: [target, swipeSurface],
-            scopedTo: target,
-            buttonIdentifier: "pin-clip-button",
-            expectedLabel: expectedLabel,
-            direction: .right,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: [target, swipeSurface],
+                targetedRow: target,
+                actionButtonIdentifier: "pin-clip-button",
+                expectedAccessibleLabel: expectedLabel,
+                direction: .right,
+                application: app
+            ),
             file: file,
             line: line
         )
@@ -459,12 +461,14 @@ final class PinScrollAutomationUITests: UITestCase {
             line: line
         )
         let outcome = SwipeSynthesisRecorder.reveal(
-            on: [target, swipeSurface],
-            scopedTo: target,
-            buttonIdentifier: "delete-clip-button",
-            expectedLabel: "Delete",
-            direction: .left,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: [target, swipeSurface],
+                targetedRow: target,
+                actionButtonIdentifier: "delete-clip-button",
+                expectedAccessibleLabel: "Delete",
+                direction: .left,
+                application: app
+            ),
             file: file,
             line: line
         )

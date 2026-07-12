@@ -13,22 +13,7 @@ struct RowRobot {
         static let deleteButtonIdentifier = "delete-clip-button"
     }
 
-    private enum SwipeMagnitude {
-        case subThreshold
-        case reveal
-        case full
-
-        var distance: CGFloat {
-            switch self {
-            case .subThreshold:
-                0.14
-            case .reveal:
-                0.42
-            case .full:
-                0.82
-            }
-        }
-    }
+    private static let subThresholdSwipeDistance: CGFloat = 0.14
 
     let app: XCUIApplication
 
@@ -178,7 +163,6 @@ struct RowRobot {
             ],
             scopedTo: row,
             rowDescription: clipText,
-            magnitude: .reveal,
             expectedLabel: expectedLabel,
             file: file,
             line: line
@@ -239,7 +223,6 @@ struct RowRobot {
             on: [row],
             scopedTo: row,
             rowDescription: thumbnailDescription,
-            magnitude: .reveal,
             expectedLabel: expectedLabel,
             file: file,
             line: line
@@ -261,7 +244,6 @@ struct RowRobot {
             ],
             scopedTo: row,
             rowDescription: clipText,
-            magnitude: .full,
             expectedLabel: expectedLabel,
             file: file,
             line: line
@@ -282,7 +264,6 @@ struct RowRobot {
             ],
             scopedTo: row,
             rowDescription: clipText,
-            magnitude: .full,
             file: file,
             line: line
         )
@@ -299,7 +280,6 @@ struct RowRobot {
             on: [row],
             scopedTo: row,
             rowDescription: thumbnailDescription,
-            magnitude: .full,
             file: file,
             line: line
         )
@@ -317,7 +297,6 @@ struct RowRobot {
             on: [row],
             scopedTo: row,
             rowDescription: thumbnailDescription,
-            magnitude: .full,
             expectedLabel: expectedLabel,
             file: file,
             line: line
@@ -332,7 +311,7 @@ struct RowRobot {
     ) -> Self {
         swipe(
             textSwipeElement(containing: clipText, file: file, line: line),
-            horizontallyBy: SwipeMagnitude.subThreshold.distance,
+            horizontallyBy: Self.subThresholdSwipeDistance,
             file: file,
             line: line
         )
@@ -347,7 +326,7 @@ struct RowRobot {
     ) -> Self {
         swipe(
             textSwipeElement(containing: clipText, file: file, line: line),
-            horizontallyBy: -SwipeMagnitude.subThreshold.distance,
+            horizontallyBy: -Self.subThresholdSwipeDistance,
             file: file,
             line: line
         )
@@ -362,7 +341,7 @@ struct RowRobot {
     ) -> Self {
         swipe(
             imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line),
-            horizontallyBy: SwipeMagnitude.subThreshold.distance,
+            horizontallyBy: Self.subThresholdSwipeDistance,
             file: file,
             line: line
         )
@@ -377,7 +356,7 @@ struct RowRobot {
     ) -> Self {
         swipe(
             imageRow(withThumbnailDescription: thumbnailDescription, file: file, line: line),
-            horizontallyBy: -SwipeMagnitude.subThreshold.distance,
+            horizontallyBy: -Self.subThresholdSwipeDistance,
             file: file,
             line: line
         )
@@ -649,7 +628,6 @@ struct RowRobot {
         on candidates: [XCUIElement],
         scopedTo rowScope: XCUIElement,
         rowDescription: String,
-        magnitude: SwipeMagnitude,
         expectedLabel: String,
         file: StaticString,
         line: UInt
@@ -665,12 +643,14 @@ struct RowRobot {
         // non-opted-in callers; T032/T046 use the recorded variants below to
         // classify instead of failing generically.
         let outcome = SwipeSynthesisRecorder.reveal(
-            on: candidates,
-            scopedTo: rowScope,
-            buttonIdentifier: Accessibility.pinButtonIdentifier,
-            expectedLabel: expectedLabel,
-            direction: .right,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: candidates,
+                targetedRow: rowScope,
+                actionButtonIdentifier: Accessibility.pinButtonIdentifier,
+                expectedAccessibleLabel: expectedLabel,
+                direction: .right,
+                application: app
+            ),
             file: file,
             line: line
         )
@@ -687,7 +667,6 @@ struct RowRobot {
         on candidates: [XCUIElement],
         scopedTo rowScope: XCUIElement,
         rowDescription: String,
-        magnitude: SwipeMagnitude = .reveal,
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
@@ -696,12 +675,14 @@ struct RowRobot {
         // `swipeLeft()` remains the gesture call; press-drag is not
         // substituted for acceptance (FR-007).
         let outcome = SwipeSynthesisRecorder.reveal(
-            on: candidates,
-            scopedTo: rowScope,
-            buttonIdentifier: Accessibility.deleteButtonIdentifier,
-            expectedLabel: "Delete",
-            direction: .left,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: candidates,
+                targetedRow: rowScope,
+                actionButtonIdentifier: Accessibility.deleteButtonIdentifier,
+                expectedAccessibleLabel: "Delete",
+                direction: .left,
+                application: app
+            ),
             file: file,
             line: line
         )
@@ -729,15 +710,17 @@ struct RowRobot {
     ) -> SwipeSynthesisRecorder.Outcome {
         let row = textRow(containing: clipText, file: file, line: line)
         return SwipeSynthesisRecorder.reveal(
-            on: [
-                row,
-                textSwipeElement(containing: clipText, file: file, line: line)
-            ],
-            scopedTo: row,
-            buttonIdentifier: Accessibility.pinButtonIdentifier,
-            expectedLabel: expectedLabel,
-            direction: .right,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: [
+                    row,
+                    textSwipeElement(containing: clipText, file: file, line: line)
+                ],
+                targetedRow: row,
+                actionButtonIdentifier: Accessibility.pinButtonIdentifier,
+                expectedAccessibleLabel: expectedLabel,
+                direction: .right,
+                application: app
+            ),
             file: file,
             line: line
         )
@@ -753,15 +736,17 @@ struct RowRobot {
     ) -> SwipeSynthesisRecorder.Outcome {
         let row = textRow(containing: clipText, file: file, line: line)
         return SwipeSynthesisRecorder.reveal(
-            on: [
-                row,
-                textSwipeElement(containing: clipText, file: file, line: line)
-            ],
-            scopedTo: row,
-            buttonIdentifier: Accessibility.deleteButtonIdentifier,
-            expectedLabel: "Delete",
-            direction: .left,
-            in: app,
+            context: SwipeSynthesisContext(
+                gestureCandidates: [
+                    row,
+                    textSwipeElement(containing: clipText, file: file, line: line)
+                ],
+                targetedRow: row,
+                actionButtonIdentifier: Accessibility.deleteButtonIdentifier,
+                expectedAccessibleLabel: "Delete",
+                direction: .left,
+                application: app
+            ),
             file: file,
             line: line
         )
