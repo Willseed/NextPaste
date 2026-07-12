@@ -301,7 +301,7 @@ struct HistoryRetentionServiceTests {
         #expect(remaining.filter { $0.isPinned == false }.map(\.textContent) == ["new unpinned"])
     }
 
-    @Test func SettingsViewDoesNotEnforceRetentionDuringBodyEvaluation() throws {
+    @Test func settingsViewDoesNotEnforceRetentionDuringBodyEvaluation() throws {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()

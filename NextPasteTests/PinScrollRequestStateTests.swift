@@ -243,17 +243,22 @@ struct PinScrollRequestStateTests {
 
     @Test("a partially visible target does not trigger a disruptive scroll")
     func partiallyVisibleTargetDoesNotScroll() {
-        let itemID = UUID()
+        let targetID = UUID()
+        let fullyVisiblePeerID = UUID()
+        let projection = [targetID, fullyVisiblePeerID]
         let request = PinScrollRequest(
-            itemID: itemID,
+            itemID: targetID,
             generation: 1,
-            expectedVisibleItemIDs: [itemID]
+            expectedVisibleItemIDs: projection
         )
 
+        // The 0.01 visibility threshold projects both a partially visible
+        // target and its fully visible peer into this aggregate. Membership of
+        // the target is therefore the contract that suppresses scrolling.
         let decision = HistoryViewportVisibility.pinScrollDecision(
             request: request,
-            visibleItemIDs: [itemID],
-            visibleTargetIDs: [itemID],
+            visibleItemIDs: projection,
+            visibleTargetIDs: [targetID, fullyVisiblePeerID],
             hasCurrentVisibilitySnapshot: true
         )
 

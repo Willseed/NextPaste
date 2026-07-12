@@ -189,9 +189,9 @@ struct NativeSwipeFailureClassifierTests {
         #expect(result.category == .nativeSwipeSynthesisFailure(swipe))
     }
 
-    @Test("swipe not issued is not a synthesis failure")
-    func swipeNotIssuedIsNotSynthesisFailure() {
-        let swipe = SwipeSynthesisOutcome(swipeIssued: false, buttonHittable: false, retryCount: 0, duration: 0)
+    @Test("an already-hittable action without an issued swipe is clean evidence")
+    func alreadyHittableActionWithoutSwipePasses() {
+        let swipe = SwipeSynthesisOutcome(swipeIssued: false, buttonHittable: true, retryCount: 0, duration: 0)
         let bundle = NativeSwipeEvidenceBundle(
             environmentCapability: capable(),
             fixtureRows: presentFixture(),
@@ -199,12 +199,8 @@ struct NativeSwipeFailureClassifierTests {
             swipeOutcome: swipe
         )
         let result = NativeSwipeFailureClassifier.classify(bundle)
-        // Fits no category and is not clean -> fail closed to unclassified.
-        if case .failing(let category) = result {
-            #expect(category == .unclassified(bundle))
-        } else {
-            Issue.record("expected failing unclassified result, got \(result)")
-        }
+
+        #expect(result == .passing(bundle))
     }
 
     // MARK: - 6. Clean evidence yields passing result (FR-012, SC-004)
@@ -232,8 +228,9 @@ struct NativeSwipeFailureClassifierTests {
 
     @Test("evidence combination that fits no category yields unclassified (fail closed)")
     func unclassifiedWhenNoCategoryFits() {
-        // Swipe was not issued, button not hittable, but everything else clean:
-        // not a synthesis failure (requires swipe issued), not clean -> fail closed.
+        // Unlike the already-hittable no-swipe case above, this attempt never
+        // issued a gesture and never exposed an action. It is neither clean nor
+        // a synthesis failure, so it must fail closed.
         let swipe = SwipeSynthesisOutcome(swipeIssued: false, buttonHittable: false, retryCount: 0, duration: 0)
         let bundle = NativeSwipeEvidenceBundle(
             environmentCapability: capable(),

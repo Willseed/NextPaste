@@ -490,20 +490,20 @@ func unavailableNativeLifecycleHasTerminalFailClosedOutcome() async throws {
 @MainActor
 func productionBoundaryPreparationFailsClosedWithoutPermanentWait() {
     let missingTable = RowActionSafeBoundaryKVOAdapter(tableViewProvider: { nil })
-    switch missingTable.prepareToWaitForSafeBoundary() {
-    case .unavailable(.tableUnavailable):
-        break
-    default:
+    if case .unavailable(.tableUnavailable) = missingTable.prepareToWaitForSafeBoundary() {
+        // The expected terminal state proves the adapter fails closed when its
+        // exact NSTableView cannot be resolved.
+    } else {
         Issue.record("A missing exact NSTableView must be a terminal unavailable result.")
     }
 
     let inactiveTable = NSTableView()
     #expect(inactiveTable.rowActionsVisible == false)
     let hiddenActions = RowActionSafeBoundaryKVOAdapter(tableViewProvider: { inactiveTable })
-    switch hiddenActions.prepareToWaitForSafeBoundary() {
-    case .unavailable(.actionsAlreadyHidden):
-        break
-    default:
+    if case .unavailable(.actionsAlreadyHidden) = hiddenActions.prepareToWaitForSafeBoundary() {
+        // The expected terminal state proves an already-dismissed action
+        // surface is not mistaken for a future lifecycle transition.
+    } else {
         Issue.record("An already-hidden action surface must not be accepted as a safe boundary.")
     }
 }
