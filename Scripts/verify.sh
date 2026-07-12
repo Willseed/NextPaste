@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
 readonly SCHEME_NAME="NextPaste"
 readonly TEST_PLAN_NAME="NextPaste"
@@ -39,6 +41,16 @@ note() {
 fail() {
   /bin/echo "error: $*" >&2
   exit 1
+}
+
+require_external_directory() {
+  local purpose="$1"
+  local directory="$2"
+  case "${directory}/" in
+    "${REPO_ROOT}/"*) fail "${purpose} must be outside the repository: ${directory}" ;;
+    /*) return 0 ;;
+    *) fail "unable to classify ${purpose} path '${directory}': expected an absolute path" ;;
+  esac
 }
 
 assert_no_repository_build_artifacts() {
@@ -108,16 +120,13 @@ assert_no_repository_build_artifacts "preflight artifact gate"
 artifacts_root="${VERIFY_ARTIFACTS_DIR:-${TMPDIR:-/tmp}/NextPasteVerification}"
 /bin/mkdir -p "${artifacts_root}"
 artifacts_root="$(cd -P "${artifacts_root}" && pwd -P)"
-case "${artifacts_root}/" in
-  "${REPO_ROOT}/"*) fail "Verification output must be outside the repository: ${artifacts_root}" ;;
-esac
-readonly RUN_DIR="$(/usr/bin/mktemp -d "${artifacts_root}/run.XXXXXX")"
+require_external_directory "Verification output" "${artifacts_root}"
+RUN_DIR="$(/usr/bin/mktemp -d "${artifacts_root}/run.XXXXXX")"
+readonly RUN_DIR
 derived_data_path="${VERIFY_DERIVED_DATA_PATH:-${RUN_DIR}/DerivedData}"
 /bin/mkdir -p "${derived_data_path}"
 derived_data_path="$(cd -P "${derived_data_path}" && pwd -P)"
-case "${derived_data_path}/" in
-  "${REPO_ROOT}/"*) fail "DerivedData must be outside the repository: ${derived_data_path}" ;;
-esac
+require_external_directory "DerivedData" "${derived_data_path}"
 readonly DERIVED_DATA_PATH="${derived_data_path}"
 
 TOTAL_TESTS=0
