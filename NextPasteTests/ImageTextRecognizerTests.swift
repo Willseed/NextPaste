@@ -50,7 +50,9 @@ struct VisionImageTextRecognizerIntegrationTests {
         let sourceURL = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-            .appendingPathComponent("NextPaste/ImageClips/ImageTextRecognizer.swift")
+            .appendingPathComponent("NextPaste", isDirectory: true)
+            .appendingPathComponent("ImageClips", isDirectory: true)
+            .appendingPathComponent("ImageTextRecognizer.swift", isDirectory: false)
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
         let declaration = try #require(source.range(of: "actor VisionImageTextRecognizer"))
         let nextDeclaration = try #require(
