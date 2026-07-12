@@ -138,7 +138,9 @@ TOTAL_EXPECTED_FAILURES=0
 plist_value() {
   local key="$1"
   local file="$2"
-  /usr/bin/plutil -extract "${key}" raw -o - "${file}"
+  local plutil_status=0
+  /usr/bin/plutil -extract "${key}" raw -o - "${file}" || plutil_status="${?}"
+  return "${plutil_status}"
 }
 
 summarize_xcresult() {
