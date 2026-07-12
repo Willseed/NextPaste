@@ -141,12 +141,9 @@ enum UITestLaunchEnvironmentRegistry {
     }
 
     static func currentOrCreate() throws -> UITestLaunchEnvironment {
-        lock.lock()
-        if let activeEnvironment {
-            lock.unlock()
+        if let activeEnvironment = current() {
             return activeEnvironment
         }
-        lock.unlock()
 
         let environment = try UITestLaunchEnvironment(testName: "implicit-ui-test")
         lock.lock()
