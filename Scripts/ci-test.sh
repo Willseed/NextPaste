@@ -151,7 +151,9 @@ readonly DERIVED_DATA_PATH="${CI_DERIVED_DATA_PATH:-${RUN_DIR}/DerivedData}"
 plist_value() {
   local key="$1"
   local file="$2"
-  /usr/bin/plutil -extract "${key}" raw -o - "${file}"
+  local plutil_status=0
+  /usr/bin/plutil -extract "${key}" raw -o - "${file}" || plutil_status=$?
+  return "${plutil_status}"
 }
 
 validate_shard_manifest() {
