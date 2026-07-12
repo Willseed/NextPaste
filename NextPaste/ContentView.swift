@@ -16,6 +16,9 @@ struct ContentView: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
+#if DEBUG
+    @Environment(\.debugAccessibilityOverrides) private var debugAccessibilityOverrides
+#endif
     @EnvironmentObject private var appearancePreference: AppearancePreference
     private let imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
 
@@ -57,12 +60,12 @@ struct ContentView: View {
                     DebugUITestAccessibilityProbe(
                         identifier: "main-color-contrast",
                         label: "Main window color contrast",
-                        value: colorSchemeContrast == .increased ? "increased" : "standard"
+                        value: resolvedColorSchemeContrast == .increased ? "increased" : "standard"
                     )
                     DebugUITestAccessibilityProbe(
                         identifier: "main-reduce-transparency",
                         label: "Main window reduce transparency",
-                        value: reduceTransparency ? "true" : "false"
+                        value: resolvedReduceTransparency ? "true" : "false"
                     )
                 }
             }
@@ -91,11 +94,27 @@ struct ContentView: View {
             #endif
         }
 
-        if colorSchemeContrast == .increased {
+        if resolvedColorSchemeContrast == .increased {
             return isDark ? .highContrastDark : .highContrastLight
         }
 
         return isDark ? .dark : .light
+    }
+
+    private var resolvedColorSchemeContrast: ColorSchemeContrast {
+#if DEBUG
+        debugAccessibilityOverrides.resolvedColorSchemeContrast(colorSchemeContrast)
+#else
+        colorSchemeContrast
+#endif
+    }
+
+    private var resolvedReduceTransparency: Bool {
+#if DEBUG
+        debugAccessibilityOverrides.resolvedReduceTransparency(reduceTransparency)
+#else
+        reduceTransparency
+#endif
     }
 }
 

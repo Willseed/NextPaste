@@ -269,13 +269,20 @@ struct ThemeContractTests {
             contentsOf: repositoryRoot.appendingPathComponent("NextPaste/SettingsView.swift"),
             encoding: .utf8
         )
-        for symbol in ["gear", "keyboard", "circle.lefthalf.filled", "clock.arrow.circlepath"] {
-            #expect(
-                settingsSource.contains(
-                    "Image(systemName: \"\(symbol)\").accessibilityHidden(true)"
-                )
-            )
+        let settingsTabItems = settingsSource
+            .components(separatedBy: ".tabItem {")
+            .dropFirst()
+        #expect(settingsTabItems.count == 5)
+        for tabItem in settingsTabItems {
+            let tag = try #require(tabItem.range(of: ".tag(Tab."))
+            let tabItemSource = tabItem[..<tag.lowerBound]
+            #expect(tabItemSource.contains("SettingsTabItem("))
+            #expect(tabItemSource.contains("icon:"))
+            #expect(tabItemSource.contains("identifier:"))
         }
+        #expect(settingsSource.contains("private struct SettingsTabItem: View"))
+        #expect(settingsSource.contains("let icon: String"))
+        #expect(settingsSource.contains("Image(systemName: icon).accessibilityHidden(true)"))
 
         let homeSource = try String(
             contentsOf: repositoryRoot.appendingPathComponent("NextPaste/HomeView.swift"),

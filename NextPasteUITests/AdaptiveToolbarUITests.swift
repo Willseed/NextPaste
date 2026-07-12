@@ -188,7 +188,12 @@ final class AdaptiveToolbarUITests: UITestCase {
         app.typeKey("f", modifierFlags: .command)
         history.searchField()
         let searchField = history.searchField()
-        XCTAssertTrue(searchField.hasKeyboardFocus, "Expected Find menu command to focus search in compact mode")
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                UITestWait.keyboardFocusState(of: searchField) == .focused
+            },
+            "Expected Find menu command to focus search in compact mode; observed \(UITestWait.keyboardFocusState(of: searchField))"
+        )
     }
 
     @MainActor
@@ -234,9 +239,12 @@ final class AdaptiveToolbarUITests: UITestCase {
             }
 
             app.typeKey("f", modifierFlags: .command)
+            let searchField = history.searchField()
             XCTAssertTrue(
-                history.searchField().hasKeyboardFocus,
-                "Expected keyboard focus command to still route to search at \(preset.rawValue)"
+                UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                    UITestWait.keyboardFocusState(of: searchField) == .focused
+                },
+                "Expected keyboard focus command to still route to search at \(preset.rawValue); observed \(UITestWait.keyboardFocusState(of: searchField))"
             )
             app.typeKey(.escape, modifierFlags: [])
         }

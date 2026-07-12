@@ -342,7 +342,7 @@ private struct ClipboardSettingsTab: View {
     let isSelected: Bool
     @State private var draftText = ""
     @State private var sliderValue = Double(HistoryLimit.defaultLimit.value)
-    @State private var retentionErrorKey: LocalizedStringKey?
+    @State private var retentionErrorKey: String?
     @FocusState private var focusedTarget: FocusTarget?
 
     private var currentLanguage: AppLanguage {
@@ -393,7 +393,7 @@ private struct ClipboardSettingsTab: View {
                         .focused($focusedTarget, equals: .slider)
                         .accessibilityIdentifier("history-limit-slider")
                         .accessibilityLabel(Text("Storage Limit"))
-                        .accessibilityValue(Text(Int(sliderValue.rounded())))
+                        .accessibilityValue(Text(verbatim: String(Int(sliderValue.rounded()))))
 
                         TextField("1–1000", text: $draftText)
                             .labelsHidden()
@@ -420,8 +420,13 @@ private struct ClipboardSettingsTab: View {
                 SettingsTextHint("1–1000")
 
                 if let retentionErrorKey {
-                    SettingsTextHint(localizedString(retentionErrorKey), identifier: "history-limit-error")
-                        .accessibilityLabel(Text(retentionErrorKey))
+                    let localizedError = currentLanguage.localizationBundle().localizedString(
+                        forKey: retentionErrorKey,
+                        value: retentionErrorKey,
+                        table: nil
+                    )
+                    SettingsTextHint(localizedError, identifier: "history-limit-error")
+                        .accessibilityLabel(Text(verbatim: localizedError))
                 }
             }
         }
@@ -692,10 +697,10 @@ private struct ShortcutsSettingsTab: View {
     }
 
 #if DEBUG && os(macOS)
-    private func moveUITestKeyboardFocus(backward _: Bool) -> Bool {
-        guard isSelected, isRecording == false else { return false }
+    private func moveUITestKeyboardFocus(backward: Bool) -> Bool {
+        guard isSelected, isRecording == false, let currentFocusedTarget = focusedTarget else { return false }
 
-        switch (focusedTarget, backward) {
+        switch (currentFocusedTarget, backward) {
         case (.record, false):
             focusedTarget = preference.shortcut == nil ? .reset : .clear
         case (.clear, false):
@@ -708,8 +713,6 @@ private struct ShortcutsSettingsTab: View {
             focusedTarget = .record
         case (.reset, true):
             focusedTarget = preference.shortcut == nil ? .record : .clear
-        case (nil, _):
-            return false
         }
         return true
     }
@@ -1059,11 +1062,6 @@ private struct AboutSettingsTab: View {
             }
         }
     }
-}
-
-private func localizedString(_ key: LocalizedStringKey) -> String {
-    let bundle = AppLanguage.englishUnitedStates.localizationBundle()
-    return String(localized: key, bundle: bundle)
 }
 
 #if DEBUG && os(macOS)

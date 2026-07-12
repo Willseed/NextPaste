@@ -193,7 +193,7 @@ struct LocalizationCatalogTests {
             #"\.help\s*\(\s*"((?:\\.|[^"\\])+)""#
         ]
 
-        sourcePatterns.compactMap { pattern in
+        return sourcePatterns.compactMap { pattern in
             try? NSRegularExpression(pattern: pattern)
         }
     }()

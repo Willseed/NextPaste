@@ -12,6 +12,8 @@ struct RowActionControlGroup: View {
 
     let onCopy: (() -> Void)?
 
+    @Environment(\.locale) private var locale
+
     static func visibleActionIdentifiers(includesCopyAction: Bool) -> [String] {
         includesCopyAction ? [copyButtonIdentifier] : []
     }
@@ -61,23 +63,21 @@ struct RowActionControlGroup: View {
         role: ButtonRole? = nil,
         action handler: @escaping () -> Void
     ) -> some View {
-        Button(role: role) {
+        let localizedActionLabel = action.localizedAccessibilityLabel(locale: locale)
+
+        return Button(role: role) {
             handler()
         } label: {
-            Label(LocalizedStringKey(action.accessibilityLabel), systemImage: action.symbolName)
+            Label(localizedActionLabel, systemImage: action.symbolName)
         }
-        .modifier(AdaptiveControlButtonStyle(
-            presentation: .iconOnly,
-            accessibilityLabel: LocalizedStringKey(action.accessibilityLabel),
-            accessibilityHintText: action.accessibilityLabel
-        ))
+        .lineLimit(1)
+        .controlSize(.small)
+        .accessibilityLabel(localizedActionLabel)
+        .accessibilityHint(Text(localizedActionLabel))
+        .help(Text(localizedActionLabel))
         .buttonStyle(
             AdaptiveThemedButtonStyle(presentation: .iconOnly)
         )
         .accessibilityIdentifier(identifier)
-        .lineLimit(1)
-        .accessibilityLabel(Text(LocalizedStringKey(action.accessibilityLabel)))
-        .accessibilityHint(Text(action.accessibilityLabel))
-        .help(Text(action.accessibilityLabel))
     }
 }

@@ -2334,6 +2334,54 @@
           }
         }
       }
+    },
+    "Clear all clipboard history from this device.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear all clipboard history from this device."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除此裝置上的所有剪貼簿歷史記錄。"
+          }
+        }
+      }
+    },
+    "Clear unpinned items only.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear unpinned items only."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "僅清除未釘選項目。"
+          }
+        }
+      }
+    },
+    "Control the app's visual style.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Control the app's visual style."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "調整 App 的視覺風格。"
+          }
+        }
+      }
     }
   },
   "version": "1.1"

@@ -174,7 +174,13 @@ final class HistoryListUITests: UITestCase {
             UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
 
             app.typeKey("f", modifierFlags: .command)
-            XCTAssertTrue(history.searchField().hasKeyboardFocus)
+            let searchField = history.searchField()
+            XCTAssertTrue(
+                UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                    UITestWait.keyboardFocusState(of: searchField) == .focused
+                },
+                "Expected Command-F to focus search; observed \(UITestWait.keyboardFocusState(of: searchField))"
+            )
             app.typeKey(.escape, modifierFlags: [])
 
             if preset == .small {

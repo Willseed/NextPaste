@@ -13,6 +13,43 @@ import AppKit
 import UIKit
 #endif
 
+#if DEBUG
+/// Debug UI tests cannot write SwiftUI's read-only accessibility environment
+/// values. Carry their explicit launch overrides through a product-owned
+/// environment value so the theme resolver can deterministically select the
+/// same rendering branch without changing normal system-driven behavior.
+struct DebugAccessibilityOverrides {
+    let colorSchemeContrast: ColorSchemeContrast?
+    let reduceTransparency: Bool?
+
+    init(launchEnvironment: DebugUITestLaunchEnvironment? = nil) {
+        colorSchemeContrast = launchEnvironment?.forceIncreasedColorContrast.map {
+            $0 ? .increased : .standard
+        }
+        reduceTransparency = launchEnvironment?.forceReduceTransparency
+    }
+
+    func resolvedColorSchemeContrast(_ systemValue: ColorSchemeContrast) -> ColorSchemeContrast {
+        colorSchemeContrast ?? systemValue
+    }
+
+    func resolvedReduceTransparency(_ systemValue: Bool) -> Bool {
+        reduceTransparency ?? systemValue
+    }
+}
+
+private struct DebugAccessibilityOverridesKey: EnvironmentKey {
+    static let defaultValue = DebugAccessibilityOverrides()
+}
+
+extension EnvironmentValues {
+    var debugAccessibilityOverrides: DebugAccessibilityOverrides {
+        get { self[DebugAccessibilityOverridesKey.self] }
+        set { self[DebugAccessibilityOverridesKey.self] = newValue }
+    }
+}
+#endif
+
 @main
 struct NextPasteApp: App {
     typealias ModelContainerFactory = (Schema, [ModelConfiguration]) throws -> ModelContainer
@@ -389,43 +426,27 @@ private struct ClipboardMonitorHostView<Content: View>: View {
         }
 #endif
 }
+}
 
 #if DEBUG
 private extension View {
-    @ViewBuilder
     func applyDebugAccessibilityOverrides(
         _ launchEnvironment: DebugUITestLaunchEnvironment?
     ) -> some View {
-        guard let launchEnvironment else {
-            self
-            return
-        }
-
-        let forcedColorContrast = launchEnvironment.forceIncreasedColorContrast
-        let forceReduceTransparency = launchEnvironment.forceReduceTransparency
-
-        switch (forcedColorContrast, forceReduceTransparency) {
-        case (.some(let isIncreased), .some(let reduceTransparency)):
-            self
-                .environment(\.colorSchemeContrast, isIncreased ? .increased : .standard)
-                .environment(\.accessibilityReduceTransparency, reduceTransparency)
-        case (.some(let isIncreased), nil):
-            self
-                .environment(\.colorSchemeContrast, isIncreased ? .increased : .standard)
-        case (nil, .some(let reduceTransparency)):
-            self
-                .environment(\.accessibilityReduceTransparency, reduceTransparency)
-        case (nil, nil):
-            self
-        }
+        environment(
+            \.debugAccessibilityOverrides,
+            DebugAccessibilityOverrides(launchEnvironment: launchEnvironment)
+        )
     }
 }
 #endif
-}
 
 private struct ThemedSettingsContent: View {
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
     @Environment(\.colorScheme) private var colorScheme
+#if DEBUG
+    @Environment(\.debugAccessibilityOverrides) private var debugAccessibilityOverrides
+#endif
     @EnvironmentObject private var appearancePreference: AppearancePreference
 
     var body: some View {
@@ -450,9 +471,17 @@ private struct ThemedSettingsContent: View {
 #endif
         }
 
-        if colorSchemeContrast == .increased {
+        if resolvedColorSchemeContrast == .increased {
             return AppTheme(appearance: isDark ? .highContrastDark : .highContrastLight)
         }
         return AppTheme(appearance: isDark ? .dark : .light)
+    }
+
+    private var resolvedColorSchemeContrast: ColorSchemeContrast {
+#if DEBUG
+        debugAccessibilityOverrides.resolvedColorSchemeContrast(colorSchemeContrast)
+#else
+        colorSchemeContrast
+#endif
     }
 }

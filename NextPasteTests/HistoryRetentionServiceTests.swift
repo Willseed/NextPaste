@@ -308,15 +308,18 @@ struct HistoryRetentionServiceTests {
             .appendingPathComponent("NextPaste", isDirectory: true)
             .appendingPathComponent("SettingsView.swift", isDirectory: false)
         let source = try String(contentsOf: sourceURL, encoding: .utf8)
-        let historyTab = try #require(source.range(of: "private struct HistorySettingsTab"))
+        let clipboardTab = try #require(source.range(of: "private struct ClipboardSettingsTab"))
+        let shortcutsSection = try #require(
+            source.range(of: "// MARK: - Shortcuts", range: clipboardTab.upperBound..<source.endIndex)
+        )
         let commit = try #require(
-            source.range(of: "private func commitDraft()", range: historyTab.lowerBound..<source.endIndex)
+            source.range(of: "private func commitDraft()", range: clipboardTab.lowerBound..<shortcutsSection.lowerBound)
         )
         let apply = try #require(
-            source.range(of: "private func apply(_ limit: HistoryLimit)", range: commit.upperBound..<source.endIndex)
+            source.range(of: "private func apply(_ limit: HistoryLimit)", range: commit.upperBound..<shortcutsSection.lowerBound)
         )
-        let bodyAndEventHandlers = source[historyTab.lowerBound..<commit.lowerBound]
-        let applyImplementation = source[apply.lowerBound...]
+        let bodyAndEventHandlers = source[clipboardTab.lowerBound..<commit.lowerBound]
+        let applyImplementation = source[apply.lowerBound..<shortcutsSection.lowerBound]
 
         #expect(bodyAndEventHandlers.contains("HistoryRetentionService") == false)
         #expect(applyImplementation.contains("HistoryRetentionService(modelContext: modelContext).enforceLimit"))
