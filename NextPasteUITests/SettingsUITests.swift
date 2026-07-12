@@ -102,6 +102,28 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
+    func testToolbarSettingsLinkOpensSingleSettingsWindow() throws {
+        let app = launchApp()
+        let settingsButton = UITestAssertions.assertExists(
+            app.buttons["settings-button"],
+            "Expected the toolbar SettingsLink"
+        )
+        UITestAssertions.assertAccessibleTextEquals(settingsButton, "Settings")
+        XCTAssertEqual(settingsWindowCount(in: app), 0, "Expected Settings to be closed on launch")
+
+        settingsButton.tap()
+        _ = assertSingleSettingsWindow(in: app)
+
+        UITestAppLauncher.prepareMainWindow(in: app)
+        UITestAssertions.assertExists(
+            app.buttons["settings-button"],
+            "Expected the toolbar SettingsLink after returning to the main window"
+        ).tap()
+        _ = assertSingleSettingsWindow(in: app)
+        XCTAssertEqual(settingsWindowCount(in: app), 1, "SettingsLink must bring forward the existing Settings scene")
+    }
+
+    @MainActor
     func testCommandCommaOpensSingleSettingsWindowAndExposesRequiredTabs() throws {
         let app = launchApp()
 
@@ -346,6 +368,7 @@ final class SettingsUITests: UITestCase {
         )
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: app)
         assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: app)
+        UITestAssertions.assertAccessibleTextEquals(app.buttons["settings-button"], "Settings")
 
         selectMenuOption(
             Accessibility.traditionalChineseTaiwan,
@@ -357,6 +380,7 @@ final class SettingsUITests: UITestCase {
         assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
         assertMainWindowLabels(LocalizedLabel.traditionalChineseMainWindow, in: app)
+        UITestAssertions.assertAccessibleTextEquals(app.buttons["settings-button"], "設定")
         XCTAssertTrue(languagePicker.isEnabled)
         XCTAssertTrue(languagePicker.isHittable)
         openSettingsTab(Accessibility.shortcutsTab, in: app)

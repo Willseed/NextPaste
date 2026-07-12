@@ -46,14 +46,7 @@ struct AppToolbar: View {
                     trailingContent
                 }
 
-                Button {
-                    onSettings()
-                } label: {
-                    Label("Settings", systemImage: DesignTokens.Icons.settings)
-                }
-                .buttonStyle(.borderless)
-                .accessibilityIdentifier("settings-button")
-                .accessibilityLabel("Settings")
+                settingsControl
             }
         }
         .padding(DesignTokens.Spacing.medium)
@@ -65,5 +58,26 @@ struct AppToolbar: View {
         )
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("app-toolbar")
+    }
+
+    @ViewBuilder
+    private var settingsControl: some View {
+#if os(macOS)
+        SettingsLink {
+            Label("Settings", systemImage: DesignTokens.Icons.settings)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityIdentifier("settings-button")
+        .accessibilityLabel("Settings")
+#else
+        Button {
+            onSettings()
+        } label: {
+            Label("Settings", systemImage: DesignTokens.Icons.settings)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityIdentifier("settings-button")
+        .accessibilityLabel("Settings")
+#endif
     }
 }

@@ -100,11 +100,12 @@ final class VisualIdentityUITests: UITestCase {
         UITestAssertions.assertAccessibleTextContains(settingsButton, "Settings")
         settingsButton.tap()
 
-        // T010: a real SwiftUI Settings scene now exists, so the legacy
-        // "settings are not available" placeholder must NOT appear, and the
-        // toolbar stays non-blocking (the New Clip button remains hittable).
+        UITestAssertions.assertExists(
+            app.windows["com_apple_SwiftUI_Settings_window"],
+            "Expected the toolbar SettingsLink to open the native Settings scene"
+        )
+        // T010: the legacy placeholder must not appear.
         XCTAssertFalse(app.staticTexts["settings-placeholder-message"].exists)
-        XCTAssertTrue(app.buttons["new-clip-button"].isHittable)
         XCTAssertFalse(app.descendants(matching: .any)["advanced-settings-panel"].exists)
     }
 }

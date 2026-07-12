@@ -428,7 +428,7 @@ struct HomeView: View {
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(
                     title: "Clips",
-                    onSettings: openSettingsOrShowPlaceholder
+                    onSettings: showSettingsPlaceholder
                 ) {
                     HStack(spacing: DesignTokens.Spacing.small) {
                         // T004: visible, non-keyboard search entry. Calls the same
@@ -1310,26 +1310,11 @@ struct HomeView: View {
         return (try? modelContext.fetch(descriptor).first)?.isPinned == true
     }
 
-    private func openSettingsOrShowPlaceholder() {
-#if os(macOS)
-        // T010/T011: with the native SwiftUI Settings scene present,
-        // `showSettingsWindow:` opens the real Settings window. The placeholder
-        // message is no longer used; keep the state for compatibility but never
-        // set it so no placeholder text renders.
-        _ = NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
-        settingsPlaceholderMessage = nil
-#else
+    private func showSettingsPlaceholder() {
+#if !os(macOS)
         settingsPlaceholderMessage = String(localized: "Settings are not available yet.")
 #endif
     }
-
-#if os(macOS)
-    private var hasVisibleSettingsWindow: Bool {
-        NSApp.windows.contains { window in
-            window.isVisible && window.title.localizedCaseInsensitiveContains("settings")
-        }
-    }
-#endif
 
 #if DEBUG
     private var traceVisibleClipIDs: [UUID] {
