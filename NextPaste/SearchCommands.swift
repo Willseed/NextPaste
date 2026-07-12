@@ -58,13 +58,18 @@ extension FocusedValues {
 /// App-level commands for search. Places `Find…` in the Edit menu after the text
 /// editing group and binds it to `Command-F`. The command invokes the focused
 /// window's `searchFocusAction` (published by `HomeView`); if no window is
-/// focused or no action is published, the command is a no-op.
+/// focused or no action is published, the command is a no-op. The button title
+/// is resolved through the in-app language's concrete bundle so the menu bar
+/// follows the in-app preference rather than only the process language.
 struct SearchCommands: Commands {
     @FocusedValue(\.nextPasteCommandDispatcher) private var dispatcher
+    let language: AppLanguage
 
     var body: some Commands {
         CommandGroup(after: .textEditing) {
-            Button("Find…") {
+            Button(
+                String(localized: "Find…", bundle: language.localizationBundle(), locale: language.locale)
+            ) {
                 dispatcher?.send(.focusSearch)
             }
             .keyboardShortcut("f", modifiers: .command)
@@ -77,20 +82,34 @@ struct SearchCommands: Commands {
 /// `Option-Command-Delete` (clear unpinned) and `Shift-Option-Command-Delete`
 /// (clear all) to the focused window's request-clear actions. These are app menu
 /// commands, not global hotkeys. The actual confirmation UI and clearing are owned
-/// by `HomeView`.
+/// by `HomeView`. The button titles are resolved through the in-app language's
+/// concrete bundle so the menu bar follows the in-app preference.
 struct HistoryClearCommands: Commands {
     @FocusedValue(\.nextPasteCommandDispatcher) private var dispatcher
+    let language: AppLanguage
 
     var body: some Commands {
         CommandGroup(after: .textEditing) {
             Divider()
-            Button("Clear Unpinned History…") {
+            Button(
+                String(
+                    localized: "Clear Unpinned History…",
+                    bundle: language.localizationBundle(),
+                    locale: language.locale
+                )
+            ) {
                 dispatcher?.send(.clearUnpinnedHistory)
             }
             .keyboardShortcut(.delete, modifiers: [.command, .option])
             .disabled(dispatcher == nil)
 
-            Button("Clear All History…") {
+            Button(
+                String(
+                    localized: "Clear All History…",
+                    bundle: language.localizationBundle(),
+                    locale: language.locale
+                )
+            ) {
                 dispatcher?.send(.clearAllHistory)
             }
             .keyboardShortcut(.delete, modifiers: [.command, .option, .shift])

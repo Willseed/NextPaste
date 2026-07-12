@@ -24,6 +24,8 @@ struct AppLanguagePreferenceTests {
         #expect(AppLanguage.traditionalChineseTaiwan.rawValue == "zh_TW")
         #expect(AppLanguage.traditionalChineseTaiwan.localeIdentifier == "zh_Hant_TW")
         #expect(AppLanguage.traditionalChineseTaiwan.localizationIdentifier == "zh-Hant")
+
+        #expect(AppLanguage.followSystem.rawValue == "system")
     }
 
     @Test(arguments: AppLanguage.allCases)
