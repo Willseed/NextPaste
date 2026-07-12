@@ -20,6 +20,7 @@ struct RowActionTraceGateResolution: Equatable, Sendable {
 enum RowActionTraceGate {
     static let launchArgument = "-row-action-trace-enabled"
     static let environmentKey = "NEXTPASTE_ROW_ACTION_TRACE"
+    private static let truthyValues: Set<String> = ["1", "true", "yes", "enabled", "on"]
 
     static var isEnabled: Bool {
         resolve().isEnabled
@@ -56,12 +57,8 @@ enum RowActionTraceGate {
     }
 
     private static func isTruthy(_ rawValue: String) -> Bool {
-        switch rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
-        case "1", "true", "yes", "enabled", "on":
-            return true
-        default:
-            return false
-        }
+        let normalizedValue = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return truthyValues.contains(normalizedValue)
     }
 }
 #endif
