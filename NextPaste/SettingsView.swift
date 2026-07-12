@@ -22,9 +22,11 @@ struct SettingsView: View {
         case shortcuts
         case appearance
         case history
+        case about
     }
 
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.appTheme) private var appTheme
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
     @State private var selectedTab: Tab = .general
 
@@ -47,7 +49,7 @@ struct SettingsView: View {
                         Image(systemName: "gear").accessibilityHidden(true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("General")
+                    .accessibilityLabel(Text("General"))
                     .accessibilityIdentifier("settings-tab-general")
                 }
                 .tag(Tab.general)
@@ -60,7 +62,7 @@ struct SettingsView: View {
                         Image(systemName: "keyboard").accessibilityHidden(true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Shortcuts")
+                    .accessibilityLabel(Text("Shortcuts"))
                     .accessibilityIdentifier("settings-tab-shortcuts")
                 }
                 .tag(Tab.shortcuts)
@@ -73,7 +75,7 @@ struct SettingsView: View {
                         Image(systemName: "circle.lefthalf.filled").accessibilityHidden(true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("Appearance")
+                    .accessibilityLabel(Text("Appearance"))
                     .accessibilityIdentifier("settings-tab-appearance")
                 }
                 .tag(Tab.appearance)
@@ -86,12 +88,26 @@ struct SettingsView: View {
                         Image(systemName: "clock.arrow.circlepath").accessibilityHidden(true)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("History")
+                    .accessibilityLabel(Text("History"))
                     .accessibilityIdentifier("settings-tab-history")
                 }
                 .tag(Tab.history)
+
+            AboutSettingsTab()
+                .tabItem {
+                    Label {
+                        Text("About")
+                    } icon: {
+                        Image(systemName: "info.circle").accessibilityHidden(true)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(Text("About"))
+                    .accessibilityIdentifier("settings-tab-about")
+                }
+                .tag(Tab.about)
         }
-        .frame(width: 500, height: 360)
+        .frame(width: 560, height: 440)
+        .background(appTheme.canvas.color)
 #if DEBUG && os(macOS)
         .overlay(alignment: .bottomLeading) {
             if DebugUITestLaunchEnvironment() != nil {
@@ -104,7 +120,7 @@ struct SettingsView: View {
         }
 #endif
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Settings")
+        .accessibilityLabel(Text("Settings"))
 #if os(macOS)
         .background {
             WindowAccessibilityHostBridge(
@@ -137,7 +153,7 @@ private struct GeneralSettingsTab: View {
                 .focusable()
                 .focused($isLanguagePickerFocused)
                 .accessibilityIdentifier("app-language-picker")
-                .accessibilityLabel("App Language")
+                .accessibilityLabel(Text("App Language"))
                 .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
 
                 Text("Changes apply immediately throughout NextPaste.")
@@ -191,7 +207,7 @@ private struct ShortcutsSettingsTab: View {
                     Text(currentShortcutDisplay)
                         .font(.system(.body, design: .monospaced))
                         .accessibilityIdentifier("global-shortcut-current-value")
-                        .accessibilityLabel("Current global shortcut")
+                        .accessibilityLabel(Text("Current global shortcut"))
                         .accessibilityValue(currentShortcutDisplay)
 
                     Spacer()
@@ -241,7 +257,7 @@ private struct ShortcutsSettingsTab: View {
                     .accessibilityLabel(
                         isRecording ? Text("Cancel Recording") : Text("Record Shortcut")
                     )
-                    .accessibilityHint("Record a new global keyboard shortcut")
+                    .accessibilityHint(Text("Record a new global keyboard shortcut"))
 
                     Button("Clear Shortcut") {
                         focusedTarget = .clear
@@ -259,8 +275,8 @@ private struct ShortcutsSettingsTab: View {
                         return .handled
                     }
                     .accessibilityIdentifier("global-shortcut-clear-button")
-                    .accessibilityLabel("Clear Shortcut")
-                    .accessibilityHint("Disable the global keyboard shortcut")
+                    .accessibilityLabel(Text("Clear Shortcut"))
+                    .accessibilityHint(Text("Disable the global keyboard shortcut"))
 
                     Button("Reset to Default") {
                         focusedTarget = .reset
@@ -269,8 +285,8 @@ private struct ShortcutsSettingsTab: View {
                     .focusable()
                     .focused($focusedTarget, equals: .reset)
                     .accessibilityIdentifier("global-shortcut-reset-button")
-                    .accessibilityLabel("Reset to Default")
-                    .accessibilityHint("Restore the default global keyboard shortcut")
+                    .accessibilityLabel(Text("Reset to Default"))
+                    .accessibilityHint(Text("Restore the default global keyboard shortcut"))
                 }
             }
         }
@@ -476,7 +492,7 @@ private struct AppearanceSettingsTab: View {
                 .focusable()
                 .focused($isAppearancePickerFocused)
                 .accessibilityIdentifier("appearance-picker")
-                .accessibilityLabel("Appearance")
+                .accessibilityLabel(Text("Appearance"))
                 .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
             }
         }
@@ -505,11 +521,26 @@ private struct HistorySettingsTab: View {
 
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     let isSelected: Bool
     @State private var draftText = ""
     @State private var sliderValue = Double(HistoryLimit.defaultLimit.value)
     @State private var retentionErrorKey: LocalizedStringKey?
+    @State private var isPresentingClearUnpinnedConfirmation = false
+    @State private var isPresentingClearAllConfirmation = false
     @FocusState private var focusedTarget: FocusTarget?
+
+    private var clearService: ClipHistoryClearService {
+        ClipHistoryClearService(modelContext: modelContext)
+    }
+
+    private var unpinnedCount: Int {
+        (try? modelContext.fetch(FetchDescriptor<ClipItem>()))?.filter { $0.isPinned == false }.count ?? 0
+    }
+
+    private var allCount: Int {
+        (try? modelContext.fetch(FetchDescriptor<ClipItem>()))?.count ?? 0
+    }
 
     var body: some View {
         Form {
@@ -540,7 +571,7 @@ private struct HistorySettingsTab: View {
                     .focusable()
                     .focused($focusedTarget, equals: .slider)
                     .accessibilityIdentifier("history-limit-slider")
-                    .accessibilityLabel("Storage Limit")
+                    .accessibilityLabel(Text("Storage Limit"))
                     .accessibilityValue("\(Int(sliderValue.rounded()))")
 
                     TextField("1–1000", text: $draftText)
@@ -561,7 +592,7 @@ private struct HistorySettingsTab: View {
 #endif
                         }
                         .accessibilityIdentifier("history-limit-field")
-                        .accessibilityLabel("Storage Limit Value")
+                        .accessibilityLabel(Text("Storage Limit Value"))
                 }
                 .padding(.horizontal, DesignTokens.Spacing.small)
 
@@ -572,7 +603,7 @@ private struct HistorySettingsTab: View {
                 Text("1–1000")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel("Storage Limit Range")
+                    .accessibilityLabel(Text("Storage Limit Range"))
 
                 if let retentionErrorKey {
                     Text(retentionErrorKey)
@@ -581,6 +612,29 @@ private struct HistorySettingsTab: View {
                         .accessibilityIdentifier("history-limit-error")
                         .accessibilityLabel(Text(retentionErrorKey))
                 }
+            }
+
+            Section("Data & Privacy") {
+                Text("NextPaste keeps your clipboard history on this Mac. Content is stored locally and is never sent to a server.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityIdentifier("data-privacy-description")
+
+                Text("Permanently remove clipboard history. Pinned items are preserved when clearing unpinned history only.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                Button("Clear Unpinned History…") {
+                    isPresentingClearUnpinnedConfirmation = true
+                }
+                .accessibilityIdentifier("settings-clear-unpinned-history")
+                .disabled(unpinnedCount == 0)
+
+                Button("Clear All History…") {
+                    isPresentingClearAllConfirmation = true
+                }
+                .accessibilityIdentifier("settings-clear-all-history")
+                .disabled(allCount == 0)
             }
         }
         .padding()
@@ -616,6 +670,38 @@ private struct HistorySettingsTab: View {
             if oldTarget == .field, newTarget != .field {
                 commitDraft()
             }
+        }
+        .confirmationDialog(
+            "Clear Unpinned History",
+            isPresented: $isPresentingClearUnpinnedConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear Unpinned History", role: .destructive) {
+                _ = try? clearService.clearUnpinnedHistory()
+            }
+            .accessibilityIdentifier("settings-confirm-clear-unpinned")
+            Button("Cancel", role: .cancel) {
+                isPresentingClearUnpinnedConfirmation = false
+            }
+            .accessibilityIdentifier("settings-cancel-clear-unpinned")
+        } message: {
+            Text("Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone.")
+        }
+        .confirmationDialog(
+            "Clear All History",
+            isPresented: $isPresentingClearAllConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Clear All History", role: .destructive) {
+                _ = try? clearService.clearAllHistory()
+            }
+            .accessibilityIdentifier("settings-confirm-clear-all")
+            Button("Cancel", role: .cancel) {
+                isPresentingClearAllConfirmation = false
+            }
+            .accessibilityIdentifier("settings-cancel-clear-all")
+        } message: {
+            Text("Clear all clipboard history, including pinned items? This action cannot be undone.")
         }
     }
 
@@ -659,6 +745,57 @@ private struct HistorySettingsTab: View {
             sliderValue = Double(historyLimitPreference.limit.value)
             retentionErrorKey = "History limit could not be applied. Try again."
         }
+    }
+}
+
+// MARK: - About
+
+private struct AboutSettingsTab: View {
+    @Environment(\.appTheme) private var appTheme
+
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String
+        switch (version, build) {
+        case let (v?, b?) where v.isEmpty == false && b.isEmpty == false:
+            return "\(v) (\(b))"
+        case let (v?, _) where v.isEmpty == false:
+            return v
+        default:
+            return "—"
+        }
+    }
+
+    var body: some View {
+        Form {
+            Section("About NextPaste") {
+                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                    Text("NextPaste")
+                        .font(DesignTokens.Typography.title.font)
+                        .foregroundStyle(appTheme.textPrimary.color)
+
+                    Text("A clipboard manager for Apple platforms.")
+                        .font(DesignTokens.Typography.body.font)
+                        .foregroundStyle(appTheme.textSecondary.color)
+
+                    LabeledContent {
+                        Text(appVersion)
+                            .font(DesignTokens.Typography.metadata.font)
+                            .foregroundStyle(appTheme.textSecondary.color)
+                            .accessibilityIdentifier("about-app-version")
+                    } label: {
+                        Text("Version")
+                            .font(DesignTokens.Typography.body.font)
+                            .foregroundStyle(appTheme.textPrimary.color)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel(Text("Version"))
+                    .accessibilityValue(Text(appVersion))
+                }
+                .padding(.vertical, DesignTokens.Spacing.xSmall)
+            }
+        }
+        .padding()
     }
 }
 

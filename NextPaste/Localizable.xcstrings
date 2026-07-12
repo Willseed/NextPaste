@@ -2158,6 +2158,150 @@
           }
         }
       }
+    },
+    "About": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關於"
+          }
+        }
+      }
+    },
+    "Data & Privacy": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data & Privacy"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "資料與隱私"
+          }
+        }
+      }
+    },
+    "Version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "版本"
+          }
+        }
+      }
+    },
+    "About NextPaste": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About NextPaste"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "關於 NextPaste"
+          }
+        }
+      }
+    },
+    "NextPaste keeps your clipboard history on this Mac. Content is stored locally and is never sent to a server.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NextPaste keeps your clipboard history on this Mac. Content is stored locally and is never sent to a server."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "NextPaste 會將剪貼簿歷史記錄保留在此 Mac 上。內容儲存於本機，不會傳送至任何伺服器。"
+          }
+        }
+      }
+    },
+    "Permanently remove clipboard history. Pinned items are preserved when clearing unpinned history only.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permanently remove clipboard history. Pinned items are preserved when clearing unpinned history only."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "永久移除剪貼簿歷史記錄。僅清除未釘選歷史記錄時會保留已釘選項目。"
+          }
+        }
+      }
+    },
+    "A clipboard manager for Apple platforms.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A clipboard manager for Apple platforms."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "適用於 Apple 平台的剪貼簿管理工具。"
+          }
+        }
+      }
+    },
+    "Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要清除所有未釘選的剪貼簿歷史記錄嗎？將保留已釘選項目。此操作無法復原。"
+          }
+        }
+      }
+    },
+    "Clear all clipboard history, including pinned items? This action cannot be undone.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear all clipboard history, including pinned items? This action cannot be undone."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要清除所有剪貼簿歷史記錄嗎？此操作會包含已釘選項目，且無法復原。"
+          }
+        }
+      }
     }
   },
   "version": "1.1"
