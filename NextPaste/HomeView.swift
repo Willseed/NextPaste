@@ -19,9 +19,7 @@ private enum PendingRowActionMutation {
 
     var itemID: UUID {
         switch self {
-        case .setPinned(let itemID, _):
-            return itemID
-        case .delete(let itemID, _, _):
+        case .setPinned(let itemID, _), .delete(let itemID, _, _):
             return itemID
         }
     }
