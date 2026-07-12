@@ -537,6 +537,7 @@ private struct HistorySettingsTab: View {
                             }
                         }
                     )
+                    .focusable()
                     .focused($focusedTarget, equals: .slider)
                     .accessibilityIdentifier("history-limit-slider")
                     .accessibilityLabel("Storage Limit")
@@ -705,15 +706,20 @@ private struct DebugUITestTabKeyMonitor: NSViewRepresentable {
             guard eventMonitor == nil else { return }
 
             eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                let tabCharacters = event.charactersIgnoringModifiers
+                let isTabEvent = event.keyCode == 0x30
+                    || tabCharacters == "\t"
+                    || tabCharacters == "\u{19}"
                 guard let self,
-                      event.keyCode == 0x30,
+                      isTabEvent,
                       let settingsWindow = self.view?.window,
                       NSApp.keyWindow === settingsWindow else {
                     return event
                 }
 
                 let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
-                guard modifiers.isSubset(of: [.shift]) else { return event }
+                let commandModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+                guard modifiers.intersection(commandModifiers).isEmpty else { return event }
                 return self.handleTab(modifiers.contains(.shift)) ? nil : event
             }
         }
