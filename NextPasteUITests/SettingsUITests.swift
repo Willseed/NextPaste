@@ -85,6 +85,14 @@ final class SettingsUITests: UITestCase {
         static let traditionalChineseNewClipConflict = "此快速鍵與「新增剪貼簿項目」選單指令衝突。"
         static let englishMainWindow = (title: "Clips", newClip: "New Clip")
         static let traditionalChineseMainWindow = (title: "剪貼簿項目", newClip: "新增剪貼簿項目")
+        static let englishFindMenu = "Find…"
+        static let traditionalChineseFindMenu = "尋找…"
+        static let englishClearUnpinnedConfirmationTitle = "Clear Unpinned History"
+        static let traditionalChineseClearUnpinnedConfirmationTitle = "清除未釘選的歷史記錄"
+        static let englishClearUnpinnedDialogMessage =
+            "Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone."
+        static let traditionalChineseClearUnpinnedDialogMessage =
+            "要清除所有未釘選的剪貼簿歷史記錄嗎？將保留已釘選項目。此操作無法復原。"
     }
 
     private enum PopupDirection {
@@ -497,6 +505,77 @@ final class SettingsUITests: UITestCase {
         assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: relaunchedApp)
         assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: relaunchedApp)
+    }
+
+    @MainActor
+    func testLanguageSwitchSynchronizesAcrossWindowsMenusAndDialogsWithoutRestart() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        try history.createTextClip(UITestFixtures.History.olderText)
+
+        app.typeKey("n", modifierFlags: [.command])
+        XCTAssertTrue(
+            waitForMainWindowCount(in: app, expectedCount: 2, timeout: UITestAssertions.defaultTimeout),
+            "Expected two open main windows after command-N"
+        )
+        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
+        assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
+
+        let settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
+        var languagePicker = languagePopup(in: settingsWindow)
+
+        selectMenuOption(
+            Accessibility.traditionalChineseTaiwan,
+            from: languagePicker,
+            in: app
+        )
+        languagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(
+            languagePicker,
+            equals: Accessibility.localizedTraditionalChineseTaiwan
+        )
+        assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
+        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.traditionalChineseMainWindow, in: app)
+        assertMenuItemLabel(LocalizedLabel.traditionalChineseFindMenu, in: app)
+
+        openSettingsTab(Accessibility.historyTab, in: app)
+        let clearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
+        UITestAssertions.assertExists(clearButton, "Expected dialog trigger for unpinned clear confirmation")
+        clearButton.tap()
+
+        let confirmClearButton = UITestAssertions.assertExists(
+            settingsWindow.buttons["settings-confirm-clear-unpinned"],
+            "Expected unpinned-clear confirm button in localized confirmation dialog"
+        )
+        let cancelClearButton = UITestAssertions.assertExists(
+            settingsWindow.buttons["settings-cancel-clear-unpinned"],
+            "Expected unpinned-clear cancel button in localized confirmation dialog"
+        )
+        UITestAssertions.assertAccessibleTextEquals(
+            confirmClearButton,
+            LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle
+        )
+        assertStaticTextValue(
+            UITestAssertions.assertExists(
+                app.staticTexts[LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage],
+                "Expected localized clear-history confirmation message"
+            ),
+            equals: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage
+        )
+        UITestAssertions.assertAccessibleTextEquals(cancelClearButton, "取消")
+        cancelClearButton.tap()
+
+        selectMenuOption(
+            Accessibility.englishUnitedStates,
+            from: languagePicker,
+            in: app
+        )
+        languagePicker = languagePopup(in: settingsWindow)
+        assertPopupValueEventually(languagePicker, equals: Accessibility.englishUnitedStates)
+        assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
+        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
+        assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
     }
 
     @MainActor
@@ -1391,6 +1470,91 @@ final class SettingsUITests: UITestCase {
             XCTAssertTrue(localizedTab.isEnabled, "\(expectedLabel) localized Settings tab must be enabled", file: file, line: line)
             XCTAssertTrue(localizedTab.isHittable, "\(expectedLabel) localized Settings tab must be hittable", file: file, line: line)
         }
+    }
+
+    private func assertMainWindowLabelsAcrossOpenWindows(
+        _ expected: (title: String, newClip: String),
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let windows = mainWindowElements(in: app)
+        XCTAssertGreaterThan(windows.count, 0, "Expected at least one main window", file: file, line: line)
+
+        for index in 0..<windows.count {
+            let mainWindow = windows[index]
+            assertStaticTextValue(
+                mainWindow.staticTexts[Accessibility.mainToolbarTitle],
+                equals: expected.title,
+                file: file,
+                line: line
+            )
+            assertElementLabel(
+                mainWindow.buttons[Accessibility.newClipButton],
+                equals: expected.newClip,
+                file: file,
+                line: line
+            )
+        }
+    }
+
+    private func mainWindowElements(
+        in app: XCUIApplication
+    ) -> [XCUIElement] {
+        let mainWindows = mainWindowQuery(in: app)
+        return (0..<mainWindows.count).compactMap { index in
+            let window = mainWindows.element(boundBy: index)
+            guard window.exists else { return nil }
+            return window
+        }
+    }
+
+    private func mainWindowQuery(
+        in app: XCUIApplication
+    ) -> XCUIElementQuery {
+        app.windows.matching(
+            NSPredicate(format: "identifier != %@", Accessibility.settingsWindowIdentifier)
+        )
+    }
+
+    private func mainWindowCount(
+        in app: XCUIApplication
+    ) -> Int {
+        mainWindowQuery(in: app).count
+    }
+
+    private func waitForMainWindowCount(
+        in app: XCUIApplication,
+        expectedCount: Int,
+        timeout: TimeInterval
+    ) -> Bool {
+        UITestWait.until(timeout: timeout) {
+            self.mainWindowCount(in: app) == expectedCount
+        }
+    }
+
+    private func assertMenuItemLabel(
+        _ expectedLabel: String,
+        in app: XCUIApplication,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let menuItem = app.menuItems[expectedLabel]
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                menuItem.exists
+            },
+            "Expected menu item with label \(expectedLabel)",
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            menuItem.label,
+            expectedLabel,
+            file: file,
+            line: line
+        )
     }
 
     private func assertElementLabel(

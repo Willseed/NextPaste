@@ -31,7 +31,7 @@ struct SettingsView: View {
     @State private var selectedTab: Tab = .general
 
     private var settingsAccessibilityLabel: String {
-        let language = appLanguagePreference.language
+        let language = appLanguagePreference.resolvedLanguage
         return String(
             localized: "Settings",
             bundle: language.localizationBundle(),
@@ -219,14 +219,14 @@ private struct ShortcutsSettingsTab: View {
                     } else if let validationError {
                         Text(
                             validationError.localizedDescription(
-                                language: appLanguagePreference.language
+                                language: appLanguagePreference.resolvedLanguage
                             )
                         )
                             .foregroundStyle(.red)
                             .accessibilityIdentifier("global-shortcut-validation-error")
                             .accessibilityLabel(
                                 validationError.localizedDescription(
-                                    language: appLanguagePreference.language
+                                    language: appLanguagePreference.resolvedLanguage
                                 )
                             )
                     } else if registrationError {
@@ -320,9 +320,9 @@ private struct ShortcutsSettingsTab: View {
 
     private var currentShortcutDisplay: String {
         if isRecording, let candidate {
-            return candidate.displayString(language: appLanguagePreference.language)
+            return candidate.displayString(language: appLanguagePreference.resolvedLanguage)
         }
-        let language = appLanguagePreference.language
+        let language = appLanguagePreference.resolvedLanguage
         return preference.shortcut?.displayString(language: language)
             ?? String(
                 localized: "None",
@@ -596,7 +596,13 @@ private struct HistorySettingsTab: View {
                 }
                 .padding(.horizontal, DesignTokens.Spacing.small)
 
-                Text("Keep up to \(Int(sliderValue.rounded())) unpinned clipboard items. Pinned items are always kept.")
+                Text(
+                    String(
+                        localized: "Keep up to \(Int(sliderValue.rounded())) unpinned clipboard items. Pinned items are always kept.",
+                        bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
+                        locale: appLanguagePreference.resolvedLanguage.locale
+                    )
+                )
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

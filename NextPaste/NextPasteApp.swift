@@ -266,8 +266,8 @@ struct NextPasteApp: App {
 #endif
         .modelContainer(sharedModelContainer)
         .commands {
-            SearchCommands(language: appLanguagePreference.language)
-            HistoryClearCommands(language: appLanguagePreference.language)
+            SearchCommands(language: appLanguagePreference.resolvedLanguage)
+            HistoryClearCommands(language: appLanguagePreference.resolvedLanguage)
         }
 #if os(macOS)
         // T010/T011: native SwiftUI Settings scene. The system provides the
@@ -284,7 +284,7 @@ struct NextPasteApp: App {
                 .environmentObject(appLanguagePreference)
                 .environmentObject(globalShortcutPreference)
                 .environmentObject(globalShortcutLifecycleController)
-                .environment(\.locale, appLanguagePreference.language.locale)
+                .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
         }
 #endif
     }
@@ -310,7 +310,7 @@ struct NextPasteApp: App {
 #if os(macOS)
         .environmentObject(globalShortcutLifecycleController)
 #endif
-        .environment(\.locale, appLanguagePreference.language.locale)
+        .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
 #if !os(macOS)
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
 #endif
@@ -320,8 +320,8 @@ struct NextPasteApp: App {
             WindowAccessibilityHostBridge(
                 label: String(
                     localized: "Clips",
-                    bundle: appLanguagePreference.language.localizationBundle(),
-                    locale: appLanguagePreference.language.locale
+                    bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
+                    locale: appLanguagePreference.resolvedLanguage.locale
                 ),
                 identifier: "main-content"
             )

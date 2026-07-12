@@ -21,6 +21,7 @@ struct LocalizationCatalogTests {
         "Appearance",
         "App Language",
         "At least one modifier is required.",
+        "Complete suspended OCR",
         "Cancel Recording",
         "Changes apply immediately throughout NextPaste.",
         "Choose a different filter.",
@@ -51,8 +52,8 @@ struct LocalizationCatalogTests {
         "Global Shortcut",
         "History",
         "History limit could not be applied. Try again.",
-        "Image Clips",
         "Image Text Recognition Failed",
+        "Image Clips",
         "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
         "Language",
         "Light",
@@ -129,6 +130,7 @@ struct LocalizationCatalogTests {
         "Save",
         "Search",
         "Search Clipboard History",
+        "Search, filter, and clear clipboard history",
         "Search clips",
         "Search history",
         "Settings are not available yet.",
@@ -175,6 +177,27 @@ struct LocalizationCatalogTests {
         let value: String
     }
 
+    private let sourceLiteralPatterns: [NSRegularExpression] = {
+        let sourcePatterns = [
+            #"\bText\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bButton\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bTextField\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSection\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"String\s*\(\s*localized:\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityLabel\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityValue\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityHint\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.help\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityLabel\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityValue\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.help\s*\(\s*"((?:\\.|[^"\\])+)""#
+        ]
+
+        sourcePatterns.compactMap { pattern in
+            try? NSRegularExpression(pattern: pattern)
+        }
+    }()
+
     private var repoRootURL: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -196,6 +219,51 @@ struct LocalizationCatalogTests {
     private func loadCatalog() throws -> Catalog {
         let data = try Data(contentsOf: catalogURL)
         return try JSONDecoder().decode(Catalog.self, from: data)
+    }
+
+    private func sourceLocalizedStringKeys() throws -> Set<String> {
+        let nextPasteDirectory = repoRootURL.appendingPathComponent("NextPaste")
+        guard let enumerator = FileManager.default.enumerator(
+            at: nextPasteDirectory,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else {
+            Issue.record("Failed to enumerate production source files under \(nextPasteDirectory.path)")
+            return []
+        }
+
+        var extracted: Set<String> = []
+        for case let fileURL as URL in enumerator {
+            guard fileURL.pathExtension == "swift" else { continue }
+            let path = fileURL.path
+            // Ignore generated, archived, and test-only artifacts that are not
+            // part of production localization behavior.
+            if path.contains("/Debug/") || path.contains("/Fixtures/") {
+                continue
+            }
+
+            guard let sourceData = try? Data(contentsOf: fileURL),
+                  let sourceText = String(data: sourceData, encoding: .utf8) else {
+                Issue.record("Unable to read \(path)")
+                continue
+            }
+
+            for pattern in sourceLiteralPatterns {
+                let nsrange = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
+                for match in pattern.matches(in: sourceText, options: [], range: nsrange) {
+                    guard match.numberOfRanges > 1 else { continue }
+                    guard let keyRange = Range(match.range(at: 1), in: sourceText) else { continue }
+                    var key = String(sourceText[keyRange])
+                    key = key.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if key.isEmpty { continue }
+                    if key.contains("\\(") { continue }
+                    if key.count == 1 { continue }
+                    extracted.insert(key)
+                }
+            }
+        }
+
+        return extracted
     }
 
     private func supportedLocales() throws -> [String] {
@@ -279,6 +347,8 @@ struct LocalizationCatalogTests {
             "History",
             "History Limit",
             "History limit could not be applied. Try again.",
+            "Complete suspended OCR",
+            "Image Clips",
             "Image Text Recognition Failed",
             "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
             "Language",
@@ -310,6 +380,7 @@ struct LocalizationCatalogTests {
             "Save",
             "Search",
             "Search Clipboard History",
+            "Search, filter, and clear clipboard history",
             "Search clips",
             "Search history",
             "Settings",
@@ -432,6 +503,17 @@ struct LocalizationCatalogTests {
                 #expect(compiled == expected)
             }
         }
+    }
+
+    @Test func sourceLocalizedLiteralsAllExistInCatalog() throws {
+        let catalog = try loadCatalog()
+        let sourceKeys = try sourceLocalizedStringKeys()
+
+        let missing = sourceKeys.subtracting(catalog.strings.keys)
+        if missing.isEmpty == false {
+            Issue.record("Production localized call sites reference keys missing from Localizable.xcstrings: \(missing.sorted())")
+        }
+        #expect(missing.isEmpty)
     }
 
     @Test func unknownLocaleFallsBackToANonemptyLocalizedValue() {

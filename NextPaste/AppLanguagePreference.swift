@@ -106,23 +106,67 @@ final class AppLanguagePreference: ObservableObject {
     static let storageKey = "nextpaste.appLanguage"
 
     @Published private(set) var language: AppLanguage
+    @Published private(set) var resolvedLanguage: AppLanguage
 
     private let defaults: UserDefaults
+    private let systemLanguageProvider: () -> [String]
+    private var localeDidChangeObserver: NSObjectProtocol?
 
-    init(defaults: UserDefaults = .standard) {
+    init(
+        defaults: UserDefaults = .standard,
+        systemLanguageProvider: @escaping () -> [String] = { Locale.preferredLanguages }
+    ) {
+        self.systemLanguageProvider = systemLanguageProvider
         self.defaults = defaults
 
+        let initialLanguage: AppLanguage
         if let rawValue = defaults.string(forKey: Self.storageKey),
            let storedLanguage = AppLanguage(rawValue: rawValue) {
-            language = storedLanguage
+            initialLanguage = storedLanguage
         } else {
-            language = .defaultLanguage
-            defaults.set(language.rawValue, forKey: Self.storageKey)
+            initialLanguage = .defaultLanguage
+            defaults.set(initialLanguage.rawValue, forKey: Self.storageKey)
+        }
+        language = initialLanguage
+        resolvedLanguage = initialLanguage.resolvedLanguage(for: systemLanguageProvider())
+
+        let observer = NotificationCenter.default.addObserver(
+            forName: NSLocale.currentLocaleDidChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.refreshResolvedLanguage()
+            }
+        }
+        localeDidChangeObserver = observer
+    }
+
+    deinit {
+        if let localeDidChangeObserver {
+            NotificationCenter.default.removeObserver(localeDidChangeObserver)
         }
     }
 
     func persist(_ language: AppLanguage) {
         self.language = language
+        refreshResolvedLanguage()
         defaults.set(language.rawValue, forKey: Self.storageKey)
+    }
+
+    private func refreshResolvedLanguage() {
+        resolvedLanguage = language.resolvedLanguage(for: systemLanguageProvider())
+    }
+}
+
+private extension AppLanguage {
+    func resolvedLanguage(for preferredLanguages: [String]) -> AppLanguage {
+        switch self {
+        case .followSystem:
+            return AppLanguage.resolveSystemPreferred(preferredLanguages)
+        case .englishUnitedStates, .traditionalChineseTaiwan:
+            return self
+        }
     }
 }

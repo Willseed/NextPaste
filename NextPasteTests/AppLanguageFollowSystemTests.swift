@@ -180,4 +180,33 @@ struct AppLanguageFollowSystemPreferenceTests {
         #expect(afterFirst.language.languageCode?.identifier == "zh")
         #expect(afterFirst.language.script?.identifier == "Hant")
     }
+
+    @Test func followSystemPreferenceUpdatesWhenSystemLocaleChanges() async {
+        let defaults = makeDefaults()
+        var preferredLanguages = ["en"]
+        let preference = AppLanguagePreference(
+            defaults: defaults,
+            systemLanguageProvider: { preferredLanguages }
+        )
+
+        preference.persist(.followSystem)
+        #expect(preference.language == .followSystem)
+        #expect(preference.resolvedLanguage == .englishUnitedStates)
+
+        preferredLanguages = ["zh-TW", "zh-Hant"]
+        NotificationCenter.default.post(
+            name: NSLocale.currentLocaleDidChangeNotification,
+            object: nil
+        )
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(preference.resolvedLanguage == .traditionalChineseTaiwan)
+
+        preferredLanguages = ["en-US", "en"]
+        NotificationCenter.default.post(
+            name: NSLocale.currentLocaleDidChangeNotification,
+            object: nil
+        )
+        try? await Task.sleep(nanoseconds: 50_000_000)
+        #expect(preference.resolvedLanguage == .englishUnitedStates)
+    }
 }
