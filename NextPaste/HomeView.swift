@@ -500,13 +500,19 @@ struct HomeView: View {
                 confirmClearUnpinnedHistory()
             }
             .accessibilityIdentifier("confirm-clear-unpinned-button")
+            .accessibilityHint(Text("Clear Unpinned History"))
+            .help(Text("Clear Unpinned History"))
             Button("Cancel", role: .cancel) {
                 cancelClearUnpinnedHistory()
             }
             .accessibilityIdentifier("cancel-clear-unpinned-button")
+            .accessibilityHint(Text("Cancel"))
+            .help(Text("Cancel"))
         } message: {
             Text(clearUnpinnedConfirmationMessage)
                 .accessibilityIdentifier("clear-unpinned-confirmation-message")
+                .lineLimit(6)
+                .accessibilityLabel(Text(clearUnpinnedConfirmationMessage))
         }
         // T009: clear all confirmation. Uses stronger destructive wording, explicitly
         // mentions pinned items and irreversibility. Confirm only calls T008 service.
@@ -519,13 +525,19 @@ struct HomeView: View {
                 confirmClearAllHistory()
             }
             .accessibilityIdentifier("confirm-clear-all-button")
+            .accessibilityHint(Text("Clear All History"))
+            .help(Text("Clear All History"))
             Button("Cancel", role: .cancel) {
                 cancelClearAllHistory()
             }
             .accessibilityIdentifier("cancel-clear-all-button")
+            .accessibilityHint(Text("Cancel"))
+            .help(Text("Cancel"))
         } message: {
             Text(clearAllConfirmationMessage)
                 .accessibilityIdentifier("clear-all-confirmation-message")
+                .lineLimit(6)
+                .accessibilityLabel(Text(clearAllConfirmationMessage))
         }
         .onAppear {
             installFocusedSceneCommandHandler()
@@ -892,10 +904,7 @@ struct HomeView: View {
 
     /// Control presentation. Icon-only controls carry a tooltip (`.help`) and a
     /// localized accessibility label so VoiceOver and hover remain informative.
-    private enum ToolbarControlStyle {
-        case labeled
-        case iconOnly
-    }
+    private typealias ToolbarControlStyle = AdaptiveControlPresentation
 
     @ViewBuilder
     private var adaptiveToolbarContent: some View {
@@ -930,7 +939,6 @@ struct HomeView: View {
         case .minimal:
             HStack(spacing: DesignTokens.Spacing.small) {
                 newClipControl
-                clearSearchControl(.iconOnly)
                 overflowMenu
                 SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
             }
@@ -943,12 +951,11 @@ struct HomeView: View {
         systemImage: String,
         style: ToolbarControlStyle
     ) -> some View {
-        switch style {
-        case .labeled:
-            Label(titleKey, systemImage: systemImage)
-        case .iconOnly:
-            Image(systemName: systemImage)
-        }
+        AdaptiveControlLabel(
+            titleKey: titleKey,
+            systemImage: systemImage,
+            presentation: style == .labeled ? .labeled : .iconOnly
+        )
     }
 
     // The primary action keeps the default (prominent) button style at every
@@ -964,7 +971,12 @@ struct HomeView: View {
             Label("New Clip", systemImage: "plus")
         }
         .accessibilityIdentifier("new-clip-button")
-        .accessibilityLabel(Text("New Clip"))
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: .labeled,
+            accessibilityLabel: "New Clip",
+            accessibilityHintText: "New Clip"
+        ))
+        .buttonStyle(.borderless)
         .help(Text("New Clip"))
     }
 
@@ -975,11 +987,14 @@ struct HomeView: View {
         } label: {
             controlLabel("Search", systemImage: DesignTokens.Icons.search, style: style)
         }
-        .buttonStyle(.borderless)
         .accessibilityIdentifier("search-button")
-        .accessibilityLabel(Text("Search Clipboard History"))
-        .accessibilityHint(Text("Focus the clipboard search field"))
-        .help(Text("Search Clipboard History"))
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: style == .labeled ? .labeled : .iconOnly,
+            accessibilityLabel: "Search",
+            accessibilityHintText: "Focus the clipboard search field"
+        ))
+        .buttonStyle(.borderless)
+        .help(Text("Search"))
     }
 
     @ViewBuilder
@@ -990,10 +1005,13 @@ struct HomeView: View {
             } label: {
                 controlLabel("Clear Search", systemImage: "xmark.circle.fill", style: style)
             }
-            .buttonStyle(.borderless)
             .accessibilityIdentifier("clear-search-button")
-            .accessibilityLabel(Text("Clear Search"))
-            .accessibilityHint(Text("Clear the active search query"))
+            .modifier(AdaptiveControlButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly,
+                accessibilityLabel: "Clear Search",
+                accessibilityHintText: "Clear the active search query"
+            ))
+            .buttonStyle(.borderless)
             .help(Text("Clear Search"))
         }
     }
@@ -1021,9 +1039,15 @@ struct HomeView: View {
             controlLabel("Filter", systemImage: "line.3.horizontal.decrease.circle", style: style)
         }
         .accessibilityIdentifier("history-filter-menu")
-        .accessibilityLabel(Text("Filter Clipboard History"))
+        .accessibilityLabel(Text("Filter"))
         .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
-        .help(Text("Filter Clipboard History"))
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: style == .labeled ? .labeled : .iconOnly,
+            accessibilityLabel: "Filter",
+            accessibilityHintText: "Filter Clipboard History"
+        ))
+        .buttonStyle(.borderless)
+        .help(Text("Filter"))
     }
 
     @ViewBuilder
@@ -1044,8 +1068,12 @@ struct HomeView: View {
             controlLabel("History", systemImage: "ellipsis.circle", style: style)
         }
         .accessibilityIdentifier("history-overflow-menu")
-        .accessibilityLabel(Text("History actions"))
-        .accessibilityHint(Text("Clear clipboard history"))
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: style == .labeled ? .labeled : .iconOnly,
+            accessibilityLabel: "History",
+            accessibilityHintText: "History actions"
+        ))
+        .buttonStyle(.borderless)
         .help(Text("History actions"))
     }
 
@@ -1061,7 +1089,21 @@ struct HomeView: View {
                 Label("Search", systemImage: DesignTokens.Icons.search)
             }
             .accessibilityIdentifier("search-button")
-            .accessibilityLabel(Text("Search Clipboard History"))
+            .accessibilityLabel(Text("Search"))
+            .accessibilityHint(Text("Focus the clipboard search field"))
+            .help(Text("Search"))
+
+            if searchText.isEmpty == false {
+                Button {
+                    clearSearchText()
+                } label: {
+                    Label("Clear Search", systemImage: "xmark.circle.fill")
+                }
+                .accessibilityIdentifier("clear-search-button")
+                .accessibilityLabel(Text("Clear Search"))
+                .accessibilityHint(Text("Clear the active search query"))
+                .help(Text("Clear Search"))
+            }
 
             Menu {
                 ForEach(HistoryFilter.allCases) { filter in
@@ -1084,7 +1126,9 @@ struct HomeView: View {
                 Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
             }
             .accessibilityIdentifier("history-filter-menu")
-            .accessibilityLabel(Text("Filter Clipboard History"))
+            .accessibilityLabel(Text("Filter"))
+            .accessibilityHint(Text("Filter Clipboard History"))
+            .help(Text("Filter"))
 
             Divider()
 
@@ -1093,18 +1137,32 @@ struct HomeView: View {
             }
             .accessibilityIdentifier("menu-clear-unpinned-history")
             .disabled(unpinnedCount == 0)
+            .accessibilityHint(Text("Clear Unpinned History"))
+            .help(Text("Clear Unpinned History"))
 
             Button("Clear All History…") {
                 requestClearAllHistory()
             }
             .accessibilityIdentifier("menu-clear-all-history")
             .disabled(allCount == 0)
+            .accessibilityHint(Text("Clear All History"))
+            .help(Text("Clear All History"))
         } label: {
-            Image(systemName: "ellipsis.circle")
+            AdaptiveControlLabel(
+                titleKey: "More",
+                systemImage: "ellipsis.circle",
+                presentation: .iconOnly
+            )
         }
         .accessibilityIdentifier("toolbar-more-menu")
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: .iconOnly,
+            accessibilityLabel: "More",
+            accessibilityHintText: "Search, filter, and clear clipboard history"
+        ))
         .accessibilityLabel(Text("More"))
         .accessibilityHint(Text("Search, filter, and clear clipboard history"))
+        .buttonStyle(.borderless)
         .help(Text("More"))
     }
 
@@ -1209,7 +1267,9 @@ struct HomeView: View {
     private var historyContent: some View {
         Group {
             if visibleClips.isEmpty {
-                EmptyStateView(kind: emptyStateKind)
+                EmptyStateView(kind: emptyStateKind) {
+                    isPresentingNewClip = true
+                }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 historyList
@@ -2402,6 +2462,9 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(RowActionControlGroup.deleteButtonIdentifier)
             .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
+            .accessibilityHint(Text(RowActionControlGroup.deleteActionLabel))
+            .help(Text(RowActionControlGroup.deleteActionLabel))
+            .lineLimit(1)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
             Button {
@@ -2420,6 +2483,9 @@ struct HomeView: View {
             .accessibilityLabel(
                 Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
             )
+            .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+            .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+            .lineLimit(1)
         }
     }
 
@@ -2446,7 +2512,7 @@ struct HomeView: View {
         Button {
             togglePinImmediately(clip)
         } label: {
-            Label(
+        Label(
                 LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)),
                 systemImage: RowActionControlGroup.pinActionSymbolName(isPinned: clip.isPinned)
             )
@@ -2455,6 +2521,9 @@ struct HomeView: View {
         .accessibilityLabel(
             Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
         )
+        .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .lineLimit(1)
     }
 
     @ViewBuilder
@@ -2471,6 +2540,9 @@ struct HomeView: View {
             }
             .accessibilityIdentifier("copy-image-text-menu-item")
             .accessibilityLabel(Text("Copy Image Text"))
+            .accessibilityHint(Text("Copy Image Text"))
+            .help(Text("Copy Image Text"))
+            .lineLimit(1)
 
         case .recognizing:
             Button(action: {
@@ -2483,6 +2555,8 @@ struct HomeView: View {
             .disabled(true)
             .accessibilityIdentifier("recognizing-image-text-menu-item")
             .accessibilityLabel(Text("Recognizing Image Text"))
+            .lineLimit(1)
+            .help(Text("Recognizing Image Text"))
 
         case .noText:
             Button(action: {
@@ -2494,6 +2568,8 @@ struct HomeView: View {
             .disabled(true)
             .accessibilityIdentifier("no-image-text-menu-item")
             .accessibilityLabel(Text("No Text Found in Image"))
+            .lineLimit(1)
+            .help(Text("No Text Found in Image"))
 
         case .failed:
             Button(action: {
@@ -2506,6 +2582,8 @@ struct HomeView: View {
             .disabled(true)
             .accessibilityIdentifier("image-text-recognition-failed-menu-item")
             .accessibilityLabel(Text("Image Text Recognition Failed"))
+            .lineLimit(1)
+            .help(Text("Image Text Recognition Failed"))
 
             Button {
                 retryCopyRecognizedImageText(for: clip, request: request)
@@ -2514,6 +2592,9 @@ struct HomeView: View {
             }
             .accessibilityIdentifier("retry-copy-image-text-menu-item")
             .accessibilityLabel(Text("Retry Copy Image Text"))
+            .accessibilityHint(Text("Retry Copy Image Text"))
+            .help(Text("Retry Copy Image Text"))
+            .lineLimit(1)
         }
 
         Divider()
@@ -2525,6 +2606,9 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("copy-original-image-menu-item")
         .accessibilityLabel(Text("Copy Original Image"))
+        .accessibilityHint(Text("Copy Original Image"))
+        .help(Text("Copy Original Image"))
+        .lineLimit(1)
 
         Button {
             togglePinImmediately(clip)
@@ -2538,6 +2622,9 @@ struct HomeView: View {
         .accessibilityLabel(
             Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
         )
+        .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .lineLimit(1)
 
         Button(role: .destructive) {
             deleteClipImmediately(clip)
@@ -2549,6 +2636,9 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("delete-image-menu-item")
         .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
+        .accessibilityHint(Text(RowActionControlGroup.deleteActionLabel))
+        .help(Text(RowActionControlGroup.deleteActionLabel))
+        .lineLimit(1)
     }
 
     private var accessibilityMarkers: some View {

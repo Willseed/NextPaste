@@ -68,6 +68,9 @@ struct RowActionControlGroup: View {
         }
         .buttonStyle(.borderless)
         .accessibilityIdentifier(identifier)
+        .lineLimit(1)
         .accessibilityLabel(Text(LocalizedStringKey(action.accessibilityLabel)))
+        .accessibilityHint(Text(action.accessibilityLabel))
+        .help(Text(action.accessibilityLabel))
     }
 }

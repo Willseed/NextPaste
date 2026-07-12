@@ -22,11 +22,15 @@ class UITestCase: XCTestCase {
     @discardableResult
     func launchApp(
         extraArguments: [String] = [],
+        extraEnvironment: [String: String] = [:],
         onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
     ) -> XCUIApplication {
         let app = UITestAppLauncher.makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
         app.launchArguments.append(contentsOf: extraArguments)
+        for (key, value) in extraEnvironment {
+            app.launchEnvironment[key] = value
+        }
         app.launch()
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {

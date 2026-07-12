@@ -54,10 +54,12 @@ struct NewClipView: View {
             Text("New Text Clip")
                 .font(.title2)
                 .fontWeight(.semibold)
+                .lineLimit(1)
 
             TextEditor(text: $draftText)
                 .frame(minHeight: 180)
                 .accessibilityIdentifier("clip-text-editor")
+                .accessibilityLabel(Text("New Text Clip"))
 
             if let validationMessage {
                 Text(validationMessage)
@@ -80,6 +82,9 @@ struct NewClipView: View {
                     dismiss()
                 }
                 .accessibilityIdentifier("cancel-new-clip-button")
+                .help(Text("Cancel"))
+                .accessibilityHint(Text("Cancel"))
+                .lineLimit(1)
 
                 Spacer()
 
@@ -88,6 +93,9 @@ struct NewClipView: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("save-clip-button")
+                .help(Text("Save"))
+                .accessibilityHint(Text("Save"))
+                .lineLimit(1)
             }
         }
         .padding()

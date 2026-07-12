@@ -854,6 +854,61 @@ final class SettingsUITests: UITestCase {
         try performProductAccessibilityAudit(in: app)
     }
 
+    @MainActor
+    func testSettingsControlsRemainReadableAndKeyboardReachableAcrossLocalesAndCompactWidth() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
+        let clearButton = shortcutButton(Accessibility.clearShortcut, in: settingsWindow)
+        let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
+        assertAccessibleControl(recordButton, named: "Record Shortcut button")
+        assertAccessibleControl(resetButton, named: "Reset to Default button")
+        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
+
+        openSettingsTab(Accessibility.historyTab, in: app)
+        let unpinnedClearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
+        let allClearButton = settingsWindow.buttons["settings-clear-all-history"]
+        assertAccessibleControl(unpinnedClearButton, named: "Clear Unpinned History button")
+        assertAccessibleControl(allClearButton, named: "Clear All History button")
+
+        // Confirm language-independent discoverability in compact width flow.
+        UITestAppLauncher.resizeMainWindow(in: app, to: .small)
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        assertAccessibleControl(
+            shortcutButton(Accessibility.recordShortcut, in: settingsWindow),
+            named: "Record Shortcut button"
+        )
+
+        let chineseApp = launchApp(
+            extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
+            windowSizePreset: .small
+        )
+        let chineseSettingsWindow = openSettingsWindow(in: chineseApp)
+        openSettingsTab(Accessibility.shortcutsTab, in: chineseApp)
+        let chineseRecordButton = shortcutButton(Accessibility.recordShortcut, in: chineseSettingsWindow)
+        XCTAssertEqual(
+            chineseRecordButton.label,
+            LocalizedLabel.traditionalChineseRecordShortcut,
+            "Expected localized shortcut record label in Chinese"
+        )
+
+        openSettingsTab(Accessibility.historyTab, in: chineseApp)
+        let chineseUnpinnedClearButton = chineseSettingsWindow.buttons["settings-clear-unpinned-history"]
+        let chineseAllClearButton = chineseSettingsWindow.buttons["settings-clear-all-history"]
+        XCTAssertTrue(
+            chineseUnpinnedClearButton.label.contains("清除")
+                && chineseUnpinnedClearButton.label.contains("歷史"),
+            "Expected localized settings unpinned clear label"
+        )
+        XCTAssertTrue(
+            chineseAllClearButton.label.contains("全部")
+                && chineseAllClearButton.label.contains("歷史"),
+            "Expected localized settings clear-all label"
+        )
+    }
+
     private func performProductAccessibilityAudit(in app: XCUIApplication) throws {
         try app.performAccessibilityAudit(for: .sufficientElementDescription) { issue in
             // XCUIAutomation audits the application-level accessibility tree,

@@ -38,6 +38,12 @@ final class VisualIdentityUITests: UITestCase {
         XCTAssertTrue(app.staticTexts["empty-state-description"].exists)
         UITestAssertions.assertAccessibleTextEquals(app.staticTexts["empty-state-description"], UITestFixtures.VisualIdentity.emptyDescription)
         XCTAssertTrue(app.descendants(matching: .any)["empty-state-illustration"].exists)
+        let emptyStateNewClipButton = UITestAssertions.assertExists(
+            app.buttons["empty-state-new-clip-button"],
+            "Expected empty-state New Clip button"
+        )
+        XCTAssertTrue(emptyStateNewClipButton.isHittable)
+        UITestAssertions.assertAccessibleTextContains(emptyStateNewClipButton, "New Clip")
 
         try history.createTextClip(UITestFixtures.VisualIdentity.populatedRowsNoIllustrations)
 

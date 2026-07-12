@@ -22,9 +22,14 @@ struct EmptyStateView: View {
     static let filterDescription = "Choose a different filter."
 
     let kind: Kind
+    let addClipAction: () -> Void
 
-    init(kind: Kind = .history) {
+    init(
+        kind: Kind = .history,
+        addClipAction: @escaping () -> Void
+    ) {
         self.kind = kind
+        self.addClipAction = addClipAction
     }
 
     var body: some View {
@@ -45,7 +50,19 @@ struct EmptyStateView: View {
                     .multilineTextAlignment(.center)
                     .accessibilityIdentifier(descriptionAccessibilityIdentifier)
                     .accessibilityLabel(Text(LocalizedStringKey(description)))
+                    .lineLimit(2)
             }
+
+            Button {
+                addClipAction()
+            } label: {
+                Label("New Clip", systemImage: "plus")
+            }
+            .accessibilityIdentifier("empty-state-new-clip-button")
+            .accessibilityLabel(Text("New Clip"))
+            .accessibilityHint(Text("New Clip"))
+            .help(Text("New Clip"))
+            .lineLimit(1)
         }
         .padding(DesignTokens.Spacing.xxLarge)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

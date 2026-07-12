@@ -257,7 +257,13 @@ private struct ShortcutsSettingsTab: View {
                     .accessibilityLabel(
                         isRecording ? Text("Cancel Recording") : Text("Record Shortcut")
                     )
-                    .accessibilityHint(Text("Record a new global keyboard shortcut"))
+                    .accessibilityHint(
+                        isRecording
+                            ? Text("Cancel Recording")
+                            : Text("Record a new global keyboard shortcut")
+                    )
+                    .help(isRecording ? Text("Cancel Recording") : Text("Record Shortcut"))
+                    .lineLimit(1)
 
                     Button("Clear Shortcut") {
                         focusedTarget = .clear
@@ -277,6 +283,8 @@ private struct ShortcutsSettingsTab: View {
                     .accessibilityIdentifier("global-shortcut-clear-button")
                     .accessibilityLabel(Text("Clear Shortcut"))
                     .accessibilityHint(Text("Disable the global keyboard shortcut"))
+                    .help(Text("Clear Shortcut"))
+                    .lineLimit(1)
 
                     Button("Reset to Default") {
                         focusedTarget = .reset
@@ -287,6 +295,8 @@ private struct ShortcutsSettingsTab: View {
                     .accessibilityIdentifier("global-shortcut-reset-button")
                     .accessibilityLabel(Text("Reset to Default"))
                     .accessibilityHint(Text("Restore the default global keyboard shortcut"))
+                    .help(Text("Reset to Default"))
+                    .lineLimit(1)
                 }
             }
         }
@@ -572,7 +582,7 @@ private struct HistorySettingsTab: View {
                     .focused($focusedTarget, equals: .slider)
                     .accessibilityIdentifier("history-limit-slider")
                     .accessibilityLabel(Text("Storage Limit"))
-                    .accessibilityValue("\(Int(sliderValue.rounded()))")
+                    .accessibilityValue(Text(Int(sliderValue.rounded())))
 
                     TextField("1–1000", text: $draftText)
                         .labelsHidden()
@@ -598,9 +608,13 @@ private struct HistorySettingsTab: View {
 
                 Text(
                     String(
-                        localized: "Keep up to \(Int(sliderValue.rounded())) unpinned clipboard items. Pinned items are always kept.",
-                        bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
-                        locale: appLanguagePreference.resolvedLanguage.locale
+                        format: String(
+                            localized: "Keep up to %lld unpinned clipboard items. Pinned items are always kept.",
+                            bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
+                            locale: appLanguagePreference.resolvedLanguage.locale
+                        ),
+                        locale: appLanguagePreference.resolvedLanguage.locale,
+                        Int64(sliderValue.rounded())
                     )
                 )
                     .font(.caption)
@@ -635,12 +649,18 @@ private struct HistorySettingsTab: View {
                 }
                 .accessibilityIdentifier("settings-clear-unpinned-history")
                 .disabled(unpinnedCount == 0)
+                .help(Text("Clear Unpinned History"))
+                .accessibilityHint(Text("Clear Unpinned History"))
+                .lineLimit(1)
 
                 Button("Clear All History…") {
                     isPresentingClearAllConfirmation = true
                 }
                 .accessibilityIdentifier("settings-clear-all-history")
                 .disabled(allCount == 0)
+                .help(Text("Clear All History"))
+                .accessibilityHint(Text("Clear All History"))
+                .lineLimit(1)
             }
         }
         .padding()
@@ -686,12 +706,20 @@ private struct HistorySettingsTab: View {
                 _ = try? clearService.clearUnpinnedHistory()
             }
             .accessibilityIdentifier("settings-confirm-clear-unpinned")
+            .accessibilityHint(Text("Clear Unpinned History"))
+            .help(Text("Clear Unpinned History"))
+            .lineLimit(1)
             Button("Cancel", role: .cancel) {
                 isPresentingClearUnpinnedConfirmation = false
             }
             .accessibilityIdentifier("settings-cancel-clear-unpinned")
+            .accessibilityHint(Text("Cancel"))
+            .help(Text("Cancel"))
+            .lineLimit(1)
         } message: {
             Text("Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone.")
+                .lineLimit(6)
+                .accessibilityLabel(Text("Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone."))
         }
         .confirmationDialog(
             "Clear All History",
@@ -702,12 +730,20 @@ private struct HistorySettingsTab: View {
                 _ = try? clearService.clearAllHistory()
             }
             .accessibilityIdentifier("settings-confirm-clear-all")
+            .accessibilityHint(Text("Clear All History"))
+            .help(Text("Clear All History"))
+            .lineLimit(1)
             Button("Cancel", role: .cancel) {
                 isPresentingClearAllConfirmation = false
             }
             .accessibilityIdentifier("settings-cancel-clear-all")
+            .accessibilityHint(Text("Cancel"))
+            .help(Text("Cancel"))
+            .lineLimit(1)
         } message: {
             Text("Clear all clipboard history, including pinned items? This action cannot be undone.")
+                .lineLimit(6)
+                .accessibilityLabel(Text("Clear all clipboard history, including pinned items? This action cannot be undone."))
         }
     }
 

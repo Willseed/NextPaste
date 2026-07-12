@@ -139,4 +139,55 @@ final class HistoryListUITests: UITestCase {
                 .assertFirstVisibleClipRowContains("Resize visibility clip \(preset.rawValue)")
         }
     }
+
+    @MainActor
+    func testLongEnglishAndChineseRowsKeepActionsUsableAcrossAdaptiveWidthWithKeyboardSearch() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        let row = rowRobot(for: app)
+
+        let longEnglishText = "This is an intentionally very long English clipboard row used to validate that row actions stay readable and tappable after adaptive-width toolbar transitions and window resizes."
+        let longChineseText = "這是一段故意很長的中文剪貼簿內容，用來驗證視窗在各種縮放尺寸下仍可正常操作清單列，並避免按鈕文字截斷或重疊。"
+        let englishPrefix = String(longEnglishText.prefix(32))
+        let chinesePrefix = String(longChineseText.prefix(24))
+
+        try history.createTextClips([longEnglishText, longChineseText])
+
+        for preset in [
+            UITestAppLauncher.WindowSizePreset.defaultSize,
+            .medium,
+            .small
+        ] {
+            if preset != .defaultSize {
+                UITestAppLauncher.resizeMainWindow(in: app, to: preset)
+            }
+
+            history.assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
+
+            let englishRow = row.textRowElement(containing: englishPrefix)
+            let chineseRow = row.textRowElement(containing: chinesePrefix)
+            XCTAssertTrue(englishRow.isHittable)
+            XCTAssertTrue(chineseRow.isHittable)
+
+            let copyButton = row.copyButton(for: englishPrefix)
+            XCTAssertTrue(copyButton.isHittable)
+            UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
+
+            app.typeKey("f", modifierFlags: .command)
+            XCTAssertTrue(history.searchField().hasKeyboardFocus)
+            app.typeKey(.escape, modifierFlags: [])
+
+            if preset == .small {
+                XCTAssertTrue(
+                    app.descendants(matching: .any)["toolbar-more-menu"].exists,
+                    "Expected More menu at compact width"
+                )
+            }
+
+            XCTAssertTrue(
+                app.buttons["new-clip-button"].isHittable,
+                "Expected primary action to remain during resize flow"
+            )
+        }
+    }
 }
