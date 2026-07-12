@@ -328,6 +328,8 @@ struct HomeView: View {
     // state (`searchText`) — `focusSearch()` does not create a second search entry.
     @State private var isSearchPresented = true
     @FocusState private var isSearchFieldFocused: Bool
+    @State private var focusedSceneCommandDispatcher = FocusedSceneCommandDispatcher()
+    @State private var focusedSceneCommandOwner: UUID?
     // T007/T009: clear-history confirmation state. The dialogs are presented from
     // HomeView so the clearing logic stays centralized; menu commands and the
     // toolbar menu only request presentation.
@@ -568,15 +570,10 @@ struct HomeView: View {
         }
         .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search clips")
         .searchFocused($isSearchFieldFocused)
-        // T003: publish the shared `focusSearch()` action to the focused window so
-        // the app-level `SearchCommands` (`Command-F`) can invoke it without owning
-        // any search state.
-        .focusedSceneValue(\.searchFocusAction, focusSearch)
-        // T007/T009: publish the request-clear actions so `HistoryClearCommands`
-        // (`Option-Command-Delete`, `Shift-Option-Command-Delete`) can request the
-        // confirmation dialogs without owning clearing logic.
-        .focusedSceneValue(\.requestClearUnpinnedAction, requestClearUnpinnedHistory)
-        .focusedSceneValue(\.requestClearAllAction, requestClearAllHistory)
+        // One stable publisher owns the scene-wide command payload. The dispatcher
+        // resolves requests through the current HomeView generation rather than
+        // publishing newly-created closure identities during every body evaluation.
+        .focusedSceneValue(\.nextPasteCommandDispatcher, focusedSceneCommandDispatcher)
         // T007: clear unpinned confirmation. Shows counts, preserves pinned, is
         // destructive and irreversible. Confirm only calls the T006 service.
         .confirmationDialog(
@@ -615,10 +612,13 @@ struct HomeView: View {
             Text(clearAllConfirmationMessage)
                 .accessibilityIdentifier("clear-all-confirmation-message")
         }
-#if DEBUG
         .onAppear {
+            installFocusedSceneCommandHandler()
+#if DEBUG
             traceVisibleClipSnapshot(reason: "home.appear")
+#endif
         }
+#if DEBUG
         .onChange(of: traceVisibleClipSnapshotKey) { _, _ in
             traceVisibleClipSnapshot(reason: "visible-clips.changed")
         }
@@ -635,6 +635,7 @@ struct HomeView: View {
             )
         }
         .onDisappear {
+            uninstallFocusedSceneCommandHandler()
             copyFeedbackTask?.cancel()
             pinScrollTask?.cancel()
             pinScrollRequestState.cancel()
@@ -933,6 +934,28 @@ struct HomeView: View {
 #if os(macOS)
         beginHistorySearchInteraction(in: NSApp.keyWindow ?? NSApp.mainWindow ?? NSApp.windows.first)
 #endif
+    }
+
+    private func installFocusedSceneCommandHandler() {
+        if let focusedSceneCommandOwner {
+            focusedSceneCommandDispatcher.uninstall(owner: focusedSceneCommandOwner)
+        }
+        focusedSceneCommandOwner = focusedSceneCommandDispatcher.install { request in
+            switch request {
+            case .focusSearch:
+                focusSearch()
+            case .clearUnpinnedHistory:
+                requestClearUnpinnedHistory()
+            case .clearAllHistory:
+                requestClearAllHistory()
+            }
+        }
+    }
+
+    private func uninstallFocusedSceneCommandHandler() {
+        guard let focusedSceneCommandOwner else { return }
+        focusedSceneCommandDispatcher.uninstall(owner: focusedSceneCommandOwner)
+        self.focusedSceneCommandOwner = nil
     }
 
     /// T004: clears the active search query. Invoked by the explicit Clear Search

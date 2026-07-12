@@ -101,4 +101,35 @@ final class SearchAccessibilityUITests: UITestCase {
             .assertRowExists(withText: UITestFixtures.Search.matchingText)
             .assertRowExists(withText: UITestFixtures.Search.nonMatchingText)
     }
+
+    @MainActor
+    func testRapidFocusChangesAndSettingsRoundTripRemainStable() throws {
+        let app = launchApp()
+        let history = historyRobot(for: app)
+        try history.createTextClips([
+            UITestFixtures.Search.matchingText,
+            UITestFixtures.Search.nonMatchingText
+        ])
+
+        for _ in 0..<8 {
+            app.typeKey("f", modifierFlags: .command)
+            XCTAssertTrue(history.searchField().exists, "Command-F must keep resolving through the focused scene")
+            history.searchButton().tap()
+        }
+
+        UITestAssertions.assertExists(app.buttons["settings-button"], "Expected SettingsLink").tap()
+        UITestAssertions.assertExists(
+            app.windows["com_apple_SwiftUI_Settings_window"],
+            "Expected the Settings scene during focus round-trip"
+        )
+        app.typeKey("w", modifierFlags: .command)
+        UITestAppLauncher.prepareMainWindow(in: app)
+
+        app.typeKey("f", modifierFlags: .command)
+        history
+            .typeIntoFocusedElement(UITestFixtures.Search.textQuery)
+            .assertRowExists(withText: UITestFixtures.Search.matchingText)
+            .assertRowDoesNotExist(withText: UITestFixtures.Search.nonMatchingText)
+        XCTAssertEqual(app.state, .runningForeground)
+    }
 }
