@@ -301,6 +301,7 @@ summarize_test_result() {
 }
 
 run_build_for_testing() {
+  local coverage="$1"
   local result_bundle="${RUN_DIR}/BuildForTesting.xcresult"
   local command=(
     "${XCODEBUILD}"
@@ -310,7 +311,7 @@ run_build_for_testing() {
     -destination "${DESTINATION}"
     -configuration "${BUILD_CONFIGURATION}"
     -derivedDataPath "${DERIVED_DATA_PATH}"
-    -enableCodeCoverage YES
+    -enableCodeCoverage "${coverage}"
     -resultBundlePath "${result_bundle}"
     build-for-testing
   )
@@ -403,7 +404,7 @@ if [[ "${MODE}" == "pr" ]]; then
     /bin/echo "actionlint unavailable; workflow syntax validation is deferred to the workflow tool-install step"
   fi
 
-  run_build_for_testing
+  run_build_for_testing YES
   run_test_phase Unit Unit 1800 YES YES \
     -only-testing:NextPasteTests \
     -skip-testing:"${VISION_INTEGRATION_SELECTOR}" \
@@ -424,7 +425,7 @@ if [[ "${MODE}" == "pr" ]]; then
     -only-testing:NextPasteUITests/SearchAccessibilityUITests/testRapidFocusChangesAndSettingsRoundTripRemainStable
   assert_no_swiftui_runtime_warnings UISmoke "${ui_start_time}"
 else
-  run_build_for_testing
+  run_build_for_testing NO
   shard_selectors=()
   while read -r class_name; do
     [[ -n "${class_name}" ]] && shard_selectors+=("-only-testing:NextPasteUITests/${class_name}")
