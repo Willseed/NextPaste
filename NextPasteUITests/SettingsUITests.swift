@@ -114,7 +114,7 @@ final class SettingsUITests: UITestCase {
         settingsButton.tap()
         _ = assertSingleSettingsWindow(in: app)
 
-        UITestAppLauncher.prepareMainWindow(in: app)
+        UITestAppLauncher.openMainWindowIfNeeded(in: app)
         UITestAssertions.assertExists(
             app.buttons["settings-button"],
             "Expected the toolbar SettingsLink after returning to the main window"

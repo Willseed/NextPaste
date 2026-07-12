@@ -19,9 +19,9 @@ struct UITestPathConfiguration: Sendable {
 
     static var systemDefault: Self {
 #if os(macOS)
-        // The UI-test runner is sandboxed, so search-path lookup can resolve to
-        // its private container. Build the system Shared directory from the
-        // filesystem root to match the app's debug-only sandbox entitlement.
+        // The local-domain shared-public lookup is unavailable to the sandboxed
+        // UI-test runner, and a temporary-directory fallback enters its private
+        // container. Build the shared root to match the app's Debug entitlement.
         let sharedDirectoryURL = URL(
             fileURLWithPath: NSOpenStepRootDirectory(),
             isDirectory: true
@@ -437,6 +437,7 @@ enum UITestAppLauncher {
             windowMenu.click()
             let mainWindowItem = app.menuItems
                 .matching(identifier: makeKeyAndOrderFrontIdentifier)
+                .matching(NSPredicate(format: "label == %@", "NextPaste"))
                 .firstMatch
             if mainWindowItem.waitForExistence(timeout: 2), mainWindowItem.isHittable {
                 mainWindowItem.click()

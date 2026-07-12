@@ -2685,10 +2685,20 @@ struct HomeView: View {
     ) {
         uiTestAppliedWindowSize = "resizing"
         let origin = window.frame.origin
-        let contentRect = NSRect(origin: .zero, size: preset.contentSize)
-        let frame = window.frameRect(forContentRect: contentRect)
-        if window.frame.size != frame.size {
-            window.setFrame(NSRect(origin: origin, size: frame.size), display: true, animate: false)
+        let maximumContentSize = window.screen.map { screen in
+            window.contentRect(
+                forFrameRect: NSRect(origin: .zero, size: screen.visibleFrame.size)
+            ).size
+        } ?? preset.contentSize
+        let targetContentSize = preset.contentSize.constrained(to: maximumContentSize)
+        let contentRect = NSRect(origin: .zero, size: targetContentSize)
+        var targetFrame = window.frameRect(forContentRect: contentRect)
+        targetFrame.origin = origin
+        if let screen = window.screen {
+            targetFrame = window.constrainFrameRect(targetFrame, to: screen)
+        }
+        if window.frame != targetFrame {
+            window.setFrame(targetFrame, display: true, animate: false)
         }
 
         // `UITestWindowSizeResolver` is itself updated from SwiftUI's layout
@@ -2697,7 +2707,7 @@ struct HomeView: View {
         // `setFrame` synchronously updates the content-view bounds; the separate
         // UUID visibility marker remains the observable SwiftUI layout gate.
         guard let actualSize = window.contentView?.bounds.size,
-              actualSize.approximatelyEquals(preset.contentSize) else {
+              actualSize.approximatelyEquals(targetContentSize) else {
             uiTestAppliedWindowSize = "size-mismatch"
             return
         }
@@ -3191,6 +3201,13 @@ private struct UITestWindowSizeResolver: NSViewRepresentable {
 }
 
 private extension NSSize {
+    func constrained(to maximumSize: NSSize) -> NSSize {
+        NSSize(
+            width: min(width, maximumSize.width),
+            height: min(height, maximumSize.height)
+        )
+    }
+
     func approximatelyEquals(_ other: NSSize, tolerance: CGFloat = 0.5) -> Bool {
         abs(width - other.width) <= tolerance
             && abs(height - other.height) <= tolerance
