@@ -17,20 +17,6 @@
 
 import XCTest
 
-struct SwipeSynthesisContext {
-    enum Direction {
-        case right
-        case left
-    }
-
-    let gestureCandidates: [XCUIElement]
-    let targetedRow: XCUIElement
-    let actionButtonIdentifier: String
-    let expectedAccessibleLabel: String
-    let direction: Direction
-    let application: XCUIApplication
-}
-
 enum SwipeSynthesisRecorder {
     /// Result of a native swipe reveal attempt: either the revealed,
     /// hittable action button aligned to the targeted row, or a synthesis
