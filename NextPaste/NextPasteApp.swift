@@ -285,6 +285,9 @@ struct NextPasteApp: App {
                 .environmentObject(globalShortcutPreference)
                 .environmentObject(globalShortcutLifecycleController)
                 .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
+                #if DEBUG
+                .applyDebugAccessibilityOverrides(uiTestLaunchEnvironment)
+                #endif
         }
 #endif
     }
@@ -311,6 +314,9 @@ struct NextPasteApp: App {
         .environmentObject(globalShortcutLifecycleController)
 #endif
         .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
+        #if DEBUG
+        .applyDebugAccessibilityOverrides(uiTestLaunchEnvironment)
+        #endif
 #if !os(macOS)
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
 #endif
@@ -380,7 +386,39 @@ private struct ClipboardMonitorHostView<Content: View>: View {
 #if DEBUG
                 RowActionTraceRuntime.finish(status: .completed)
 #endif
-            }
+        }
 #endif
+}
+
+#if DEBUG
+private extension View {
+    @ViewBuilder
+    func applyDebugAccessibilityOverrides(
+        _ launchEnvironment: DebugUITestLaunchEnvironment?
+    ) -> some View {
+        guard let launchEnvironment else {
+            self
+            return
+        }
+
+        let forcedColorContrast = launchEnvironment.forceIncreasedColorContrast
+        let forceReduceTransparency = launchEnvironment.forceReduceTransparency
+
+        switch (forcedColorContrast, forceReduceTransparency) {
+        case (.some(let isIncreased), .some(let reduceTransparency)):
+            self
+                .environment(\.colorSchemeContrast, isIncreased ? .increased : .standard)
+                .environment(\.accessibilityReduceTransparency, reduceTransparency)
+        case (.some(let isIncreased), nil):
+            self
+                .environment(\.colorSchemeContrast, isIncreased ? .increased : .standard)
+        case (nil, .some(let reduceTransparency)):
+            self
+                .environment(\.accessibilityReduceTransparency, reduceTransparency)
+        case (nil, nil):
+            self
+        }
     }
+}
+#endif
 }

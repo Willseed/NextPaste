@@ -92,6 +92,45 @@ struct ThemeContractTests {
         }
     }
 
+    @Test("control and feedback roles include interactive state variants")
+    func controlAndFeedbackRolesIncludeInteractiveStates() {
+        for appearance in AppTheme.Appearance.allCases {
+            let theme = AppTheme(appearance: appearance)
+
+            #expect(theme.controlSurface.hex.isEmpty == false)
+            #expect(theme.controlSurfaceHover.hex.isEmpty == false)
+            #expect(theme.controlSurfacePressed.hex.isEmpty == false)
+            #expect(theme.controlSurfaceSelected.hex.isEmpty == false)
+            #expect(theme.controlSurfaceDisabled.hex.isEmpty == false)
+            #expect(theme.controlText.hex.isEmpty == false)
+            #expect(theme.controlTextDisabled.hex.isEmpty == false)
+            #expect(theme.controlBorderHover.hex.isEmpty == false)
+            #expect(theme.controlBorderPressed.hex.isEmpty == false)
+            #expect(theme.controlBorderSelected.hex.isEmpty == false)
+            #expect(theme.controlBorderDisabled.hex.isEmpty == false)
+            #expect(theme.separator.hex.isEmpty == false)
+            #expect(theme.warningText.hex.isEmpty == false)
+            #expect(theme.warningSurface.hex.isEmpty == false)
+            #expect(theme.warningBorder.hex.isEmpty == false)
+            #expect(theme.errorText.hex.isEmpty == false)
+            #expect(theme.errorSurface.hex.isEmpty == false)
+            #expect(theme.errorBorder.hex.isEmpty == false)
+
+            #expect(theme.controlSurface != theme.controlSurfaceHover)
+            #expect(theme.controlSurface != theme.controlSurfacePressed)
+            #expect(theme.controlSurface != theme.controlSurfaceSelected)
+            #expect(theme.controlSurface != theme.controlSurfaceDisabled)
+            #expect(theme.controlSurfaceDisabled != theme.controlSurfaceHover)
+            #expect(theme.controlBorder != theme.controlBorderHover)
+            #expect(theme.controlBorder != theme.controlBorderPressed)
+            #expect(theme.controlBorder != theme.controlBorderSelected)
+            #expect(theme.controlBorder != theme.controlBorderDisabled)
+            #expect(theme.separator != theme.canvas)
+            #expect(theme.separator != theme.surface)
+            #expect(theme.errorText != theme.warningText)
+        }
+    }
+
     @Test("reduce motion disables design-system animations")
     func reduceMotionDisablesDesignSystemAnimations() {
         let reducedMotion = AppMotion(reduceMotion: true)
@@ -146,6 +185,22 @@ struct ThemeContractTests {
         // Input fields must have a visible border distinct from their fill.
         #expect(light.controlBorder.hex != light.controlSurface.hex)
         #expect(dark.controlBorder.hex != dark.controlSurface.hex)
+
+        // Primary controls and feedback surfaces remain legible across states.
+        #expect(wcagContrast(light.controlText.hex, light.controlSurface.hex) >= 4.5)
+        #expect(wcagContrast(light.controlText.hex, light.controlSurfaceHover.hex) >= 4.5)
+        #expect(wcagContrast(light.controlText.hex, light.controlSurfacePressed.hex) >= 4.5)
+        #expect(wcagContrast(light.controlText.hex, light.controlSurfaceSelected.hex) >= 4.5)
+        #expect(wcagContrast(light.controlTextDisabled.hex, light.controlSurfaceDisabled.hex) >= 3.0)
+        #expect(wcagContrast(dark.controlText.hex, dark.controlSurface.hex) >= 4.5)
+        #expect(wcagContrast(dark.controlText.hex, dark.controlSurfaceHover.hex) >= 4.5)
+        #expect(wcagContrast(dark.controlText.hex, dark.controlSurfacePressed.hex) >= 4.5)
+        #expect(wcagContrast(dark.controlText.hex, dark.controlSurfaceSelected.hex) >= 4.5)
+        #expect(wcagContrast(dark.controlTextDisabled.hex, dark.controlSurfaceDisabled.hex) >= 3.0)
+        #expect(wcagContrast(light.errorText.hex, light.errorSurface.hex) >= 3.0)
+        #expect(wcagContrast(dark.errorText.hex, dark.errorSurface.hex) >= 3.0)
+        #expect(wcagContrast(light.warningText.hex, light.warningSurface.hex) >= 3.0)
+        #expect(wcagContrast(dark.warningText.hex, dark.warningSurface.hex) >= 3.0)
     }
 
     @Test("high contrast text roles meet WCAG AA contrast against their backgrounds")
@@ -176,6 +231,22 @@ struct ThemeContractTests {
         // Input fields must have a visible border distinct from their fill.
         #expect(highContrastLight.controlBorder.hex != highContrastLight.controlSurface.hex)
         #expect(highContrastDark.controlBorder.hex != highContrastDark.controlSurface.hex)
+
+        // Primary controls and feedback surfaces remain legible in high contrast.
+        #expect(wcagContrast(highContrastLight.controlText.hex, highContrastLight.controlSurface.hex) >= 4.5)
+        #expect(wcagContrast(highContrastLight.controlText.hex, highContrastLight.controlSurfaceHover.hex) >= 4.5)
+        #expect(wcagContrast(highContrastLight.controlText.hex, highContrastLight.controlSurfacePressed.hex) >= 4.5)
+        #expect(wcagContrast(highContrastLight.controlText.hex, highContrastLight.controlSurfaceSelected.hex) >= 4.5)
+        #expect(wcagContrast(highContrastLight.controlTextDisabled.hex, highContrastLight.controlSurfaceDisabled.hex) >= 3.0)
+        #expect(wcagContrast(highContrastDark.controlText.hex, highContrastDark.controlSurface.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.controlText.hex, highContrastDark.controlSurfaceHover.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.controlText.hex, highContrastDark.controlSurfacePressed.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.controlText.hex, highContrastDark.controlSurfaceSelected.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.controlTextDisabled.hex, highContrastDark.controlSurfaceDisabled.hex) >= 3.0)
+        #expect(wcagContrast(highContrastLight.errorText.hex, highContrastLight.errorSurface.hex) >= 3.0)
+        #expect(wcagContrast(highContrastDark.errorText.hex, highContrastDark.errorSurface.hex) >= 3.0)
+        #expect(wcagContrast(highContrastLight.warningText.hex, highContrastLight.warningSurface.hex) >= 3.0)
+        #expect(wcagContrast(highContrastDark.warningText.hex, highContrastDark.warningSurface.hex) >= 3.0)
     }
 
     @Test("focus ring role is defined and distinct on every appearance")

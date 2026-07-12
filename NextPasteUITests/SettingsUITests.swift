@@ -12,18 +12,18 @@ final class SettingsUITests: UITestCase {
         static let settingsWindowIdentifier = "com_apple_SwiftUI_Settings_window"
 
         static let generalTab = "settings-tab-general"
+        static let clipboardTab = "settings-tab-clipboard"
         static let shortcutsTab = "settings-tab-shortcuts"
-        static let appearanceTab = "settings-tab-appearance"
-        static let historyTab = "settings-tab-history"
+        static let privacyTab = "settings-tab-privacy"
+        static let aboutTab = "settings-tab-about"
 
         static let appLanguagePicker = "app-language-picker"
-        static let appLanguageDescription = "app-language-description"
         static let mainToolbarTitle = "app-toolbar-title"
         static let newClipButton = "new-clip-button"
         static let languageFocusProbe = "settings-language-focus"
         static let shortcutsFocusProbe = "settings-shortcuts-focus"
-        static let appearanceFocusProbe = "settings-appearance-focus"
-        static let historyFocusProbe = "settings-history-focus"
+        static let clipboardFocusProbe = "settings-clipboard-focus"
+        static let privacyFocusProbe = "settings-privacy-focus"
         static let englishUnitedStates = "English (United States)"
         static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
         static let localizedEnglishUnitedStates = "英文（美國）"
@@ -44,8 +44,17 @@ final class SettingsUITests: UITestCase {
         static let effectiveNativeAppearance = "effective-appearance-native"
         static let effectiveMainAppearance = "effective-appearance-main"
         static let effectiveSettingsAppearance = "effective-appearance-settings"
+        static let settingsContrastProbe = "settings-color-contrast"
+        static let settingsReduceTransparencyProbe = "settings-reduce-transparency"
         static let historyLimitSlider = "history-limit-slider"
         static let historyLimitField = "history-limit-field"
+        static let settingsClearUnpinnedHistory = "settings-clear-unpinned-history"
+        static let settingsClearAllHistory = "settings-clear-all-history"
+        static let settingsConfirmClearUnpinned = "settings-confirm-clear-unpinned"
+        static let settingsConfirmClearAll = "settings-confirm-clear-all"
+        static let settingsCancelClearUnpinned = "settings-cancel-clear-unpinned"
+        static let settingsCancelClearAll = "settings-cancel-clear-all"
+        static let aboutVersionIdentifier = "about-app-version"
     }
 
     private enum Fixture {
@@ -68,15 +77,17 @@ final class SettingsUITests: UITestCase {
     private enum LocalizedLabel {
         static let englishTabs = [
             (Accessibility.generalTab, "General"),
+            (Accessibility.clipboardTab, "Clipboard"),
             (Accessibility.shortcutsTab, "Shortcuts"),
-            (Accessibility.appearanceTab, "Appearance"),
-            (Accessibility.historyTab, "History")
+            (Accessibility.privacyTab, "Data & Privacy"),
+            (Accessibility.aboutTab, "About")
         ]
         static let traditionalChineseTabs = [
             (Accessibility.generalTab, "一般"),
+            (Accessibility.clipboardTab, "剪貼簿"),
             (Accessibility.shortcutsTab, "快速鍵"),
-            (Accessibility.appearanceTab, "外觀"),
-            (Accessibility.historyTab, "歷史記錄")
+            (Accessibility.privacyTab, "資料與隱私"),
+            (Accessibility.aboutTab, "關於")
         ]
         static let englishRecordShortcut = "Record Shortcut"
         static let traditionalChineseRecordShortcut = "錄製快速鍵"
@@ -89,10 +100,18 @@ final class SettingsUITests: UITestCase {
         static let traditionalChineseFindMenu = "尋找…"
         static let englishClearUnpinnedConfirmationTitle = "Clear Unpinned History"
         static let traditionalChineseClearUnpinnedConfirmationTitle = "清除未釘選的歷史記錄"
+        static let englishClearAllConfirmationTitle = "Clear All History"
+        static let traditionalChineseClearAllConfirmationTitle = "清除全部歷史記錄"
+        static let englishSectionHeaders = ["General", "Clipboard", "Shortcuts", "Data & Privacy", "About"]
+        static let traditionalChineseSectionHeaders = ["一般", "剪貼簿", "快速鍵", "資料與隱私", "關於"]
         static let englishClearUnpinnedDialogMessage =
             "Clear all unpinned clipboard history? Pinned items are preserved. This action cannot be undone."
         static let traditionalChineseClearUnpinnedDialogMessage =
             "要清除所有未釘選的剪貼簿歷史記錄嗎？將保留已釘選項目。此操作無法復原。"
+        static let englishClearAllDialogMessage =
+            "Clear all clipboard history, including pinned items? This action cannot be undone."
+        static let traditionalChineseClearAllDialogMessage =
+            "要清除所有剪貼簿歷史記錄嗎？此操作會包含已釘選項目，且無法復原。"
     }
 
     private enum PopupDirection {
@@ -156,17 +175,61 @@ final class SettingsUITests: UITestCase {
         openSettingsTab(Accessibility.generalTab, in: app)
         _ = languagePopup(in: settingsWindow)
 
+        openSettingsTab(Accessibility.clipboardTab, in: app)
+        _ = historyLimitSlider(in: settingsWindow)
+        _ = historyLimitField(in: settingsWindow)
+
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         UITestAssertions.assertExists(settingsWindow.buttons[Accessibility.recordShortcut], "Expected Record Shortcut button")
         UITestAssertions.assertExists(settingsWindow.buttons[Accessibility.clearShortcut], "Expected Clear Shortcut button")
         UITestAssertions.assertExists(settingsWindow.buttons[Accessibility.resetShortcut], "Expected Reset to Default button")
 
-        openSettingsTab(Accessibility.appearanceTab, in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
         _ = appearancePopup(in: settingsWindow)
 
-        openSettingsTab(Accessibility.historyTab, in: app)
-        _ = historyLimitSlider(in: settingsWindow)
-        _ = historyLimitField(in: settingsWindow)
+        openSettingsTab(Accessibility.privacyTab, in: app)
+        _ = settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory]
+
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        openSettingsTab(Accessibility.aboutTab, in: app)
+    }
+
+    @MainActor
+    func testSettingsSectionsAndCoreControlsArePresentInEveryTab() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+
+        openSettingsTab(Accessibility.generalTab, in: app)
+        assertSectionHeaders([LocalizedLabel.englishSectionHeaders[0]], in: settingsWindow)
+        let languagePicker = languagePopup(in: settingsWindow)
+        assertAccessibleControl(languagePicker, named: "App Language picker")
+        let appearancePicker = appearancePopup(in: settingsWindow)
+        assertAccessibleControl(appearancePicker, named: "Appearance picker")
+
+        openSettingsTab(Accessibility.clipboardTab, in: app)
+        assertSectionHeaders([LocalizedLabel.englishSectionHeaders[1]], in: settingsWindow)
+        assertAccessibleControl(historyLimitSlider(in: settingsWindow), named: "Storage Limit slider")
+        assertAccessibleControl(historyLimitField(in: settingsWindow), named: "Storage Limit field")
+
+        openSettingsTab(Accessibility.shortcutsTab, in: app)
+        assertSectionHeaders([LocalizedLabel.englishSectionHeaders[2]], in: settingsWindow)
+        assertAccessibleControl(shortcutButton(Accessibility.recordShortcut, in: settingsWindow), named: "Record Shortcut button")
+        assertAccessibleControl(shortcutButton(Accessibility.clearShortcut, in: settingsWindow), named: "Clear Shortcut button")
+        assertAccessibleControl(shortcutButton(Accessibility.resetShortcut, in: settingsWindow), named: "Reset to Default button")
+
+        openSettingsTab(Accessibility.privacyTab, in: app)
+        assertSectionHeaders([LocalizedLabel.englishSectionHeaders[3]], in: settingsWindow)
+        let unpinnedClear = settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory]
+        let allClear = settingsWindow.buttons[Accessibility.settingsClearAllHistory]
+        assertAccessibleControl(unpinnedClear, named: "Clear Unpinned History button")
+        assertAccessibleControl(allClear, named: "Clear All History button")
+
+        openSettingsTab(Accessibility.aboutTab, in: app)
+        assertSectionHeaders([LocalizedLabel.englishSectionHeaders[4]], in: settingsWindow)
+        UITestAssertions.assertExists(
+            settingsWindow.staticTexts[Accessibility.aboutVersionIdentifier],
+            "Expected version marker under About"
+        )
     }
 
     @MainActor
@@ -233,7 +296,7 @@ final class SettingsUITests: UITestCase {
         let history = historyRobot(for: app)
 
         let settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let slider = historyLimitSlider(in: settingsWindow)
         let field = historyLimitField(in: settingsWindow)
 
@@ -276,7 +339,7 @@ final class SettingsUITests: UITestCase {
 
         let relaunchedApp = launchApp()
         let reopenedSettings = openSettingsWindow(in: relaunchedApp)
-        openSettingsTab(Accessibility.historyTab, in: relaunchedApp)
+        openSettingsTab(Accessibility.clipboardTab, in: relaunchedApp)
         let relaunchedField = historyLimitField(in: reopenedSettings)
         XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
 
@@ -298,7 +361,7 @@ final class SettingsUITests: UITestCase {
     func testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let field = historyLimitField(in: settingsWindow)
         let slider = historyLimitSlider(in: settingsWindow)
 
@@ -335,14 +398,14 @@ final class SettingsUITests: UITestCase {
         )
         assertProbeValue(
             Accessibility.historyLimitField,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "The edited Storage Limit field must own focus before testing focus-loss commit"
         )
         field.typeKey(.tab, modifierFlags: [])
         assertProbeValue(
             Accessibility.historyLimitSlider,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "Tab must move focus from the Storage Limit field to the slider"
         )
@@ -354,14 +417,14 @@ final class SettingsUITests: UITestCase {
         )
         assertProbeValue(
             Accessibility.historyLimitField,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "The empty Storage Limit draft must remain focused before focus-loss normalization"
         )
         field.typeKey(.tab, modifierFlags: [])
         assertProbeValue(
             Accessibility.historyLimitSlider,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "Tab must leave the empty Storage Limit draft through the native focus path"
         )
@@ -373,7 +436,7 @@ final class SettingsUITests: UITestCase {
     func testHistoryLimitSliderAndFieldSynchronizeAtBoundariesAndIntermediateInteger() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let field = historyLimitField(in: settingsWindow)
         let slider = historyLimitSlider(in: settingsWindow)
 
@@ -539,7 +602,7 @@ final class SettingsUITests: UITestCase {
         assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.traditionalChineseMainWindow, in: app)
         assertMenuItemLabel(LocalizedLabel.traditionalChineseFindMenu, in: app)
 
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let clearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
         UITestAssertions.assertExists(clearButton, "Expected dialog trigger for unpinned clear confirmation")
         clearButton.tap()
@@ -583,7 +646,7 @@ final class SettingsUITests: UITestCase {
         let app = launchApp()
 
         var settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.appearanceTab, in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
         let appearancePicker = appearancePopup(in: settingsWindow)
 
         assertPopupMenuOptions(
@@ -621,7 +684,7 @@ final class SettingsUITests: UITestCase {
         assertCanvasValueEventually(Fixture.darkCanvas, in: darkRelaunchApp)
 
         settingsWindow = openSettingsWindow(in: darkRelaunchApp)
-        openSettingsTab(Accessibility.appearanceTab, in: darkRelaunchApp)
+        openSettingsTab(Accessibility.generalTab, in: darkRelaunchApp)
         assertEffectiveAppearance("dark", in: darkRelaunchApp, settingsWindow: settingsWindow)
         XCTAssertEqual(
             popupValue(of: appearancePopup(in: settingsWindow)),
@@ -645,7 +708,7 @@ final class SettingsUITests: UITestCase {
             in: lightRelaunchApp
         )
         settingsWindow = openSettingsWindow(in: lightRelaunchApp)
-        openSettingsTab(Accessibility.appearanceTab, in: lightRelaunchApp)
+        openSettingsTab(Accessibility.generalTab, in: lightRelaunchApp)
         assertEffectiveAppearance("light", in: lightRelaunchApp, settingsWindow: settingsWindow)
         XCTAssertEqual(popupValue(of: appearancePopup(in: settingsWindow)), Accessibility.light)
     }
@@ -654,7 +717,7 @@ final class SettingsUITests: UITestCase {
     func testFollowSystemClearsNativeOverrideAndPersistsAcrossRelaunch() throws {
         let app = launchApp()
         var settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.appearanceTab, in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
         let appearancePicker = appearancePopup(in: settingsWindow)
 
         selectMenuOption(Accessibility.dark, from: appearancePicker, in: app)
@@ -681,7 +744,7 @@ final class SettingsUITests: UITestCase {
         )
 
         settingsWindow = openSettingsWindow(in: relaunchedApp)
-        openSettingsTab(Accessibility.appearanceTab, in: relaunchedApp)
+        openSettingsTab(Accessibility.generalTab, in: relaunchedApp)
         assertPopupValueEventually(
             appearancePopup(in: settingsWindow),
             equals: Accessibility.followSystem
@@ -769,21 +832,21 @@ final class SettingsUITests: UITestCase {
         )
         try performProductAccessibilityAudit(in: app)
 
-        openSettingsTab(Accessibility.appearanceTab, in: app)
+        openSettingsTab(Accessibility.generalTab, in: app)
         let appearancePicker = appearancePopup(in: settingsWindow)
         assertAccessibleControl(appearancePicker, named: "Appearance picker")
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
         assertProbeValue(
             "focused",
-            identifier: Accessibility.appearanceFocusProbe,
+            identifier: Accessibility.languageFocusProbe,
             in: app,
             message: "Appearance switching must preserve keyboard focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
         try performProductAccessibilityAudit(in: app)
 
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let slider = historyLimitSlider(in: settingsWindow)
         let field = historyLimitField(in: settingsWindow)
         assertAccessibleControl(slider, named: "Storage Limit slider")
@@ -835,14 +898,14 @@ final class SettingsUITests: UITestCase {
         replaceText(in: field, with: "276", application: app)
         assertProbeValue(
             Accessibility.historyLimitField,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "The Storage Limit field must own focus before its keyboard focus-loss commit"
         )
         field.typeKey(.tab, modifierFlags: [])
         assertProbeValue(
             Accessibility.historyLimitSlider,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "Tab must move Storage Limit focus to the slider"
         )
@@ -858,6 +921,7 @@ final class SettingsUITests: UITestCase {
     func testSettingsControlsRemainReadableAndKeyboardReachableAcrossLocalesAndCompactWidth() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)
+        _ = settingsScrollView(in: settingsWindow)
 
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
@@ -867,7 +931,7 @@ final class SettingsUITests: UITestCase {
         assertAccessibleControl(resetButton, named: "Reset to Default button")
         assertAccessibleControl(clearButton, named: "Clear Shortcut button")
 
-        openSettingsTab(Accessibility.historyTab, in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
         let unpinnedClearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
         let allClearButton = settingsWindow.buttons["settings-clear-all-history"]
         assertAccessibleControl(unpinnedClearButton, named: "Clear Unpinned History button")
@@ -894,7 +958,7 @@ final class SettingsUITests: UITestCase {
             "Expected localized shortcut record label in Chinese"
         )
 
-        openSettingsTab(Accessibility.historyTab, in: chineseApp)
+        openSettingsTab(Accessibility.clipboardTab, in: chineseApp)
         let chineseUnpinnedClearButton = chineseSettingsWindow.buttons["settings-clear-unpinned-history"]
         let chineseAllClearButton = chineseSettingsWindow.buttons["settings-clear-all-history"]
         XCTAssertTrue(
@@ -906,6 +970,109 @@ final class SettingsUITests: UITestCase {
             chineseAllClearButton.label.contains("全部")
                 && chineseAllClearButton.label.contains("歷史"),
             "Expected localized settings clear-all label"
+        )
+    }
+
+    @MainActor
+    func testDataPrivacyClearActionsShowLocalizedConfirmationDialogs() throws {
+        let englishApp = launchApp()
+        var settingsWindow = openSettingsWindow(in: englishApp)
+        openSettingsTab(Accessibility.privacyTab, in: englishApp)
+
+        settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory].tap()
+        UITestAssertions.assertAccessibleTextEquals(
+            settingsWindow.buttons[Accessibility.settingsConfirmClearUnpinned],
+            LocalizedLabel.englishClearUnpinnedConfirmationTitle
+        )
+        assertStaticTextValue(
+            englishApp.staticTexts[LocalizedLabel.englishClearUnpinnedDialogMessage],
+            equals: LocalizedLabel.englishClearUnpinnedDialogMessage
+        )
+        settingsWindow.buttons[Accessibility.settingsCancelClearUnpinned].tap()
+
+        settingsWindow.buttons[Accessibility.settingsClearAllHistory].tap()
+        UITestAssertions.assertAccessibleTextEquals(
+            settingsWindow.buttons[Accessibility.settingsConfirmClearAll],
+            LocalizedLabel.englishClearAllConfirmationTitle
+        )
+        assertStaticTextValue(
+            englishApp.staticTexts[LocalizedLabel.englishClearAllDialogMessage],
+            equals: LocalizedLabel.englishClearAllDialogMessage
+        )
+        settingsWindow.buttons[Accessibility.settingsCancelClearAll].tap()
+
+        closeApp(englishApp)
+
+        let chineseApp = launchApp(
+            extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
+            windowSizePreset: .small
+        )
+        settingsWindow = openSettingsWindow(in: chineseApp)
+        openSettingsTab(Accessibility.privacyTab, in: chineseApp)
+
+        settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory].tap()
+        UITestAssertions.assertAccessibleTextEquals(
+            settingsWindow.buttons[Accessibility.settingsConfirmClearUnpinned],
+            LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle
+        )
+        assertStaticTextValue(
+            chineseApp.staticTexts[LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage],
+            equals: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage
+        )
+        settingsWindow.buttons[Accessibility.settingsCancelClearUnpinned].tap()
+
+        settingsWindow.buttons[Accessibility.settingsClearAllHistory].tap()
+        UITestAssertions.assertAccessibleTextEquals(
+            settingsWindow.buttons[Accessibility.settingsConfirmClearAll],
+            LocalizedLabel.traditionalChineseClearAllConfirmationTitle
+        )
+        assertStaticTextValue(
+            chineseApp.staticTexts[LocalizedLabel.traditionalChineseClearAllDialogMessage],
+            equals: LocalizedLabel.traditionalChineseClearAllDialogMessage
+        )
+        settingsWindow.buttons[Accessibility.settingsCancelClearAll].tap()
+    }
+
+    @MainActor
+    func testDebugAccessibilityOverridesExposeSettingsContrastAndTransparencyState() throws {
+        let constrainedApp = launchApp(
+            extraEnvironment: [
+                UITestLaunchEnvironment.colorSchemeContrastKey: "on",
+                UITestLaunchEnvironment.reduceTransparencyKey: "1"
+            ]
+        )
+        let constrainedSettings = openSettingsWindow(in: constrainedApp)
+        assertProbeValue(
+            "increased",
+            identifier: Accessibility.settingsContrastProbe,
+            in: constrainedSettings,
+            message: "Expected settings contrast probe to report increased state"
+        )
+        assertProbeValue(
+            "true",
+            identifier: Accessibility.settingsReduceTransparencyProbe,
+            in: constrainedSettings,
+            message: "Expected settings reduce-transparency probe to report true"
+        )
+
+        let normalApp = launchApp(
+            extraEnvironment: [
+                UITestLaunchEnvironment.colorSchemeContrastKey: "off",
+                UITestLaunchEnvironment.reduceTransparencyKey: "0"
+            ]
+        )
+        let normalSettings = openSettingsWindow(in: normalApp)
+        assertProbeValue(
+            "standard",
+            identifier: Accessibility.settingsContrastProbe,
+            in: normalSettings,
+            message: "Expected settings contrast probe to report standard state"
+        )
+        assertProbeValue(
+            "false",
+            identifier: Accessibility.settingsReduceTransparencyProbe,
+            in: normalSettings,
+            message: "Expected settings reduce-transparency probe to report false"
         )
     }
 
@@ -996,10 +1163,12 @@ final class SettingsUITests: UITestCase {
             localizedTitles = ["General", "一般"]
         case Accessibility.shortcutsTab:
             localizedTitles = ["Shortcuts", "快速鍵"]
-        case Accessibility.appearanceTab:
-            localizedTitles = ["Appearance", "外觀"]
-        case Accessibility.historyTab:
-            localizedTitles = ["History", "歷史記錄"]
+        case Accessibility.clipboardTab:
+            localizedTitles = ["Clipboard", "剪貼簿"]
+        case Accessibility.privacyTab:
+            localizedTitles = ["Data & Privacy", "資料與隱私"]
+        case Accessibility.aboutTab:
+            localizedTitles = ["About", "關於"]
         default:
             XCTFail("Unknown Settings tab logical identifier \(identifier)")
             localizedTitles = []
@@ -1013,6 +1182,35 @@ final class SettingsUITests: UITestCase {
                 localizedTitles
             )
         )
+    }
+
+    private func settingsScrollView(
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        UITestAssertions.assertExists(
+            settingsWindow.scrollViews.firstMatch,
+            "Expected settings content to be in a scroll view",
+            file: file,
+            line: line
+        )
+    }
+
+    private func assertSectionHeaders(
+        _ sectionHeaders: [String],
+        in settingsWindow: XCUIElement,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        for title in sectionHeaders {
+            XCTAssertTrue(
+                settingsWindow.staticTexts[title].waitForExistence(timeout: UITestAssertions.defaultTimeout),
+                "Expected settings section header \(title)",
+                file: file,
+                line: line
+            )
+        }
     }
 
     private func appearancePopup(
@@ -1081,7 +1279,7 @@ final class SettingsUITests: UITestCase {
         field.typeKey(.tab, modifierFlags: [])
         assertProbeValue(
             Accessibility.historyLimitSlider,
-            identifier: Accessibility.historyFocusProbe,
+            identifier: Accessibility.clipboardFocusProbe,
             in: app,
             message: "The Storage Limit slider must own focus before a boundary key is sent",
             file: file,
@@ -1650,9 +1848,9 @@ final class SettingsUITests: UITestCase {
         )
         XCTAssertTrue(
             UITestWait.until(timeout: timeout) {
-                (element.value as? String) == expectedValue
+                (element.value as? String) == expectedValue || element.label == expectedValue
             },
-            "Expected static text value \(expectedValue), got \(element.value as? String ?? "nil")",
+            "Expected static text value \(expectedValue), got label=\(element.label), value=\(element.value as? String ?? "nil")",
             file: file,
             line: line
         )
@@ -1697,17 +1895,20 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let description = UITestAssertions.assertExists(
-            settingsWindow.descendants(matching: .any)[Accessibility.appLanguageDescription],
-            "Expected stable App Language description element",
+        let descriptions = settingsWindow.staticTexts.containing(
+            NSPredicate(format: "label == %@", expectedText)
+        )
+        XCTAssertTrue(
+            descriptions.element.exists,
+            "Expected language description text \(expectedText)",
             file: file,
             line: line
         )
         XCTAssertTrue(
             UITestWait.until(timeout: timeout) {
-                description.label == expectedText || (description.value as? String) == expectedText
+                descriptions.element.waitForExistence(timeout: timeout)
             },
-            "Expected localized language description \(expectedText)",
+            "Expected localized language description visible as label: \(expectedText)",
             file: file,
             line: line
         )

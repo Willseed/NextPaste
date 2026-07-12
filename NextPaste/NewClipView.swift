@@ -14,6 +14,7 @@ struct NewClipView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
+    @Environment(\.appTheme) private var appTheme
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @State private var draftText = ""
     @State private var validationMessage: String?
@@ -63,7 +64,7 @@ struct NewClipView: View {
 
             if let validationMessage {
                 Text(validationMessage)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(appTheme.errorText.color)
                     .accessibilityIdentifier("text-validation-message")
                     .accessibilityLabel(validationMessage)
                     .accessibilityValue(validationMessage)
@@ -71,7 +72,7 @@ struct NewClipView: View {
 
             if let saveErrorMessage {
                 Text(saveErrorMessage)
-                    .foregroundStyle(.red)
+                    .foregroundStyle(appTheme.errorText.color)
                     .accessibilityIdentifier("save-error-message")
                     .accessibilityLabel(saveErrorMessage)
                     .accessibilityValue(saveErrorMessage)
@@ -82,6 +83,9 @@ struct NewClipView: View {
                     dismiss()
                 }
                 .accessibilityIdentifier("cancel-new-clip-button")
+                .buttonStyle(
+                    AdaptiveThemedButtonStyle(presentation: .labeled)
+                )
                 .help(Text("Cancel"))
                 .accessibilityHint(Text("Cancel"))
                 .lineLimit(1)
@@ -93,6 +97,9 @@ struct NewClipView: View {
                 }
                 .keyboardShortcut(.defaultAction)
                 .accessibilityIdentifier("save-clip-button")
+                .buttonStyle(
+                    AdaptiveThemedButtonStyle(presentation: .labeled)
+                )
                 .help(Text("Save"))
                 .accessibilityHint(Text("Save"))
                 .lineLimit(1)

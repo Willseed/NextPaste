@@ -11,8 +11,10 @@ import SwiftUI
 
 struct SearchBar: View {
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     @Binding var text: String
+    @FocusState private var hasFocus: Bool
 
     var body: some View {
         HStack(spacing: DesignTokens.Spacing.small) {
@@ -21,6 +23,7 @@ struct SearchBar: View {
                 .accessibilityHidden(true)
 
             TextField("Search clips", text: $text)
+                .focused($hasFocus)
                 .font(DesignTokens.Typography.body.font)
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier("history-search-field")
@@ -33,7 +36,17 @@ struct SearchBar: View {
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.button, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: DesignTokens.Radius.button, style: .continuous)
-                .stroke(appTheme.controlBorder.color, lineWidth: 1)
+                .stroke(
+                    hasFocus ? appTheme.controlBorderSelected.color : appTheme.controlBorder.color,
+                    lineWidth: hasFocus ? 2 : 1
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.button, style: .continuous)
+                .stroke(
+                    reduceTransparency ? appTheme.focusRing.color : appTheme.focusRing.color.opacity(0.9),
+                    lineWidth: hasFocus ? 2 : 0
+                )
         )
     }
 }

@@ -66,7 +66,14 @@ struct RowActionControlGroup: View {
         } label: {
             Label(LocalizedStringKey(action.accessibilityLabel), systemImage: action.symbolName)
         }
-        .buttonStyle(.borderless)
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: .iconOnly,
+            accessibilityLabel: LocalizedStringKey(action.accessibilityLabel),
+            accessibilityHintText: action.accessibilityLabel
+        ))
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(presentation: .iconOnly)
+        )
         .accessibilityIdentifier(identifier)
         .lineLimit(1)
         .accessibilityLabel(Text(LocalizedStringKey(action.accessibilityLabel)))

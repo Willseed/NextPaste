@@ -14,6 +14,7 @@ import AppKit
 struct ContentView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var appearancePreference: AppearancePreference
     private let imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
@@ -52,6 +53,16 @@ struct ContentView: View {
                         identifier: "effective-appearance-main",
                         label: "Main window effective appearance",
                         value: colorScheme == .dark ? "dark" : "light"
+                    )
+                    DebugUITestAccessibilityProbe(
+                        identifier: "main-color-contrast",
+                        label: "Main window color contrast",
+                        value: colorSchemeContrast == .increased ? "increased" : "standard"
+                    )
+                    DebugUITestAccessibilityProbe(
+                        identifier: "main-reduce-transparency",
+                        label: "Main window reduce transparency",
+                        value: reduceTransparency ? "true" : "false"
                     )
                 }
             }

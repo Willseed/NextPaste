@@ -976,7 +976,9 @@ struct HomeView: View {
             accessibilityLabel: "New Clip",
             accessibilityHintText: "New Clip"
         ))
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(presentation: .labeled)
+        )
         .help(Text("New Clip"))
     }
 
@@ -993,7 +995,11 @@ struct HomeView: View {
             accessibilityLabel: "Search",
             accessibilityHintText: "Focus the clipboard search field"
         ))
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
         .help(Text("Search"))
     }
 
@@ -1006,14 +1012,18 @@ struct HomeView: View {
                 controlLabel("Clear Search", systemImage: "xmark.circle.fill", style: style)
             }
             .accessibilityIdentifier("clear-search-button")
-            .modifier(AdaptiveControlButtonStyle(
-                presentation: style == .labeled ? .labeled : .iconOnly,
-                accessibilityLabel: "Clear Search",
-                accessibilityHintText: "Clear the active search query"
-            ))
-            .buttonStyle(.borderless)
-            .help(Text("Clear Search"))
-        }
+        .modifier(AdaptiveControlButtonStyle(
+            presentation: style == .labeled ? .labeled : .iconOnly,
+            accessibilityLabel: "Clear Search",
+            accessibilityHintText: "Clear the active search query"
+        ))
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
+        .help(Text("Clear Search"))
+    }
     }
 
     @ViewBuilder
@@ -1046,7 +1056,11 @@ struct HomeView: View {
             accessibilityLabel: "Filter",
             accessibilityHintText: "Filter Clipboard History"
         ))
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
         .help(Text("Filter"))
     }
 
@@ -1073,7 +1087,11 @@ struct HomeView: View {
             accessibilityLabel: "History",
             accessibilityHintText: "History actions"
         ))
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
         .help(Text("History actions"))
     }
 
@@ -1162,7 +1180,9 @@ struct HomeView: View {
         ))
         .accessibilityLabel(Text("More"))
         .accessibilityHint(Text("Search, filter, and clear clipboard history"))
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(presentation: .iconOnly)
+        )
         .help(Text("More"))
     }
 

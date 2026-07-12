@@ -21,6 +21,8 @@ struct UITestLaunchEnvironment: Sendable {
     static let initialLanguageKey = "NEXTPASTE_UI_TEST_INITIAL_LANGUAGE"
     static let launchStartedUptimeKey = "NEXTPASTE_UI_TEST_LAUNCH_STARTED_UPTIME"
     static let expectedHistoryCountKey = "NEXTPASTE_UI_TEST_EXPECTED_HISTORY_COUNT"
+    static let colorSchemeContrastKey = "NEXTPASTE_UI_TEST_COLOR_SCHEME_CONTRAST"
+    static let reduceTransparencyKey = "NEXTPASTE_UI_TEST_REDUCE_TRANSPARENCY"
 
     let identifier: String
     let rootURL: URL

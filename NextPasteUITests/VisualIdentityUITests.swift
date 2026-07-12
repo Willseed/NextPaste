@@ -6,6 +6,11 @@
 import XCTest
 
 final class VisualIdentityUITests: UITestCase {
+    private enum Accessibility {
+        static let mainColorContrast = "main-color-contrast"
+        static let mainReduceTransparency = "main-reduce-transparency"
+    }
+
     @MainActor
     func testHomeUsesWarmHistoryFirstSingleColumnCanvas() throws {
         let app = launchApp()
@@ -26,6 +31,29 @@ final class VisualIdentityUITests: UITestCase {
         history.historyList()
         XCTAssertFalse(app.descendants(matching: .any)["history-sidebar"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["history-detail-pane"].exists)
+    }
+
+    @MainActor
+    func testMainWindowExposesContrastAndTransparencyAccessibilityProbes() throws {
+        let app = launchApp(
+            extraEnvironment: [
+                UITestLaunchEnvironment.colorSchemeContrastKey: "on",
+                UITestLaunchEnvironment.reduceTransparencyKey: "1"
+            ]
+        )
+
+        assertProbeValue(
+            "increased",
+            identifier: Accessibility.mainColorContrast,
+            in: app,
+            message: "Expected main window color contrast probe to report increased"
+        )
+        assertProbeValue(
+            "true",
+            identifier: Accessibility.mainReduceTransparency,
+            in: app,
+            message: "Expected main window reduce-transparency probe to report true"
+        )
     }
 
     @MainActor
@@ -113,5 +141,32 @@ final class VisualIdentityUITests: UITestCase {
         // T010: the legacy placeholder must not appear.
         XCTAssertFalse(app.staticTexts["settings-placeholder-message"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["advanced-settings-panel"].exists)
+    }
+
+    private func assertProbeValue(
+        _ expectedValue: String,
+        identifier: String,
+        in app: XCUIApplication,
+        message: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let probe = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[identifier],
+            "Expected probe \(identifier)",
+            file: file,
+            line: line
+        )
+        let matched = UITestWait.until(timeout: timeout) {
+            (probe.value as? String) == expectedValue
+        }
+        if !matched {
+            XCTFail(
+                "\(message) (got: \(probe.value as? String ?? "<nil>"))",
+                file: file,
+                line: line
+            )
+        }
     }
 }

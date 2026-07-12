@@ -71,7 +71,11 @@ struct SettingsControl: View {
         SettingsLink {
             settingsLabel
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
         .help(Text("Settings"))
         .accessibilityIdentifier("settings-button")
         .accessibilityLabel(Text("Settings"))
@@ -81,7 +85,11 @@ struct SettingsControl: View {
         } label: {
             settingsLabel
         }
-        .buttonStyle(.borderless)
+        .buttonStyle(
+            AdaptiveThemedButtonStyle(
+                presentation: style == .labeled ? .labeled : .iconOnly
+            )
+        )
         .help(Text("Settings"))
         .accessibilityIdentifier("settings-button")
         .accessibilityLabel(Text("Settings"))

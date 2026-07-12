@@ -166,9 +166,9 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         case .interactive:
             switch effectiveInteractionState {
             case .hovered:
-                appTheme.hoverSurface.color
+                appTheme.controlSurfaceHover.color
             case .focused, .selected:
-                appTheme.selectionSurface.color
+                appTheme.controlSurfaceSelected.color
             case .normal, .inserting, .deleting:
                 appTheme.card.color
             }
@@ -182,16 +182,16 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         case .interactive:
             switch effectiveInteractionState {
             case .focused, .selected:
-                appTheme.accentPinned.color
+                appTheme.controlBorderSelected.color
             case .deleting:
-                reduceTransparency
-                    ? appTheme.accentSuccess.color
-                    : appTheme.accentSuccess.color.opacity(0.4)
+                appTheme.errorBorder.color
             case .normal, .hovered, .inserting:
-                appTheme.borderSubtle.color
+                reduceTransparency || effectiveInteractionState == .hovered
+                    ? appTheme.separator.color
+                    : appTheme.controlBorder.color
             }
         case .staticCard:
-            appTheme.borderSubtle.color
+            appTheme.separator.color
         }
     }
 
@@ -210,7 +210,10 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
     }
 
     private var rowOpacity: Double {
-        visualStyle == .interactive && effectiveInteractionState == .deleting ? 0.65 : 1
+        if visualStyle == .interactive && effectiveInteractionState == .deleting {
+            return reduceTransparency ? 1 : 0.92
+        }
+        return 1
     }
 
     private var rowScale: CGFloat {
