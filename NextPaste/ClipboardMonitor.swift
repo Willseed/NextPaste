@@ -42,6 +42,11 @@ final class ClipboardMonitor {
         task = scheduler.scheduleRepeating(pollInterval) { [weak self] in
             self?.pollClipboard()
         }
+#if DEBUG && os(macOS)
+        if DebugUITestLaunchEnvironment() != nil {
+            DebugUITestClipboardMonitorProbe.shared.recordMonitoringStarted()
+        }
+#endif
     }
 
     func stop() {
@@ -50,6 +55,11 @@ final class ClipboardMonitor {
         isMonitoring = false
         task?.cancel()
         task = nil
+#if DEBUG && os(macOS)
+        if DebugUITestLaunchEnvironment() != nil {
+            DebugUITestClipboardMonitorProbe.shared.recordMonitoringStopped()
+        }
+#endif
     }
 
     func pollClipboard() {

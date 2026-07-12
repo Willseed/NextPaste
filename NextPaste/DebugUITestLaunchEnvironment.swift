@@ -368,6 +368,7 @@ enum DebugUITestApplicationAppearanceState {
 final class DebugUITestClipboardMonitorProbe: ObservableObject {
     static let shared = DebugUITestClipboardMonitorProbe()
 
+    @Published private(set) var isMonitoring = false
     @Published private(set) var observationCount = 0
     @Published private(set) var lastDisposition = "none"
 
@@ -375,6 +376,14 @@ final class DebugUITestClipboardMonitorProbe: ObservableObject {
         // The shared probe is the single process-wide observation stream; a
         // private initializer prevents additional instances from splitting
         // clipboard-monitor events across independent counters.
+    }
+
+    func recordMonitoringStarted() {
+        isMonitoring = true
+    }
+
+    func recordMonitoringStopped() {
+        isMonitoring = false
     }
 
     func record(_ outcome: ClipboardCaptureService.CaptureOutcome) {

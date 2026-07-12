@@ -219,6 +219,7 @@ enum UITestAppLauncher {
     static let uiTestRowActionTraceFileEnvironmentKey = "NEXTPASTE_UI_TEST_ROW_ACTION_TRACE_FILE"
     private static let windowSizePresetArgument = "-ui-test-window-size"
     private static let mainWindowReadyIdentifier = "new-clip-button"
+    private static let clipboardMonitorReadyIdentifier = "clipboard-monitor-readiness"
 
     static func makeApp(
         enableClipboardMonitor: Bool = false,
@@ -384,6 +385,19 @@ enum UITestAppLauncher {
             },
             "NextPaste launched without a usable main window.\n\(app.debugDescription)"
         )
+
+#if os(macOS)
+        if app.launchArguments.contains(clipboardMonitorDisabledArgument) == false {
+            let monitorReadiness = app.descendants(matching: .any)[clipboardMonitorReadyIdentifier]
+            XCTAssertTrue(
+                UITestWait.until(timeout: timeout) {
+                    (monitorReadiness.value as? String) == "ready"
+                },
+                "NextPaste exposed its main window before the clipboard monitor was ready; "
+                    + "observed \(String(describing: monitorReadiness.value))"
+            )
+        }
+#endif
     }
 
     static func openMainWindowIfNeeded(in app: XCUIApplication) {

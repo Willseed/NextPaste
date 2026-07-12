@@ -2433,6 +2433,11 @@ struct HomeView: View {
                 accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
                 accessibilityMarker(identifier: "history-filter-state", value: historyFilter.rawValue, label: "History filter state")
                 accessibilityMarker(
+                    identifier: "clipboard-monitor-readiness",
+                    value: uiTestClipboardMonitorProbe.isMonitoring ? "ready" : "pending",
+                    label: "Clipboard monitor readiness"
+                )
+                accessibilityMarker(
                     identifier: "clipboard-monitor-observation-count",
                     value: "\(uiTestClipboardMonitorProbe.observationCount)",
                     label: "Clipboard monitor observation count"
