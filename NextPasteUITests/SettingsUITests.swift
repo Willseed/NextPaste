@@ -233,6 +233,22 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
+    func testSettingsClearActionsAreDisabledWhenHistoryIsEmpty() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+
+        openSettingsTab(Accessibility.privacyTab, in: app)
+        XCTAssertFalse(
+            settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory].isEnabled,
+            "Expected Clear Unpinned History to be disabled when there is no history"
+        )
+        XCTAssertFalse(
+            settingsWindow.buttons[Accessibility.settingsClearAllHistory].isEnabled,
+            "Expected Clear All History to be disabled when there is no history"
+        )
+    }
+
+    @MainActor
     func testShortcutsTabValidatesRecorderThenSupportsClearAndReset() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)

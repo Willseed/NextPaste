@@ -277,7 +277,7 @@ struct NextPasteApp: App {
         // SystemApplicationAppearanceApplier remains the sole macOS appearance
         // authority so native controls and SwiftUI content change in lockstep.
         Settings {
-            SettingsView()
+            ThemedSettingsContent()
                 .modelContainer(sharedModelContainer)
                 .environmentObject(historyLimitPreference)
                 .environmentObject(appearancePreference)
@@ -421,4 +421,38 @@ private extension View {
     }
 }
 #endif
+}
+
+private struct ThemedSettingsContent: View {
+    @Environment(\.colorSchemeContrast) private var colorSchemeContrast
+    @Environment(\.colorScheme) private var colorScheme
+    @EnvironmentObject private var appearancePreference: AppearancePreference
+
+    var body: some View {
+        SettingsView()
+            .environment(\.appTheme, appTheme)
+    }
+
+    private var appTheme: AppTheme {
+        let isDark: Bool
+
+        switch appearancePreference.mode {
+        case .light:
+            isDark = false
+        case .dark:
+            isDark = true
+        case .system:
+#if os(macOS)
+            let bestMatch = NSApplication.shared.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua])
+            isDark = bestMatch == .darkAqua
+#else
+            isDark = colorScheme == .dark
+#endif
+        }
+
+        if colorSchemeContrast == .increased {
+            return AppTheme(appearance: isDark ? .highContrastDark : .highContrastLight)
+        }
+        return AppTheme(appearance: isDark ? .dark : .light)
+    }
 }
