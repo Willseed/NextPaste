@@ -9,25 +9,18 @@ struct AppToolbar: View {
     @Environment(\.appTheme) private var appTheme
 
     let title: LocalizedStringKey
-    let onSettings: () -> Void
     let trailingContent: AnyView?
 
     init<TrailingContent: View>(
         title: LocalizedStringKey,
-        onSettings: @escaping () -> Void,
         @ViewBuilder trailingContent: () -> TrailingContent
     ) {
         self.title = title
-        self.onSettings = onSettings
         self.trailingContent = AnyView(trailingContent())
     }
 
-    init(
-        title: LocalizedStringKey,
-        onSettings: @escaping () -> Void
-    ) {
+    init(title: LocalizedStringKey) {
         self.title = title
-        self.onSettings = onSettings
         trailingContent = nil
     }
 
@@ -45,8 +38,6 @@ struct AppToolbar: View {
                 if let trailingContent {
                     trailingContent
                 }
-
-                settingsControl
             }
         }
         .padding(DesignTokens.Spacing.medium)
@@ -59,25 +50,51 @@ struct AppToolbar: View {
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("app-toolbar")
     }
+}
+
+/// Adaptive settings entry. Uses the native `SettingsLink` on macOS (so the
+/// system owns the single-window Settings scene and `Command-,`) and a plain
+/// `Button` on other platforms. `style` lets the toolbar show a full label at
+/// normal widths and an icon-only control (with tooltip + accessibility label)
+/// at narrow widths, so the entry is never truncated to "…".
+struct SettingsControl: View {
+    enum Style {
+        case labeled
+        case iconOnly
+    }
+
+    let style: Style
+    let onActivate: () -> Void
+
+    var body: some View {
+        #if os(macOS)
+        SettingsLink {
+            settingsLabel
+        }
+        .buttonStyle(.borderless)
+        .help(Text("Settings"))
+        .accessibilityIdentifier("settings-button")
+        .accessibilityLabel(Text("Settings"))
+        #else
+        Button {
+            onActivate()
+        } label: {
+            settingsLabel
+        }
+        .buttonStyle(.borderless)
+        .help(Text("Settings"))
+        .accessibilityIdentifier("settings-button")
+        .accessibilityLabel(Text("Settings"))
+        #endif
+    }
 
     @ViewBuilder
-    private var settingsControl: some View {
-#if os(macOS)
-        SettingsLink {
+    private var settingsLabel: some View {
+        switch style {
+        case .labeled:
             Label("Settings", systemImage: DesignTokens.Icons.settings)
+        case .iconOnly:
+            Image(systemName: DesignTokens.Icons.settings)
         }
-        .buttonStyle(.borderless)
-        .accessibilityIdentifier("settings-button")
-        .accessibilityLabel(Text("Settings"))
-#else
-        Button {
-            onSettings()
-        } label: {
-            Label("Settings", systemImage: DesignTokens.Icons.settings)
-        }
-        .buttonStyle(.borderless)
-        .accessibilityIdentifier("settings-button")
-        .accessibilityLabel(Text("Settings"))
-#endif
     }
 }

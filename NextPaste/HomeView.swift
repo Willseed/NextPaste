@@ -427,94 +427,8 @@ struct HomeView: View {
             uiTestWindowSizeControls
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
-                AppToolbar(
-                    title: "Clips",
-                    onSettings: showSettingsPlaceholder
-                ) {
-                    HStack(spacing: DesignTokens.Spacing.small) {
-                        // T004: visible, non-keyboard search entry. Calls the same
-                        // `focusSearch()` action as `Command-F` (T002/T003) so there is
-                        // exactly one search entry path. Native `Button` works with mouse
-                        // and trackpad; no hover/gesture dependency.
-                        Button {
-                            focusSearch()
-                        } label: {
-                            Label("Search", systemImage: DesignTokens.Icons.search)
-                        }
-                        .buttonStyle(.borderless)
-                        .accessibilityIdentifier("search-button")
-                        .accessibilityLabel(Text("Search Clipboard History"))
-                        .accessibilityHint(Text("Focus the clipboard search field"))
-
-                        // T004: explicit Clear Search entry with a stable identifier.
-                        // Only shown while a search query is active so the empty toolbar
-                        // is not cluttered. Native `Button` — no hover/gesture dependency.
-                        if searchText.isEmpty == false {
-                            Button {
-                                clearSearchText()
-                            } label: {
-                                Label("Clear Search", systemImage: "xmark.circle.fill")
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityIdentifier("clear-search-button")
-                            .accessibilityLabel(Text("Clear Search"))
-                            .accessibilityHint(Text("Clear the active search query"))
-                        }
-
-                        Menu {
-                            ForEach(HistoryFilter.allCases) { filter in
-                                Button {
-                                    historyFilter = filter
-                                } label: {
-                                    HStack {
-                                        Text(LocalizedStringKey(filter.titleKey))
-                                        if historyFilter == filter {
-                                            Image(systemName: "checkmark")
-                                                .accessibilityHidden(true)
-                                        }
-                                    }
-                                }
-                                .accessibilityIdentifier(filter.accessibilityIdentifier)
-                                .accessibilityLabel(Text(LocalizedStringKey(filter.titleKey)))
-                                .accessibilityAddTraits(historyFilter == filter ? .isSelected : [])
-                            }
-                        } label: {
-                            Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
-                        }
-                        .accessibilityIdentifier("history-filter-menu")
-                        .accessibilityLabel(Text("Filter Clipboard History"))
-                        .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
-
-                        Button {
-                            isPresentingNewClip = true
-                        } label: {
-                            Label("New Clip", systemImage: "plus")
-                        }
-                        .accessibilityIdentifier("new-clip-button")
-
-                        // T007/T009: non-keyboard entry for clearing history. A native
-                        // SwiftUI Menu is operable with mouse and trackpad, and is not
-                        // a row context menu. The items only request the confirmation
-                        // dialog; they do not perform destructive work directly.
-                        Menu {
-                            Button("Clear Unpinned History…") {
-                                requestClearUnpinnedHistory()
-                            }
-                            .accessibilityIdentifier("menu-clear-unpinned-history")
-                            .disabled(unpinnedCount == 0)
-
-                            Button("Clear All History…") {
-                                requestClearAllHistory()
-                            }
-                            .accessibilityIdentifier("menu-clear-all-history")
-                            .disabled(allCount == 0)
-                        } label: {
-                            Label("History", systemImage: "ellipsis.circle")
-                        }
-                        .accessibilityIdentifier("history-overflow-menu")
-                        .accessibilityLabel(Text("History actions"))
-                        .accessibilityHint(Text("Clear clipboard history"))
-                    }
+                AppToolbar(title: "Clips") {
+                    adaptiveToolbarContent
                 }
                 .background(measuredFrameReader(for: .header))
 #if DEBUG && os(macOS)
@@ -963,6 +877,224 @@ struct HomeView: View {
     /// button so there is a non-keyboard, accessibility-identifiable clear entry.
     private func clearSearchText() {
         searchText = ""
+    }
+
+    // MARK: - Adaptive toolbar (small-window button display)
+
+    /// Toolbar density tiers, widest to narrowest. `ViewThatFits` selects the
+    /// widest tier that fits without truncation, so buttons never collapse to
+    /// "…" and the layout transitions naturally as the window resizes.
+    private enum ToolbarDensity {
+        case full      // icon + label for every control
+        case compact   // secondary controls icon-only; primary stays labeled
+        case minimal   // secondary controls collapsed into a More menu
+    }
+
+    /// Control presentation. Icon-only controls carry a tooltip (`.help`) and a
+    /// localized accessibility label so VoiceOver and hover remain informative.
+    private enum ToolbarControlStyle {
+        case labeled
+        case iconOnly
+    }
+
+    @ViewBuilder
+    private var adaptiveToolbarContent: some View {
+        ViewThatFits(in: .horizontal) {
+            toolbarRow(.full)
+            toolbarRow(.compact)
+            toolbarRow(.minimal)
+        }
+    }
+
+    @ViewBuilder
+    private func toolbarRow(_ density: ToolbarDensity) -> some View {
+        switch density {
+        case .full:
+            HStack(spacing: DesignTokens.Spacing.small) {
+                searchControl(.labeled)
+                clearSearchControl(.labeled)
+                filterMenu(.labeled)
+                newClipControl
+                historyMenu(.labeled)
+                SettingsControl(style: .labeled, onActivate: showSettingsPlaceholder)
+            }
+        case .compact:
+            HStack(spacing: DesignTokens.Spacing.small) {
+                searchControl(.iconOnly)
+                clearSearchControl(.iconOnly)
+                filterMenu(.iconOnly)
+                newClipControl
+                historyMenu(.iconOnly)
+                SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
+            }
+        case .minimal:
+            HStack(spacing: DesignTokens.Spacing.small) {
+                newClipControl
+                clearSearchControl(.iconOnly)
+                overflowMenu
+                SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func controlLabel(
+        _ titleKey: LocalizedStringKey,
+        systemImage: String,
+        style: ToolbarControlStyle
+    ) -> some View {
+        switch style {
+        case .labeled:
+            Label(titleKey, systemImage: systemImage)
+        case .iconOnly:
+            Image(systemName: systemImage)
+        }
+    }
+
+    // The primary action keeps the default (prominent) button style at every
+    // width so "New Clip" is always the visually strongest control.
+    private var newClipControl: some View {
+        Button {
+            isPresentingNewClip = true
+        } label: {
+            Label("New Clip", systemImage: "plus")
+        }
+        .accessibilityIdentifier("new-clip-button")
+        .accessibilityLabel(Text("New Clip"))
+        .help(Text("New Clip"))
+    }
+
+    @ViewBuilder
+    private func searchControl(_ style: ToolbarControlStyle) -> some View {
+        Button {
+            focusSearch()
+        } label: {
+            controlLabel("Search", systemImage: DesignTokens.Icons.search, style: style)
+        }
+        .buttonStyle(.borderless)
+        .accessibilityIdentifier("search-button")
+        .accessibilityLabel(Text("Search Clipboard History"))
+        .accessibilityHint(Text("Focus the clipboard search field"))
+        .help(Text("Search Clipboard History"))
+    }
+
+    @ViewBuilder
+    private func clearSearchControl(_ style: ToolbarControlStyle) -> some View {
+        if searchText.isEmpty == false {
+            Button {
+                clearSearchText()
+            } label: {
+                controlLabel("Clear Search", systemImage: "xmark.circle.fill", style: style)
+            }
+            .buttonStyle(.borderless)
+            .accessibilityIdentifier("clear-search-button")
+            .accessibilityLabel(Text("Clear Search"))
+            .accessibilityHint(Text("Clear the active search query"))
+            .help(Text("Clear Search"))
+        }
+    }
+
+    @ViewBuilder
+    private func filterMenu(_ style: ToolbarControlStyle) -> some View {
+        Menu {
+            ForEach(HistoryFilter.allCases) { filter in
+                Button {
+                    historyFilter = filter
+                } label: {
+                    HStack {
+                        Text(LocalizedStringKey(filter.titleKey))
+                        if historyFilter == filter {
+                            Image(systemName: "checkmark")
+                                .accessibilityHidden(true)
+                        }
+                    }
+                }
+                .accessibilityIdentifier(filter.accessibilityIdentifier)
+                .accessibilityLabel(Text(LocalizedStringKey(filter.titleKey)))
+                .accessibilityAddTraits(historyFilter == filter ? .isSelected : [])
+            }
+        } label: {
+            controlLabel("Filter", systemImage: "line.3.horizontal.decrease.circle", style: style)
+        }
+        .accessibilityIdentifier("history-filter-menu")
+        .accessibilityLabel(Text("Filter Clipboard History"))
+        .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
+        .help(Text("Filter Clipboard History"))
+    }
+
+    @ViewBuilder
+    private func historyMenu(_ style: ToolbarControlStyle) -> some View {
+        Menu {
+            Button("Clear Unpinned History…") {
+                requestClearUnpinnedHistory()
+            }
+            .accessibilityIdentifier("menu-clear-unpinned-history")
+            .disabled(unpinnedCount == 0)
+
+            Button("Clear All History…") {
+                requestClearAllHistory()
+            }
+            .accessibilityIdentifier("menu-clear-all-history")
+            .disabled(allCount == 0)
+        } label: {
+            controlLabel("History", systemImage: "ellipsis.circle", style: style)
+        }
+        .accessibilityIdentifier("history-overflow-menu")
+        .accessibilityLabel(Text("History actions"))
+        .accessibilityHint(Text("Clear clipboard history"))
+        .help(Text("History actions"))
+    }
+
+    // macOS-style overflow: secondary controls consolidated behind a single
+    // ellipsis menu at the narrowest width. The primary action and Settings
+    // stay directly accessible.
+    @ViewBuilder
+    private var overflowMenu: some View {
+        Menu {
+            Button {
+                focusSearch()
+            } label: {
+                Label("Search", systemImage: DesignTokens.Icons.search)
+            }
+            .accessibilityIdentifier("search-button")
+            .accessibilityLabel(Text("Search Clipboard History"))
+
+            Menu {
+                ForEach(HistoryFilter.allCases) { filter in
+                    Button {
+                        historyFilter = filter
+                    } label: {
+                        Text(LocalizedStringKey(filter.titleKey))
+                    }
+                    .accessibilityIdentifier(filter.accessibilityIdentifier)
+                    .accessibilityLabel(Text(LocalizedStringKey(filter.titleKey)))
+                }
+            } label: {
+                Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
+            }
+            .accessibilityIdentifier("history-filter-menu")
+            .accessibilityLabel(Text("Filter Clipboard History"))
+
+            Divider()
+
+            Button("Clear Unpinned History…") {
+                requestClearUnpinnedHistory()
+            }
+            .accessibilityIdentifier("menu-clear-unpinned-history")
+            .disabled(unpinnedCount == 0)
+
+            Button("Clear All History…") {
+                requestClearAllHistory()
+            }
+            .accessibilityIdentifier("menu-clear-all-history")
+            .disabled(allCount == 0)
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityIdentifier("toolbar-more-menu")
+        .accessibilityLabel(Text("More"))
+        .accessibilityHint(Text("Search, filter, and clear clipboard history"))
+        .help(Text("More"))
     }
 
     // MARK: - Clear history (T007/T009)
