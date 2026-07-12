@@ -15,6 +15,7 @@ struct Badge: View {
     }
 
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     let label: String
     let symbolName: String?
@@ -66,9 +67,13 @@ struct Badge: View {
     private var backgroundColor: Color {
         switch role {
         case .pinned:
-            appTheme.accentPinned.color.opacity(0.16)
+            reduceTransparency
+                ? appTheme.accentPinned.solidTint(opacity: 0.16, over: appTheme.card).color
+                : appTheme.accentPinned.color.opacity(0.16)
         case .copied:
-            appTheme.accentSuccess.color.opacity(0.16)
+            reduceTransparency
+                ? appTheme.accentSuccess.solidTint(opacity: 0.16, over: appTheme.card).color
+                : appTheme.accentSuccess.color.opacity(0.16)
         case .metadata, .category, .status:
             appTheme.surface.color
         }
@@ -77,9 +82,13 @@ struct Badge: View {
     private var borderColor: Color {
         switch role {
         case .pinned:
-            appTheme.accentPinned.color.opacity(0.4)
+            reduceTransparency
+                ? appTheme.accentPinned.color
+                : appTheme.accentPinned.color.opacity(0.4)
         case .copied:
-            appTheme.accentSuccess.color.opacity(0.4)
+            reduceTransparency
+                ? appTheme.accentSuccess.color
+                : appTheme.accentSuccess.color.opacity(0.4)
         case .metadata, .category, .status:
             appTheme.borderSubtle.color
         }

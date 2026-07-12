@@ -7,11 +7,16 @@ import SwiftUI
 
 struct EmptyStateIllustration: View {
     @Environment(\.appTheme) private var appTheme
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         ZStack {
             Circle()
-                .fill(DesignTokens.Colors.accentPeach.color.opacity(0.24))
+                .fill(
+                    reduceTransparency
+                        ? DesignTokens.Colors.accentPeach.solidTint(opacity: 0.24, over: appTheme.canvas).color
+                        : DesignTokens.Colors.accentPeach.color.opacity(0.24)
+                )
                 .frame(width: 112, height: 112)
 
             RoundedRectangle(cornerRadius: DesignTokens.Radius.dialog, style: .continuous)

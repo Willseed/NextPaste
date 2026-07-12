@@ -112,6 +112,33 @@ enum DesignTokens {
     }
 }
 
+extension DesignColor {
+    /// Returns an opaque color that approximates drawing `self` as a translucent
+    /// tint at `opacity` over `base`. Used to honor macOS "Reduce Transparency":
+    /// decorative fills become solid instead of bleeding through the background,
+    /// so content stays readable while preserving the intended tint.
+    func solidTint(opacity: Double, over base: DesignColor) -> DesignColor {
+        let front = Self.components(hex)
+        let back = Self.components(base.hex)
+        let t = min(max(opacity, 0), 1)
+        let r = Int(round((front.0 * t + back.0 * (1 - t)) * 255))
+        let g = Int(round((front.1 * t + back.1 * (1 - t)) * 255))
+        let b = Int(round((front.2 * t + back.2 * (1 - t)) * 255))
+        return DesignColor(hex: String(format: "#%02X%02X%02X", r, g, b))
+    }
+
+    private static func components(_ hex: String) -> (Double, Double, Double) {
+        let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+        var value: UInt64 = 0
+        Scanner(string: sanitized).scanHexInt64(&value)
+        return (
+            Double((value >> 16) & 0xFF) / 255.0,
+            Double((value >> 8) & 0xFF) / 255.0,
+            Double(value & 0xFF) / 255.0
+        )
+    }
+}
+
 extension Color {
     init(hex: String) {
         let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))

@@ -3,6 +3,10 @@
 //  NextPaste
 //
 
+// Note: The live clipboard search uses the native `.searchable` modifier in
+// HomeView. This component is retained as a future-ready surface and is not
+// rendered by any view today.
+
 import SwiftUI
 
 struct SearchBar: View {

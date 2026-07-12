@@ -7,6 +7,26 @@ import Foundation
 import Testing
 @testable import NextPaste
 
+// WCAG 2.1 contrast helpers shared by the contrast-ratio tests below.
+private func wcagLuminance(_ hex: String) -> Double {
+    let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+    var value: UInt64 = 0
+    Scanner(string: sanitized).scanHexInt64(&value)
+    let channels = (0..<3).map { index -> Double in
+        let component = Double((value >> ((2 - index) * 8)) & 0xFF) / 255.0
+        return component <= 0.03928 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+    }
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+}
+
+private func wcagContrast(_ a: String, _ b: String) -> Double {
+    let l1 = wcagLuminance(a)
+    let l2 = wcagLuminance(b)
+    let lighter = max(l1, l2)
+    let darker = min(l1, l2)
+    return (lighter + 0.05) / (darker + 0.05)
+}
+
 @MainActor
 @Suite("Theme contracts")
 struct ThemeContractTests {
@@ -100,44 +120,24 @@ struct ThemeContractTests {
 
     @Test("light and dark text roles meet WCAG AA contrast against their backgrounds")
     func textRolesMeetWCAGAAContrast() {
-        // Relative luminance per WCAG 2.1. Channels normalized to 0...1.
-        func luminance(_ hex: String) -> Double {
-            let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-            var value: UInt64 = 0
-            Scanner(string: sanitized).scanHexInt64(&value)
-            let channels = (0..<3).map { index -> Double in
-                let component = Double((value >> ((2 - index) * 8)) & 0xFF) / 255.0
-                return component <= 0.03928 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
-            }
-            return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
-        }
-
-        func contrast(_ a: String, _ b: String) -> Double {
-            let l1 = luminance(a)
-            let l2 = luminance(b)
-            let lighter = max(l1, l2)
-            let darker = min(l1, l2)
-            return (lighter + 0.05) / (darker + 0.05)
-        }
-
         let light = AppTheme(appearance: .light)
         let dark = AppTheme(appearance: .dark)
 
         // Primary text: AAA (7:1) on canvas and card.
-        #expect(contrast(light.textPrimary.hex, light.canvas.hex) >= 7.0)
-        #expect(contrast(light.textPrimary.hex, light.card.hex) >= 7.0)
-        #expect(contrast(dark.textPrimary.hex, dark.canvas.hex) >= 7.0)
-        #expect(contrast(dark.textPrimary.hex, dark.card.hex) >= 7.0)
+        #expect(wcagContrast(light.textPrimary.hex, light.canvas.hex) >= 7.0)
+        #expect(wcagContrast(light.textPrimary.hex, light.card.hex) >= 7.0)
+        #expect(wcagContrast(dark.textPrimary.hex, dark.canvas.hex) >= 7.0)
+        #expect(wcagContrast(dark.textPrimary.hex, dark.card.hex) >= 7.0)
 
         // Secondary text: AA (4.5:1) on canvas and card in both modes.
-        #expect(contrast(light.textSecondary.hex, light.canvas.hex) >= 4.5)
-        #expect(contrast(light.textSecondary.hex, light.card.hex) >= 4.5)
-        #expect(contrast(dark.textSecondary.hex, dark.canvas.hex) >= 4.5)
-        #expect(contrast(dark.textSecondary.hex, dark.card.hex) >= 4.5)
+        #expect(wcagContrast(light.textSecondary.hex, light.canvas.hex) >= 4.5)
+        #expect(wcagContrast(light.textSecondary.hex, light.card.hex) >= 4.5)
+        #expect(wcagContrast(dark.textSecondary.hex, dark.canvas.hex) >= 4.5)
+        #expect(wcagContrast(dark.textSecondary.hex, dark.card.hex) >= 4.5)
 
         // Success accent (feedback text/icon): at least 3:1 (large-text / UI bar).
-        #expect(contrast(light.accentSuccess.hex, light.card.hex) >= 3.0)
-        #expect(contrast(dark.accentSuccess.hex, dark.card.hex) >= 3.0)
+        #expect(wcagContrast(light.accentSuccess.hex, light.card.hex) >= 3.0)
+        #expect(wcagContrast(dark.accentSuccess.hex, dark.card.hex) >= 3.0)
 
         // Dividers/edges must be visibly distinct from the canvas (not equal).
         #expect(light.borderSubtle.hex != light.canvas.hex)
@@ -146,6 +146,47 @@ struct ThemeContractTests {
         // Input fields must have a visible border distinct from their fill.
         #expect(light.controlBorder.hex != light.controlSurface.hex)
         #expect(dark.controlBorder.hex != dark.controlSurface.hex)
+    }
+
+    @Test("high contrast text roles meet WCAG AA contrast against their backgrounds")
+    func highContrastTextRolesMeetWCAGAAContrast() {
+        let highContrastLight = AppTheme(appearance: .highContrastLight)
+        let highContrastDark = AppTheme(appearance: .highContrastDark)
+
+        // Primary text: AAA (7:1) on canvas and card.
+        #expect(wcagContrast(highContrastLight.textPrimary.hex, highContrastLight.canvas.hex) >= 7.0)
+        #expect(wcagContrast(highContrastLight.textPrimary.hex, highContrastLight.card.hex) >= 7.0)
+        #expect(wcagContrast(highContrastDark.textPrimary.hex, highContrastDark.canvas.hex) >= 7.0)
+        #expect(wcagContrast(highContrastDark.textPrimary.hex, highContrastDark.card.hex) >= 7.0)
+
+        // Secondary text: AA (4.5:1) on canvas and card in both modes.
+        #expect(wcagContrast(highContrastLight.textSecondary.hex, highContrastLight.canvas.hex) >= 4.5)
+        #expect(wcagContrast(highContrastLight.textSecondary.hex, highContrastLight.card.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.textSecondary.hex, highContrastDark.canvas.hex) >= 4.5)
+        #expect(wcagContrast(highContrastDark.textSecondary.hex, highContrastDark.card.hex) >= 4.5)
+
+        // Success accent (feedback text/icon): at least 3:1 (large-text / UI bar).
+        #expect(wcagContrast(highContrastLight.accentSuccess.hex, highContrastLight.card.hex) >= 3.0)
+        #expect(wcagContrast(highContrastDark.accentSuccess.hex, highContrastDark.card.hex) >= 3.0)
+
+        // Dividers/edges must be visibly distinct from the canvas (not equal).
+        #expect(highContrastLight.borderSubtle.hex != highContrastLight.canvas.hex)
+        #expect(highContrastDark.borderSubtle.hex != highContrastDark.canvas.hex)
+
+        // Input fields must have a visible border distinct from their fill.
+        #expect(highContrastLight.controlBorder.hex != highContrastLight.controlSurface.hex)
+        #expect(highContrastDark.controlBorder.hex != highContrastDark.controlSurface.hex)
+    }
+
+    @Test("focus ring role is defined and distinct on every appearance")
+    func focusRingRoleIsDefinedAndDistinctOnEveryAppearance() {
+        for appearance in AppTheme.Appearance.allCases {
+            let theme = AppTheme(appearance: appearance)
+
+            #expect(theme.focusRing.hex.isEmpty == false)
+            #expect(theme.focusRing.hex != theme.selectionSurface.hex)
+            #expect(theme.focusRing.hex != theme.borderSubtle.hex)
+        }
     }
 
     @Test("decorative Settings and filter symbols are hidden from accessibility")

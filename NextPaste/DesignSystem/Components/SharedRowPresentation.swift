@@ -46,6 +46,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
     @Environment(\.locale) private var locale
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var isHovered = false
 
     let isPinned: Bool
@@ -183,7 +184,9 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
             case .focused, .selected:
                 appTheme.accentPinned.color
             case .deleting:
-                appTheme.accentSuccess.color.opacity(0.4)
+                reduceTransparency
+                    ? appTheme.accentSuccess.color
+                    : appTheme.accentSuccess.color.opacity(0.4)
             case .normal, .hovered, .inserting:
                 appTheme.borderSubtle.color
             }
