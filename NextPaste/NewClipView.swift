@@ -13,6 +13,7 @@ struct NewClipView: View {
 
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @State private var draftText = ""
     @State private var validationMessage: String?
@@ -97,7 +98,7 @@ struct NewClipView: View {
         validationMessage = nil
         saveErrorMessage = nil
 
-        if let validationMessage = ClipValidation.validationMessage(for: draftText) {
+        if let validationMessage = ClipValidation.validationMessage(for: draftText, locale: locale) {
             self.validationMessage = validationMessage
             return
         }
@@ -121,7 +122,7 @@ struct NewClipView: View {
             dismiss()
         } catch {
             modelContext.rollback()
-            saveErrorMessage = String(localized: "Clip was not saved. Try again.")
+            saveErrorMessage = locale.nextPasteLocalized("Clip was not saved. Try again.")
         }
     }
 }

@@ -31,6 +31,27 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
             }
         }
 
+        /// Resolve the interaction-state label with the current in-app locale so
+        /// VoiceOver reads it in the user's language. The English `accessibilityLabel`
+        /// is retained as the stable catalog key for tests and fallback.
+        func localizedAccessibilityLabel(locale: Locale) -> String {
+            let bundle = locale.nextPasteLocalizationBundle
+            switch self {
+            case .normal:
+                return String(localized: "Normal", bundle: bundle, locale: locale)
+            case .hovered:
+                return String(localized: "Hovered", bundle: bundle, locale: locale)
+            case .focused:
+                return String(localized: "Focused", bundle: bundle, locale: locale)
+            case .selected:
+                return String(localized: "Selected", bundle: bundle, locale: locale)
+            case .inserting:
+                return String(localized: "Inserting", bundle: bundle, locale: locale)
+            case .deleting:
+                return String(localized: "Deleting", bundle: bundle, locale: locale)
+            }
+        }
+
         var animationDuration: TimeInterval {
             switch self {
             case .normal:
@@ -71,6 +92,13 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
 
         var accessibilityLabel: String {
             label
+        }
+
+        /// Resolve the copy-feedback label with the in-app locale so the visible
+        /// "Copied" confirmation and its VoiceOver announcement follow the
+        /// user's language. `label` remains the English catalog key/fallback.
+        func localizedLabel(locale: Locale) -> String {
+            String(localized: "Copied", bundle: locale.nextPasteLocalizationBundle, locale: locale)
         }
     }
 
@@ -210,16 +238,26 @@ struct ClipboardRowPresentation: Equatable, Identifiable {
     }
 }
 
-private extension Locale {
+extension Locale {
     /// NextPaste deliberately supports two in-app languages. Map the SwiftUI
     /// environment locale to that product language, then resolve against the
     /// concrete `.lproj` sub-bundle so process-language preferences cannot
-    /// override the in-app selection.
+    /// override the in-app selection. Shared by views and non-view helpers
+    /// (validation, confirmation strings) so every user-facing string follows
+    /// the in-app language instead of the process language.
     var nextPasteLocalizationBundle: Bundle {
         let appLanguage: AppLanguage = language.languageCode?.identifier == "zh"
             ? .traditionalChineseTaiwan
             : .englishUnitedStates
         return appLanguage.localizationBundle(in: Bundle(for: ClipItem.self))
+    }
+
+    /// Resolve a String Catalog key against the in-app language bundle. Use
+    /// this for `String(localized:)` calls outside SwiftUI views (which have no
+    /// `Text(LocalizedStringKey)` environment resolution) so confirmation
+    /// dialogs, validation, and error messages follow the in-app language.
+    func nextPasteLocalized(_ key: String.LocalizationValue) -> String {
+        String(localized: key, bundle: nextPasteLocalizationBundle, locale: self)
     }
 }
 
@@ -302,7 +340,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
                 ? ClipboardRowPresentation.PinState.pinned
                 : .unpinned).accessibilityLabel,
             copyFeedback: copyFeedback,
-            interactionState: interactionState
+            interactionStateLabel: interactionState.accessibilityLabel
         )
     }
 
@@ -329,7 +367,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             usesFallbackIcon: usesFallbackIcon,
             pinStateLabel: pinState.localizedAccessibilityLabel(locale: locale),
             copyFeedback: copyFeedback,
-            interactionState: interactionState
+            interactionStateLabel: interactionState.localizedAccessibilityLabel(locale: locale)
         )
     }
 
@@ -361,7 +399,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         usesFallbackIcon: Bool,
         pinStateLabel: String,
         copyFeedback: ClipboardRowPresentation.CopyFeedback?,
-        interactionState: ClipboardRowPresentation.InteractionState
+        interactionStateLabel: String
     ) -> String {
         let thumbnailState: String
         if let thumbnailFilename {
@@ -377,7 +415,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             thumbnailState,
             pinStateLabel,
             copyFeedback?.accessibilityLabel,
-            interactionState.accessibilityLabel
+            interactionStateLabel
         ]
         .compactMap { $0 }
         .joined(separator: ", ")

@@ -31,7 +31,7 @@ struct EmptyStateIllustration: View {
         .accessibilityRepresentation {
             Image(systemName: DesignTokens.Icons.clipboard)
                 .accessibilityIdentifier("empty-state-illustration")
-                .accessibilityLabel("Clipboard illustration")
+                .accessibilityLabel(Text("Clipboard illustration"))
         }
     }
 }

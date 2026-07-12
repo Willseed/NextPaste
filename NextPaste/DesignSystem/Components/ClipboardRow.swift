@@ -72,8 +72,12 @@ struct ClipboardRow: View {
     }
 
     private var accessibilityLabel: String {
-        [
-            "Clipboard clip, \(presentation.preview)",
+        let prefix = String(
+            format: locale.nextPasteLocalized("Clipboard clip, %@"),
+            presentation.preview
+        )
+        return [
+            prefix,
             accessibilityValue(for: presentation.interactionState)
         ]
         .filter { $0.isEmpty == false }
@@ -84,7 +88,7 @@ struct ClipboardRow: View {
         [
             presentation.pinState.localizedAccessibilityLabel(locale: locale),
             presentation.copyFeedback?.accessibilityLabel,
-            interactionState.accessibilityLabel
+            interactionState.localizedAccessibilityLabel(locale: locale)
         ]
         .compactMap { $0 }
         .joined(separator: ", ")

@@ -314,6 +314,7 @@ struct HomeView: View {
     @Environment(\.appTheme) private var appTheme
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.locale) private var locale
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @StateObject private var imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
     @State private var initialLoadState = InitialLoadState()
@@ -442,8 +443,8 @@ struct HomeView: View {
                         }
                         .buttonStyle(.borderless)
                         .accessibilityIdentifier("search-button")
-                        .accessibilityLabel("Search Clipboard History")
-                        .accessibilityHint("Focus the clipboard search field")
+                        .accessibilityLabel(Text("Search Clipboard History"))
+                        .accessibilityHint(Text("Focus the clipboard search field"))
 
                         // T004: explicit Clear Search entry with a stable identifier.
                         // Only shown while a search query is active so the empty toolbar
@@ -456,8 +457,8 @@ struct HomeView: View {
                             }
                             .buttonStyle(.borderless)
                             .accessibilityIdentifier("clear-search-button")
-                            .accessibilityLabel("Clear Search")
-                            .accessibilityHint("Clear the active search query")
+                            .accessibilityLabel(Text("Clear Search"))
+                            .accessibilityHint(Text("Clear the active search query"))
                         }
 
                         Menu {
@@ -481,7 +482,7 @@ struct HomeView: View {
                             Label("Filter", systemImage: "line.3.horizontal.decrease.circle")
                         }
                         .accessibilityIdentifier("history-filter-menu")
-                        .accessibilityLabel("Filter Clipboard History")
+                        .accessibilityLabel(Text("Filter Clipboard History"))
                         .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
 
                         Button {
@@ -511,8 +512,8 @@ struct HomeView: View {
                             Label("History", systemImage: "ellipsis.circle")
                         }
                         .accessibilityIdentifier("history-overflow-menu")
-                        .accessibilityLabel("History actions")
-                        .accessibilityHint("Clear clipboard history")
+                        .accessibilityLabel(Text("History actions"))
+                        .accessibilityHint(Text("Clear clipboard history"))
                     }
                 }
                 .background(measuredFrameReader(for: .header))
@@ -976,8 +977,8 @@ struct HomeView: View {
 
     private var clearUnpinnedConfirmationButtonTitle: String {
         let format = unpinnedCount == 1
-            ? String(localized: "Clear %lld Unpinned Item")
-            : String(localized: "Clear %lld Unpinned Items")
+            ? locale.nextPasteLocalized("Clear %lld Unpinned Item")
+            : locale.nextPasteLocalized("Clear %lld Unpinned Items")
         return String.localizedStringWithFormat(format, Int64(unpinnedCount))
     }
 
@@ -985,13 +986,13 @@ struct HomeView: View {
         let format: String
         switch (unpinnedCount == 1, pinnedCount == 1) {
         case (true, true):
-            format = String(localized: "This will permanently delete %lld unpinned item. %lld pinned item will be preserved. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete %lld unpinned item. %lld pinned item will be preserved. This action cannot be undone.")
         case (true, false):
-            format = String(localized: "This will permanently delete %lld unpinned item. %lld pinned items will be preserved. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete %lld unpinned item. %lld pinned items will be preserved. This action cannot be undone.")
         case (false, true):
-            format = String(localized: "This will permanently delete %lld unpinned items. %lld pinned item will be preserved. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete %lld unpinned items. %lld pinned item will be preserved. This action cannot be undone.")
         case (false, false):
-            format = String(localized: "This will permanently delete %lld unpinned items. %lld pinned items will be preserved. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete %lld unpinned items. %lld pinned items will be preserved. This action cannot be undone.")
         }
 
         return String.localizedStringWithFormat(
@@ -1003,8 +1004,8 @@ struct HomeView: View {
 
     private var clearAllConfirmationButtonTitle: String {
         let format = allCount == 1
-            ? String(localized: "Delete All %lld Item")
-            : String(localized: "Delete All %lld Items")
+            ? locale.nextPasteLocalized("Delete All %lld Item")
+            : locale.nextPasteLocalized("Delete All %lld Items")
         return String.localizedStringWithFormat(format, Int64(allCount))
     }
 
@@ -1012,13 +1013,13 @@ struct HomeView: View {
         let format: String
         switch (allCount == 1, pinnedCount == 1) {
         case (true, true):
-            format = String(localized: "This will permanently delete all %lld item, including %lld pinned item. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete all %lld item, including %lld pinned item. This action cannot be undone.")
         case (true, false):
-            format = String(localized: "This will permanently delete all %lld item, including %lld pinned items. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete all %lld item, including %lld pinned items. This action cannot be undone.")
         case (false, true):
-            format = String(localized: "This will permanently delete all %lld items, including %lld pinned item. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete all %lld items, including %lld pinned item. This action cannot be undone.")
         case (false, false):
-            format = String(localized: "This will permanently delete all %lld items, including %lld pinned items. This action cannot be undone.")
+            format = locale.nextPasteLocalized("This will permanently delete all %lld items, including %lld pinned items. This action cannot be undone.")
         }
 
         return String.localizedStringWithFormat(
@@ -1312,7 +1313,7 @@ struct HomeView: View {
 
     private func showSettingsPlaceholder() {
 #if !os(macOS)
-        settingsPlaceholderMessage = String(localized: "Settings are not available yet.")
+        settingsPlaceholderMessage = locale.nextPasteLocalized("Settings are not available yet.")
 #endif
     }
 
@@ -2326,7 +2327,7 @@ struct HomeView: View {
                 Label("Copy Image Text", systemImage: "doc.on.doc")
             }
             .accessibilityIdentifier("copy-image-text-menu-item")
-            .accessibilityLabel("Copy Image Text")
+            .accessibilityLabel(Text("Copy Image Text"))
 
         case .recognizing:
             Button(action: {
@@ -2338,7 +2339,7 @@ struct HomeView: View {
             }
             .disabled(true)
             .accessibilityIdentifier("recognizing-image-text-menu-item")
-            .accessibilityLabel("Recognizing Image Text")
+            .accessibilityLabel(Text("Recognizing Image Text"))
 
         case .noText:
             Button(action: {
@@ -2349,7 +2350,7 @@ struct HomeView: View {
             }
             .disabled(true)
             .accessibilityIdentifier("no-image-text-menu-item")
-            .accessibilityLabel("No Text Found in Image")
+            .accessibilityLabel(Text("No Text Found in Image"))
 
         case .failed:
             Button(action: {
@@ -2361,7 +2362,7 @@ struct HomeView: View {
             }
             .disabled(true)
             .accessibilityIdentifier("image-text-recognition-failed-menu-item")
-            .accessibilityLabel("Image Text Recognition Failed")
+            .accessibilityLabel(Text("Image Text Recognition Failed"))
 
             Button {
                 retryCopyRecognizedImageText(for: clip, request: request)
@@ -2369,7 +2370,7 @@ struct HomeView: View {
                 Label("Retry Copy Image Text", systemImage: "arrow.clockwise")
             }
             .accessibilityIdentifier("retry-copy-image-text-menu-item")
-            .accessibilityLabel("Retry Copy Image Text")
+            .accessibilityLabel(Text("Retry Copy Image Text"))
         }
 
         Divider()
@@ -2380,7 +2381,7 @@ struct HomeView: View {
             Label("Copy Original Image", systemImage: "photo.on.rectangle")
         }
         .accessibilityIdentifier("copy-original-image-menu-item")
-        .accessibilityLabel("Copy Original Image")
+        .accessibilityLabel(Text("Copy Original Image"))
 
         Button {
             togglePinImmediately(clip)

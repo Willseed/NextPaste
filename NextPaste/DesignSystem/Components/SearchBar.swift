@@ -20,8 +20,8 @@ struct SearchBar: View {
                 .font(DesignTokens.Typography.body.font)
                 .textFieldStyle(.plain)
                 .accessibilityIdentifier("history-search-field")
-                .accessibilityLabel("Search history")
-                .accessibilityValue("Visual placeholder")
+                .accessibilityLabel(Text("Search history"))
+                .accessibilityValue(Text("Visual placeholder"))
         }
         .padding(.vertical, DesignTokens.Spacing.small)
         .padding(.horizontal, DesignTokens.Spacing.medium)

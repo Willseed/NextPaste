@@ -68,7 +68,7 @@ struct AppToolbar: View {
         }
         .buttonStyle(.borderless)
         .accessibilityIdentifier("settings-button")
-        .accessibilityLabel("Settings")
+        .accessibilityLabel(Text("Settings"))
 #else
         Button {
             onSettings()
@@ -77,7 +77,7 @@ struct AppToolbar: View {
         }
         .buttonStyle(.borderless)
         .accessibilityIdentifier("settings-button")
-        .accessibilityLabel("Settings")
+        .accessibilityLabel(Text("Settings"))
 #endif
     }
 }
