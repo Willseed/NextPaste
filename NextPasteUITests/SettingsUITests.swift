@@ -99,6 +99,18 @@ final class SettingsUITests: UITestCase {
         }
     }
 
+    private enum SliderBoundary {
+        case minimum
+        case maximum
+
+        var key: XCUIKeyboardKey {
+            if case .minimum = self {
+                return .pageDown
+            }
+            return .pageUp
+        }
+    }
+
     @MainActor
     func testToolbarSettingsLinkOpensSingleSettingsWindow() throws {
         let app = launchApp()
@@ -239,8 +251,7 @@ final class SettingsUITests: UITestCase {
             "Expected parseable high input to clamp to 1000"
         )
 
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 0)
+        setSlider(slider, to: .minimum, in: settingsWindow, application: app)
         XCTAssertTrue(
             waitForTextInputValue(field, equals: "1", timeout: UITestAssertions.defaultTimeout),
             "Expected Slider and TextField to remain synchronized at the minimum"
@@ -262,8 +273,12 @@ final class SettingsUITests: UITestCase {
         XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
 
         let reopenedSlider = historyLimitSlider(in: reopenedSettings)
-        assertSliderInteractionGeometry(reopenedSlider, in: reopenedSettings)
-        reopenedSlider.adjust(toNormalizedSliderPosition: 1)
+        setSlider(
+            reopenedSlider,
+            to: .maximum,
+            in: reopenedSettings,
+            application: relaunchedApp
+        )
         XCTAssertTrue(
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
             "Expected maximum Slider position to update the TextField to 1000"
@@ -356,8 +371,7 @@ final class SettingsUITests: UITestCase {
         commitHistoryLimit("1", field: field, slider: slider, app: app, expectedValue: "1")
         commitHistoryLimit("1000", field: field, slider: slider, app: app, expectedValue: "1000")
 
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 0)
+        setSlider(slider, to: .minimum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
 
         assertSliderInteractionGeometry(slider, in: settingsWindow)
@@ -377,8 +391,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertEqual(intermediateValue, String(intermediateInteger), "Slider accessibility value must not be fractional")
         XCTAssertEqual(textInputValue(of: field), intermediateValue)
 
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 1)
+        setSlider(slider, to: .maximum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
     }
 
@@ -616,7 +629,7 @@ final class SettingsUITests: UITestCase {
             in: app,
             message: "Language switching must preserve keyboard focus on the picker"
         )
-        localizedLanguagePicker.typeKey(.space, modifierFlags: [])
+        app.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
             app.menuItems[Accessibility.localizedTraditionalChineseTaiwan],
             "The focused localized picker must remain keyboard-operable without a pointer tap"
@@ -636,7 +649,7 @@ final class SettingsUITests: UITestCase {
             in: app,
             message: "Switching back to English must preserve keyboard focus"
         )
-        restoredLanguagePicker.typeKey(.space, modifierFlags: [])
+        app.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
             app.menuItems[Accessibility.englishUnitedStates],
             "The focused English picker must remain keyboard-operable without a pointer tap"
@@ -701,7 +714,7 @@ final class SettingsUITests: UITestCase {
             message: "Appearance switching must preserve keyboard focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
-        appearancePicker.typeKey(.space, modifierFlags: [])
+        app.typeKey(.space, modifierFlags: [])
         UITestAssertions.assertExists(
             app.menuItems[Accessibility.light],
             "The focused Appearance picker must remain keyboard-operable without a pointer tap"
@@ -723,8 +736,7 @@ final class SettingsUITests: UITestCase {
             "Slider must expose its semantic 1...1000 value through Accessibility"
         )
 
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 0)
+        setSlider(slider, to: .minimum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0.5)
@@ -737,8 +749,7 @@ final class SettingsUITests: UITestCase {
             },
             "A native midpoint Slider adjustment must synchronize an intermediate integer"
         )
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 0)
+        setSlider(slider, to: .minimum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         slider.tap()
         slider.typeKey(.rightArrow, modifierFlags: [])
@@ -777,8 +788,7 @@ final class SettingsUITests: UITestCase {
         )
         assertHistoryLimitValues(field: field, slider: slider, equal: "276")
 
-        assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 1)
+        setSlider(slider, to: .maximum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
 
         try performProductAccessibilityAudit(in: app)
@@ -940,6 +950,27 @@ final class SettingsUITests: UITestCase {
             file: file,
             line: line
         )
+    }
+
+    private func setSlider(
+        _ slider: XCUIElement,
+        to boundary: SliderBoundary,
+        in settingsWindow: XCUIElement,
+        application app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        assertSliderInteractionGeometry(slider, in: settingsWindow, file: file, line: line)
+        slider.tap()
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.historyFocusProbe,
+            in: app,
+            message: "The Storage Limit slider must own focus before a boundary key is sent",
+            file: file,
+            line: line
+        )
+        app.typeKey(boundary.key, modifierFlags: [])
     }
 
     private func assertSliderInteractionGeometry(
@@ -1120,7 +1151,7 @@ final class SettingsUITests: UITestCase {
             file: file,
             line: line
         )
-        popup.typeKey(.space, modifierFlags: [])
+        app.typeKey(.space, modifierFlags: [])
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
                 app.menuItems[currentValue].isHittable

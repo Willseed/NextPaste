@@ -548,6 +548,17 @@ private struct HistorySettingsTab: View {
                         .multilineTextAlignment(.trailing)
                         .focused($focusedTarget, equals: .field)
                         .onSubmit(commitDraft)
+                        .onKeyPress(.tab) {
+#if DEBUG && os(macOS)
+                            guard DebugUITestLaunchEnvironment() != nil else {
+                                return .ignored
+                            }
+                            focusedTarget = .slider
+                            return .handled
+#else
+                            return .ignored
+#endif
+                        }
                         .accessibilityIdentifier("history-limit-field")
                         .accessibilityLabel("Storage Limit Value")
                 }

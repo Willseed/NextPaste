@@ -246,6 +246,8 @@ struct NextPasteApp: App {
         // standard app-menu `Settings…` item and `Command-,`, and ensures only
         // one Settings window exists. The four tabs are established here; later
         // tasks populate them.
+        // SystemApplicationAppearanceApplier remains the sole macOS appearance
+        // authority so native controls and SwiftUI content change in lockstep.
         Settings {
             SettingsView()
                 .modelContainer(sharedModelContainer)
@@ -255,7 +257,6 @@ struct NextPasteApp: App {
                 .environmentObject(globalShortcutPreference)
                 .environmentObject(globalShortcutLifecycleController)
                 .environment(\.locale, appLanguagePreference.language.locale)
-                .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
         }
 #endif
     }
@@ -282,7 +283,9 @@ struct NextPasteApp: App {
         .environmentObject(globalShortcutLifecycleController)
 #endif
         .environment(\.locale, appLanguagePreference.language.locale)
+#if !os(macOS)
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
+#endif
         .frame(minWidth: 520, minHeight: 380)
 #if os(macOS)
         .background {
