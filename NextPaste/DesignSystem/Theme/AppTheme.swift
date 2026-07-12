@@ -37,32 +37,43 @@ struct AppTheme: Equatable {
 
         switch appearance {
         case .light:
+            // Warm cream brand palette is preserved (canvas/surface/card stay on
+            // the locked design tokens). Contrast is raised on the non-brand
+            // roles: secondary text is deepened so it is not too gray on cream,
+            // dividers/input borders are strengthened so cards and fields have
+            // clear edges, hover/selection states are more distinct, and the
+            // success accent is deepened so "Copied" feedback text is readable
+            // instead of a low-contrast pastel on cream.
             canvas = DesignTokens.Colors.canvas
             surface = DesignTokens.Colors.surfaceSoft
             card = DesignTokens.Colors.surfaceCard
             textPrimary = DesignTokens.Colors.ink
-            textSecondary = DesignColor(hex: "#5F584A")
-            borderSubtle = DesignColor(hex: "#E5DCCB")
-            hoverSurface = DesignColor(hex: "#F8F0DF")
-            selectionSurface = DesignColor(hex: "#F0E4CC")
+            textSecondary = DesignColor(hex: "#4D463A")
+            borderSubtle = DesignColor(hex: "#C9BC9E")
+            hoverSurface = DesignColor(hex: "#EFE3C6")
+            selectionSurface = DesignColor(hex: "#E3D3AF")
             focusRing = DesignTokens.Colors.accentDeepTeal
-            controlSurface = DesignColor(hex: "#FFF7EA")
-            controlBorder = DesignColor(hex: "#D8CBB6")
+            controlSurface = DesignColor(hex: "#FFFEF6")
+            controlBorder = DesignColor(hex: "#B3A486")
             accentPinned = DesignTokens.Colors.accentOchre
-            accentSuccess = DesignTokens.Colors.accentMint
+            accentSuccess = DesignColor(hex: "#316B43")
 
         case .dark:
+            // Brand warmth is preserved while layer separation and edge clarity
+            // are increased: surface/card step more clearly above the canvas,
+            // dividers and input borders are lightened so they read against the
+            // dark canvas, and hover/selection states are more distinct.
             canvas = DesignColor(hex: "#1D1A16")
-            surface = DesignColor(hex: "#28231D")
-            card = DesignColor(hex: "#322B23")
+            surface = DesignColor(hex: "#2D271F")
+            card = DesignColor(hex: "#3B332A")
             textPrimary = DesignColor(hex: "#FFF6E6")
-            textSecondary = DesignColor(hex: "#CBBEA8")
-            borderSubtle = DesignColor(hex: "#4A4034")
-            hoverSurface = DesignColor(hex: "#3A3128")
-            selectionSurface = DesignColor(hex: "#463A2D")
+            textSecondary = DesignColor(hex: "#D6CBB7")
+            borderSubtle = DesignColor(hex: "#6E604A")
+            hoverSurface = DesignColor(hex: "#463C30")
+            selectionSurface = DesignColor(hex: "#564737")
             focusRing = DesignColor(hex: "#8BCDC4")
-            controlSurface = DesignColor(hex: "#251F19")
-            controlBorder = DesignColor(hex: "#5A4C3D")
+            controlSurface = DesignColor(hex: "#221C15")
+            controlBorder = DesignColor(hex: "#7A6850")
             accentPinned = DesignColor(hex: "#D6A94A")
             accentSuccess = DesignColor(hex: "#9AD2A9")
 

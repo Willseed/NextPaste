@@ -98,6 +98,56 @@ struct ThemeContractTests {
         )
     }
 
+    @Test("light and dark text roles meet WCAG AA contrast against their backgrounds")
+    func textRolesMeetWCAGAAContrast() {
+        // Relative luminance per WCAG 2.1. Channels normalized to 0...1.
+        func luminance(_ hex: String) -> Double {
+            let sanitized = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
+            var value: UInt64 = 0
+            Scanner(string: sanitized).scanHexInt64(&value)
+            let channels = (0..<3).map { index -> Double in
+                let component = Double((value >> ((2 - index) * 8)) & 0xFF) / 255.0
+                return component <= 0.03928 ? component / 12.92 : pow((component + 0.055) / 1.055, 2.4)
+            }
+            return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]
+        }
+
+        func contrast(_ a: String, _ b: String) -> Double {
+            let l1 = luminance(a)
+            let l2 = luminance(b)
+            let lighter = max(l1, l2)
+            let darker = min(l1, l2)
+            return (lighter + 0.05) / (darker + 0.05)
+        }
+
+        let light = AppTheme(appearance: .light)
+        let dark = AppTheme(appearance: .dark)
+
+        // Primary text: AAA (7:1) on canvas and card.
+        #expect(contrast(light.textPrimary.hex, light.canvas.hex) >= 7.0)
+        #expect(contrast(light.textPrimary.hex, light.card.hex) >= 7.0)
+        #expect(contrast(dark.textPrimary.hex, dark.canvas.hex) >= 7.0)
+        #expect(contrast(dark.textPrimary.hex, dark.card.hex) >= 7.0)
+
+        // Secondary text: AA (4.5:1) on canvas and card in both modes.
+        #expect(contrast(light.textSecondary.hex, light.canvas.hex) >= 4.5)
+        #expect(contrast(light.textSecondary.hex, light.card.hex) >= 4.5)
+        #expect(contrast(dark.textSecondary.hex, dark.canvas.hex) >= 4.5)
+        #expect(contrast(dark.textSecondary.hex, dark.card.hex) >= 4.5)
+
+        // Success accent (feedback text/icon): at least 3:1 (large-text / UI bar).
+        #expect(contrast(light.accentSuccess.hex, light.card.hex) >= 3.0)
+        #expect(contrast(dark.accentSuccess.hex, dark.card.hex) >= 3.0)
+
+        // Dividers/edges must be visibly distinct from the canvas (not equal).
+        #expect(light.borderSubtle.hex != light.canvas.hex)
+        #expect(dark.borderSubtle.hex != dark.canvas.hex)
+
+        // Input fields must have a visible border distinct from their fill.
+        #expect(light.controlBorder.hex != light.controlSurface.hex)
+        #expect(dark.controlBorder.hex != dark.controlSurface.hex)
+    }
+
     @Test("decorative Settings and filter symbols are hidden from accessibility")
     func decorativeControlSymbolsAreAccessibilityHidden() throws {
         let repositoryRoot = URL(fileURLWithPath: #filePath)
