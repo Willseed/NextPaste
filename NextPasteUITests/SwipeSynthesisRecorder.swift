@@ -80,10 +80,9 @@ enum SwipeSynthesisRecorder {
                     continue
                 }
 
-                switch context.direction {
-                case .right:
+                if case .right = context.direction {
                     candidate.swipeRight()
-                case .left:
+                } else {
                     candidate.swipeLeft()
                 }
                 swipeIssued = true
