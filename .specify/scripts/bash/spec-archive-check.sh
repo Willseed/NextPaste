@@ -16,7 +16,7 @@
 set -u
 ROOT="$(cd "$(dirname "$0")/../../../" 2>/dev/null && pwd)"
 SPECS="${1:-$ROOT/specs}"
-ALLOWED="draft active blocked completed deprecated superseded cancelled"
+readonly ALLOWED_STATUSES=(draft active blocked completed deprecated superseded cancelled)
 FAIL=0
 err() {
   echo "✗ $*" >&2
@@ -43,9 +43,9 @@ status_of() { # dir -> status value (lowercased)
 
 allowed_status() {
   local s="$1"
-  local a
-  for a in $ALLOWED; do
-    [[ "$s" == "$a" ]] && return 0
+  local candidate_status
+  for candidate_status in "${ALLOWED_STATUSES[@]}"; do
+    [[ "$s" == "$candidate_status" ]] && return 0
   done
   return 1
 }
