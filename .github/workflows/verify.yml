@@ -11,6 +11,12 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Match the stable Xcode toolchain to the macOS 26.4 hosted image. Xcode 26.5
+  # currently reaches UI launch with an unusable LLDB version store on this
+  # image, while 26.4.1 supports the project's macOS 26.0 deployment target.
+  DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+
 jobs:
   verify:
     name: Build, unit, integration, and UI smoke

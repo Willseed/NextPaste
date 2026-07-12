@@ -12,6 +12,11 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # Keep manual/nightly shards on the same stable host-compatible toolchain as
+  # the blocking smoke workflow so LLDB preflight and UI launch are equivalent.
+  DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
+
 jobs:
   ui-shard:
     name: Full UI shard ${{ matrix.shard }}

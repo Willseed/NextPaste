@@ -2,8 +2,10 @@
 
 set -euo pipefail
 
-readonly SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-readonly REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+SCRIPT_DIR="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+readonly SCRIPT_DIR
+REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
+readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
 readonly SCHEME_NAME="NextPaste"
 readonly TEST_PLAN_NAME="NextPaste"
@@ -75,10 +77,8 @@ print_command() {
 
 resolve_developer_dir() {
   local candidate="${DEVELOPER_DIR:-}"
-  if [[ -z "${candidate}" ]]; then
-    if ! candidate="$(/usr/bin/xcode-select -p 2>/dev/null)"; then
-      candidate=""
-    fi
+  if [[ -z "${candidate}" ]] && ! candidate="$(/usr/bin/xcode-select -p 2>/dev/null)"; then
+    candidate=""
   fi
   if [[ ! -x "${candidate}/usr/bin/xcodebuild" && -x /Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild ]]; then
     candidate="/Applications/Xcode.app/Contents/Developer"
@@ -97,7 +97,8 @@ resolve_developer_dir
 readonly XCODEBUILD="${DEVELOPER_DIR}/usr/bin/xcodebuild"
 readonly XCRESULTTOOL="${DEVELOPER_DIR}/usr/bin/xcresulttool"
 readonly XCCOV="${DEVELOPER_DIR}/usr/bin/xccov"
-readonly HOST_ARCH="$(/usr/bin/uname -m)"
+HOST_ARCH="$(/usr/bin/uname -m)"
+readonly HOST_ARCH
 case "${HOST_ARCH}" in
   arm64|x86_64) ;;
   *) fail "unsupported macOS runner architecture: ${HOST_ARCH}" ;;
@@ -107,16 +108,27 @@ readonly DESTINATION="platform=macOS,arch=${HOST_ARCH}"
 artifacts_root="${CI_ARTIFACTS_DIR:-${RUNNER_TEMP:-${TMPDIR:-/tmp}}/NextPasteCI}"
 /bin/mkdir -p "${artifacts_root}"
 artifacts_root="$(cd -P "${artifacts_root}" && pwd -P)"
-case "${artifacts_root}/" in
-  "${REPO_ROOT}/"*) fail "CI artifacts must be outside the repository: ${artifacts_root}" ;;
-esac
+
+require_external_directory() {
+  local purpose="$1"
+  local directory="$2"
+  case "${directory}/" in
+    "${REPO_ROOT}/"*) fail "${purpose} must be outside the repository: ${directory}" ;;
+    /*) return 0 ;;
+    *) fail "unable to classify ${purpose} path '${directory}': expected an absolute path" ;;
+  esac
+}
+
+require_external_directory "CI artifacts" "${artifacts_root}"
 readonly RUN_DIR="${artifacts_root}/${MODE}${SHARD:+-shard-${SHARD}}"
 readonly DERIVED_DATA_PATH="${CI_DERIVED_DATA_PATH:-${RUN_DIR}/DerivedData}"
 /bin/rm -rf "${RUN_DIR}"
 /bin/mkdir -p "${RUN_DIR}" "${DERIVED_DATA_PATH}"
 
 plist_value() {
-  /usr/bin/plutil -extract "$1" raw -o - "$2"
+  local key="$1"
+  local file="$2"
+  /usr/bin/plutil -extract "${key}" raw -o - "${file}"
 }
 
 validate_shard_manifest() {
@@ -124,7 +136,7 @@ validate_shard_manifest() {
   local discovered="${RUN_DIR}/ui-classes-discovered.txt"
   local assigned="${RUN_DIR}/ui-classes-assigned.txt"
 
-  /usr/bin/env rg -INo --replace '$1' \
+  /usr/bin/env rg -INo --replace "\$1" \
     '^final class ([A-Za-z0-9_]+): UITestCase' \
     "${REPO_ROOT}/NextPasteUITests"/*.swift | /usr/bin/sort > "${discovered}"
   /usr/bin/awk '!/^#/ && NF == 2 { print $2 }' "${SHARD_MANIFEST}" | /usr/bin/sort > "${assigned}"
@@ -402,6 +414,8 @@ if [[ "${MODE}" == "pr" ]]; then
 
   ui_start_time="$(/bin/date '+%Y-%m-%d %H:%M:%S%z')"
   run_test_phase UISmoke UI 1200 NO NO \
+    -only-testing:NextPasteUITests/NextPasteUITests/testDefaultPathConfigurationFeedsTheActiveLaunchEnvironment \
+    -only-testing:NextPasteUITests/NextPasteUITests/testCustomPathConfigurationPropagatesStorageAndTraceURLs \
     -only-testing:NextPasteUITests/NextPasteUITests/testIsolatedLaunchExposesReadyMainWindow \
     -only-testing:NextPasteUITests/HistoryListUITests/testHistoryShowsNewestFirstAndReadableLongMultilinePreview \
     -only-testing:NextPasteUITests/SettingsUITests/testToolbarSettingsLinkOpensSingleSettingsWindow \
