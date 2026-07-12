@@ -75,12 +75,19 @@ struct SystemApplicationAppearanceApplier: ApplicationAppearanceApplying {
         self.application = application
     }
     #else
-    init() {}
+    init() {
+        // Non-macOS platforms apply appearance through SwiftUI's
+        // preferredColorScheme, so there is no native application object to
+        // capture while preserving the cross-platform adapter initializer.
+    }
     #endif
 
     func apply(_ mode: AppearanceMode) {
         #if os(macOS)
         application.appearance = mode.nsAppearance
+        #else
+        // SwiftUI owns appearance application on non-macOS platforms; this
+        // protocol conformance deliberately has no second native side effect.
         #endif
     }
 }

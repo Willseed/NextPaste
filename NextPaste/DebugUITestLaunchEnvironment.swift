@@ -290,7 +290,11 @@ struct UITestWindowActivationView: NSViewRepresentable {
         ActivationView()
     }
 
-    func updateNSView(_: NSView, context _: Context) {}
+    func updateNSView(_: NSView, context _: Context) {
+        // Activation is tied to `viewDidMoveToWindow`; this representable has
+        // no mutable input whose later SwiftUI updates should reactivate or
+        // reorder the already-installed window.
+    }
 
     private final class ActivationView: NSView {
         override func viewDidMoveToWindow() {
@@ -367,7 +371,11 @@ final class DebugUITestClipboardMonitorProbe: ObservableObject {
     @Published private(set) var observationCount = 0
     @Published private(set) var lastDisposition = "none"
 
-    private init() {}
+    private init() {
+        // The shared probe is the single process-wide observation stream; a
+        // private initializer prevents additional instances from splitting
+        // clipboard-monitor events across independent counters.
+    }
 
     func record(_ outcome: ClipboardCaptureService.CaptureOutcome) {
         observationCount += 1

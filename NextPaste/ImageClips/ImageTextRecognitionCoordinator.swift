@@ -100,7 +100,11 @@ final class ImageTextRecognitionCoordinator: ObservableObject {
         _ request: ImageTextRecognitionRequest,
         imageURL: URL,
         isCurrentItem: @escaping CurrentItemValidator,
-        completion: @escaping CopyCompletion = { _ in }
+        completion: @escaping CopyCompletion = { _ in
+            // Callers that do not present copy feedback intentionally observe
+            // completion through the coordinator's published state and return
+            // disposition, so no additional callback side effect is required.
+        }
     ) async -> ImageTextRecognitionRequestDisposition {
         supersedePriorCopyIntent(with: request)
 

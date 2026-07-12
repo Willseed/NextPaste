@@ -144,7 +144,8 @@ struct RelaunchStabilityTests {
 
         let homeSource = try source(at: "NextPaste/HomeView.swift")
         #expect(homeSource.contains("#if DEBUG && os(macOS)"))
-        #expect(homeSource.contains("DebugUITestLaunchEnvironment() != nil"))
+        #expect(homeSource.contains("Self.debugUISurfacesAreEnabled()"))
+        #expect(homeSource.contains("DebugUITestLaunchEnvironment("))
     }
 
     @Test("shared OCR cancellation is owned by the app lifecycle rather than one window")

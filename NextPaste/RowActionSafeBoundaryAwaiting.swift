@@ -39,10 +39,17 @@ internal protocol RowActionSafeBoundaryAwaiting: AnyObject {
 internal final class NoOpSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
     static let shared = NoOpSafeBoundaryAwaiter()
 
-    private init() {}
+    private init() {
+        // This stateless singleton represents platforms without AppKit's native
+        // row-action teardown lifecycle, so it owns no observer or task state.
+    }
 
     func prepareToWaitForSafeBoundary() -> RowActionSafeBoundaryPreparation {
-        return .prepared({})
+        return .prepared({
+            // Non-macOS rows have no NSTableView action surface to release;
+            // completing immediately preserves the cross-platform contract
+            // without inventing an unrelated scheduling delay.
+        })
     }
 }
 #endif

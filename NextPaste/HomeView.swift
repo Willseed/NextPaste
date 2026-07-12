@@ -2131,7 +2131,11 @@ struct HomeView: View {
     #else
     internal var safeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
         get { NoOpSafeBoundaryAwaiter.shared }
-        nonmutating set { /* no-op on non-macOS; reconciliation is macOS-only */ }
+        nonmutating set {
+            // Non-macOS platforms never start AppKit row-action
+            // reconciliation, so an injected native lifecycle awaiter cannot
+            // be retained or consumed by any product path.
+        }
     }
     #endif
 
@@ -2325,7 +2329,11 @@ struct HomeView: View {
             .accessibilityLabel("Copy Image Text")
 
         case .recognizing:
-            Button(action: {}) {
+            Button(action: {
+                // This disabled menu row reports in-progress status only; it
+                // must not enqueue a second recognition request if invoked by
+                // an accessibility client during menu-state reconciliation.
+            }) {
                 Label("Recognizing Image Text…", systemImage: "text.viewfinder")
             }
             .disabled(true)
@@ -2333,7 +2341,10 @@ struct HomeView: View {
             .accessibilityLabel("Recognizing Image Text")
 
         case .noText:
-            Button(action: {}) {
+            Button(action: {
+                // This disabled menu row exposes the terminal no-text result;
+                // activation must not restart recognition or alter copy state.
+            }) {
                 Label("No Text Found in Image", systemImage: "text.magnifyingglass")
             }
             .disabled(true)
@@ -2341,7 +2352,11 @@ struct HomeView: View {
             .accessibilityLabel("No Text Found in Image")
 
         case .failed:
-            Button(action: {}) {
+            Button(action: {
+                // This disabled row is a failure status label; recovery belongs
+                // exclusively to the separate Retry action below so one user
+                // command cannot start duplicate recognition work.
+            }) {
                 Label("Image Text Recognition Failed", systemImage: "exclamationmark.triangle")
             }
             .disabled(true)
@@ -2432,8 +2447,6 @@ struct HomeView: View {
                     value: ClipDatasetIntegritySnapshot.digest(for: visibleClips),
                     label: "Content-free history integrity digest"
                 )
-            }
-            if isUITesting {
                 accessibilityMarker(
                     identifier: "pin-scroll-execution-count",
                     value: "\(uiTestPinScrollExecutionCount)",
@@ -2474,8 +2487,6 @@ struct HomeView: View {
                     value: uiTestAppliedWindowSize,
                     label: "UI test window size applied"
                 )
-            }
-            if isUITesting {
                 ForEach(imageTextRecognitionTaskKey, id: \.itemID) { request in
                     accessibilityMarker(
                         identifier: "image-ocr-state-\(request.itemID.uuidString)",
@@ -2638,7 +2649,17 @@ struct HomeView: View {
     }
 
     private var isUITesting: Bool {
-        DebugUITestLaunchEnvironment() != nil
+        Self.debugUISurfacesAreEnabled()
+    }
+
+    internal static func debugUISurfacesAreEnabled(
+        arguments: [String] = ProcessInfo.processInfo.arguments,
+        environment: [String: String] = ProcessInfo.processInfo.environment
+    ) -> Bool {
+        DebugUITestLaunchEnvironment(
+            arguments: arguments,
+            environment: environment
+        ) != nil
     }
 
     private var launchWindowSizePreset: HistoryUITestWindowSize? {

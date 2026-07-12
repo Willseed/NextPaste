@@ -41,8 +41,15 @@ public protocol PersistenceLoadDiagnosticsSink: Sendable {
 }
 
 public struct NullPersistenceLoadDiagnosticsSink: PersistenceLoadDiagnosticsSink {
-    public init() {}
-    public func emit(_: PersistenceLoadDiagnosticRecord) {}
+    public init() {
+        // This stateless sink is an explicit opt-out boundary, so construction
+        // intentionally allocates no logger, storage, or retained state.
+    }
+
+    public func emit(_: PersistenceLoadDiagnosticRecord) {
+        // The null sink deliberately discards diagnostics when a caller opts
+        // out; recording here would violate that dependency-injection contract.
+    }
 }
 
 public struct SystemPersistenceLoadDiagnosticsSink: PersistenceLoadDiagnosticsSink {
