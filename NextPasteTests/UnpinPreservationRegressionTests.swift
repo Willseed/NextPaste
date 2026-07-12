@@ -148,6 +148,137 @@ struct UnpinPreservationRegressionTests {
         #expect(refetched != nil, "The clip must still exist after unpin")
     }
 
+    @Test("Text、圖片、檔案取消釘選都只改 pinned 狀態且不改變總筆數")
+    func textImageAndFileUnpinOnlyFlipsPinnedStateAndKeepsCount() throws {
+        for kind in UnpinRegressionClipKind.allCases {
+            let context = try SwiftDataTestSupport.makeInMemoryContext()
+            let target = makeFixture(kind: kind, createdAt: Date(timeIntervalSince1970: 100), isPinned: true)
+            context.insert(target)
+            var baseItems: [ClipItem] = []
+            for index in 0..<3 {
+                baseItems.append(
+                    ClipItem(
+                        textContent: "u-\(kind.rawValue)-\(index)",
+                        createdAt: Date(timeIntervalSince1970: 200 + Double(index)),
+                        isPinned: false
+                    )
+                )
+            }
+            baseItems.forEach(context.insert)
+            try context.save()
+
+            let store = makeProductionWiredStore(in: context, limit: 500)
+            let countBefore = try SwiftDataTestSupport.fetchHistory(in: context).count
+
+            _ = store.setPinned(false, for: target.id)
+
+            let after = try SwiftDataTestSupport.fetchHistory(in: context)
+            #expect(after.count == countBefore, "Unpin must not change item count")
+
+            let reloaded = try #require(after.first { $0.id == target.id })
+            #expect(reloaded.id == target.id)
+            kind.assertContentMatches(original: target, reloaded: reloaded)
+            #expect(reloaded.isPinned == false, "\(kind.rawValue) clip should be unpinned")
+            #expect(after.filter { $0.id == target.id }.count == 1, "No duplicates should be created for \(kind.rawValue) clips")
+        }
+    }
+
+    @Test("文字、圖片、檔案快速切換釘選/取消釘選不會重複、不會刪除、最終只存最後狀態")
+    func rapidPinUnpinTextImageFileSwitchesDoNotDuplicateOrDelete() throws {
+        for kind in UnpinRegressionClipKind.allCases {
+            let context = try SwiftDataTestSupport.makeInMemoryContext()
+            let target = makeFixture(kind: kind, createdAt: Date(timeIntervalSince1970: 100), isPinned: false)
+            context.insert(target)
+            for index in 0..<2 {
+                context.insert(
+                    ClipItem(
+                        textContent: "baseline-\(kind.rawValue)-\(index)",
+                        createdAt: Date(timeIntervalSince1970: 200 + Double(index)),
+                        isPinned: false
+                    )
+                )
+            }
+            try context.save()
+
+            let store = makeProductionWiredStore(in: context, limit: 500)
+            for index in 0..<12 {
+                let desiredPinned = index % 2 == 0
+                _ = store.setPinned(desiredPinned, for: target.id)
+            }
+
+            let after = try SwiftDataTestSupport.fetchHistory(in: context)
+            #expect(after.count == 3, "Rapid switch should not change total rows for \(kind.rawValue)")
+            let reloaded = try #require(after.first { $0.id == target.id })
+            #expect(reloaded.id == target.id)
+            #expect(reloaded.isPinned == false, "Final state should match last desired state for \(kind.rawValue)")
+            #expect(after.filter { $0.id == target.id }.count == 1, "\(kind.rawValue) should not duplicate under rapid switching")
+        }
+    }
+
+    @Test("文字、圖片、檔案在上限情境下取消釘選也不被刪除")
+    func textImageAndFileUnpinAtCapacityPreservesTargetItem() throws {
+        for kind in UnpinRegressionClipKind.allCases {
+            let context = try SwiftDataTestSupport.makeInMemoryContext()
+            let pinned = makeFixture(kind: kind, createdAt: Date(timeIntervalSince1970: 100), isPinned: true)
+            context.insert(pinned)
+            var unpinned: [ClipItem] = []
+            for index in 0..<3 {
+                unpinned.append(
+                    ClipItem(
+                        textContent: "u-\(kind.rawValue)-\(index)",
+                        createdAt: Date(timeIntervalSince1970: 200 + Double(index)),
+                        isPinned: false
+                    )
+                )
+            }
+            unpinned.forEach(context.insert)
+            try context.save()
+
+            let store = makeProductionWiredStore(in: context, limit: 3)
+            _ = store.setPinned(false, for: pinned.id)
+
+            let after = try SwiftDataTestSupport.fetchHistory(in: context)
+            let unpinnedAfter = after.filter { !$0.isPinned }
+            let survived = after.first { $0.id == pinned.id }
+            #expect(survived != nil, "Capacity protection should preserve unpinned \(kind.rawValue) target")
+            #expect(unpinnedAfter.contains { $0.id == pinned.id }, "\(kind.rawValue) target should be present among unpinned items")
+            #expect(unpinnedAfter.count == 3, "Unpinned capacity should stay at 3 for \(kind.rawValue) scenario")
+            #expect(after.filter { $0.id == pinned.id }.count == 1, "No duplicates after capacity rebalancing for \(kind.rawValue)")
+        }
+    }
+
+    @Test("文字、圖片、檔案取消釘選後重啟仍保留資料與穩定識別碼")
+    func textImageAndFileUnpinPersistsAfterRestart() throws {
+        let storeURL = try SwiftDataTestSupport.makeOnDiskContainerURL()
+        defer { SwiftDataTestSupport.removeTemporaryOnDiskContainer(at: storeURL) }
+
+        let container = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let context = ModelContext(container)
+        let fixtures = UnpinRegressionClipKind.allCases.map {
+            makeFixture(kind: $0, createdAt: Date(timeIntervalSince1970: 100 + Double($0.index)), isPinned: true)
+        }
+
+        fixtures.forEach(context.insert)
+        try context.save()
+
+        let store = makeProductionWiredStore(in: context, limit: 500)
+        for fixture in fixtures {
+            _ = store.setPinned(false, for: fixture.id)
+        }
+
+        let reloadedContainer = try SwiftDataTestSupport.makeOnDiskContainer(at: storeURL)
+        let reloadedContext = ModelContext(reloadedContainer)
+        let reloaded = try SwiftDataTestSupport.fetchHistory(in: reloadedContext)
+        #expect(reloaded.count == fixtures.count, "All clips should remain after restart")
+
+        for fixture in fixtures {
+            let clip = try #require(reloaded.first { $0.id == fixture.id })
+            #expect(clip.id == fixture.id, "Stable ID should persist for restart check: \(fixture.id)")
+            #expect(clip.isPinned == false, "Restarted state should keep \(kind(for: clip.id).rawValue) clip unpinned")
+            kind(for: fixture.id).assertContentMatches(original: fixture, reloaded: clip)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Builds a PinStateMutationStore wired exactly like production: the
@@ -163,5 +294,100 @@ struct UnpinPreservationRegressionTests {
             )
         }
         return store
+    }
+
+    private enum UnpinRegressionClipKind: String, CaseIterable {
+        case text
+        case image
+        case file
+
+        var index: Int {
+            switch self {
+            case .text:
+                return 0
+            case .image:
+                return 1
+            case .file:
+                return 2
+            }
+        }
+
+        var identifier: UUID {
+            let raw: String
+            switch self {
+            case .text:
+                raw = "00000000-0000-0000-0000-000000000101"
+            case .image:
+                raw = "00000000-0000-0000-0000-000000000102"
+            case .file:
+                raw = "00000000-0000-0000-0000-000000000103"
+            }
+            return UUID(uuidString: raw)!
+        }
+
+        func makeFixture(createdAt: Date, isPinned: Bool) -> ClipItem {
+            switch self {
+            case .text:
+                return ClipItem(
+                    id: identifier,
+                    textContent: "\(rawValue)-target",
+                    createdAt: createdAt,
+                    isPinned: isPinned
+                )
+            case .image:
+                let imageFixture = ImageTestFixtures.png
+                return ClipItem.imageClip(
+                    ImageClipInitialization(
+                        id: identifier,
+                        metadata: .init(
+                            hash: "sha256-\(rawValue)-\(identifier.uuidString)",
+                            dimensions: .init(width: imageFixture.width, height: imageFixture.height),
+                            byteCount: imageFixture.byteCount,
+                            utType: imageFixture.typeIdentifier,
+                            filename: "\(identifier.uuidString).png",
+                            thumbnail: .init(
+                                filename: "\(identifier.uuidString).thumb.png",
+                                description: imageFixture.thumbnailDescription
+                            )
+                        ),
+                        createdAt: createdAt,
+                        isPinned: isPinned
+                    )
+                )
+            case .file:
+                return ClipItem(
+                    id: identifier,
+                    contentType: "file",
+                    textContent: "\(identifier.uuidString).txt",
+                    createdAt: createdAt,
+                    isPinned: isPinned
+                )
+            }
+        }
+
+        func assertContentMatches(original: ClipItem, reloaded: ClipItem) {
+            #expect(reloaded.id == original.id)
+            #expect(reloaded.contentType == original.contentType)
+            #expect(reloaded.textContent == original.textContent)
+            if case .image = self {
+                #expect(reloaded.imageFilename == original.imageFilename)
+                #expect(reloaded.thumbnailFilename == original.thumbnailFilename)
+                #expect(reloaded.imageUTType == original.imageUTType)
+            }
+        }
+    }
+
+    private func makeFixture(kind: UnpinRegressionClipKind, createdAt: Date, isPinned: Bool) -> ClipItem {
+        return kind.makeFixture(createdAt: createdAt, isPinned: isPinned)
+    }
+
+    private func kind(for id: UUID) -> UnpinRegressionClipKind {
+        if id == UnpinRegressionClipKind.text.identifier {
+            return .text
+        }
+        if id == UnpinRegressionClipKind.image.identifier {
+            return .image
+        }
+        return .file
     }
 }
