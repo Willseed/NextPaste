@@ -203,7 +203,15 @@ final class PinScrollAutomationUITests: UITestCase {
         let target = row(index: targetIndex, in: app)
 
         revealPinOnce(index: targetIndex, in: app).tap()
-        // Change the real searchable projection immediately after Pin. Do not
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                self.markerValue(Marker.pendingItemID, in: app) == targetID
+                    && self.markerValue(Marker.executionCount, in: app) == "0"
+            },
+            "Pin action must publish its pending stable-ID scroll request before search cancellation"
+        )
+        // Change the real searchable projection while the Pin request is still
+        // pending. The projection update is the cancellation boundary; do not
         // let a terminal Pin-scroll marker serialize these two user actions.
         history.enterSearchQuery(UITestFixtures.PinScroll.searchVisibleQuery)
         history.assertVisibleClipCount(16)
