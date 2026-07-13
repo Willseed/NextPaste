@@ -211,7 +211,7 @@ final class RelaunchStabilityUITests: UITestCase {
         for round in 1...10 {
             let clipboard = clipboardRobot(for: app)
             for index in 0..<10 {
-                clipboard.capture("Relaunch round \(round) auto capture \(index)", timeout: 3)
+                clipboard.capture("Relaunch round \(round) auto capture \(index)")
                 expectedCount += 1
             }
             let target = "Relaunch round \(round) auto capture 0"
