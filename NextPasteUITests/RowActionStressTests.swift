@@ -38,6 +38,11 @@ final class RowActionStressTests: UITestCase {
         case image
     }
 
+    private enum Feature025InterleavedTarget {
+        case text(Int)
+        case image(Int)
+    }
+
     // MARK: - Scenario A stress: 3 pinned -> native swipe Unpin one pinned clip (x20)
 
     @MainActor
@@ -785,25 +790,62 @@ final class RowActionStressTests: UITestCase {
     @MainActor
     func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart1() throws {
         try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
-            textTargetIndices: [381, 382, 383, 385, 386],
-            imageTargetIndices: [91, 92, 93, 94, 96],
+            targets: [
+                .text(381),
+                .image(91),
+                .text(382),
+                .image(92),
+                .text(383)
+            ],
             scenario: "Feature025-20-part1"
+        )
+    }
+
+    @MainActor
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart1Part2() throws {
+        try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+            targets: [
+                .image(93),
+                .text(385),
+                .image(94),
+                .text(386),
+                .image(96)
+            ],
+            scenario: "Feature025-20-part1-actions-06-10"
         )
     }
 
     @MainActor
     func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart2() throws {
         try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
-            textTargetIndices: [387, 389, 390, 391, 393],
-            imageTargetIndices: [97, 98, 99, 86, 87],
+            targets: [
+                .text(387),
+                .image(97),
+                .text(389),
+                .image(98),
+                .text(390)
+            ],
             scenario: "Feature025-20-part2"
         )
     }
 
     @MainActor
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart2Part2() throws {
+        try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+            targets: [
+                .image(99),
+                .text(391),
+                .image(86),
+                .text(393),
+                .image(87)
+            ],
+            scenario: "Feature025-20-part2-actions-16-20"
+        )
+    }
+
+    @MainActor
     private func runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
-        textTargetIndices: [Int],
-        imageTargetIndices: [Int],
+        targets: [Feature025InterleavedTarget],
         scenario: String
     ) throws {
         executionTimeAllowance = 30 * 60
@@ -819,22 +861,27 @@ final class RowActionStressTests: UITestCase {
 
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
-        let textTargets = textTargetIndices
-            .map { String(format: "Relaunch dataset text %03d", $0) }
-        let imageTargets = imageTargetIndices
-            .map { String(format: "Relaunch dataset image %03d", $0) }
+        var textTargets: [String] = []
+        var imageTargets: [String] = []
         var outcomes: [String] = []
 
-        for pair in zip(textTargets, imageTargets) {
-            history.clearSearch().enterSearchQuery(pair.0)
-            row.revealPinActionWithRightSwipe(for: pair.0, expectedLabel: "Pin").tap()
-            XCTAssertEqual(app.state, .runningForeground)
-            outcomes.append("pin-text-\(pair.0): \(app.state)")
-
-            history.clearSearch().enterSearchQuery(pair.1)
-            row.revealPinActionForSoleVisibleImageSearchResult().tap()
-            XCTAssertEqual(app.state, .runningForeground)
-            outcomes.append("pin-image-\(pair.1): \(app.state)")
+        for target in targets {
+            switch target {
+            case .text(let index):
+                let text = String(format: "Relaunch dataset text %03d", index)
+                textTargets.append(text)
+                history.clearSearch().enterSearchQuery(text)
+                row.revealPinActionWithRightSwipe(for: text, expectedLabel: "Pin").tap()
+                XCTAssertEqual(app.state, .runningForeground)
+                outcomes.append("pin-text-\(text): \(app.state)")
+            case .image(let index):
+                let image = String(format: "Relaunch dataset image %03d", index)
+                imageTargets.append(image)
+                history.clearSearch().enterSearchQuery(image)
+                row.revealPinActionForSoleVisibleImageSearchResult().tap()
+                XCTAssertEqual(app.state, .runningForeground)
+                outcomes.append("pin-image-\(image): \(app.state)")
+            }
         }
 
         for text in textTargets {
