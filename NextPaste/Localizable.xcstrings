@@ -1214,6 +1214,38 @@
         }
       }
     },
+    "Open Pin scroll context menu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Pin scroll context menu"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟釘選捲動內容選單"
+          }
+        }
+      }
+    },
+    "Opens the native context menu for the seeded stable-ID target": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the native context menu for the seeded stable-ID target"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開啟已建立穩定 ID 目標的原生內容選單"
+          }
+        }
+      }
+    },
     "Option": {
       "localizations": {
         "en": {
@@ -1258,6 +1290,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "釘選"
+          }
+        }
+      }
+    },
+    "Pin scroll context menu trigger": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pin scroll context menu trigger"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "釘選捲動內容選單觸發器"
           }
         }
       }
