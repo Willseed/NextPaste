@@ -334,6 +334,21 @@ final class PinScrollAutomationUITests: UITestCase {
         assertMarker(Marker.lastDecision, equals: "none", in: app)
         assertMarker(Marker.pendingItemID, equals: "none", in: app)
 
+        let list = app.descendants(matching: .any)["clip-history-list"]
+        list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
+            .swipeUp(velocity: .fast)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let visibleIDs = self.markerValue(Marker.visibleItemIDs, in: app)?
+                    .split(separator: ",")
+                    .map(String.init) ?? []
+                return target.exists
+                    && target.isHittable == false
+                    && visibleIDs.contains(targetID) == false
+            },
+            "Geometry checkpoint: the keyboard Pin target must be offscreen before Pin activation"
+        )
+
         try moveMenuSelection(to: pinMenuItem, in: app)
         XCTAssertTrue(
             pinMenuItem.isSelected,
