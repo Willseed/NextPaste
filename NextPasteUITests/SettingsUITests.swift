@@ -197,7 +197,7 @@ final class SettingsUITests: UITestCase {
 
     @MainActor
     func testSettingsSectionsAndCoreControlsArePresentInEveryTab() throws {
-        let app = launchApp()
+        let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
         let settingsWindow = openSettingsWindow(in: app)
 
         openSettingsTab(Accessibility.generalTab, in: app)
