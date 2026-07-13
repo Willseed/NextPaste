@@ -363,15 +363,16 @@ enum UITestAssertions {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let feedbackPredicate = NSPredicate(
-            format: "identifier == %@ AND label == %@",
-            UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier,
-            UITestFixtures.ImageClipboard.Accessibility.copyFeedbackLabel
-        )
         assertExists(
-            app.descendants(matching: .any).matching(feedbackPredicate).firstMatch,
-            "Expected copied feedback with its accessible label",
+            copyFeedbackElement(in: app),
+            "Expected copied feedback",
             timeout: timeout,
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            app.staticTexts[UITestFixtures.ImageClipboard.Accessibility.copyFeedbackLabel].exists,
+            "Expected copied feedback with its accessible label",
             file: file,
             line: line
         )
