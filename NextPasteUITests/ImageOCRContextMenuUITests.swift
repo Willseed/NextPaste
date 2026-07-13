@@ -80,8 +80,18 @@ final class ImageOCRContextMenuUITests: UITestCase {
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"]
         )
         let clipboard = clipboardRobot(for: app)
+        clipboard.writeImageFixtureForAutoCapture(UITestFixtures.ImageClipboard.activePNG)
+        UITestAssertions.assertImageRowCount(equals: 1, in: app)
+        let imageRowPredicate = NSPredicate(
+            format: "identifier BEGINSWITH %@",
+            UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix
+        )
+        let capturedImageRow = UITestAssertions.assertExists(
+            app.descendants(matching: .any).matching(imageRowPredicate).firstMatch,
+            "Expected a locale-independent captured image row"
+        )
         let imageRow = prepareSentinel(
-            for: capture(UITestFixtures.ImageClipboard.activePNG, clipboard: clipboard),
+            for: capturedImageRow,
             clipboard: clipboard,
             in: app
         )
