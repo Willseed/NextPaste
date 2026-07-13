@@ -918,8 +918,8 @@ final class ClipRowActionsUITests: UITestCase {
         let clipboard = clipboardRobot(for: app)
         let row = rowRobot(for: app)
 
-        clipboard.capture(UITestFixtures.RowActions.autoCapturedAction)
-        clipboard.capture(UITestFixtures.RowActions.autoCapturedCompanion)
+        clipboard.capture(UITestFixtures.RowActions.autoCapturedAction, timeout: 10)
+        clipboard.capture(UITestFixtures.RowActions.autoCapturedCompanion, timeout: 10)
         let autoCapturedActionIdentifier = assertTextRowIdentifier(
             for: UITestFixtures.RowActions.autoCapturedAction,
             in: app
