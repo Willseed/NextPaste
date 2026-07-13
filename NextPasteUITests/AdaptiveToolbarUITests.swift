@@ -167,15 +167,21 @@ final class AdaptiveToolbarUITests: UITestCase {
         )
         XCTAssertTrue(pinnedMenuOption.isHittable, "Expected pinned filter menu item to be reachable")
         app.typeKey(.escape, modifierFlags: [])
+        app.typeKey(.escape, modifierFlags: [])
 
         UITestAssertions.assertExists(
             app.descendants(matching: .any)["toolbar-more-menu"],
             "Expected More menu to remain available after closing Filter"
         ).tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["history-overflow-menu"]
+            app.descendants(matching: .any)["menu-clear-unpinned-history"]
                 .waitForExistence(timeout: UITestAssertions.defaultTimeout),
-            "Expected history menu entry to remain in compact mode"
+            "Expected Clear Unpinned History to remain in compact mode"
+        )
+        XCTAssertTrue(
+            app.descendants(matching: .any)["menu-clear-all-history"]
+                .waitForExistence(timeout: UITestAssertions.defaultTimeout),
+            "Expected Clear All History to remain in compact mode"
         )
         app.typeKey(.escape, modifierFlags: [])
 
