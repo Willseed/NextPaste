@@ -874,7 +874,7 @@ final class SettingsUITests: UITestCase {
         )
         assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
 
-        app.typeKey(.space, modifierFlags: [])
+        updatedAppearancePicker.typeKey(.space, modifierFlags: [])
         let currentLanguageMenuItem = UITestAssertions.assertExists(
             app.menuItems[Accessibility.localizedTraditionalChineseTaiwan],
             "Application-level Space must reopen the focused language menu"
