@@ -212,9 +212,9 @@ final class PinScrollAutomationUITests: UITestCase {
             UITestAssertions.waitForDisappearance(of: target, timeout: UITestAssertions.defaultTimeout),
             "Search-hidden target must leave the active projection"
         )
-        assertMarker(Marker.executionCount, equals: "1", in: app)
+        assertMarker(Marker.executionCount, equals: "0", in: app)
         assertMarker(Marker.lastItemID, equals: targetID, in: app)
-        assertMarker(Marker.lastDecision, equals: "scroll", in: app)
+        assertMarker(Marker.lastDecision, equals: "cancel", in: app)
         assertMarker(Marker.pendingItemID, equals: "none", in: app)
     }
 
