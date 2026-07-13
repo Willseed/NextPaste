@@ -360,7 +360,7 @@ final class SettingsUITests: UITestCase {
             "Expected parseable high input to clamp to 1000"
         )
 
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        setSlider(slider, to: .minimum, in: settingsWindow)
         XCTAssertTrue(
             waitForTextInputValue(field, equals: "1", timeout: UITestAssertions.defaultTimeout),
             "Expected Slider and TextField to remain synchronized at the minimum"
@@ -384,10 +384,8 @@ final class SettingsUITests: UITestCase {
         let reopenedSlider = historyLimitSlider(in: reopenedSettings)
         setSlider(
             reopenedSlider,
-            field: relaunchedField,
             to: .maximum,
-            in: reopenedSettings,
-            application: relaunchedApp
+            in: reopenedSettings
         )
         XCTAssertTrue(
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
@@ -481,7 +479,7 @@ final class SettingsUITests: UITestCase {
         commitHistoryLimit("1", field: field, slider: slider, app: app, expectedValue: "1")
         commitHistoryLimit("1000", field: field, slider: slider, app: app, expectedValue: "1000")
 
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        setSlider(slider, to: .minimum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
 
         assertSliderInteractionGeometry(slider, in: settingsWindow)
@@ -501,7 +499,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertEqual(intermediateValue, String(intermediateInteger), "Slider accessibility value must not be fractional")
         XCTAssertEqual(textInputValue(of: field), intermediateValue)
 
-        setSlider(slider, field: field, to: .maximum, in: settingsWindow, application: app)
+        setSlider(slider, to: .maximum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
     }
 
@@ -1009,7 +1007,7 @@ final class SettingsUITests: UITestCase {
             "Slider must expose its semantic 1...1000 value through Accessibility"
         )
 
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        setSlider(slider, to: .minimum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         assertSliderInteractionGeometry(slider, in: settingsWindow)
         slider.adjust(toNormalizedSliderPosition: 0.5)
@@ -1022,7 +1020,7 @@ final class SettingsUITests: UITestCase {
             },
             "A native midpoint Slider adjustment must synchronize an intermediate integer"
         )
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        setSlider(slider, to: .minimum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         field.tap()
         field.typeKey(.tab, modifierFlags: [])
@@ -1068,7 +1066,7 @@ final class SettingsUITests: UITestCase {
         )
         assertHistoryLimitValues(field: field, slider: slider, equal: "276")
 
-        setSlider(slider, field: field, to: .maximum, in: settingsWindow, application: app)
+        setSlider(slider, to: .maximum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
 
         try performProductAccessibilityAudit(in: app)
@@ -1690,10 +1688,8 @@ final class SettingsUITests: UITestCase {
 
     private func setSlider(
         _ slider: XCUIElement,
-        field: XCUIElement,
         to boundary: SliderBoundary,
         in settingsWindow: XCUIElement,
-        application app: XCUIApplication,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
