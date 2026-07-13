@@ -75,6 +75,18 @@ final class SettingsUITests: UITestCase {
         static let maximum = 1_000
     }
 
+    private struct ClearDialogControls {
+        let triggerIdentifier: String
+        let confirmIdentifier: String
+        let cancelIdentifier: String
+    }
+
+    private struct ClearDialogExpectation {
+        let title: String
+        let message: String
+        let cancelLabel: String
+    }
+
     private enum LocalizedLabel {
         static let englishTabs = [
             (Accessibility.generalTab, "General"),
@@ -1122,12 +1134,16 @@ final class SettingsUITests: UITestCase {
         openSettingsTab(Accessibility.privacyTab, in: englishApp)
 
         var dialog = openClearDialog(
-            trigger: Accessibility.settingsClearUnpinnedHistory,
-            confirm: Accessibility.settingsConfirmClearUnpinned,
-            cancel: Accessibility.settingsCancelClearUnpinned,
-            expectedTitle: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
-            expectedMessage: LocalizedLabel.englishClearUnpinnedDialogMessage,
-            expectedCancelLabel: "Cancel",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearUnpinnedHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearUnpinned,
+                cancelIdentifier: Accessibility.settingsCancelClearUnpinned
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
+                message: LocalizedLabel.englishClearUnpinnedDialogMessage,
+                cancelLabel: "Cancel"
+            ),
             in: settingsWindow,
             application: englishApp
         )
@@ -1135,12 +1151,16 @@ final class SettingsUITests: UITestCase {
         englishHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearUnpinnedHistory,
-            confirm: Accessibility.settingsConfirmClearUnpinned,
-            cancel: Accessibility.settingsCancelClearUnpinned,
-            expectedTitle: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
-            expectedMessage: LocalizedLabel.englishClearUnpinnedDialogMessage,
-            expectedCancelLabel: "Cancel",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearUnpinnedHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearUnpinned,
+                cancelIdentifier: Accessibility.settingsCancelClearUnpinned
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
+                message: LocalizedLabel.englishClearUnpinnedDialogMessage,
+                cancelLabel: "Cancel"
+            ),
             in: settingsWindow,
             application: englishApp
         )
@@ -1148,12 +1168,16 @@ final class SettingsUITests: UITestCase {
         englishHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearAllHistory,
-            confirm: Accessibility.settingsConfirmClearAll,
-            cancel: Accessibility.settingsCancelClearAll,
-            expectedTitle: LocalizedLabel.englishClearAllConfirmationTitle,
-            expectedMessage: LocalizedLabel.englishClearAllDialogMessage,
-            expectedCancelLabel: "Cancel",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearAllHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearAll,
+                cancelIdentifier: Accessibility.settingsCancelClearAll
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.englishClearAllConfirmationTitle,
+                message: LocalizedLabel.englishClearAllDialogMessage,
+                cancelLabel: "Cancel"
+            ),
             in: settingsWindow,
             application: englishApp
         )
@@ -1161,12 +1185,16 @@ final class SettingsUITests: UITestCase {
         englishHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearAllHistory,
-            confirm: Accessibility.settingsConfirmClearAll,
-            cancel: Accessibility.settingsCancelClearAll,
-            expectedTitle: LocalizedLabel.englishClearAllConfirmationTitle,
-            expectedMessage: LocalizedLabel.englishClearAllDialogMessage,
-            expectedCancelLabel: "Cancel",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearAllHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearAll,
+                cancelIdentifier: Accessibility.settingsCancelClearAll
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.englishClearAllConfirmationTitle,
+                message: LocalizedLabel.englishClearAllDialogMessage,
+                cancelLabel: "Cancel"
+            ),
             in: settingsWindow,
             application: englishApp
         )
@@ -1186,12 +1214,16 @@ final class SettingsUITests: UITestCase {
         openSettingsTab(Accessibility.privacyTab, in: chineseApp)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearUnpinnedHistory,
-            confirm: Accessibility.settingsConfirmClearUnpinned,
-            cancel: Accessibility.settingsCancelClearUnpinned,
-            expectedTitle: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
-            expectedMessage: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
-            expectedCancelLabel: "取消",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearUnpinnedHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearUnpinned,
+                cancelIdentifier: Accessibility.settingsCancelClearUnpinned
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
+                message: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
+                cancelLabel: "取消"
+            ),
             in: settingsWindow,
             application: chineseApp
         )
@@ -1199,12 +1231,16 @@ final class SettingsUITests: UITestCase {
         chineseHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearUnpinnedHistory,
-            confirm: Accessibility.settingsConfirmClearUnpinned,
-            cancel: Accessibility.settingsCancelClearUnpinned,
-            expectedTitle: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
-            expectedMessage: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
-            expectedCancelLabel: "取消",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearUnpinnedHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearUnpinned,
+                cancelIdentifier: Accessibility.settingsCancelClearUnpinned
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
+                message: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
+                cancelLabel: "取消"
+            ),
             in: settingsWindow,
             application: chineseApp
         )
@@ -1212,12 +1248,16 @@ final class SettingsUITests: UITestCase {
         chineseHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearAllHistory,
-            confirm: Accessibility.settingsConfirmClearAll,
-            cancel: Accessibility.settingsCancelClearAll,
-            expectedTitle: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
-            expectedMessage: LocalizedLabel.traditionalChineseClearAllDialogMessage,
-            expectedCancelLabel: "取消",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearAllHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearAll,
+                cancelIdentifier: Accessibility.settingsCancelClearAll
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
+                message: LocalizedLabel.traditionalChineseClearAllDialogMessage,
+                cancelLabel: "取消"
+            ),
             in: settingsWindow,
             application: chineseApp
         )
@@ -1225,12 +1265,16 @@ final class SettingsUITests: UITestCase {
         chineseHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
 
         dialog = openClearDialog(
-            trigger: Accessibility.settingsClearAllHistory,
-            confirm: Accessibility.settingsConfirmClearAll,
-            cancel: Accessibility.settingsCancelClearAll,
-            expectedTitle: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
-            expectedMessage: LocalizedLabel.traditionalChineseClearAllDialogMessage,
-            expectedCancelLabel: "取消",
+            controls: ClearDialogControls(
+                triggerIdentifier: Accessibility.settingsClearAllHistory,
+                confirmIdentifier: Accessibility.settingsConfirmClearAll,
+                cancelIdentifier: Accessibility.settingsCancelClearAll
+            ),
+            expectation: ClearDialogExpectation(
+                title: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
+                message: LocalizedLabel.traditionalChineseClearAllDialogMessage,
+                cancelLabel: "取消"
+            ),
             in: settingsWindow,
             application: chineseApp
         )
@@ -1311,35 +1355,31 @@ final class SettingsUITests: UITestCase {
     }
 
     private func openClearDialog(
-        trigger triggerIdentifier: String,
-        confirm confirmIdentifier: String,
-        cancel cancelIdentifier: String,
-        expectedTitle: String,
-        expectedMessage: String,
-        expectedCancelLabel: String,
+        controls: ClearDialogControls,
+        expectation: ClearDialogExpectation,
         in settingsWindow: XCUIElement,
         application app: XCUIApplication,
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> (confirm: XCUIElement, cancel: XCUIElement) {
-        let trigger = settingsWindow.buttons[triggerIdentifier]
+        let trigger = settingsWindow.buttons[controls.triggerIdentifier]
         assertAccessibleControl(trigger, named: "Clear-history dialog trigger", file: file, line: line)
         trigger.tap()
 
-        let confirm = settingsWindow.buttons[confirmIdentifier]
-        let cancel = settingsWindow.buttons[cancelIdentifier]
+        let confirm = settingsWindow.buttons[controls.confirmIdentifier]
+        let cancel = settingsWindow.buttons[controls.cancelIdentifier]
         assertAccessibleControl(confirm, named: "Clear-history confirmation action", file: file, line: line)
         assertAccessibleControl(cancel, named: "Clear-history cancellation action", file: file, line: line)
-        UITestAssertions.assertAccessibleTextEquals(confirm, expectedTitle, file: file, line: line)
-        UITestAssertions.assertAccessibleTextEquals(cancel, expectedCancelLabel, file: file, line: line)
+        UITestAssertions.assertAccessibleTextEquals(confirm, expectation.title, file: file, line: line)
+        UITestAssertions.assertAccessibleTextEquals(cancel, expectation.cancelLabel, file: file, line: line)
         assertStaticTextValue(
             UITestAssertions.assertExists(
-                app.staticTexts[expectedMessage],
+                app.staticTexts[expectation.message],
                 "Expected localized clear-history confirmation message",
                 file: file,
                 line: line
             ),
-            equals: expectedMessage,
+            equals: expectation.message,
             file: file,
             line: line
         )
