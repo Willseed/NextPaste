@@ -2735,7 +2735,16 @@ struct HomeView: View {
                     value: uiTestAppliedWindowSize,
                     label: "UI test window size applied"
                 )
-                ForEach(imageTextRecognitionTaskKey, id: \.itemID) { request in
+                // Idle OCR state is the default for every image and is not
+                // actionable. Keep only requests with an observed state in
+                // the debug accessibility tree so a large relaunch dataset
+                // does not create one marker per image during first layout.
+                ForEach(
+                    imageTextRecognitionTaskKey.filter {
+                        imageTextRecognitionCoordinator.state(for: $0) != .idle
+                    },
+                    id: \.itemID
+                ) { request in
                     accessibilityMarker(
                         identifier: "image-ocr-state-\(request.itemID.uuidString)",
                         value: uiTestOCRStateValue(for: request),
