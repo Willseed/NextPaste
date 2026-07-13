@@ -2583,10 +2583,10 @@ final class ClipRowActionsUITests: UITestCase {
     /// lifecycle. No `triggerDisplayOrderReconciliation`, no synthesized
     /// reconciliation input, no fixed-duration sleep.
     @MainActor
-    func testT053ConsecutiveRunUnpinAutomaticReconciliationFreshAppStatePerExecution() throws {
-        executionTimeAllowance = 60 * 60
+    private func runT053ConsecutiveUnpinIterations(_ iterations: ClosedRange<Int>) throws {
+        executionTimeAllowance = 12 * 60
         var outcomes: [String] = []
-        for iteration in 1...Self.feature023ConsecutiveRunCount {
+        for iteration in iterations {
             try withFreshAppForConsecutiveRun { app in
 
             let history = historyRobot(for: app)
@@ -2629,6 +2629,31 @@ final class ClipRowActionsUITests: UITestCase {
             }
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
+    }
+
+    @MainActor
+    func testT053Part01ConsecutiveRunUnpinIterations01Through10() throws {
+        try runT053ConsecutiveUnpinIterations(1...10)
+    }
+
+    @MainActor
+    func testT053Part02ConsecutiveRunUnpinIterations11Through20() throws {
+        try runT053ConsecutiveUnpinIterations(11...20)
+    }
+
+    @MainActor
+    func testT053Part03ConsecutiveRunUnpinIterations21Through30() throws {
+        try runT053ConsecutiveUnpinIterations(21...30)
+    }
+
+    @MainActor
+    func testT053Part04ConsecutiveRunUnpinIterations31Through40() throws {
+        try runT053ConsecutiveUnpinIterations(31...40)
+    }
+
+    @MainActor
+    func testT053Part05ConsecutiveRunUnpinIterations41Through50() throws {
+        try runT053ConsecutiveUnpinIterations(41...Self.feature023ConsecutiveRunCount)
     }
 
     /// T054 UI test: CONSECUTIVE-RUN 50 executions of the Delete automatic
