@@ -36,6 +36,7 @@ final class RelaunchStabilityUITests: UITestCase {
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
+        assertLargeDataset(in: app)
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
 
