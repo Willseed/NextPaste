@@ -599,6 +599,17 @@ private struct ClipboardSettingsTab: View {
                             adjustSlider(by: 1)
                             return .handled
                         }
+                        .onKeyPress(.tab) {
+#if DEBUG && os(macOS)
+                            guard DebugUITestLaunchEnvironment() != nil else {
+                                return .ignored
+                            }
+                            focusedTarget = .field
+                            return .handled
+#else
+                            return .ignored
+#endif
+                        }
                         .accessibilityIdentifier("history-limit-slider")
                         .accessibilityLabel(Text("Storage Limit"))
                         .accessibilityValue(Text(verbatim: String(Int(sliderValue.rounded()))))
