@@ -574,6 +574,7 @@ private struct ClipboardSettingsTab: View {
                                 }
                             }
                         )
+                        .frame(minWidth: 180)
                         .focusable()
                         .focused($focusedTarget, equals: .slider)
                         .accessibilityIdentifier("history-limit-slider")
