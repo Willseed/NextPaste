@@ -129,7 +129,12 @@ struct ClipboardRowPresentationTests {
                 id: id,
                 thumbnailDescription: "Screenshot thumbnail",
                 metadata: "1200 x 800 PNG",
-                isPinned: true
+                isPinned: true,
+                imageDisplayMetadata: ImageClipboardRowPresentation.ImageDisplayMetadata(
+                    width: 1200,
+                    height: 800,
+                    formatLabel: "PNG"
+                )
             )
         )
 
@@ -137,6 +142,9 @@ struct ClipboardRowPresentationTests {
         #expect(presentation.thumbnailDescription == "Screenshot thumbnail")
         #expect(presentation.metadata == "1200 x 800 PNG")
         #expect(presentation.pinState == .pinned)
+        #expect(presentation.imageWidth == 1200)
+        #expect(presentation.imageHeight == 800)
+        #expect(presentation.imageFormatLabel == "PNG")
     }
 
     @Test("image clip presentation keeps thumbnail file references separate from visible metadata")

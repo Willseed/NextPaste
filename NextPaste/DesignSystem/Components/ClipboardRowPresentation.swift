@@ -262,6 +262,18 @@ extension Locale {
 }
 
 struct ImageClipboardRowPresentation: Equatable, Identifiable {
+    struct ImageDisplayMetadata: Equatable {
+        let width: Int?
+        let height: Int?
+        let formatLabel: String?
+
+        init(width: Int? = nil, height: Int? = nil, formatLabel: String? = nil) {
+            self.width = width
+            self.height = height
+            self.formatLabel = formatLabel
+        }
+    }
+
     struct Content: Equatable, Identifiable {
         let id: UUID
         let thumbnailDescription: String
@@ -269,9 +281,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         let isPinned: Bool
         let thumbnailFilename: String?
         let thumbnailSymbolName: String
-        let imageWidth: Int?
-        let imageHeight: Int?
-        let imageFormatLabel: String?
+        let imageDisplayMetadata: ImageDisplayMetadata
 
         init(
             id: UUID,
@@ -280,9 +290,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             isPinned: Bool,
             thumbnailFilename: String? = nil,
             thumbnailSymbolName: String = DesignTokens.Icons.image,
-            imageWidth: Int? = nil,
-            imageHeight: Int? = nil,
-            imageFormatLabel: String? = nil
+            imageDisplayMetadata: ImageDisplayMetadata = ImageDisplayMetadata()
         ) {
             self.id = id
             self.thumbnailDescription = thumbnailDescription
@@ -290,9 +298,7 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             self.isPinned = isPinned
             self.thumbnailFilename = thumbnailFilename
             self.thumbnailSymbolName = thumbnailSymbolName
-            self.imageWidth = imageWidth
-            self.imageHeight = imageHeight
-            self.imageFormatLabel = imageFormatLabel
+            self.imageDisplayMetadata = imageDisplayMetadata
         }
 
         init(clip: ClipItem) {
@@ -302,9 +308,11 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
                 metadata: ImageClipboardRowPresentation.metadata(for: clip),
                 isPinned: clip.isPinned,
                 thumbnailFilename: clip.thumbnailFilename,
-                imageWidth: clip.imageWidth,
-                imageHeight: clip.imageHeight,
-                imageFormatLabel: ImageClipboardRowPresentation.formatLabel(for: clip)
+                imageDisplayMetadata: ImageDisplayMetadata(
+                    width: clip.imageWidth,
+                    height: clip.imageHeight,
+                    formatLabel: ImageClipboardRowPresentation.formatLabel(for: clip)
+                )
             )
         }
     }
@@ -337,9 +345,9 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         self.interactionState = interactionState
         thumbnailSymbolName = content.thumbnailSymbolName
         thumbnailFilename = content.thumbnailFilename
-        imageWidth = content.imageWidth
-        imageHeight = content.imageHeight
-        imageFormatLabel = content.imageFormatLabel
+        imageWidth = content.imageDisplayMetadata.width
+        imageHeight = content.imageDisplayMetadata.height
+        imageFormatLabel = content.imageDisplayMetadata.formatLabel
         usesFallbackIcon = content.thumbnailFilename == nil
         rowAccessibilityIdentifier = Self.rowAccessibilityIdentifier(for: content.id)
         thumbnailAccessibilityIdentifier = Self.thumbnailAccessibilityIdentifier
