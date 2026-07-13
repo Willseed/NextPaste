@@ -302,6 +302,8 @@ summarize_test_result() {
 
 run_build_for_testing() {
   local coverage="$1"
+  local timeout_seconds=2100
+  [[ "${MODE}" == "full-ui" ]] && timeout_seconds=240
   local result_bundle="${RUN_DIR}/BuildForTesting.xcresult"
   local command=(
     "${XCODEBUILD}"
@@ -315,7 +317,7 @@ run_build_for_testing() {
     -resultBundlePath "${result_bundle}"
     build-for-testing
   )
-  run_with_watchdog 2100 "build-for-testing" "${RUN_DIR}/build-for-testing.log" "${command[@]}" \
+  run_with_watchdog "${timeout_seconds}" "build-for-testing" "${RUN_DIR}/build-for-testing.log" "${command[@]}" \
     || fail "build-for-testing failed or timed out"
 }
 
@@ -432,7 +434,7 @@ else
   done < <(/usr/bin/awk -v shard="${SHARD}" '!/^#/ && $1 == shard { print $2 }' "${SHARD_MANIFEST}")
   ((${#shard_selectors[@]} > 0)) || fail "UI shard ${SHARD} selected no suites"
   ui_start_time="$(/bin/date '+%Y-%m-%d %H:%M:%S%z')"
-  run_test_phase "FullUIShard${SHARD}" UI 4500 NO NO "${shard_selectors[@]}"
+  run_test_phase "FullUIShard${SHARD}" UI 660 NO NO "${shard_selectors[@]}"
   assert_no_swiftui_runtime_warnings "FullUIShard${SHARD}" "${ui_start_time}"
 fi
 

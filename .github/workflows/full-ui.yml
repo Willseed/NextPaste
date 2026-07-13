@@ -21,7 +21,7 @@ jobs:
   ui-shard:
     name: Full UI shard ${{ matrix.shard }}
     runs-on: macos-26
-    timeout-minutes: 120
+    timeout-minutes: 18
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +57,7 @@ jobs:
           fi
 
       - name: Run bounded full UI shard
-        timeout-minutes: 110
+        timeout-minutes: 14
         shell: bash
         env:
           CI_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteFullUI
