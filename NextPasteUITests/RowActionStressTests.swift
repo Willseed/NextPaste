@@ -468,7 +468,9 @@ final class RowActionStressTests: UITestCase {
 
         // Create one clip per delete iteration plus a survivor that stays present so the list
         // is never empty.
-        let clips = iterations.map { "T042 rapid delete target \($0)" }
+        // Delimit the ordinal so the contains-based row robot cannot resolve target [1]
+        // to target [10] and retain the wrong XCUIElement for the removal assertion.
+        let clips = iterations.map { "T042 rapid delete target [\($0)]" }
         let survivor = "T042 rapid delete survivor"
         // History is newest-first. Seed the survivor first and targets in
         // reverse order so target 0, 1, ... is always the current visible top
