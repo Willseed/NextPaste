@@ -772,7 +772,29 @@ final class RowActionStressTests: UITestCase {
     }
 
     @MainActor
-    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImages() throws {
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart1() throws {
+        try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+            textTargetIndices: [381, 382, 383, 385, 386],
+            imageTargetIndices: [91, 92, 93, 94, 96],
+            scenario: "Feature025-20-part1"
+        )
+    }
+
+    @MainActor
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart2() throws {
+        try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+            textTargetIndices: [387, 389, 390, 391, 393],
+            imageTargetIndices: [97, 98, 99, 86, 87],
+            scenario: "Feature025-20-part2"
+        )
+    }
+
+    @MainActor
+    private func runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+        textTargetIndices: [Int],
+        imageTargetIndices: [Int],
+        scenario: String
+    ) throws {
         executionTimeAllowance = 30 * 60
         let store = try makeOnDiskStore()
         var app = launchFeature025SeededRelaunchApp(store: store)
@@ -786,9 +808,9 @@ final class RowActionStressTests: UITestCase {
 
         let history = historyRobot(for: app)
         let row = rowRobot(for: app)
-        let textTargets = [381, 382, 383, 385, 386, 387, 389, 390, 391, 393]
+        let textTargets = textTargetIndices
             .map { String(format: "Relaunch dataset text %03d", $0) }
-        let imageTargets = [91, 92, 93, 94, 96, 97, 98, 99, 86, 87]
+        let imageTargets = imageTargetIndices
             .map { String(format: "Relaunch dataset image %03d", $0) }
         var outcomes: [String] = []
 
@@ -821,7 +843,7 @@ final class RowActionStressTests: UITestCase {
             )
         }
 
-        attachStressOutcome(scenario: "Feature025-20", actionOutcomes: outcomes, app: app, traceURL: trace.traceURL)
+        attachStressOutcome(scenario: scenario, actionOutcomes: outcomes, app: app, traceURL: trace.traceURL)
     }
 
     // MARK: - Helpers
