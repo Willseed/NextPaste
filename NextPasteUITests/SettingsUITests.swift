@@ -1056,7 +1056,10 @@ final class SettingsUITests: UITestCase {
 
     @MainActor
     func testSettingsControlsRemainReadableAndKeyboardReachableAcrossLocalesAndCompactWidth() throws {
-        let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
+        let app = launchApp(
+            extraArguments: [Fixture.settingsHistoryLimitSeedArgument],
+            windowSizePreset: .small
+        )
         let settingsWindow = openSettingsWindow(in: app)
         _ = settingsScrollView(in: settingsWindow)
 
@@ -1067,7 +1070,6 @@ final class SettingsUITests: UITestCase {
         assertAccessibleControl(allClearButton, named: "Clear All History button")
 
         // Confirm language-independent discoverability in compact width flow.
-        UITestAppLauncher.resizeMainWindow(in: app, to: .small)
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         assertAccessibleControl(
             shortcutButton(Accessibility.recordShortcut, in: settingsWindow),
