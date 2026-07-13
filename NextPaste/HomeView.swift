@@ -543,7 +543,13 @@ struct HomeView: View {
         .onAppear {
             installFocusedSceneCommandHandler()
 #if DEBUG
+#if os(macOS)
+            if shouldRenderDeferredUITestDiagnostics {
+                traceVisibleClipSnapshot(reason: "home.appear")
+            }
+#else
             traceVisibleClipSnapshot(reason: "home.appear")
+#endif
 #endif
         }
 #if DEBUG
@@ -1551,6 +1557,11 @@ struct HomeView: View {
     }
 
     private var traceVisibleClipSnapshotKey: String {
+#if os(macOS)
+        if shouldRenderDeferredUITestDiagnostics == false {
+            return "launch-readiness-pending"
+        }
+#endif
         let orderedIDs = traceVisibleClipIDs.map(\.uuidString).joined(separator: "|")
         return "\(orderedIDs)#search:\(searchText.isEmpty == false)"
     }
