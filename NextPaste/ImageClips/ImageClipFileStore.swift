@@ -161,11 +161,17 @@ struct ImageClipFileStore {
         return Dictionary(uniqueKeysWithValues: requests.map { request in
             let state: ImageClipRestorationState
             if let imageFilename = request.imageFilename,
-               Self.isSafeRelativeFilename(imageFilename),
-               imageFilenames.contains(imageFilename) {
+               fileExists(
+                   for: imageFilename,
+                   in: imagesDirectory,
+                   directorySnapshot: imageFilenames
+               ) {
                 if let thumbnailFilename = request.thumbnailFilename,
-                   (Self.isSafeRelativeFilename(thumbnailFilename) == false
-                       || thumbnailFilenames.contains(thumbnailFilename) == false) {
+                   fileExists(
+                       for: thumbnailFilename,
+                       in: thumbnailsDirectory,
+                       directorySnapshot: thumbnailFilenames
+                   ) == false {
                     state = .missingThumbnailFile
                 } else {
                     state = .restorable
@@ -252,6 +258,16 @@ struct ImageClipFileStore {
 
     nonisolated private func directoryFilenames(in directory: URL) -> Set<String> {
         Set((try? fileManager.contentsOfDirectory(atPath: directory.path)) ?? [])
+    }
+
+    nonisolated private func fileExists(
+        for filename: String,
+        in directory: URL,
+        directorySnapshot: Set<String>
+    ) -> Bool {
+        guard Self.isSafeRelativeFilename(filename) else { return false }
+        return directorySnapshot.contains(filename)
+            || (try? fileExists(for: filename, in: directory)) == true
     }
 
     private func removeFileIfPresent(at url: URL) throws {
