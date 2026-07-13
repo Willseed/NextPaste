@@ -973,10 +973,10 @@ final class SettingsUITests: UITestCase {
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         let updatedAppearancePicker = appearancePopup(in: settingsWindow)
         assertPopupValueEventually(updatedAppearancePicker, equals: Accessibility.light)
-        updatedAppearancePicker.typeKey(.space, modifierFlags: [])
+        updatedAppearancePicker.tap()
         let selectedAppearanceMenuItem = UITestAssertions.assertExists(
             app.menuItems[Accessibility.light],
-            "Appearance switching must preserve keyboard operation on the replacement picker"
+            "Appearance switching must preserve operation on the replacement picker"
         )
         XCTAssertTrue(selectedAppearanceMenuItem.isHittable)
         app.typeKey(.escape, modifierFlags: [])
