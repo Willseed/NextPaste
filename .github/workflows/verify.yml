@@ -27,7 +27,12 @@ jobs:
 
       - name: Install verification tools
         shell: bash
-        run: brew install actionlint ripgrep
+        run: |
+          set -euo pipefail
+          if brew tap | grep -Fxq 'aws/tap'; then
+            brew untap aws/tap
+          fi
+          brew install actionlint ripgrep
 
       - name: Verify noninteractive UI automation
         shell: bash
