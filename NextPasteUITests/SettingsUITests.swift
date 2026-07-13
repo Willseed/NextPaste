@@ -2364,6 +2364,14 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) {
         UITestAssertions.assertExists(element, "Expected \(name)", file: file, line: line)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                element.isEnabled && element.isHittable
+            },
+            "\(name) must become enabled and pointer operable",
+            file: file,
+            line: line
+        )
         XCTAssertFalse(
             element.label.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
             "\(name) must expose a nonempty accessibility label",
