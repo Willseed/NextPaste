@@ -268,24 +268,25 @@ struct SharedRowTrailingState: View {
     @ViewBuilder
     private func copyFeedbackView(_ feedback: ClipboardRowPresentation.CopyFeedback) -> some View {
         let localizedLabel = feedback.localizedLabel(locale: locale)
-        switch copyFeedbackStyle {
-        case .inlineSuccess:
-            HStack(spacing: DesignTokens.Spacing.xSmall) {
-                Image(systemName: feedback.symbolName)
-                    .foregroundStyle(appTheme.accentSuccess.color)
-                    .accessibilityHidden(true)
+        Group {
+            switch copyFeedbackStyle {
+            case .inlineSuccess:
+                HStack(spacing: DesignTokens.Spacing.xSmall) {
+                    Image(systemName: feedback.symbolName)
+                        .foregroundStyle(appTheme.accentSuccess.color)
+                        .accessibilityHidden(true)
 
-                Text(localizedLabel)
-                    .font(DesignTokens.Typography.feedback.font)
-                    .foregroundStyle(appTheme.accentSuccess.color)
-                    .accessibilityIdentifier("clip-copy-feedback")
-                    .accessibilityLabel(localizedLabel)
+                    Text(localizedLabel)
+                        .font(DesignTokens.Typography.feedback.font)
+                        .foregroundStyle(appTheme.accentSuccess.color)
+                }
+                .transition(.opacity)
+            case .badge:
+                Badge(localizedLabel, symbolName: feedback.symbolName, role: .copied)
             }
-            .transition(.opacity)
-        case .badge:
-            Badge(localizedLabel, symbolName: feedback.symbolName, role: .copied)
-                .accessibilityIdentifier("clip-copy-feedback")
-                .accessibilityLabel(localizedLabel)
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("clip-copy-feedback")
+        .accessibilityLabel(localizedLabel)
     }
 }
