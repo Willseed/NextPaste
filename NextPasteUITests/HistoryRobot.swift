@@ -22,6 +22,14 @@ struct HistoryRobot {
         let field = searchField(file: file, line: line)
         field.tap()
         field.typeText(query)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                (field.value as? String) == query
+            },
+            "Expected native search field to contain \(query)",
+            file: file,
+            line: line
+        )
         return self
     }
 
@@ -44,6 +52,14 @@ struct HistoryRobot {
         field.tap()
         app.typeKey("a", modifierFlags: .command)
         app.typeKey(.delete, modifierFlags: [])
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                (field.value as? String)?.isEmpty == true
+            },
+            "Expected native search field to clear before the next interaction",
+            file: file,
+            line: line
+        )
         return self
     }
 
