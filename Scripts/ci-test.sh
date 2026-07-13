@@ -38,7 +38,7 @@ while (($# > 0)); do
       shift
       ;;
     --help|-h)
-      /bin/echo "Usage: Scripts/ci-test.sh [--mode pr|full-ui] [--shard 1|2|3|4] [--dry-run]"
+    /bin/echo "Usage: Scripts/ci-test.sh [--mode pr|full-ui] [--shard STAGE] [--dry-run]"
       exit 0
       ;;
     *)
@@ -160,20 +160,32 @@ plist_value() {
 
 validate_shard_manifest() {
   [[ -f "${SHARD_MANIFEST}" ]] || fail "missing UI shard manifest: ${SHARD_MANIFEST}"
-  local discovered="${RUN_DIR}/ui-classes-discovered.txt"
-  local assigned="${RUN_DIR}/ui-classes-assigned.txt"
+  local discovered="${RUN_DIR}/ui-methods-discovered.txt"
+  local assigned="${RUN_DIR}/ui-methods-assigned.txt"
+  local source
 
-  /usr/bin/env rg -INo --replace "\$1" \
-    '^final class ([A-Za-z0-9_]+): UITestCase' \
-    "${REPO_ROOT}/NextPasteUITests"/*.swift | /usr/bin/sort > "${discovered}"
+  for source in "${REPO_ROOT}/NextPasteUITests"/*.swift; do
+    /usr/bin/awk '
+      $1 == "final" && $2 == "class" && $4 == "UITestCase" {
+        class_name = $3
+        sub(/:$/, "", class_name)
+      }
+      class_name != "" && /^[[:space:]]*func[[:space:]]+test[A-Za-z0-9_]+[[:space:]]*\(/ {
+        method_name = $0
+        sub(/^[[:space:]]*func[[:space:]]+/, "", method_name)
+        sub(/[[:space:]]*\(.*/, "", method_name)
+        print class_name "/" method_name
+      }
+    ' "${source}"
+  done | /usr/bin/sort > "${discovered}"
   /usr/bin/awk '!/^#/ && NF == 2 { print $2 }' "${SHARD_MANIFEST}" | /usr/bin/sort > "${assigned}"
 
-  [[ -s "${discovered}" ]] || fail "no concrete UI test classes were discovered"
+  [[ -s "${discovered}" ]] || fail "no concrete UI test methods were discovered"
   [[ "$(/usr/bin/uniq -d "${assigned}" | /usr/bin/wc -l | /usr/bin/tr -d ' ')" == "0" ]] \
-    || fail "UI shard manifest assigns at least one class more than once"
+    || fail "UI shard manifest assigns at least one test method more than once"
   /usr/bin/diff -u "${discovered}" "${assigned}" \
-    || fail "UI shard manifest must assign every concrete UI test class exactly once"
-  /bin/echo "UI shard manifest: exhaustive and unique ($(wc -l < "${assigned}" | tr -d ' ') classes)"
+    || fail "UI shard manifest must assign every concrete UI test method exactly once"
+  /bin/echo "UI shard manifest: exhaustive and unique ($(wc -l < "${assigned}" | tr -d ' ') methods)"
 }
 
 collect_crash_reports() {
@@ -429,8 +441,8 @@ if [[ "${MODE}" == "pr" ]]; then
 else
   run_build_for_testing NO
   shard_selectors=()
-  while read -r class_name; do
-    [[ -n "${class_name}" ]] && shard_selectors+=("-only-testing:NextPasteUITests/${class_name}")
+  while read -r selector; do
+    [[ -n "${selector}" ]] && shard_selectors+=("-only-testing:NextPasteUITests/${selector}")
   done < <(/usr/bin/awk -v shard="${SHARD}" '!/^#/ && $1 == shard { print $2 }' "${SHARD_MANIFEST}")
   ((${#shard_selectors[@]} > 0)) || fail "UI shard ${SHARD} selected no suites"
   ui_start_time="$(/bin/date '+%Y-%m-%d %H:%M:%S%z')"
