@@ -125,17 +125,6 @@ struct NextPasteApp: App {
             applicationAppearanceApplier: SystemApplicationAppearanceApplier()
         )
         let languagePref = AppLanguagePreference(defaults: defaults)
-        // Mirror the persisted language into the process-localization key
-        // (`AppleLanguages`) before the SwiftUI scene is built so the menu bar
-        // and other process-language-resolved strings follow the in-app
-        // preference on launch. Only applied when a real, valid value was
-        // persisted; a missing or unrecognized value lets the system preference
-        // govern (the preference itself still auto-repairs in memory).
-        let persistedLanguageRawValue = defaults.string(forKey: AppLanguagePreference.storageKey)
-        if let rawValue = persistedLanguageRawValue,
-           let persistedLanguage = AppLanguage(rawValue: rawValue) {
-            Self.applyAppleLanguagesOverride(for: persistedLanguage)
-        }
 #if os(macOS)
         let globalShortcutPref = GlobalShortcutPreference(defaults: defaults)
         let globalShortcutLifecycleController = GlobalShortcutLifecycleController(
@@ -271,23 +260,6 @@ struct NextPasteApp: App {
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
     }
 
-    /// Sets the process-localization override (`AppleLanguages`) on the app's
-    /// standard defaults so the menu bar and other process-language-resolved
-    /// strings follow the persisted in-app language on launch. For concrete
-    /// languages the matching identifier is forced; for `.followSystem` the
-    /// override is removed so the macOS system preference governs. Must run
-    /// before the SwiftUI scene is built (called from `init`).
-    private static func applyAppleLanguagesOverride(for language: AppLanguage) {
-        switch language {
-        case .englishUnitedStates:
-            UserDefaults.standard.set(["en"], forKey: "AppleLanguages")
-        case .traditionalChineseTaiwan:
-            UserDefaults.standard.set(["zh-Hant"], forKey: "AppleLanguages")
-        case .followSystem:
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        }
-    }
-
     private static func defaultPersistenceLoadDiagnostics() -> PersistenceLoadDiagnostics {
 #if DEBUG
         PersistenceLoadDiagnostics.runtime()
@@ -298,6 +270,7 @@ struct NextPasteApp: App {
 
     var body: some Scene {
         mainScene
+        .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
 #if os(macOS)
         .defaultSize(width: 640, height: 480)
 #endif
@@ -326,6 +299,7 @@ struct NextPasteApp: App {
                 .applyDebugAccessibilityOverrides(uiTestLaunchEnvironment)
                 #endif
         }
+        .environment(\.locale, appLanguagePreference.resolvedLanguage.locale)
 #endif
     }
 
@@ -358,6 +332,7 @@ struct NextPasteApp: App {
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
 #endif
         .frame(minWidth: 520, minHeight: 380)
+        .navigationTitle(Text("NextPaste"))
 #if os(macOS)
         .background {
             WindowAccessibilityHostBridge(

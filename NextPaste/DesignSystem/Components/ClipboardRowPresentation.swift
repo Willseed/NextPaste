@@ -269,6 +269,9 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         let isPinned: Bool
         let thumbnailFilename: String?
         let thumbnailSymbolName: String
+        let imageWidth: Int?
+        let imageHeight: Int?
+        let imageFormatLabel: String?
 
         init(
             id: UUID,
@@ -276,7 +279,10 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             metadata: String,
             isPinned: Bool,
             thumbnailFilename: String? = nil,
-            thumbnailSymbolName: String = DesignTokens.Icons.image
+            thumbnailSymbolName: String = DesignTokens.Icons.image,
+            imageWidth: Int? = nil,
+            imageHeight: Int? = nil,
+            imageFormatLabel: String? = nil
         ) {
             self.id = id
             self.thumbnailDescription = thumbnailDescription
@@ -284,6 +290,9 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             self.isPinned = isPinned
             self.thumbnailFilename = thumbnailFilename
             self.thumbnailSymbolName = thumbnailSymbolName
+            self.imageWidth = imageWidth
+            self.imageHeight = imageHeight
+            self.imageFormatLabel = imageFormatLabel
         }
 
         init(clip: ClipItem) {
@@ -292,7 +301,10 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
                 thumbnailDescription: clip.thumbnailDescription ?? "Image clipboard clip",
                 metadata: ImageClipboardRowPresentation.metadata(for: clip),
                 isPinned: clip.isPinned,
-                thumbnailFilename: clip.thumbnailFilename
+                thumbnailFilename: clip.thumbnailFilename,
+                imageWidth: clip.imageWidth,
+                imageHeight: clip.imageHeight,
+                imageFormatLabel: ImageClipboardRowPresentation.formatLabel(for: clip)
             )
         }
     }
@@ -305,11 +317,12 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
     let interactionState: ClipboardRowPresentation.InteractionState
     let thumbnailSymbolName: String
     let thumbnailFilename: String?
+    let imageWidth: Int?
+    let imageHeight: Int?
+    let imageFormatLabel: String?
     let usesFallbackIcon: Bool
     let rowAccessibilityIdentifier: String
     let thumbnailAccessibilityIdentifier: String
-    let accessibilityLabel: String
-    let accessibilityValue: String
 
     init(
         content: Content,
@@ -324,24 +337,12 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         self.interactionState = interactionState
         thumbnailSymbolName = content.thumbnailSymbolName
         thumbnailFilename = content.thumbnailFilename
+        imageWidth = content.imageWidth
+        imageHeight = content.imageHeight
+        imageFormatLabel = content.imageFormatLabel
         usesFallbackIcon = content.thumbnailFilename == nil
         rowAccessibilityIdentifier = Self.rowAccessibilityIdentifier(for: content.id)
         thumbnailAccessibilityIdentifier = Self.thumbnailAccessibilityIdentifier
-        accessibilityLabel = Self.accessibilityLabel(
-            id: content.id,
-            thumbnailDescription: content.thumbnailDescription,
-            metadata: content.metadata
-        )
-        accessibilityValue = Self.accessibilityValue(
-            metadata: content.metadata,
-            thumbnailFilename: content.thumbnailFilename,
-            usesFallbackIcon: usesFallbackIcon,
-            pinStateLabel: (content.isPinned
-                ? ClipboardRowPresentation.PinState.pinned
-                : .unpinned).accessibilityLabel,
-            copyFeedback: copyFeedback,
-            interactionStateLabel: interactionState.accessibilityLabel
-        )
     }
 
     init(
@@ -360,14 +361,52 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         isPinned ? .pinned : .unpinned
     }
 
+    func localizedThumbnailDescription(locale: Locale) -> String {
+        let subject: String
+        if thumbnailDescription == "nextpaste.thumbnail.screenshot"
+            || thumbnailDescription.range(of: "screenshot", options: .caseInsensitive) != nil {
+            subject = locale.nextPasteLocalized("Screenshot")
+        } else if let imageFormatLabel {
+            subject = imageFormatLabel
+        } else if thumbnailDescription == "Image clipboard clip" {
+            return locale.nextPasteLocalized("Image clipboard clip")
+        } else {
+            return thumbnailDescription
+        }
+
+        guard let imageWidth, let imageHeight else { return subject }
+        return String(
+            format: locale.nextPasteLocalized("%@ clipboard image, %lld by %lld pixels"),
+            locale: locale,
+            subject,
+            Int64(imageWidth),
+            Int64(imageHeight)
+        )
+    }
+
+    func localizedMetadata(locale: Locale) -> String {
+        metadata == "Image" ? locale.nextPasteLocalized("Image") : metadata
+    }
+
+    func localizedAccessibilityLabel(locale: Locale) -> String {
+        String(
+            format: locale.nextPasteLocalized("Image clip %@, %@, %@"),
+            locale: locale,
+            id.uuidString,
+            localizedThumbnailDescription(locale: locale),
+            localizedMetadata(locale: locale)
+        )
+    }
+
     func localizedAccessibilityValue(locale: Locale) -> String {
         Self.accessibilityValue(
-            metadata: metadata,
+            metadata: localizedMetadata(locale: locale),
             thumbnailFilename: thumbnailFilename,
             usesFallbackIcon: usesFallbackIcon,
             pinStateLabel: pinState.localizedAccessibilityLabel(locale: locale),
             copyFeedback: copyFeedback,
-            interactionStateLabel: interactionState.localizedAccessibilityLabel(locale: locale)
+            interactionStateLabel: interactionState.localizedAccessibilityLabel(locale: locale),
+            locale: locale
         )
     }
 
@@ -385,36 +424,33 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         "image-clip-row-\(id.uuidString)"
     }
 
-    private static func accessibilityLabel(
-        id: UUID,
-        thumbnailDescription: String,
-        metadata: String
-    ) -> String {
-        "Image clip \(id.uuidString), \(thumbnailDescription), \(metadata)"
-    }
-
     private static func accessibilityValue(
         metadata: String,
         thumbnailFilename: String?,
         usesFallbackIcon: Bool,
         pinStateLabel: String,
         copyFeedback: ClipboardRowPresentation.CopyFeedback?,
-        interactionStateLabel: String
+        interactionStateLabel: String,
+        locale: Locale
     ) -> String {
         let thumbnailState: String
         if let thumbnailFilename {
-            thumbnailState = "Thumbnail file \(thumbnailFilename)"
+            thumbnailState = String(
+                format: locale.nextPasteLocalized("Thumbnail file %@"),
+                locale: locale,
+                thumbnailFilename
+            )
         } else if usesFallbackIcon {
-            thumbnailState = "Fallback icon"
+            thumbnailState = locale.nextPasteLocalized("Fallback icon")
         } else {
-            thumbnailState = "Thumbnail unavailable"
+            thumbnailState = locale.nextPasteLocalized("Thumbnail unavailable")
         }
 
         return [
             metadata,
             thumbnailState,
             pinStateLabel,
-            copyFeedback?.accessibilityLabel,
+            copyFeedback?.localizedLabel(locale: locale),
             interactionStateLabel
         ]
         .compactMap { $0 }

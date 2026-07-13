@@ -41,9 +41,9 @@ struct ClipboardRow: View {
             },
             surfaceAccessibility: SharedRowPresentation.SurfaceAccessibility(
                 identifier: "clipboard-row-surface",
-                label: "Clipboard row surface"
+                label: locale.nextPasteLocalized("Clipboard row surface")
             ) { state in
-                state.accessibilityLabel
+                state.localizedAccessibilityLabel(locale: locale)
             },
             onCopy: onCopy,
             onDelete: onDelete,
@@ -87,7 +87,7 @@ struct ClipboardRow: View {
     private func accessibilityValue(for interactionState: ClipboardRowPresentation.InteractionState) -> String {
         [
             presentation.pinState.localizedAccessibilityLabel(locale: locale),
-            presentation.copyFeedback?.accessibilityLabel,
+            presentation.copyFeedback?.localizedLabel(locale: locale),
             interactionState.localizedAccessibilityLabel(locale: locale)
         ]
         .compactMap { $0 }

@@ -234,8 +234,8 @@ struct ClipboardRowPresentationTests {
 
         #expect(pinned.pinState.accessibilityLabel == "Pinned")
         #expect(unpinned.pinState.accessibilityLabel == "Unpinned")
-        #expect(presentationString(named: "accessibilityValue", in: pinned)?.contains("Pinned") == true)
-        #expect(presentationString(named: "accessibilityValue", in: unpinned)?.contains("Unpinned") == true)
+        #expect(pinned.localizedAccessibilityValue(locale: Locale(identifier: "en_US")).contains("Pinned"))
+        #expect(unpinned.localizedAccessibilityValue(locale: Locale(identifier: "en_US")).contains("Unpinned"))
     }
 
     @Test("image row presentation exposes stable accessibility text and identifiers")
@@ -254,17 +254,17 @@ struct ClipboardRowPresentationTests {
             )
         )
 
-        let label = presentationString(named: "accessibilityLabel", in: presentation)
-        let value = presentationString(named: "accessibilityValue", in: presentation)
+        let label = presentation.localizedAccessibilityLabel(locale: Locale(identifier: "en_US"))
+        let value = presentation.localizedAccessibilityValue(locale: Locale(identifier: "en_US"))
 
         #expect(presentationString(named: "rowAccessibilityIdentifier", in: presentation) == "image-clip-row-\(clipID.uuidString)")
         #expect(presentationString(named: "thumbnailAccessibilityIdentifier", in: presentation) == "image-clip-thumbnail")
-        #expect(label?.contains("Image clip") == true)
-        #expect(label?.contains(clipID.uuidString) == true)
-        #expect(label?.contains(fixture.thumbnailDescription) == true)
-        #expect(label?.contains(fixture.metadata) == true)
-        #expect(value?.contains(fixture.metadata) == true)
-        #expect(value?.contains(thumbnailFilename) == true)
+        #expect(label.contains("Image clip"))
+        #expect(label.contains(clipID.uuidString))
+        #expect(label.contains(fixture.thumbnailDescription))
+        #expect(label.contains(fixture.metadata))
+        #expect(value.contains(fixture.metadata))
+        #expect(value.contains(thumbnailFilename))
     }
 
     @Test("filtered text rows preserve presentation accessibility parity")
@@ -300,8 +300,30 @@ struct ClipboardRowPresentationTests {
 
         #expect(presentationString(named: "rowAccessibilityIdentifier", in: presentation) == "image-clip-row-\(clipID.uuidString)")
         #expect(presentationString(named: "thumbnailAccessibilityIdentifier", in: presentation) == "image-clip-thumbnail")
-        #expect(presentationString(named: "accessibilityValue", in: presentation)?.contains("Pinned") == true)
+        #expect(presentation.localizedAccessibilityValue(locale: Locale(identifier: "en_US")).contains("Pinned"))
         #expect(RowActionControlGroup.accessibilityActionLabels(isPinned: imageClip.isPinned) == ["Copy", "Unpin", "Delete"])
+    }
+
+    @Test("image descriptions and VoiceOver metadata follow the active locale")
+    func imageDescriptionsAndAccessibilityFollowActiveLocale() throws {
+        let fixture = ImageTestFixtures.screenshotStyle
+        let clip = makeImageClip(
+            id: try #require(UUID(uuidString: "63985362-4FF2-4C70-AB28-C343ABF5A926")),
+            fixture: fixture,
+            thumbnailFilename: "thumbnail.png",
+            isPinned: true
+        )
+        clip.thumbnailDescription = "nextpaste.thumbnail.screenshot"
+        let presentation = ImageClipboardRowPresentation(content: .init(clip: clip), copyFeedback: .copied)
+        let english = Locale(identifier: "en_US")
+        let traditionalChinese = Locale(identifier: "zh_Hant_TW")
+
+        #expect(presentation.localizedThumbnailDescription(locale: english) == fixture.thumbnailDescription)
+        #expect(presentation.localizedThumbnailDescription(locale: traditionalChinese) == "截圖剪貼簿圖片，96 × 60 像素")
+        #expect(presentation.localizedAccessibilityLabel(locale: traditionalChinese).contains("圖片剪貼項目"))
+        #expect(presentation.localizedAccessibilityValue(locale: traditionalChinese).contains("已釘選"))
+        #expect(presentation.localizedAccessibilityValue(locale: traditionalChinese).contains("已複製"))
+        #expect(presentation.localizedAccessibilityValue(locale: traditionalChinese).contains("縮圖檔案"))
     }
 
     private func makeImageClip(

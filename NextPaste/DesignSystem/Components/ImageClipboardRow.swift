@@ -34,6 +34,8 @@ struct ImageClipboardRow: View {
     }
 
     var body: some View {
+        let localizedThumbnailDescription = presentation.localizedThumbnailDescription(locale: locale)
+        let localizedMetadata = presentation.localizedMetadata(locale: locale)
         SharedRowPresentation(
             isPinned: presentation.isPinned,
             interactionState: presentation.interactionState,
@@ -47,7 +49,7 @@ struct ImageClipboardRow: View {
                 // row's state-bearing label so VoiceOver always announces the
                 // localized Pin/OCR interaction state from the real row element.
                 label: [
-                    presentation.accessibilityLabel,
+                    presentation.localizedAccessibilityLabel(locale: locale),
                     presentation.localizedAccessibilityValue(locale: locale)
                 ].joined(separator: ", "),
                 value: presentation.localizedAccessibilityValue(locale: locale)
@@ -59,12 +61,12 @@ struct ImageClipboardRow: View {
             thumbnailSurface
 
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
-                Text(presentation.thumbnailDescription)
+                Text(verbatim: localizedThumbnailDescription)
                     .font(DesignTokens.Typography.body.font)
                     .foregroundStyle(appTheme.textPrimary.color)
                     .lineLimit(2)
 
-                Text(presentation.metadata)
+                Text(verbatim: localizedMetadata)
                     .font(DesignTokens.Typography.metadata.font)
                     .foregroundStyle(appTheme.textSecondary.color)
             }
@@ -89,7 +91,7 @@ struct ImageClipboardRow: View {
         .frame(width: Self.thumbnailAreaSize, height: Self.thumbnailAreaSize)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(presentation.thumbnailAccessibilityIdentifier)
-        .accessibilityLabel(presentation.thumbnailDescription)
+        .accessibilityLabel(presentation.localizedThumbnailDescription(locale: locale))
     }
 
     @ViewBuilder

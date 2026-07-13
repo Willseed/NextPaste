@@ -16,16 +16,21 @@ enum AppLanguage: String, Codable, CaseIterable, Sendable {
 
     static let defaultLanguage: AppLanguage = .englishUnitedStates
 
-    /// Pure resolver: maps a list of preferred-language identifiers to one of
-    /// the product-supported languages. Returns Traditional Chinese when any
-    /// preferred language indicates Traditional Chinese (a `zh-Hant` script or a
-    /// `zh-TW` region); otherwise English. Kept pure (input list only) so it is
-    /// unit-testable without mocking `Bundle.main` or `Locale.preferredLanguages`.
+    /// Pure resolver: maps the ordered preferred-language identifiers to the
+    /// first language that NextPaste supports. Unsupported languages are skipped,
+    /// matching Bundle's normal fallback behavior. Chinese is supported only when
+    /// its inferred script is Traditional; Simplified Chinese continues searching
+    /// for the next supported preference instead of being mislabeled as zh_TW.
     static func resolveSystemPreferred(_ preferredLanguages: [String]) -> AppLanguage {
         for identifier in preferredLanguages {
-            let normalized = identifier.replacingOccurrences(of: "_", with: "-").lowercased()
-            if normalized.contains("zh-hant") || normalized == "zh-tw" {
+            let locale = Locale(identifier: identifier.replacingOccurrences(of: "_", with: "-"))
+            switch locale.language.languageCode?.identifier {
+            case "zh" where locale.language.script?.identifier == "Hant":
                 return .traditionalChineseTaiwan
+            case "en":
+                return .englishUnitedStates
+            default:
+                continue
             }
         }
         return .englishUnitedStates
@@ -150,9 +155,9 @@ final class AppLanguagePreference: ObservableObject {
     }
 
     func persist(_ language: AppLanguage) {
-        self.language = language
-        refreshResolvedLanguage()
         defaults.set(language.rawValue, forKey: Self.storageKey)
+        resolvedLanguage = language.resolvedLanguage(for: systemLanguageProvider())
+        self.language = language
     }
 
     private func refreshResolvedLanguage() {

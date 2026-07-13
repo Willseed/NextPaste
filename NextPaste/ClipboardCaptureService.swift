@@ -181,7 +181,11 @@ final class ClipboardCaptureService {
                     filename: asset.imageFilename,
                     thumbnail: ImageClipInitialization.Thumbnail(
                         filename: asset.thumbnailFilename,
-                        description: thumbnailDescription(for: payload)
+                        // Persist only a locale-neutral subject. Dimensions and
+                        // format already live in dedicated model fields; the row
+                        // resolves the complete visible/VoiceOver description
+                        // against the current in-app locale at render time.
+                        description: thumbnailSubject(for: payload)
                     )
                 ),
                 createdAt: createdAt
@@ -189,13 +193,9 @@ final class ClipboardCaptureService {
         )
     }
 
-    private func thumbnailDescription(for payload: ClipboardImagePayload) -> String {
-        "\(thumbnailSubject(for: payload)) clipboard image, \(payload.width) by \(payload.height) pixels"
-    }
-
     private func thumbnailSubject(for payload: ClipboardImagePayload) -> String {
         if payload.sourceDescription?.range(of: "screenshot", options: .caseInsensitive) != nil {
-            return "Screenshot"
+            return "nextpaste.thumbnail.screenshot"
         }
 
         return formatLabel(forFileExtension: payload.fileExtension)

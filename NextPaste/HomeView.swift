@@ -336,7 +336,7 @@ struct HomeView: View {
     // toolbar menu only request presentation.
     @State private var isPresentingClearUnpinnedConfirmation = false
     @State private var isPresentingClearAllConfirmation = false
-    @State private var settingsPlaceholderMessage: String?
+    @State private var isShowingSettingsPlaceholder = false
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
     @State private var headerFrame: CGRect = .null
@@ -440,8 +440,9 @@ struct HomeView: View {
                 )
 #endif
 
-                if let settingsPlaceholderMessage {
-                    Text(settingsPlaceholderMessage)
+                if isShowingSettingsPlaceholder {
+                    let settingsPlaceholderMessage = locale.nextPasteLocalized("Settings are not available yet.")
+                    Text(verbatim: settingsPlaceholderMessage)
                         .font(DesignTokens.Typography.metadata.font)
                         .foregroundStyle(appTheme.textSecondary.color)
                         .accessibilityIdentifier("settings-placeholder-message")
@@ -1536,7 +1537,7 @@ struct HomeView: View {
 
     private func showSettingsPlaceholder() {
 #if !os(macOS)
-        settingsPlaceholderMessage = locale.nextPasteLocalized("Settings are not available yet.")
+        isShowingSettingsPlaceholder = true
 #endif
     }
 

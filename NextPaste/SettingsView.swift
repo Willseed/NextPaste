@@ -145,7 +145,7 @@ private struct SettingsTabItem: View {
 
 private struct SettingsSection<Content: View>: View {
     let title: LocalizedStringKey
-    let description: String?
+    let description: Text?
     @ViewBuilder let content: () -> Content
     @Environment(\.appTheme) private var appTheme
 
@@ -158,7 +158,7 @@ private struct SettingsSection<Content: View>: View {
                 .accessibilityAddTraits(.isHeader)
 
             if let description {
-                Text(description)
+                description
                     .font(.caption)
                     .foregroundStyle(appTheme.textSecondary.color)
             }
@@ -173,21 +173,42 @@ private struct SettingsSection<Content: View>: View {
 
 private struct SettingsControlRow<Control: View>: View {
     let title: LocalizedStringKey
-    let description: String?
+    let localizedDescription: LocalizedStringKey?
+    let verbatimDescription: String?
+    let descriptionIdentifier: String
     @ViewBuilder let control: () -> Control
     @Environment(\.appTheme) private var appTheme
 
-    var body: some View {
-        ViewThatFits(in: .horizontal) {
-            HStack(alignment: .top, spacing: 20) {
-                settingsRowLabel
-                control()
-            }
+    init(
+        title: LocalizedStringKey,
+        description: LocalizedStringKey?,
+        descriptionIdentifier: String = "",
+        @ViewBuilder control: @escaping () -> Control
+    ) {
+        self.title = title
+        localizedDescription = description
+        verbatimDescription = nil
+        self.descriptionIdentifier = descriptionIdentifier
+        self.control = control
+    }
 
-            VStack(alignment: .leading, spacing: 4) {
-                settingsRowLabel
-                control()
-            }
+    init(
+        title: LocalizedStringKey,
+        verbatimDescription: String,
+        descriptionIdentifier: String = "",
+        @ViewBuilder control: @escaping () -> Control
+    ) {
+        self.title = title
+        localizedDescription = nil
+        self.verbatimDescription = verbatimDescription
+        self.descriptionIdentifier = descriptionIdentifier
+        self.control = control
+    }
+
+    var body: some View {
+        AdaptiveSettingsControlLayout(horizontalSpacing: 20, verticalSpacing: 4) {
+            settingsRowLabel
+            control()
         }
         .padding(.vertical, 1)
     }
@@ -197,36 +218,103 @@ private struct SettingsControlRow<Control: View>: View {
             Text(title)
                 .font(.body)
                 .foregroundStyle(appTheme.textPrimary.color)
-            if let description {
-                Text(description)
+            if let localizedDescription {
+                Text(localizedDescription)
                     .font(.caption)
                     .foregroundStyle(appTheme.textSecondary.color)
+                    .accessibilityLabel(Text(localizedDescription))
+                    .accessibilityIdentifier(descriptionIdentifier)
+            } else if let verbatimDescription {
+                Text(verbatim: verbatimDescription)
+                    .font(.caption)
+                    .foregroundStyle(appTheme.textSecondary.color)
+                    .accessibilityLabel(Text(verbatim: verbatimDescription))
+                    .accessibilityIdentifier(descriptionIdentifier)
             }
         }
         .accessibilityElement(children: .combine)
     }
 }
 
+/// Changes only the placement of a settings label and control when width is
+/// constrained. Both subviews keep one stable SwiftUI identity across locale
+/// changes, so an AppKit-backed control is not replaced while it owns focus.
+private struct AdaptiveSettingsControlLayout: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache _: inout ()
+    ) -> CGSize {
+        guard subviews.count == 2 else { return .zero }
+
+        let labelSize = subviews[0].sizeThatFits(.unspecified)
+        let controlSize = subviews[1].sizeThatFits(.unspecified)
+        let horizontalWidth = labelSize.width + horizontalSpacing + controlSize.width
+        let availableWidth = proposal.width ?? horizontalWidth
+        let usesHorizontalPlacement = horizontalWidth <= availableWidth
+        let contentHeight = usesHorizontalPlacement
+            ? max(labelSize.height, controlSize.height)
+            : labelSize.height + verticalSpacing + controlSize.height
+
+        return CGSize(width: availableWidth, height: contentHeight)
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal _: ProposedViewSize,
+        subviews: Subviews,
+        cache _: inout ()
+    ) {
+        guard subviews.count == 2 else { return }
+
+        let labelSize = subviews[0].sizeThatFits(.unspecified)
+        let controlSize = subviews[1].sizeThatFits(.unspecified)
+        let usesHorizontalPlacement = labelSize.width + horizontalSpacing + controlSize.width <= bounds.width
+
+        subviews[0].place(
+            at: bounds.origin,
+            anchor: .topLeading,
+            proposal: ProposedViewSize(labelSize)
+        )
+        subviews[1].place(
+            at: CGPoint(
+                x: bounds.minX + (usesHorizontalPlacement ? labelSize.width + horizontalSpacing : 0),
+                y: bounds.minY + (usesHorizontalPlacement ? 0 : labelSize.height + verticalSpacing)
+            ),
+            anchor: .topLeading,
+            proposal: ProposedViewSize(controlSize)
+        )
+    }
+}
+
 private struct SettingsTextHint: View {
-    let text: String
+    let text: Text
     let identifier: String?
     @Environment(\.appTheme) private var appTheme
 
-    init(_ text: String, identifier: String? = nil) {
-        self.text = text
+    init(_ key: LocalizedStringKey, identifier: String? = nil) {
+        self.text = Text(key)
+        self.identifier = identifier
+    }
+
+    init(verbatim text: String, identifier: String? = nil) {
+        self.text = Text(verbatim: text)
         self.identifier = identifier
     }
 
     var body: some View {
         Group {
             if let identifier {
-                Text(text)
+                text
                     .font(.caption)
                     .foregroundStyle(appTheme.textSecondary.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityIdentifier(identifier)
             } else {
-                Text(text)
+                text
                     .font(.caption)
                     .foregroundStyle(appTheme.textSecondary.color)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -260,6 +348,7 @@ private struct GeneralSettingsTab: View {
 
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
     @EnvironmentObject private var appearancePreference: AppearancePreference
+    @Environment(\.locale) private var locale
     @FocusState private var focusedTarget: FocusTarget?
 
     var body: some View {
@@ -267,12 +356,25 @@ private struct GeneralSettingsTab: View {
             SettingsSection(title: "General", description: nil) {
                 SettingsControlRow(
                     title: "App Language",
-                    description: String(
-                        localized: "Changes apply immediately throughout NextPaste.",
-                        bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
-                        locale: appLanguagePreference.resolvedLanguage.locale
-                    )
+                    verbatimDescription: locale.nextPasteLocalized(
+                        "Changes apply immediately throughout NextPaste."
+                    ),
+                    descriptionIdentifier: "app-language-description"
                 ) {
+#if os(macOS)
+                    AppLanguagePopUpButton(
+                        selection: Binding(
+                            get: { appLanguagePreference.language },
+                            set: { language in
+                                appLanguagePreference.persist(language)
+                                focusedTarget = .language
+                            }
+                        ),
+                        locale: locale
+                    )
+                    .focusable()
+                    .focused($focusedTarget, equals: .language)
+#else
                     Picker("App Language", selection: Binding(
                         get: { appLanguagePreference.language },
                         set: { appLanguagePreference.persist($0) }
@@ -287,15 +389,15 @@ private struct GeneralSettingsTab: View {
                     .accessibilityIdentifier("app-language-picker")
                     .accessibilityLabel(Text("App Language"))
                     .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
+#endif
                 }
 
                 SettingsControlRow(
                     title: "Appearance",
-                    description: String(
-                        localized: "Control the app's visual style.",
-                        bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
-                        locale: appLanguagePreference.resolvedLanguage.locale
-                    )
+                    verbatimDescription: locale.nextPasteLocalized(
+                        "Control the app's visual style."
+                    ),
+                    descriptionIdentifier: "appearance-description"
                 ) {
                     Picker("Appearance", selection: Binding(
                         get: { appearancePreference.mode },
@@ -327,6 +429,85 @@ private struct GeneralSettingsTab: View {
         }
     }
 }
+
+#if os(macOS)
+/// A stable native language control whose menu titles update in place when the
+/// locale changes. Keeping the same NSPopUpButton lets AppKit preserve its
+/// first-responder and Accessibility focus after a menu selection.
+private struct AppLanguagePopUpButton: NSViewRepresentable {
+    @Binding var selection: AppLanguage
+    let locale: Locale
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(selection: $selection)
+    }
+
+    func makeNSView(context: Context) -> NSPopUpButton {
+        let button = FocusPreservingPopUpButton(frame: .zero, pullsDown: false)
+        button.target = context.coordinator
+        button.action = #selector(Coordinator.selectionChanged(_:))
+        button.setAccessibilityIdentifier("app-language-picker")
+        return button
+    }
+
+    func updateNSView(_ button: NSPopUpButton, context: Context) {
+        context.coordinator.selection = $selection
+
+        let titles = AppLanguage.allCases.map(localizedName)
+        if button.numberOfItems == titles.count {
+            for (item, title) in zip(button.itemArray, titles) where item.title != title {
+                item.title = title
+            }
+        } else {
+            button.removeAllItems()
+            button.addItems(withTitles: titles)
+        }
+        button.invalidateIntrinsicContentSize()
+
+        if let selectedIndex = AppLanguage.allCases.firstIndex(of: selection),
+           button.indexOfSelectedItem != selectedIndex {
+            button.selectItem(at: selectedIndex)
+        }
+
+        button.setAccessibilityLabel(locale.nextPasteLocalized("App Language"))
+        button.setAccessibilityValue(localizedName(selection))
+    }
+
+    private func localizedName(_ language: AppLanguage) -> String {
+        switch language {
+        case .englishUnitedStates:
+            locale.nextPasteLocalized("English (United States)")
+        case .traditionalChineseTaiwan:
+            locale.nextPasteLocalized("Traditional Chinese (Taiwan)")
+        case .followSystem:
+            locale.nextPasteLocalized("Follow System")
+        }
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var selection: Binding<AppLanguage>
+
+        init(selection: Binding<AppLanguage>) {
+            self.selection = selection
+        }
+
+        @objc func selectionChanged(_ sender: NSPopUpButton) {
+            guard AppLanguage.allCases.indices.contains(sender.indexOfSelectedItem) else { return }
+            selection.wrappedValue = AppLanguage.allCases[sender.indexOfSelectedItem]
+        }
+    }
+
+    private final class FocusPreservingPopUpButton: NSPopUpButton {
+        override var acceptsFirstResponder: Bool { true }
+
+        override func mouseDown(with event: NSEvent) {
+            window?.makeFirstResponder(self)
+            super.mouseDown(with: event)
+        }
+    }
+}
+#endif
 
 // MARK: - Clipboard
 
@@ -369,7 +550,7 @@ private struct ClipboardSettingsTab: View {
             ) {
                 SettingsControlRow(
                     title: "Storage Limit",
-                    description: storageLimitDescription
+                    verbatimDescription: storageLimitDescription
                 ) {
                     HStack(spacing: 12) {
                         Slider(
@@ -425,7 +606,7 @@ private struct ClipboardSettingsTab: View {
                         value: retentionErrorKey,
                         table: nil
                     )
-                    SettingsTextHint(localizedError, identifier: "history-limit-error")
+                    SettingsTextHint(verbatim: localizedError, identifier: "history-limit-error")
                         .accessibilityLabel(Text(verbatim: localizedError))
                 }
             }
@@ -538,7 +719,7 @@ private struct ShortcutsSettingsTab: View {
                 title: "Shortcuts",
                 description: nil
             ) {
-                SettingsTextHint("Global shortcut")
+                SettingsTextHint("Global Shortcut")
 
                 HStack {
                     Text(currentShortcutDisplay)
@@ -882,12 +1063,12 @@ private struct DataPrivacySettingsTab: View {
     var body: some View {
         SettingsScrollArea {
             SettingsSection(title: "Data & Privacy", description: nil) {
-                SettingsTextHint(dataDescription, identifier: "data-privacy-description")
-                SettingsTextHint(clearDescription)
+                SettingsTextHint(verbatim: dataDescription, identifier: "data-privacy-description")
+                SettingsTextHint(verbatim: clearDescription)
 
                 SettingsControlRow(
                     title: "Clear Unpinned History…",
-                    description: String(localized: "Clear unpinned items only.")
+                    description: "Clear unpinned items only."
                 ) {
                     Button("Clear Unpinned History…") {
                         focusedTarget = .clearUnpinned
@@ -910,7 +1091,7 @@ private struct DataPrivacySettingsTab: View {
 
                 SettingsControlRow(
                     title: "Clear All History…",
-                    description: String(localized: "Clear all clipboard history from this device.")
+                    description: "Clear all clipboard history from this device."
                 ) {
                     Button("Clear All History…") {
                         focusedTarget = .clearAll

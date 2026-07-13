@@ -153,7 +153,11 @@ struct ClipboardImageCaptureTests {
         #expect(thumbnailData.starts(with: thumbnailPNGSignature))
         #expect(thumbnailData.isEmpty == false)
         #expect(thumbnailData != fixture.data)
-        #expect(thumbnailDescription == fixture.thumbnailDescription)
+        let expectedSubject = payload.sourceDescription?.range(
+            of: "screenshot",
+            options: .caseInsensitive
+        ) == nil ? fixture.formatLabel : "nextpaste.thumbnail.screenshot"
+        #expect(thumbnailDescription == expectedSubject)
     }
 
     private static func fileCount(in directory: URL, fileManager: FileManager) throws -> Int {

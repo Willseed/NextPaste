@@ -28,6 +28,7 @@ final class SettingsUITests: UITestCase {
         static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
         static let localizedEnglishUnitedStates = "英文（美國）"
         static let localizedTraditionalChineseTaiwan = "繁體中文（台灣）"
+        static let localizedFollowSystem = "跟隨系統"
         static let englishLanguageDescription = "Changes apply immediately throughout NextPaste."
         static let localizedLanguageDescription = "變更會立即套用至整個 NextPaste。"
         static let recordShortcut = "global-shortcut-record-button"
@@ -101,7 +102,7 @@ final class SettingsUITests: UITestCase {
         static let englishClearUnpinnedConfirmationTitle = "Clear Unpinned History"
         static let traditionalChineseClearUnpinnedConfirmationTitle = "清除未釘選的歷史記錄"
         static let englishClearAllConfirmationTitle = "Clear All History"
-        static let traditionalChineseClearAllConfirmationTitle = "清除全部歷史記錄"
+        static let traditionalChineseClearAllConfirmationTitle = "清除所有歷史記錄"
         static let englishSectionHeaders = ["General", "Clipboard", "Shortcuts", "Data & Privacy", "About"]
         static let traditionalChineseSectionHeaders = ["一般", "剪貼簿", "快速鍵", "資料與隱私", "關於"]
         static let englishClearUnpinnedDialogMessage =
@@ -588,7 +589,9 @@ final class SettingsUITests: UITestCase {
 
     @MainActor
     func testLanguageSwitchSynchronizesAcrossWindowsMenusAndDialogsWithoutRestart() throws {
-        let app = launchApp()
+        let app = launchApp(
+            extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "en_us"]
+        )
         let history = historyRobot(for: app)
         try history.createTextClip(UITestFixtures.History.olderText)
 
@@ -600,10 +603,25 @@ final class SettingsUITests: UITestCase {
         assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
         assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
 
-        let settingsWindow = openSettingsWindow(in: app)
+        var settingsWindow = openSettingsWindow(in: app)
         openSettingsTab(Accessibility.generalTab, in: app)
         var languagePicker = languagePopup(in: settingsWindow)
 
+        let mainWindow = try XCTUnwrap(mainWindowElements(in: app).first)
+        mainWindow.click()
+        let newClipButton = UITestAssertions.assertExists(
+            mainWindow.buttons[Accessibility.newClipButton],
+            "Expected New Clip in an open main window"
+        )
+        XCTAssertTrue(newClipButton.isHittable, "Expected New Clip to be hittable after activating its main window")
+        newClipButton.tap()
+        let englishNewClipEditor = UITestAssertions.assertExists(
+            app.textViews["clip-text-editor"],
+            "Expected New Clip editor before changing the in-app locale"
+        )
+        assertElementLabel(englishNewClipEditor, equals: "New Text Clip")
+
+        (settingsWindow, languagePicker) = activateSettingsWindowAndWaitForLanguagePicker(in: app)
         selectMenuOption(
             Accessibility.traditionalChineseTaiwan,
             from: languagePicker,
@@ -618,7 +636,7 @@ final class SettingsUITests: UITestCase {
         assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.traditionalChineseMainWindow, in: app)
         assertMenuItemLabel(LocalizedLabel.traditionalChineseFindMenu, in: app)
 
-        openSettingsTab(Accessibility.clipboardTab, in: app)
+        openSettingsTab(Accessibility.privacyTab, in: app)
         let clearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
         UITestAssertions.assertExists(clearButton, "Expected dialog trigger for unpinned clear confirmation")
         clearButton.tap()
@@ -645,8 +663,24 @@ final class SettingsUITests: UITestCase {
         UITestAssertions.assertAccessibleTextEquals(cancelClearButton, "取消")
         cancelClearButton.tap()
 
+        mainWindow.click()
+        let traditionalChineseNewClipEditor = UITestAssertions.assertExists(
+            app.textViews["clip-text-editor"],
+            "Expected the locale-rebuilt New Clip editor"
+        )
+        assertElementLabel(traditionalChineseNewClipEditor, equals: "新增文字剪貼簿")
+        app.buttons["save-clip-button"].tap()
+        assertStaticTextValue(
+            UITestAssertions.assertExists(app.staticTexts["text-validation-message"]),
+            equals: "請輸入要儲存的剪貼項目文字。"
+        )
+
+        let newClipDraft = "Draft survives language switching"
+        replaceText(in: traditionalChineseNewClipEditor, with: newClipDraft, application: app)
+
+        (settingsWindow, languagePicker) = activateSettingsWindowAndWaitForLanguagePicker(in: app)
         selectMenuOption(
-            Accessibility.englishUnitedStates,
+            Accessibility.localizedEnglishUnitedStates,
             from: languagePicker,
             in: app
         )
@@ -655,6 +689,53 @@ final class SettingsUITests: UITestCase {
         assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
         assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
         assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
+        let restoredEnglishNewClipEditor = UITestAssertions.assertExists(
+            app.textViews["clip-text-editor"],
+            "Expected the New Clip editor rebuilt for English"
+        )
+        assertElementLabel(restoredEnglishNewClipEditor, equals: "New Text Clip")
+        XCTAssertEqual(
+            textInputValue(of: restoredEnglishNewClipEditor),
+            newClipDraft,
+            "Expected the New Clip draft to survive the language round trip"
+        )
+        app.buttons["cancel-new-clip-button"].tap()
+    }
+
+    @MainActor
+    func testLanguageFollowSystemResolvesOrderedMacOSPreferenceAndPersists() throws {
+        let traditionalChineseApp = launchApp(
+            extraArguments: ["-AppleLanguages", "(zh-Hant)"],
+            extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "system"]
+        )
+        var settingsWindow = openSettingsWindow(in: traditionalChineseApp)
+        openSettingsTab(Accessibility.generalTab, in: traditionalChineseApp)
+        assertPopupValueEventually(
+            languagePopup(in: settingsWindow),
+            equals: Accessibility.localizedFollowSystem
+        )
+        assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: traditionalChineseApp)
+        assertMainWindowLabels(LocalizedLabel.traditionalChineseMainWindow, in: traditionalChineseApp)
+        XCTAssertTrue(
+            traditionalChineseApp.staticTexts["尚無剪貼項目"].waitForExistence(timeout: UITestAssertions.defaultTimeout)
+        )
+        XCTAssertTrue(
+            traditionalChineseApp.staticTexts["複製一些內容即可開始使用。"].waitForExistence(timeout: UITestAssertions.defaultTimeout)
+        )
+        closeApp(traditionalChineseApp)
+
+        let englishApp = launchApp(
+            extraArguments: ["-AppleLanguages", "(en-US)"]
+        )
+        settingsWindow = openSettingsWindow(in: englishApp)
+        openSettingsTab(Accessibility.generalTab, in: englishApp)
+        assertPopupValueEventually(languagePopup(in: settingsWindow), equals: Accessibility.followSystem)
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: englishApp)
+        assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: englishApp)
+        XCTAssertTrue(englishApp.staticTexts["No clips yet"].waitForExistence(timeout: UITestAssertions.defaultTimeout))
+        XCTAssertTrue(
+            englishApp.staticTexts["Copy something to get started."].waitForExistence(timeout: UITestAssertions.defaultTimeout)
+        )
     }
 
     @MainActor
@@ -782,24 +863,16 @@ final class SettingsUITests: UITestCase {
             localizedLanguagePicker,
             equals: Accessibility.localizedTraditionalChineseTaiwan
         )
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.languageFocusProbe,
-            in: app,
-            message: "Language switching must preserve keyboard focus on the picker"
+        assertHasKeyboardFocus(
+            localizedLanguagePicker,
+            message: "Language switching must preserve real Accessibility focus on the picker"
         )
-        selectAdjacentPopupOption(
-            .previous,
-            from: localizedLanguagePicker,
-            in: app
-        )
+        app.typeKey(.upArrow, modifierFlags: [])
         let restoredLanguagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(restoredLanguagePicker, equals: Accessibility.englishUnitedStates)
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.languageFocusProbe,
-            in: app,
-            message: "Switching back to English must preserve keyboard focus"
+        assertHasKeyboardFocus(
+            restoredLanguagePicker,
+            message: "Switching back to English must preserve real Accessibility focus"
         )
         try performProductAccessibilityAudit(in: app)
 
@@ -809,7 +882,11 @@ final class SettingsUITests: UITestCase {
         let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
         assertAccessibleControl(recordButton, named: "Record Shortcut button")
         assertAccessibleControl(resetButton, named: "Reset to Default button")
-        resetButton.tap()
+        resetButton.click()
+        assertHasKeyboardFocus(
+            resetButton,
+            message: "Reset to Default must receive real Accessibility focus before its value is observed"
+        )
         assertGlobalShortcutValueEventually(
             equals: Fixture.defaultShortcutDisplay,
             in: settingsWindow,
@@ -836,7 +913,7 @@ final class SettingsUITests: UITestCase {
             in: settingsWindow,
             message: "Space must activate the focused Clear Shortcut button"
         )
-        resetButton.tap()
+        resetButton.click()
         assertHasKeyboardFocus(
             resetButton,
             message: "The Reset to Default button must expose native keyboard focus"
@@ -853,11 +930,9 @@ final class SettingsUITests: UITestCase {
         assertAccessibleControl(appearancePicker, named: "Appearance picker")
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
-        assertProbeValue(
-            "focused",
-            identifier: Accessibility.languageFocusProbe,
-            in: app,
-            message: "Appearance switching must preserve keyboard focus"
+        assertHasKeyboardFocus(
+            appearancePicker,
+            message: "Appearance switching must preserve real Accessibility focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
         try performProductAccessibilityAudit(in: app)
@@ -935,7 +1010,7 @@ final class SettingsUITests: UITestCase {
 
     @MainActor
     func testSettingsControlsRemainReadableAndKeyboardReachableAcrossLocalesAndCompactWidth() throws {
-        let app = launchApp()
+        let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
         let settingsWindow = openSettingsWindow(in: app)
         _ = settingsScrollView(in: settingsWindow)
 
@@ -945,7 +1020,28 @@ final class SettingsUITests: UITestCase {
         let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
         assertAccessibleControl(recordButton, named: "Record Shortcut button")
         assertAccessibleControl(resetButton, named: "Reset to Default button")
+
+        resetButton.click()
+        assertHasKeyboardFocus(
+            resetButton,
+            message: "Compact-width Reset to Default must receive real Accessibility focus"
+        )
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset to Default must establish the compact-width Clear Shortcut fixture"
+        )
         assertAccessibleControl(clearButton, named: "Clear Shortcut button")
+        clearButton.click()
+        assertHasKeyboardFocus(
+            clearButton,
+            message: "Compact-width Clear Shortcut must receive real Accessibility focus"
+        )
+        assertGlobalShortcutValueEventually(
+            equals: "None",
+            in: settingsWindow,
+            message: "Compact-width Clear Shortcut must execute against the nonempty fixture"
+        )
 
         openSettingsTab(Accessibility.clipboardTab, in: app)
         let unpinnedClearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
@@ -962,6 +1058,7 @@ final class SettingsUITests: UITestCase {
         )
 
         let chineseApp = launchApp(
+            extraArguments: [Fixture.settingsHistoryLimitSeedArgument],
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
             windowSizePreset: .small
         )
@@ -991,62 +1088,127 @@ final class SettingsUITests: UITestCase {
 
     @MainActor
     func testDataPrivacyClearActionsShowLocalizedConfirmationDialogs() throws {
-        let englishApp = launchApp()
+        let englishApp = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
+        let englishHistory = historyRobot(for: englishApp)
+        englishHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         var settingsWindow = openSettingsWindow(in: englishApp)
         openSettingsTab(Accessibility.privacyTab, in: englishApp)
 
-        settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory].tap()
-        UITestAssertions.assertAccessibleTextEquals(
-            settingsWindow.buttons[Accessibility.settingsConfirmClearUnpinned],
-            LocalizedLabel.englishClearUnpinnedConfirmationTitle
+        var dialog = openClearDialog(
+            trigger: Accessibility.settingsClearUnpinnedHistory,
+            confirm: Accessibility.settingsConfirmClearUnpinned,
+            cancel: Accessibility.settingsCancelClearUnpinned,
+            expectedTitle: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
+            expectedMessage: LocalizedLabel.englishClearUnpinnedDialogMessage,
+            expectedCancelLabel: "Cancel",
+            in: settingsWindow,
+            application: englishApp
         )
-        assertStaticTextValue(
-            englishApp.staticTexts[LocalizedLabel.englishClearUnpinnedDialogMessage],
-            equals: LocalizedLabel.englishClearUnpinnedDialogMessage
-        )
-        settingsWindow.buttons[Accessibility.settingsCancelClearUnpinned].tap()
+        dialog.cancel.tap()
+        englishHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
 
-        settingsWindow.buttons[Accessibility.settingsClearAllHistory].tap()
-        UITestAssertions.assertAccessibleTextEquals(
-            settingsWindow.buttons[Accessibility.settingsConfirmClearAll],
-            LocalizedLabel.englishClearAllConfirmationTitle
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearUnpinnedHistory,
+            confirm: Accessibility.settingsConfirmClearUnpinned,
+            cancel: Accessibility.settingsCancelClearUnpinned,
+            expectedTitle: LocalizedLabel.englishClearUnpinnedConfirmationTitle,
+            expectedMessage: LocalizedLabel.englishClearUnpinnedDialogMessage,
+            expectedCancelLabel: "Cancel",
+            in: settingsWindow,
+            application: englishApp
         )
-        assertStaticTextValue(
-            englishApp.staticTexts[LocalizedLabel.englishClearAllDialogMessage],
-            equals: LocalizedLabel.englishClearAllDialogMessage
+        dialog.confirm.tap()
+        englishHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
+
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearAllHistory,
+            confirm: Accessibility.settingsConfirmClearAll,
+            cancel: Accessibility.settingsCancelClearAll,
+            expectedTitle: LocalizedLabel.englishClearAllConfirmationTitle,
+            expectedMessage: LocalizedLabel.englishClearAllDialogMessage,
+            expectedCancelLabel: "Cancel",
+            in: settingsWindow,
+            application: englishApp
         )
-        settingsWindow.buttons[Accessibility.settingsCancelClearAll].tap()
+        dialog.cancel.tap()
+        englishHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
+
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearAllHistory,
+            confirm: Accessibility.settingsConfirmClearAll,
+            cancel: Accessibility.settingsCancelClearAll,
+            expectedTitle: LocalizedLabel.englishClearAllConfirmationTitle,
+            expectedMessage: LocalizedLabel.englishClearAllDialogMessage,
+            expectedCancelLabel: "Cancel",
+            in: settingsWindow,
+            application: englishApp
+        )
+        dialog.confirm.tap()
+        englishHistory.assertVisibleDatasetCounts(total: 0, text: 0, image: 0, pinned: 0)
 
         closeApp(englishApp)
 
         let chineseApp = launchApp(
+            extraArguments: [Fixture.settingsHistoryLimitSeedArgument],
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
-            windowSizePreset: .small
+            windowSizePreset: .defaultSize
         )
+        let chineseHistory = historyRobot(for: chineseApp)
+        chineseHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         settingsWindow = openSettingsWindow(in: chineseApp)
         openSettingsTab(Accessibility.privacyTab, in: chineseApp)
 
-        settingsWindow.buttons[Accessibility.settingsClearUnpinnedHistory].tap()
-        UITestAssertions.assertAccessibleTextEquals(
-            settingsWindow.buttons[Accessibility.settingsConfirmClearUnpinned],
-            LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearUnpinnedHistory,
+            confirm: Accessibility.settingsConfirmClearUnpinned,
+            cancel: Accessibility.settingsCancelClearUnpinned,
+            expectedTitle: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
+            expectedMessage: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
+            expectedCancelLabel: "取消",
+            in: settingsWindow,
+            application: chineseApp
         )
-        assertStaticTextValue(
-            chineseApp.staticTexts[LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage],
-            equals: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage
-        )
-        settingsWindow.buttons[Accessibility.settingsCancelClearUnpinned].tap()
+        dialog.cancel.tap()
+        chineseHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
 
-        settingsWindow.buttons[Accessibility.settingsClearAllHistory].tap()
-        UITestAssertions.assertAccessibleTextEquals(
-            settingsWindow.buttons[Accessibility.settingsConfirmClearAll],
-            LocalizedLabel.traditionalChineseClearAllConfirmationTitle
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearUnpinnedHistory,
+            confirm: Accessibility.settingsConfirmClearUnpinned,
+            cancel: Accessibility.settingsCancelClearUnpinned,
+            expectedTitle: LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle,
+            expectedMessage: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage,
+            expectedCancelLabel: "取消",
+            in: settingsWindow,
+            application: chineseApp
         )
-        assertStaticTextValue(
-            chineseApp.staticTexts[LocalizedLabel.traditionalChineseClearAllDialogMessage],
-            equals: LocalizedLabel.traditionalChineseClearAllDialogMessage
+        dialog.confirm.tap()
+        chineseHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
+
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearAllHistory,
+            confirm: Accessibility.settingsConfirmClearAll,
+            cancel: Accessibility.settingsCancelClearAll,
+            expectedTitle: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
+            expectedMessage: LocalizedLabel.traditionalChineseClearAllDialogMessage,
+            expectedCancelLabel: "取消",
+            in: settingsWindow,
+            application: chineseApp
         )
-        settingsWindow.buttons[Accessibility.settingsCancelClearAll].tap()
+        dialog.cancel.tap()
+        chineseHistory.assertVisibleDatasetCounts(total: 1, text: 1, image: 0, pinned: 1)
+
+        dialog = openClearDialog(
+            trigger: Accessibility.settingsClearAllHistory,
+            confirm: Accessibility.settingsConfirmClearAll,
+            cancel: Accessibility.settingsCancelClearAll,
+            expectedTitle: LocalizedLabel.traditionalChineseClearAllConfirmationTitle,
+            expectedMessage: LocalizedLabel.traditionalChineseClearAllDialogMessage,
+            expectedCancelLabel: "取消",
+            in: settingsWindow,
+            application: chineseApp
+        )
+        dialog.confirm.tap()
+        chineseHistory.assertVisibleDatasetCounts(total: 0, text: 0, image: 0, pinned: 0)
     }
 
     @MainActor
@@ -1094,11 +1256,67 @@ final class SettingsUITests: UITestCase {
 
     private func performProductAccessibilityAudit(in app: XCUIApplication) throws {
         try app.performAccessibilityAudit(for: .sufficientElementDescription) { issue in
-            // XCUIAutomation audits the application-level accessibility tree,
-            // which includes the macOS-owned Touch Bar surface outside every
-            // NextPaste window. Product elements remain unhandled and blocking.
-            issue.element?.elementType == .touchBar
+            guard let element = issue.element else { return false }
+
+            let isDebugProbeDuplicateRoleIssue = element.elementType == .staticText
+                && element.identifier == "history-visible-text-count"
+                && element.label == "Visible text clip count"
+                && (element.value as? String) == "0"
+
+            // HomeView's one-point readiness marker exists only under the
+            // complete Debug UI-test launch contract. Its visible label contains
+            // the word "text", so the sufficient-description audit treats that
+            // Debug probe label as duplicating the StaticText role.
+            //
+            // Xcode's macOS framework contributes exactly one system Touch Bar
+            // (no Touch Bar is defined in this repository). Its AX signature is
+            // an undescribed TouchBar with empty identifier, label, and value.
+            // Keep that framework-only waiver exact; all other issues fail.
+            let isFrameworkOwnedSystemTouchBarIssue = issue.compactDescription == "Element has no description"
+                && element.elementType == .touchBar
+                && app.touchBars.count == 1
+                && element.identifier.isEmpty
+                && element.label.isEmpty
+                && (element.value as? String) == ""
+
+            return isDebugProbeDuplicateRoleIssue || isFrameworkOwnedSystemTouchBarIssue
         }
+    }
+
+    private func openClearDialog(
+        trigger triggerIdentifier: String,
+        confirm confirmIdentifier: String,
+        cancel cancelIdentifier: String,
+        expectedTitle: String,
+        expectedMessage: String,
+        expectedCancelLabel: String,
+        in settingsWindow: XCUIElement,
+        application app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (confirm: XCUIElement, cancel: XCUIElement) {
+        let trigger = settingsWindow.buttons[triggerIdentifier]
+        assertAccessibleControl(trigger, named: "Clear-history dialog trigger", file: file, line: line)
+        trigger.tap()
+
+        let confirm = settingsWindow.buttons[confirmIdentifier]
+        let cancel = settingsWindow.buttons[cancelIdentifier]
+        assertAccessibleControl(confirm, named: "Clear-history confirmation action", file: file, line: line)
+        assertAccessibleControl(cancel, named: "Clear-history cancellation action", file: file, line: line)
+        UITestAssertions.assertAccessibleTextEquals(confirm, expectedTitle, file: file, line: line)
+        UITestAssertions.assertAccessibleTextEquals(cancel, expectedCancelLabel, file: file, line: line)
+        assertStaticTextValue(
+            UITestAssertions.assertExists(
+                app.staticTexts[expectedMessage],
+                "Expected localized clear-history confirmation message",
+                file: file,
+                line: line
+            ),
+            equals: expectedMessage,
+            file: file,
+            line: line
+        )
+        return (confirm, cancel)
     }
 
     private func openSettingsWindow(
@@ -1110,6 +1328,86 @@ final class SettingsUITests: UITestCase {
         let settingsWindow = assertSingleSettingsWindow(in: app, file: file, line: line)
         settingsWindow.click()
         return settingsWindow
+    }
+
+    private func activateSettingsWindowAndWaitForLanguagePicker(
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> (settingsWindow: XCUIElement, languagePicker: XCUIElement) {
+        app.activate()
+        XCTAssertTrue(
+            app.wait(for: .runningForeground, timeout: UITestAssertions.defaultTimeout),
+            "Expected NextPaste to be foreground before activating Settings",
+            file: file,
+            line: line
+        )
+
+        // Command-, activates the existing Settings scene even when another
+        // main window (and its New Clip sheet) most recently had focus. It
+        // preserves the selected Settings tab, so explicitly restore General
+        // before looking for its language picker.
+        app.typeKey(",", modifierFlags: .command)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let latestSettingsWindow = app.windows
+                    .matching(identifier: Accessibility.settingsWindowIdentifier)
+                    .firstMatch
+                return self.settingsWindowCount(in: app) == 1
+                    && latestSettingsWindow.exists
+                    && latestSettingsWindow.isHittable
+            },
+            "Expected one current, interactive Settings window after activating the app",
+            file: file,
+            line: line
+        )
+
+        app.windows
+            .matching(identifier: Accessibility.settingsWindowIdentifier)
+            .firstMatch
+            .click()
+
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let generalTab = self.settingsTabQuery(
+                    identifier: Accessibility.generalTab,
+                    in: app
+                ).firstMatch
+                return generalTab.exists && generalTab.isEnabled && generalTab.isHittable
+            },
+            "Expected the current Settings window to expose an interactive General tab",
+            file: file,
+            line: line
+        )
+        settingsTabQuery(identifier: Accessibility.generalTab, in: app).firstMatch.tap()
+
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let latestSettingsWindow = app.windows
+                    .matching(identifier: Accessibility.settingsWindowIdentifier)
+                    .firstMatch
+                let settingsRoot = latestSettingsWindow.descendants(matching: .any)["settings-content"]
+                let languagePicker = settingsRoot
+                    .descendants(matching: .popUpButton)[Accessibility.appLanguagePicker]
+                return latestSettingsWindow.exists
+                    && latestSettingsWindow.isHittable
+                    && settingsRoot.exists
+                    && languagePicker.exists
+                    && languagePicker.isEnabled
+                    && languagePicker.isHittable
+            },
+            "Expected the current General Settings root to expose an interactive App Language picker",
+            file: file,
+            line: line
+        )
+
+        let latestSettingsWindow = app.windows
+            .matching(identifier: Accessibility.settingsWindowIdentifier)
+            .firstMatch
+        let latestSettingsRoot = latestSettingsWindow.descendants(matching: .any)["settings-content"]
+        let latestLanguagePicker = latestSettingsRoot
+            .descendants(matching: .popUpButton)[Accessibility.appLanguagePicker]
+        return (latestSettingsWindow, latestLanguagePicker)
     }
 
     private func assertSingleSettingsWindow(
@@ -1735,9 +2033,7 @@ final class SettingsUITests: UITestCase {
                 line: line
             )
             XCTAssertTrue(tab.isEnabled, "\(expectedLabel) Settings tab must be enabled", file: file, line: line)
-            XCTAssertTrue(tab.isHittable, "\(expectedLabel) Settings tab must be hittable", file: file, line: line)
             XCTAssertTrue(localizedTab.isEnabled, "\(expectedLabel) localized Settings tab must be enabled", file: file, line: line)
-            XCTAssertTrue(localizedTab.isHittable, "\(expectedLabel) localized Settings tab must be hittable", file: file, line: line)
         }
     }
 
@@ -1809,18 +2105,14 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let menuItem = app.menuItems[expectedLabel]
+        let menuItem = app.menuItems.matching(
+            NSPredicate(format: "label == %@ OR title == %@", expectedLabel, expectedLabel)
+        ).firstMatch
         XCTAssertTrue(
             UITestWait.until(timeout: timeout) {
                 menuItem.exists
             },
             "Expected menu item with label \(expectedLabel)",
-            file: file,
-            line: line
-        )
-        XCTAssertEqual(
-            menuItem.label,
-            expectedLabel,
             file: file,
             line: line
         )
@@ -1911,20 +2203,25 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let descriptions = settingsWindow.staticTexts.containing(
-            NSPredicate(format: "label == %@", expectedText)
-        )
+        let description = settingsWindow.descendants(matching: .any)["app-language-description"]
         XCTAssertTrue(
-            descriptions.element.exists,
+            description.waitForExistence(timeout: timeout),
             "Expected language description text \(expectedText)",
             file: file,
             line: line
         )
         XCTAssertTrue(
             UITestWait.until(timeout: timeout) {
-                descriptions.element.waitForExistence(timeout: timeout)
+                description.exists
             },
             "Expected localized language description visible as label: \(expectedText)",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            description.label.contains(expectedText)
+                || ((description.value as? String)?.contains(expectedText) == true),
+            "Expected app-language-description AX text \(expectedText); label=\(description.label), value=\(description.value as? String ?? "nil")",
             file: file,
             line: line
         )

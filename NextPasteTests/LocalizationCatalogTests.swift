@@ -181,9 +181,23 @@ struct LocalizationCatalogTests {
         let sourcePatterns = [
             #"\bText\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\bButton\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bLabel\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bMenu\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bPicker\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\b(?:Toggle|NavigationLink|LabeledContent|GroupBox|DisclosureGroup)\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\bTextField\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\bSection\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSection\s*\(\s*header\s*:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSection\s*\(\s*footer\s*:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSection\s*\(\s*header\s*:\s*"(?:\\.|[^"\\])+"\s*,\s*footer\s*:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bText\s*\(\s*LocalizedStringKey\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSettingsTextHint\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\b(?:SettingsSection|SettingsControlRow|AppToolbar)\s*\([^)]*?\btitle:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSettingsControlRow\s*\([^)]*?\bdescription:\s*"((?:\\.|[^"\\])+)""#,
             #"String\s*\(\s*localized:\s*"((?:\\.|[^"\\])+)""#,
+            #"\.nextPasteLocalized\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.localizedString\s*\(\s*forKey:\s*"((?:\\.|[^"\\])+)""#,
+            #"\.(?:alert|confirmationDialog|navigationTitle)\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityLabel\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityValue\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityHint\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
@@ -248,22 +262,82 @@ struct LocalizationCatalogTests {
                 continue
             }
 
-            for pattern in sourceLiteralPatterns {
-                let nsrange = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
-                for match in pattern.matches(in: sourceText, options: [], range: nsrange) {
-                    guard match.numberOfRanges > 1 else { continue }
-                    guard let keyRange = Range(match.range(at: 1), in: sourceText) else { continue }
-                    var key = String(sourceText[keyRange])
-                    key = key.trimmingCharacters(in: .whitespacesAndNewlines)
-                    if key.isEmpty { continue }
-                    if key.contains("\\(") { continue }
-                    if key.count == 1 { continue }
+            extracted.formUnion(localizedStringKeys(in: sourceText))
+        }
+
+        return extracted
+    }
+
+    private func localizedStringKeys(in sourceText: String) -> Set<String> {
+        var extracted: Set<String> = []
+        let nsrange = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
+
+        for pattern in sourceLiteralPatterns {
+            for match in pattern.matches(in: sourceText, options: [], range: nsrange) {
+                guard match.numberOfRanges > 1,
+                      let keyRange = Range(match.range(at: 1), in: sourceText) else { continue }
+                let key = String(sourceText[keyRange]).trimmingCharacters(in: .whitespacesAndNewlines)
+                if key.isEmpty == false, key.count > 1 {
                     extracted.insert(key)
                 }
             }
         }
 
+        // Track literal constants that are deliberately converted to a
+        // LocalizedStringKey at the call site. This covers indirect empty-state
+        // keys without treating arbitrary model/debug constants as UI text.
+        let assignmentPattern = try! NSRegularExpression(
+            pattern: #"\b(?:static\s+)?let\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]+)?=\s*"((?:\\.|[^"\\])+)""#
+        )
+        for match in assignmentPattern.matches(in: sourceText, range: nsrange) {
+            guard let nameRange = Range(match.range(at: 1), in: sourceText),
+                  let valueRange = Range(match.range(at: 2), in: sourceText) else { continue }
+            let name = String(sourceText[nameRange])
+            let referencePattern = try! NSRegularExpression(
+                pattern: #"LocalizedStringKey\s*\(\s*(?:Self\.)?"# + NSRegularExpression.escapedPattern(for: name) + #"\s*\)"#
+            )
+            let isDirectlyReferenced = referencePattern.firstMatch(in: sourceText, range: nsrange) != nil
+            let isReturnedByLocalizedComputedProperty = localizedComputedPropertyNames(in: sourceText).contains { propertyName in
+                guard let propertyStart = sourceText.range(of: "var \(propertyName)") else { return false }
+                let propertySuffix = sourceText[propertyStart.lowerBound...]
+                let propertyEnd = propertySuffix.range(of: "\n    private var ")?.lowerBound ?? sourceText.endIndex
+                return sourceText[propertyStart.lowerBound..<propertyEnd].contains("Self.\(name)")
+            }
+            guard isDirectlyReferenced || isReturnedByLocalizedComputedProperty else { continue }
+            extracted.insert(String(sourceText[valueRange]))
+        }
+
         return extracted
+    }
+
+    private func localizedComputedPropertyNames(in sourceText: String) -> Set<String> {
+        let pattern = try! NSRegularExpression(
+            pattern: #"LocalizedStringKey\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)"#
+        )
+        let range = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
+        return Set(pattern.matches(in: sourceText, range: range).compactMap { match in
+            guard let nameRange = Range(match.range(at: 1), in: sourceText) else { return nil }
+            return String(sourceText[nameRange])
+        })
+    }
+
+    private func interpolationSkeleton(_ value: String) -> String {
+        let swiftInterpolation = try! NSRegularExpression(pattern: #"\\\([^)]*\)"#)
+        let printfPlaceholder = try! NSRegularExpression(
+            pattern: #"%(?:\d+\$)?[-+0-9.*]*(?:hh|h|ll|l|L|z|t|j)?[A-Za-z@]"#
+        )
+        let range = NSRange(value.startIndex..<value.endIndex, in: value)
+        let withoutSwiftValues = swiftInterpolation.stringByReplacingMatches(
+            in: value,
+            range: range,
+            withTemplate: "<value>"
+        )
+        let printfRange = NSRange(withoutSwiftValues.startIndex..<withoutSwiftValues.endIndex, in: withoutSwiftValues)
+        return printfPlaceholder.stringByReplacingMatches(
+            in: withoutSwiftValues,
+            range: printfRange,
+            withTemplate: "<value>"
+        )
     }
 
     private func supportedLocales() throws -> [String] {
@@ -432,19 +506,8 @@ struct LocalizationCatalogTests {
         #expect(Set(locales).isSuperset(of: ["en", "zh-Hant"]))
 
         for locale in locales {
-            // Skip comment-only/metadata catalog entries (keys with no
-            // `localizations` field, e.g. the app name, an illustration label,
-            // and an auto-generated format-string comment). These are not
-            // translatable strings; the completeness contract applies only to
-            // entries that actually declare localizations.
-            // Existing English-only entries intentionally use the String Catalog
-            // fallback in zh-Hant. Settings, shortcut, and branch-owned image-action
-            // strings are explicitly bilingual.
-            let entriesToValidate = locale == "en"
-                ? catalog.strings
-                : catalog.strings.filter { featureBilingualKeys.contains($0.key) }
-            let missingKeys = entriesToValidate.compactMap { key, entry -> String? in
-                guard let localizations = entry.localizations else { return nil }
+            let missingKeys = catalog.strings.compactMap { key, entry -> String? in
+                guard let localizations = entry.localizations else { return key }
                 guard let localization = localizations[locale],
                       let stringUnit = localization.stringUnit,
                       stringUnit.state == "translated",
@@ -493,7 +556,7 @@ struct LocalizationCatalogTests {
                 continue
             }
 
-            for key in featureBilingualKeys {
+            for key in catalog.strings.keys {
                 let expected = try #require(catalog.strings[key]?.localizations?[locale]?.stringUnit?.value)
                 let compiled = localizedBundle.localizedString(
                     forKey: key,
@@ -509,11 +572,59 @@ struct LocalizationCatalogTests {
         let catalog = try loadCatalog()
         let sourceKeys = try sourceLocalizedStringKeys()
 
-        let missing = sourceKeys.subtracting(catalog.strings.keys)
+        let catalogSkeletons = Set(catalog.strings.keys.map(interpolationSkeleton))
+        let missing = sourceKeys.filter { key in
+            catalog.strings[key] == nil && catalogSkeletons.contains(interpolationSkeleton(key)) == false
+        }
         if missing.isEmpty == false {
             Issue.record("Production localized call sites reference keys missing from Localizable.xcstrings: \(missing.sorted())")
         }
         #expect(missing.isEmpty)
+    }
+
+    @Test func scannerCoversSwiftUITitleInitializersAndExcludesNonlocalizedLiterals() {
+        let source = #"""
+        static let headline = "No clips yet"
+        static let searchHeadline = "No matching clips"
+        private var headline: String { Self.searchHeadline }
+        Text(LocalizedStringKey(headline))
+        Text(LocalizedStringKey("Localized text key"))
+        Text("Delete \(count) Items")
+        SettingsTextHint("Global Shortcut")
+        Label("New Clip", systemImage: "plus")
+        Toggle("Toggle title", isOn: $isEnabled)
+        NavigationLink("Navigation title") { EmptyView() }
+        LabeledContent("Labeled content title") { EmptyView() }
+        GroupBox("Group box title") { EmptyView() }
+        DisclosureGroup("Disclosure group title") { EmptyView() }
+        Section(header: "Section header", footer: "Section footer") { EmptyView() }
+        .confirmationDialog("Clear All History", isPresented: $isPresented) { }
+        let runtimeTitle = "Runtime title"
+        Text(runtimeTitle)
+        Text(verbatim: "Verbatim text")
+        Toggle(runtimeTitle, isOn: $isEnabled)
+        print("Debug literal")
+        """#
+
+        let keys = localizedStringKeys(in: source)
+        #expect(keys.contains("No clips yet"))
+        #expect(keys.contains("No matching clips"))
+        #expect(keys.contains("Localized text key"))
+        #expect(keys.contains(#"Delete \(count) Items"#))
+        #expect(keys.contains("Global Shortcut"))
+        #expect(keys.contains("New Clip"))
+        #expect(keys.contains("Toggle title"))
+        #expect(keys.contains("Navigation title"))
+        #expect(keys.contains("Labeled content title"))
+        #expect(keys.contains("Group box title"))
+        #expect(keys.contains("Disclosure group title"))
+        #expect(keys.contains("Section header"))
+        #expect(keys.contains("Section footer"))
+        #expect(keys.contains("Clear All History"))
+        #expect(keys.contains("Runtime title") == false)
+        #expect(keys.contains("Verbatim text") == false)
+        #expect(keys.contains("Debug literal") == false)
+        #expect(interpolationSkeleton(#"Delete \(count) Items"#) == interpolationSkeleton("Delete %lld Items"))
     }
 
     @Test func unknownLocaleFallsBackToANonemptyLocalizedValue() {

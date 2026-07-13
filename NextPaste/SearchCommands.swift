@@ -67,10 +67,14 @@ struct SearchCommands: Commands {
 
     var body: some Commands {
         CommandGroup(after: .textEditing) {
-            Button(
-                String(localized: "Find…", bundle: language.localizationBundle(), locale: language.locale)
-            ) {
+            Button {
                 dispatcher?.send(.focusSearch)
+            } label: {
+                Text(verbatim: String(
+                    localized: "Find…",
+                    bundle: language.localizationBundle(),
+                    locale: language.locale
+                ))
             }
             .keyboardShortcut("f", modifiers: .command)
             .disabled(dispatcher == nil)
@@ -91,26 +95,26 @@ struct HistoryClearCommands: Commands {
     var body: some Commands {
         CommandGroup(after: .textEditing) {
             Divider()
-            Button(
-                String(
+            Button {
+                dispatcher?.send(.clearUnpinnedHistory)
+            } label: {
+                Text(verbatim: String(
                     localized: "Clear Unpinned History…",
                     bundle: language.localizationBundle(),
                     locale: language.locale
-                )
-            ) {
-                dispatcher?.send(.clearUnpinnedHistory)
+                ))
             }
             .keyboardShortcut(.delete, modifiers: [.command, .option])
             .disabled(dispatcher == nil)
 
-            Button(
-                String(
+            Button {
+                dispatcher?.send(.clearAllHistory)
+            } label: {
+                Text(verbatim: String(
                     localized: "Clear All History…",
                     bundle: language.localizationBundle(),
                     locale: language.locale
-                )
-            ) {
-                dispatcher?.send(.clearAllHistory)
+                ))
             }
             .keyboardShortcut(.delete, modifiers: [.command, .option, .shift])
             .disabled(dispatcher == nil)
