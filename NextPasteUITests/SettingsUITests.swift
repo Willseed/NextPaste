@@ -1107,7 +1107,7 @@ final class SettingsUITests: UITestCase {
             "Expected localized settings unpinned clear label"
         )
         XCTAssertTrue(
-            chineseAllClearButton.label.contains("全部")
+            chineseAllClearButton.label.contains("所有")
                 && chineseAllClearButton.label.contains("歷史"),
             "Expected localized settings clear-all label"
         )
