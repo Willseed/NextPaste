@@ -53,7 +53,7 @@ case "${MODE}" in
     [[ -z "${SHARD}" ]] || { /bin/echo "error: --shard is valid only with --mode full-ui" >&2; exit 64; }
     ;;
   full-ui)
-    [[ "${SHARD}" =~ ^[1-4]$ ]] || { /bin/echo "error: full-ui mode requires --shard 1, 2, 3, or 4" >&2; exit 64; }
+    [[ "${SHARD}" =~ ^[1-9][0-9]*$ ]] || { /bin/echo "error: full-ui mode requires a positive integer --shard stage" >&2; exit 64; }
     ;;
   *)
     /bin/echo "error: unsupported mode: ${MODE}" >&2
@@ -444,7 +444,7 @@ else
   while read -r selector; do
     [[ -n "${selector}" ]] && shard_selectors+=("-only-testing:NextPasteUITests/${selector}")
   done < <(/usr/bin/awk -v shard="${SHARD}" '!/^#/ && $1 == shard { print $2 }' "${SHARD_MANIFEST}")
-  ((${#shard_selectors[@]} > 0)) || fail "UI shard ${SHARD} selected no suites"
+  ((${#shard_selectors[@]} > 0)) || fail "UI stage ${SHARD} selected no test methods"
   ui_start_time="$(/bin/date '+%Y-%m-%d %H:%M:%S%z')"
   run_test_phase "FullUIShard${SHARD}" UI 660 NO NO "${shard_selectors[@]}"
   assert_no_swiftui_runtime_warnings "FullUIShard${SHARD}" "${ui_start_time}"
