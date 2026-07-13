@@ -19,6 +19,8 @@ final class RowActionStressTests: UITestCase {
     /// criteria require at least 50 rapid iterations on the same clip and at
     /// least 50 rapid interleaved iterations across different clips.
     static let feature023StressRepeatCount = 50
+    static let feature023InterleavedPart1 = 1...24
+    static let feature023InterleavedPart2 = 25...50
     static let feature025StressRepeatCount = 100
     static let feature025StressPart1 = 1...50
     static let feature025StressPart2 = 51...100
@@ -337,13 +339,24 @@ final class RowActionStressTests: UITestCase {
     /// clips completes with no crash, each clip reflecting only its own last accepted request,
     /// and no clip identity appearing more than once. Uses the shared `BoundedRetryUITestHelper`
     /// only for the final settled-state assertions; the rapid loop performs only the native
-    /// row-action taps and a no-crash check per action.
+    /// row-action taps and a no-crash check per action. The fixed 50-round workload is split
+    /// across two independently runnable selectors because 150 native transactions exceed the
+    /// Full UI shard watchdog on hosted runners.
     @MainActor
-    func testT041RapidInterleavedPinUnpinAcrossClipsStress() throws {
-        // Fifty rounds across three rows synthesize 150 native swipe/tap
-        // transactions. Keep the watchdog proportional to that fixed workload;
-        // the iteration count and terminal assertions remain unchanged.
-        executionTimeAllowance = 20 * 60
+    func testT041RapidInterleavedPinUnpinAcrossClipsStressPart1() throws {
+        try runT041RapidInterleavedPinUnpinAcrossClipsStress(iterations: Self.feature023InterleavedPart1)
+    }
+
+    @MainActor
+    func testT041RapidInterleavedPinUnpinAcrossClipsStressPart2() throws {
+        try runT041RapidInterleavedPinUnpinAcrossClipsStress(iterations: Self.feature023InterleavedPart2)
+    }
+
+    @MainActor
+    private func runT041RapidInterleavedPinUnpinAcrossClipsStress(
+        iterations: ClosedRange<Int>
+    ) throws {
+        executionTimeAllowance = 10 * 60
 
         let trace = UITestAppLauncher.makeTraceApp()
         let app = trace.app
@@ -362,8 +375,10 @@ final class RowActionStressTests: UITestCase {
         history.assertClipRowIdentifierExists()
 
         var actionOutcomes: [String] = []
-        // Odd iterations pin all three (currently unpinned); even iterations unpin all three.
-        for iteration in 1...Self.feature023StressRepeatCount {
+        // The two partitions are consecutive slices of the same fixed 1...50 sequence.
+        // Part 1 ends at iteration 24 with every clip unpinned, which is also the initial
+        // state for part 2 before iteration 25. No iteration or native action is omitted.
+        for (offset, iteration) in iterations.enumerated() {
             let desiredPinned = (iteration % 2) == 1
             let expectedLabel = desiredPinned ? "Pin" : "Unpin"
             for (index, clip) in clips.enumerated() {
@@ -372,7 +387,7 @@ final class RowActionStressTests: UITestCase {
                 XCTAssertEqual(
                     app.state,
                     .runningForeground,
-                    "App crashed on T041 \(expectedLabel) clip\(index) iteration \(iteration)"
+                    "App crashed on T041 \(expectedLabel) clip\(index) partition offset \(offset) iteration \(iteration)"
                 )
                 actionOutcomes.append("\(expectedLabel)-\(index)-\(iteration): \(app.state)")
             }
@@ -390,18 +405,18 @@ final class RowActionStressTests: UITestCase {
             )
         }
 
-        // Each clip reflects only its own last accepted request. The last iteration is even
-        // (unpin), so every clip must be unpinned.
+        // Each clip reflects only its own last accepted request.
+        let finalDesired = (iterations.upperBound % 2) == 1
         for clip in clips {
             UITestAssertions.assertEventuallyAccessibleTextContains(
                 assertTextRowIdentifier(for: clip, in: app),
-                "Unpinned",
+                finalDesired ? "Pinned" : "Unpinned",
                 timeout: 3
             )
         }
 
         attachStressOutcome(
-            scenario: "T041",
+            scenario: "T041-\(iterations.lowerBound)-\(iterations.upperBound)",
             actionOutcomes: actionOutcomes,
             app: app,
             traceURL: trace.traceURL
