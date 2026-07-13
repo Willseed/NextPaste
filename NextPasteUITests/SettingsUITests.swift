@@ -214,9 +214,18 @@ final class SettingsUITests: UITestCase {
 
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         assertSectionHeaders([LocalizedLabel.englishSectionHeaders[2]], in: settingsWindow)
-        assertAccessibleControl(shortcutButton(Accessibility.recordShortcut, in: settingsWindow), named: "Record Shortcut button")
-        assertAccessibleControl(shortcutButton(Accessibility.clearShortcut, in: settingsWindow), named: "Clear Shortcut button")
-        assertAccessibleControl(shortcutButton(Accessibility.resetShortcut, in: settingsWindow), named: "Reset to Default button")
+        let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
+        let clearButton = shortcutButton(Accessibility.clearShortcut, in: settingsWindow)
+        let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
+        assertAccessibleControl(recordButton, named: "Record Shortcut button")
+        assertAccessibleControl(resetButton, named: "Reset to Default button")
+        resetButton.click()
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset to Default must establish the deterministic Clear Shortcut fixture"
+        )
+        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
 
         openSettingsTab(Accessibility.privacyTab, in: app)
         assertSectionHeaders([LocalizedLabel.englishSectionHeaders[3]], in: settingsWindow)
