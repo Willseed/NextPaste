@@ -689,10 +689,7 @@ final class RowActionStressTests: UITestCase {
             case .text:
                 row.revealPinActionWithRightSwipe(for: textTarget, expectedLabel: expectedLabel).tap()
             case .image:
-                row.revealImagePinActionWithRightSwipe(
-                    forThumbnailDescription: imageTarget,
-                    expectedLabel: expectedLabel
-                ).tap()
+                row.revealPinActionForSoleVisibleImageSearchResult(expectedLabel: expectedLabel).tap()
             }
             XCTAssertEqual(app.state, .runningForeground)
             outcomes.append("\(target.rawValue)-\(expectedLabel)-\(iteration): \(app.state)")
@@ -707,7 +704,7 @@ final class RowActionStressTests: UITestCase {
             )
         case .image:
             UITestAssertions.assertEventuallyAccessibleTextContains(
-                row.imageRowElement(withThumbnailDescription: imageTarget),
+                row.imageRowForSoleVisibleSearchResult(),
                 "Unpinned",
                 timeout: 5
             )
@@ -749,7 +746,7 @@ final class RowActionStressTests: UITestCase {
             outcomes.append("pin-text-\(pair.0): \(app.state)")
 
             history.clearSearch().enterSearchQuery(pair.1)
-            row.revealImagePinActionWithRightSwipe(forThumbnailDescription: pair.1, expectedLabel: "Pin").tap()
+            row.revealPinActionForSoleVisibleImageSearchResult().tap()
             XCTAssertEqual(app.state, .runningForeground)
             outcomes.append("pin-image-\(pair.1): \(app.state)")
         }
@@ -765,7 +762,7 @@ final class RowActionStressTests: UITestCase {
         for image in imageTargets {
             history.clearSearch().enterSearchQuery(image)
             UITestAssertions.assertEventuallyAccessibleTextContains(
-                row.imageRowElement(withThumbnailDescription: image),
+                row.imageRowForSoleVisibleSearchResult(),
                 "Pinned",
                 timeout: 5
             )

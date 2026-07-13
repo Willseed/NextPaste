@@ -104,6 +104,51 @@ struct RowRobot {
         imageRow(withThumbnailDescription: thumbnailDescription, timeout: timeout, file: file, line: line)
     }
 
+    func imageRowForSoleVisibleSearchResult(
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let rows = app.descendants(matching: .any).matching(
+            NSPredicate(
+                format: "identifier BEGINSWITH %@",
+                UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix
+            )
+        )
+        let row = UITestAssertions.assertExists(
+            rows.firstMatch,
+            "Expected one visible image row for the active exact search",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        XCTAssertEqual(
+            rows.count,
+            1,
+            "Expected exactly one visible image row for the active exact search",
+            file: file,
+            line: line
+        )
+        return row
+    }
+
+    func revealPinActionForSoleVisibleImageSearchResult(
+        expectedLabel: String = "Pin",
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> XCUIElement {
+        let row = imageRowForSoleVisibleSearchResult(timeout: timeout, file: file, line: line)
+        return revealPinAction(
+            on: [row],
+            scopedTo: row,
+            rowDescription: "the sole visible image search result",
+            expectedLabel: expectedLabel,
+            file: file,
+            line: line
+        )
+    }
+
     func revealDeleteAction(
         for clipText: String,
         file: StaticString = #filePath,
