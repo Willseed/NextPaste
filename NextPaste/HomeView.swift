@@ -709,15 +709,15 @@ struct HomeView: View {
         let inputs = imageRestorationTaskKey
         let results = await Task.detached(priority: .userInitiated) {
             let fileStore = ImageClipFileStore()
-            return Dictionary(uniqueKeysWithValues: inputs.map { input in
-                (
-                    input.id,
-                    fileStore.restorationState(
+            return fileStore.restorationStates(
+                for: inputs.map { input in
+                    ImageClipRestorationRequest(
+                        id: input.id,
                         imageFilename: input.imageFilename,
                         thumbnailFilename: input.thumbnailFilename
                     )
-                )
-            })
+                }
+            )
         }.value
 
         guard Task.isCancelled == false else { return }

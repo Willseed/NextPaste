@@ -98,6 +98,72 @@ struct ImageClipFileStoreTests {
         #expect(fileManager.fileExists(atPath: root.thumbnailsDirectory.path))
     }
 
+    @Test("batch restoration preserves scalar file-state decisions")
+    func batchRestorationPreservesScalarFileStateDecisions() throws {
+        let fileManager = FileManager.default
+        let root = try SwiftDataTestSupport.makeTemporaryImageFileStoreRoot(
+            named: "batch-restoration-state",
+            fileManager: fileManager
+        )
+        defer { try? SwiftDataTestSupport.removeTemporaryImageFileStoreRoot(root, fileManager: fileManager) }
+
+        let store = ImageClipFileStore(rootURL: root.rootURL, fileManager: fileManager)
+        let restorableID = UUID(uuidString: "A918D062-101F-457C-97B1-AEF9AF040205")!
+        let missingThumbnailID = UUID(uuidString: "26EFD245-54A0-4A86-81CF-34498C98B830")!
+        let missingImageID = UUID(uuidString: "2BA363B4-D3F6-4695-988C-80EF84245BAB")!
+        let unsafeFilenameID = UUID(uuidString: "ECEC7714-B6F7-48A5-B304-B07D5EC0FA52")!
+        let restorable = try store.persistImageAsset(
+            clipID: restorableID,
+            sourceExtension: ImageTestFixtures.png.fileExtension,
+            fullImageData: ImageTestFixtures.png.data,
+            thumbnailData: ImageTestFixtures.screenshotStyle.data
+        )
+        let missingThumbnail = try store.persistImageAsset(
+            clipID: missingThumbnailID,
+            sourceExtension: ImageTestFixtures.jpeg.fileExtension,
+            fullImageData: ImageTestFixtures.jpeg.data,
+            thumbnailData: ImageTestFixtures.png.data
+        )
+        try fileManager.removeItem(at: try #require(missingThumbnail.thumbnailURL))
+
+        let requests = [
+            ImageClipRestorationRequest(
+                id: restorableID,
+                imageFilename: restorable.imageFilename,
+                thumbnailFilename: restorable.thumbnailFilename
+            ),
+            ImageClipRestorationRequest(
+                id: missingThumbnailID,
+                imageFilename: missingThumbnail.imageFilename,
+                thumbnailFilename: missingThumbnail.thumbnailFilename
+            ),
+            ImageClipRestorationRequest(
+                id: missingImageID,
+                imageFilename: "missing.png",
+                thumbnailFilename: nil
+            ),
+            ImageClipRestorationRequest(
+                id: unsafeFilenameID,
+                imageFilename: "../unsafe.png",
+                thumbnailFilename: nil
+            )
+        ]
+
+        let batchStates = store.restorationStates(for: requests)
+        for request in requests {
+            #expect(
+                batchStates[request.id] == store.restorationState(
+                    imageFilename: request.imageFilename,
+                    thumbnailFilename: request.thumbnailFilename
+                )
+            )
+        }
+        #expect(batchStates[restorableID] == .restorable)
+        #expect(batchStates[missingThumbnailID] == .missingThumbnailFile)
+        #expect(batchStates[missingImageID] == .missingImageFile)
+        #expect(batchStates[unsafeFilenameID] == .missingImageFile)
+    }
+
     @Test("rejects unsafe source extensions without writing files outside the root")
     func rejectsUnsafeSourceExtensionsWithoutWritingOutsideRoot() throws {
         let fileManager = FileManager.default

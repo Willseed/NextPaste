@@ -36,6 +36,12 @@ enum ImageClipRestorationState: Equatable, Sendable {
     case missingThumbnailFile
 }
 
+struct ImageClipRestorationRequest: Hashable, Sendable {
+    let id: UUID
+    let imageFilename: String?
+    let thumbnailFilename: String?
+}
+
 struct ImageClipFileStore {
     private nonisolated let rootURL: URL
     private nonisolated(unsafe) let fileManager: FileManager
@@ -146,6 +152,31 @@ struct ImageClipFileStore {
         return .restorable
     }
 
+    nonisolated func restorationStates(
+        for requests: [ImageClipRestorationRequest]
+    ) -> [UUID: ImageClipRestorationState] {
+        let imageFilenames = directoryFilenames(in: imagesDirectory)
+        let thumbnailFilenames = directoryFilenames(in: thumbnailsDirectory)
+
+        return Dictionary(uniqueKeysWithValues: requests.map { request in
+            let state: ImageClipRestorationState
+            if let imageFilename = request.imageFilename,
+               Self.isSafeRelativeFilename(imageFilename),
+               imageFilenames.contains(imageFilename) {
+                if let thumbnailFilename = request.thumbnailFilename,
+                   (Self.isSafeRelativeFilename(thumbnailFilename) == false
+                       || thumbnailFilenames.contains(thumbnailFilename) == false) {
+                    state = .missingThumbnailFile
+                } else {
+                    state = .restorable
+                }
+            } else {
+                state = .missingImageFile
+            }
+            return (request.id, state)
+        })
+    }
+
     private nonisolated static func defaultRootURL(fileManager: FileManager) -> URL {
 #if DEBUG
         if let dataDirectoryURL = DebugUITestLaunchEnvironment()?.dataDirectoryURL {
@@ -217,6 +248,10 @@ struct ImageClipFileStore {
     nonisolated private func fileExists(for filename: String, in directory: URL) throws -> Bool {
         let url = try resolveRelativeFilename(filename, in: directory)
         return fileManager.fileExists(atPath: url.path)
+    }
+
+    nonisolated private func directoryFilenames(in directory: URL) -> Set<String> {
+        Set((try? fileManager.contentsOfDirectory(atPath: directory.path)) ?? [])
     }
 
     private func removeFileIfPresent(at url: URL) throws {
