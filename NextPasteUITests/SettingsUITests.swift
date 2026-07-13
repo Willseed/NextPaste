@@ -1012,7 +1012,7 @@ final class SettingsUITests: UITestCase {
         )
         setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
-        app.typeKey(.rightArrow, modifierFlags: [])
+        slider.typeKey(.rightArrow, modifierFlags: [])
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
                 let updatedSliderValue = self.elementValue(of: slider)
