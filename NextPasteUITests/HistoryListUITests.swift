@@ -173,6 +173,7 @@ final class HistoryListUITests: UITestCase {
             XCTAssertTrue(copyButton.isHittable)
             UITestAssertions.assertAccessibleTextContains(copyButton, "Copy")
 
+            app.activate()
             app.typeKey("f", modifierFlags: .command)
             let searchField = history.searchField()
             XCTAssertTrue(

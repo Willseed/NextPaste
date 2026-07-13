@@ -97,8 +97,8 @@ final class AdaptiveToolbarUITests: UITestCase {
             ).isHittable
         )
         XCTAssertTrue(app.buttons["search-button"].exists, "Expected Search button at default width")
-        XCTAssertTrue(app.buttons["history-filter-menu"].exists, "Expected Filter menu at default width")
-        XCTAssertTrue(app.buttons["history-overflow-menu"].exists, "Expected history menu at default width")
+        XCTAssertTrue(app.descendants(matching: .any)["history-filter-menu"].exists, "Expected Filter menu at default width")
+        XCTAssertTrue(app.descendants(matching: .any)["history-overflow-menu"].exists, "Expected history menu at default width")
         XCTAssertTrue(app.buttons["settings-button"].exists, "Expected Settings button at default width")
 
         UITestAppLauncher.resizeMainWindow(in: app, to: .medium)
@@ -110,8 +110,8 @@ final class AdaptiveToolbarUITests: UITestCase {
             "Expected the primary action to stay hittable at medium width"
         )
         XCTAssertTrue(app.buttons["search-button"].exists, "Expected Search button after medium resize")
-        XCTAssertTrue(app.buttons["history-filter-menu"].exists, "Expected Filter menu after medium resize")
-        XCTAssertTrue(app.buttons["history-overflow-menu"].exists, "Expected history menu after medium resize")
+        XCTAssertTrue(app.descendants(matching: .any)["history-filter-menu"].exists, "Expected Filter menu after medium resize")
+        XCTAssertTrue(app.descendants(matching: .any)["history-overflow-menu"].exists, "Expected history menu after medium resize")
 
         UITestAppLauncher.resizeMainWindow(in: app, to: .small)
         XCTAssertTrue(
@@ -234,8 +234,8 @@ final class AdaptiveToolbarUITests: UITestCase {
                 app.typeKey(.escape, modifierFlags: [])
             } else {
                 XCTAssertTrue(app.buttons["search-button"].exists)
-                XCTAssertTrue(app.buttons["history-filter-menu"].exists)
-                XCTAssertTrue(app.buttons["history-overflow-menu"].exists)
+                XCTAssertTrue(app.descendants(matching: .any)["history-filter-menu"].exists)
+                XCTAssertTrue(app.descendants(matching: .any)["history-overflow-menu"].exists)
             }
 
             app.typeKey("f", modifierFlags: .command)

@@ -928,6 +928,7 @@ struct HomeView: View {
                 historyMenu(.labeled)
                 SettingsControl(style: .labeled, onActivate: showSettingsPlaceholder)
             }
+            .fixedSize(horizontal: true, vertical: false)
         case .compact:
             HStack(spacing: DesignTokens.Spacing.small) {
                 searchControl(.iconOnly)
@@ -937,12 +938,14 @@ struct HomeView: View {
                 historyMenu(.iconOnly)
                 SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
             }
+            .fixedSize(horizontal: true, vertical: false)
         case .minimal:
             HStack(spacing: DesignTokens.Spacing.small) {
                 newClipControl
                 overflowMenu
                 SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
             }
+            .fixedSize(horizontal: true, vertical: false)
         }
     }
 
