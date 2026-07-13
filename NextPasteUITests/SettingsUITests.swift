@@ -1044,7 +1044,7 @@ final class SettingsUITests: UITestCase {
         let settingsWindow = openSettingsWindow(in: app)
         _ = settingsScrollView(in: settingsWindow)
 
-        openSettingsTab(Accessibility.clipboardTab, in: app)
+        openSettingsTab(Accessibility.privacyTab, in: app)
         let unpinnedClearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
         let allClearButton = settingsWindow.buttons["settings-clear-all-history"]
         assertAccessibleControl(unpinnedClearButton, named: "Clear Unpinned History button")
@@ -1072,7 +1072,7 @@ final class SettingsUITests: UITestCase {
             "Expected localized shortcut record label in Chinese"
         )
 
-        openSettingsTab(Accessibility.clipboardTab, in: chineseApp)
+        openSettingsTab(Accessibility.privacyTab, in: chineseApp)
         let chineseUnpinnedClearButton = chineseSettingsWindow.buttons["settings-clear-unpinned-history"]
         let chineseAllClearButton = chineseSettingsWindow.buttons["settings-clear-all-history"]
         XCTAssertTrue(
