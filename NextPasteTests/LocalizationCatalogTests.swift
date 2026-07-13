@@ -283,13 +283,13 @@ struct LocalizationCatalogTests {
                 continue
             }
 
-            extracted.formUnion(localizedStringKeys(in: sourceText))
+            extracted.formUnion(try localizedStringKeys(in: sourceText))
         }
 
         return extracted
     }
 
-    private func localizedStringKeys(in sourceText: String) -> Set<String> {
+    private func localizedStringKeys(in sourceText: String) throws -> Set<String> {
         var extracted: Set<String> = []
         let nsrange = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
 
@@ -307,18 +307,19 @@ struct LocalizationCatalogTests {
         // Track literal constants that are deliberately converted to a
         // LocalizedStringKey at the call site. This covers indirect empty-state
         // keys without treating arbitrary model/debug constants as UI text.
-        let assignmentPattern = try! NSRegularExpression(
+        let assignmentPattern = try NSRegularExpression(
             pattern: #"\b(?:static\s+)?let\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::[^=]+)?=\s*"((?:\\.|[^"\\])+)""#
         )
         for match in assignmentPattern.matches(in: sourceText, range: nsrange) {
             guard let nameRange = Range(match.range(at: 1), in: sourceText),
                   let valueRange = Range(match.range(at: 2), in: sourceText) else { continue }
             let name = String(sourceText[nameRange])
-            let referencePattern = try! NSRegularExpression(
+            let referencePattern = try NSRegularExpression(
                 pattern: #"LocalizedStringKey\s*\(\s*(?:Self\.)?"# + NSRegularExpression.escapedPattern(for: name) + #"\s*\)"#
             )
             let isDirectlyReferenced = referencePattern.firstMatch(in: sourceText, range: nsrange) != nil
-            let isReturnedByLocalizedComputedProperty = localizedComputedPropertyNames(in: sourceText).contains { propertyName in
+            let localizedPropertyNames = try localizedComputedPropertyNames(in: sourceText)
+            let isReturnedByLocalizedComputedProperty = localizedPropertyNames.contains { propertyName in
                 guard let propertyStart = sourceText.range(of: "var \(propertyName)") else { return false }
                 let propertySuffix = sourceText[propertyStart.lowerBound...]
                 let propertyEnd = propertySuffix.range(of: "\n    private var ")?.lowerBound ?? sourceText.endIndex
@@ -331,8 +332,8 @@ struct LocalizationCatalogTests {
         return extracted
     }
 
-    private func localizedComputedPropertyNames(in sourceText: String) -> Set<String> {
-        let pattern = try! NSRegularExpression(
+    private func localizedComputedPropertyNames(in sourceText: String) throws -> Set<String> {
+        let pattern = try NSRegularExpression(
             pattern: #"LocalizedStringKey\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)"#
         )
         let range = NSRange(sourceText.startIndex..<sourceText.endIndex, in: sourceText)
@@ -342,9 +343,9 @@ struct LocalizationCatalogTests {
         })
     }
 
-    private func interpolationSkeleton(_ value: String) -> String {
-        let swiftInterpolation = try! NSRegularExpression(pattern: #"\\\([^)]*\)"#)
-        let printfPlaceholder = try! NSRegularExpression(
+    private func interpolationSkeleton(_ value: String) throws -> String {
+        let swiftInterpolation = try NSRegularExpression(pattern: #"\\\([^)]*\)"#)
+        let printfPlaceholder = try NSRegularExpression(
             pattern: #"%(?:\d+\$)?[-+0-9.*]*(?:hh|h|ll|l|L|z|t|j)?[A-Za-z@]"#
         )
         let range = NSRange(value.startIndex..<value.endIndex, in: value)
@@ -593,9 +594,12 @@ struct LocalizationCatalogTests {
         let catalog = try loadCatalog()
         let sourceKeys = try sourceLocalizedStringKeys()
 
-        let catalogSkeletons = Set(catalog.strings.keys.map(interpolationSkeleton))
-        let missing = sourceKeys.filter { key in
-            catalog.strings[key] == nil && catalogSkeletons.contains(interpolationSkeleton(key)) == false
+        let catalogSkeletons = try Set(catalog.strings.keys.map { try interpolationSkeleton($0) })
+        var missing: Set<String> = []
+        for key in sourceKeys where catalog.strings[key] == nil {
+            if catalogSkeletons.contains(try interpolationSkeleton(key)) == false {
+                missing.insert(key)
+            }
         }
         if missing.isEmpty == false {
             Issue.record("Production localized call sites reference keys missing from Localizable.xcstrings: \(missing.sorted())")
@@ -603,7 +607,7 @@ struct LocalizationCatalogTests {
         #expect(missing.isEmpty)
     }
 
-    @Test func scannerCoversSwiftUITitleInitializersAndExcludesNonlocalizedLiterals() {
+    @Test func scannerCoversSwiftUITitleInitializersAndExcludesNonlocalizedLiterals() throws {
         let source = #"""
         static let headline = "No clips yet"
         static let searchHeadline = "No matching clips"
@@ -627,7 +631,7 @@ struct LocalizationCatalogTests {
         print("Debug literal")
         """#
 
-        let keys = localizedStringKeys(in: source)
+        let keys = try localizedStringKeys(in: source)
         #expect(keys.contains("No clips yet"))
         #expect(keys.contains("No matching clips"))
         #expect(keys.contains("Localized text key"))
@@ -645,7 +649,9 @@ struct LocalizationCatalogTests {
         #expect(keys.contains("Runtime title") == false)
         #expect(keys.contains("Verbatim text") == false)
         #expect(keys.contains("Debug literal") == false)
-        #expect(interpolationSkeleton(#"Delete \(count) Items"#) == interpolationSkeleton("Delete %lld Items"))
+        let sourceSkeleton = try interpolationSkeleton(#"Delete \(count) Items"#)
+        let catalogSkeleton = try interpolationSkeleton("Delete %lld Items")
+        #expect(sourceSkeleton == catalogSkeleton)
     }
 
     @Test func sourceScannerHonorsConfigurableDirectoryExclusions() throws {
