@@ -827,6 +827,13 @@ private struct ShortcutsSettingsTab: View {
                     }
                     .focusable()
                     .focused($focusedTarget, equals: .reset)
+#if os(macOS)
+                    .onKeyPress(.space) {
+                        guard focusedTarget == .reset else { return .ignored }
+                        resetToDefault()
+                        return .handled
+                    }
+#endif
                     .accessibilityIdentifier("global-shortcut-reset-button")
                     .accessibilityLabel(Text("Reset to Default"))
                     .accessibilityHint(Text("Restore the default global keyboard shortcut"))

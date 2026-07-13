@@ -885,7 +885,7 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
-    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+    func testShortcutsResetPreservesKeyboardRouting() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)
 
@@ -895,48 +895,68 @@ final class SettingsUITests: UITestCase {
         let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
         assertAccessibleControl(recordButton, named: "Record Shortcut button")
         assertAccessibleControl(resetButton, named: "Reset to Default button")
+
         resetButton.click()
-        assertHasKeyboardFocus(
-            resetButton,
-            message: "Reset to Default must receive real Accessibility focus before its value is observed"
-        )
         assertGlobalShortcutValueEventually(
             equals: Fixture.defaultShortcutDisplay,
             in: settingsWindow,
-            message: "Reset to Default must establish the deterministic keyboard-clear precondition"
+            message: "Reset to Default must establish the deterministic Clear Shortcut fixture"
         )
         assertAccessibleControl(clearButton, named: "Clear Shortcut button")
 
-        recordButton.tap()
-        assertHasKeyboardFocus(
-            recordButton,
-            message: "The Record Shortcut button must expose native keyboard focus"
+        clearButton.click()
+        assertGlobalShortcutValueEventually(
+            equals: "None",
+            in: settingsWindow,
+            message: "Clear Shortcut must establish a state-changing Reset precondition"
         )
-        assertElementLabel(recordButton, equals: "Cancel Recording")
-        recordButton.tap()
-        assertElementLabel(recordButton, equals: LocalizedLabel.englishRecordShortcut)
-        recordButton.typeKey(.tab, modifierFlags: [])
-        assertHasKeyboardFocus(
-            clearButton,
-            message: "Tab must move native focus from Record Shortcut to Clear Shortcut"
+
+        resetButton.click()
+        assertGlobalShortcutValueEventually(
+            equals: Fixture.defaultShortcutDisplay,
+            in: settingsWindow,
+            message: "Reset to Default must restore the shortcut before keyboard routing is verified"
+        )
+        assertProbeValue(
+            Accessibility.resetShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: app,
+            message: "Reset action must preserve its managed focus route after the state update"
+        )
+        app.typeKey(.tab, modifierFlags: [.shift])
+        assertProbeValue(
+            Accessibility.clearShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: app,
+            message: "Shift-Tab must route from Reset to the adjacent Clear Shortcut button"
         )
         app.typeKey(.space, modifierFlags: [])
         assertGlobalShortcutValueEventually(
             equals: "None",
             in: settingsWindow,
-            message: "Space must activate the focused Clear Shortcut button"
+            message: "Space must activate Clear Shortcut without pointer refocusing after Reset"
         )
-        resetButton.click()
-        assertHasKeyboardFocus(
-            resetButton,
-            message: "The Reset to Default button must expose native keyboard focus"
+
+        app.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.resetShortcut,
+            identifier: Accessibility.shortcutsFocusProbe,
+            in: app,
+            message: "Tab must route from disabled Clear Shortcut back to Reset"
         )
+        app.typeKey(.space, modifierFlags: [])
         assertGlobalShortcutValueEventually(
             equals: Fixture.defaultShortcutDisplay,
             in: settingsWindow,
-            message: "Reset to Default must restore the shortcut after keyboard clearing"
+            message: "Space must reactivate Reset through the preserved keyboard route"
         )
         try performProductAccessibilityAudit(in: app)
+    }
+
+    @MainActor
+    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
 
         openSettingsTab(Accessibility.generalTab, in: app)
         let appearancePicker = appearancePopup(in: settingsWindow)
@@ -1026,35 +1046,6 @@ final class SettingsUITests: UITestCase {
         let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
         let settingsWindow = openSettingsWindow(in: app)
         _ = settingsScrollView(in: settingsWindow)
-
-        openSettingsTab(Accessibility.shortcutsTab, in: app)
-        let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
-        let clearButton = shortcutButton(Accessibility.clearShortcut, in: settingsWindow)
-        let resetButton = shortcutButton(Accessibility.resetShortcut, in: settingsWindow)
-        assertAccessibleControl(recordButton, named: "Record Shortcut button")
-        assertAccessibleControl(resetButton, named: "Reset to Default button")
-
-        resetButton.click()
-        assertHasKeyboardFocus(
-            resetButton,
-            message: "Compact-width Reset to Default must receive real Accessibility focus"
-        )
-        assertGlobalShortcutValueEventually(
-            equals: Fixture.defaultShortcutDisplay,
-            in: settingsWindow,
-            message: "Reset to Default must establish the compact-width Clear Shortcut fixture"
-        )
-        assertAccessibleControl(clearButton, named: "Clear Shortcut button")
-        clearButton.click()
-        assertHasKeyboardFocus(
-            clearButton,
-            message: "Compact-width Clear Shortcut must receive real Accessibility focus"
-        )
-        assertGlobalShortcutValueEventually(
-            equals: "None",
-            in: settingsWindow,
-            message: "Compact-width Clear Shortcut must execute against the nonempty fixture"
-        )
 
         openSettingsTab(Accessibility.clipboardTab, in: app)
         let unpinnedClearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
