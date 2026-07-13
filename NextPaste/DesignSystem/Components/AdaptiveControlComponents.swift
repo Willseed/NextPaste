@@ -86,11 +86,7 @@ struct AdaptiveThemedButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         let state = controlState(isPressed: configuration.isPressed)
         configuration.label
-            .font(
-                presentation == .labeled
-                    ? DesignTokens.Typography.body.font
-                    : DesignTokens.Typography.body.font
-            )
+            .font(DesignTokens.Typography.body.font)
             .lineLimit(1)
             .padding(.horizontal, presentation == .labeled ? DesignTokens.Spacing.small : DesignTokens.Spacing.xSmall)
             .padding(.vertical, presentation == .labeled ? DesignTokens.Spacing.xSmall : DesignTokens.Spacing.small)
@@ -179,16 +175,14 @@ struct AdaptiveThemedButtonStyle: ButtonStyle {
     }
 
     private func foreground(for state: ControlState) -> Color {
-        switch state {
-        case .disabled:
+        if state == .disabled {
             return appTheme.controlTextDisabled.color
-        default:
-            return appTheme.controlText.color
         }
+        return appTheme.controlText.color
     }
 
     private var focusRingLineWidth: CGFloat {
-        reduceTransparency ? 2 : 2
+        2
     }
 
     private var focusRingColorForState: Color {
