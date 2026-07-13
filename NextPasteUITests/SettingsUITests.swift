@@ -1454,7 +1454,24 @@ final class SettingsUITests: UITestCase {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        settingsTabControl(identifier: tabIdentifier, in: app, file: file, line: line).tap()
+        let tab = settingsTabControl(identifier: tabIdentifier, in: app, file: file, line: line)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                tab.isEnabled && tab.isHittable
+            },
+            "Expected Settings tab \(tabIdentifier) to become interactive",
+            file: file,
+            line: line
+        )
+        tab.tap()
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                self.settingsTabQuery(identifier: tabIdentifier, in: app).firstMatch.isSelected
+            },
+            "Expected Settings tab \(tabIdentifier) to become selected",
+            file: file,
+            line: line
+        )
     }
 
     private func settingsTabControl(
