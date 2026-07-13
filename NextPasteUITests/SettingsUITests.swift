@@ -962,9 +962,10 @@ final class SettingsUITests: UITestCase {
         let appearancePicker = appearancePopup(in: settingsWindow)
         assertAccessibleControl(appearancePicker, named: "Appearance picker")
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
-        assertPopupValueEventually(appearancePicker, equals: Accessibility.light)
+        let updatedAppearancePicker = appearancePopup(in: settingsWindow)
+        assertPopupValueEventually(updatedAppearancePicker, equals: Accessibility.light)
         assertHasKeyboardFocus(
-            appearancePicker,
+            updatedAppearancePicker,
             message: "Appearance switching must preserve real Accessibility focus"
         )
         assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
@@ -1615,6 +1616,14 @@ final class SettingsUITests: UITestCase {
         UITestAssertions.assertExists(
             slider,
             "Expected the Storage Limit slider before checking drag geometry",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                slider.isHittable
+            },
+            "The Storage Limit slider must become hittable before synthesizing a drag",
             file: file,
             line: line
         )
