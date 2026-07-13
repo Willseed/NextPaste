@@ -874,7 +874,7 @@ final class SettingsUITests: UITestCase {
         )
         assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
 
-        updatedAppearancePicker.typeKey(.space, modifierFlags: [])
+        app.typeKey(.space, modifierFlags: [])
         let currentLanguageMenuItem = UITestAssertions.assertExists(
             app.menuItems[Accessibility.localizedTraditionalChineseTaiwan],
             "Application-level Space must reopen the focused language menu"
@@ -973,7 +973,7 @@ final class SettingsUITests: UITestCase {
         selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
         let updatedAppearancePicker = appearancePopup(in: settingsWindow)
         assertPopupValueEventually(updatedAppearancePicker, equals: Accessibility.light)
-        app.typeKey(.space, modifierFlags: [])
+        updatedAppearancePicker.typeKey(.space, modifierFlags: [])
         let selectedAppearanceMenuItem = UITestAssertions.assertExists(
             app.menuItems[Accessibility.light],
             "Appearance switching must preserve keyboard operation on the replacement picker"
