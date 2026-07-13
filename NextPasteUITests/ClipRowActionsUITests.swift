@@ -2665,10 +2665,10 @@ final class ClipRowActionsUITests: UITestCase {
     /// No `triggerDisplayOrderReconciliation`, no synthesized reconciliation
     /// input, no fixed-duration sleep.
     @MainActor
-    func testT054ConsecutiveRunDeleteAutomaticReconciliationFreshAppStatePerExecution() throws {
-        executionTimeAllowance = 60 * 60
+    private func runT054ConsecutiveDeleteIterations(_ iterations: ClosedRange<Int>) throws {
+        executionTimeAllowance = 12 * 60
         var outcomes: [String] = []
-        for iteration in 1...Self.feature023ConsecutiveRunCount {
+        for iteration in iterations {
             try withFreshAppForConsecutiveRun { app in
 
             let history = historyRobot(for: app)
@@ -2695,6 +2695,31 @@ final class ClipRowActionsUITests: UITestCase {
             }
         }
         attachRowActionWarningAssertionOutcome(outcomes, app: XCUIApplication())
+    }
+
+    @MainActor
+    func testT054Part01ConsecutiveRunDeleteIterations01Through10() throws {
+        try runT054ConsecutiveDeleteIterations(1...10)
+    }
+
+    @MainActor
+    func testT054Part02ConsecutiveRunDeleteIterations11Through20() throws {
+        try runT054ConsecutiveDeleteIterations(11...20)
+    }
+
+    @MainActor
+    func testT054Part03ConsecutiveRunDeleteIterations21Through30() throws {
+        try runT054ConsecutiveDeleteIterations(21...30)
+    }
+
+    @MainActor
+    func testT054Part04ConsecutiveRunDeleteIterations31Through40() throws {
+        try runT054ConsecutiveDeleteIterations(31...40)
+    }
+
+    @MainActor
+    func testT054Part05ConsecutiveRunDeleteIterations41Through50() throws {
+        try runT054ConsecutiveDeleteIterations(41...Self.feature023ConsecutiveRunCount)
     }
 
     // MARK: - Feature 023 Phase 8 (Polish) — FR-017 native row-action UX regression
