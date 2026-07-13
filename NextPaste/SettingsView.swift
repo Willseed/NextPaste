@@ -495,6 +495,10 @@ private struct AppLanguagePopUpButton: NSViewRepresentable {
         @objc func selectionChanged(_ sender: NSPopUpButton) {
             guard AppLanguage.allCases.indices.contains(sender.indexOfSelectedItem) else { return }
             selection.wrappedValue = AppLanguage.allCases[sender.indexOfSelectedItem]
+            DispatchQueue.main.async { [weak sender] in
+                guard let sender, let window = sender.window else { return }
+                window.makeFirstResponder(sender)
+            }
         }
     }
 

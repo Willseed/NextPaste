@@ -850,7 +850,7 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
-    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+    func testLanguagePickerRemainsKeyboardOperableAcrossLocaleChanges() throws {
         let app = launchApp()
         let settingsWindow = openSettingsWindow(in: app)
 
@@ -863,18 +863,31 @@ final class SettingsUITests: UITestCase {
             localizedLanguagePicker,
             equals: Accessibility.localizedTraditionalChineseTaiwan
         )
-        assertHasKeyboardFocus(
-            localizedLanguagePicker,
-            message: "Language switching must preserve real Accessibility focus on the picker"
+        assertSettingsTabLabels(LocalizedLabel.traditionalChineseTabs, in: app)
+
+        app.typeKey(.space, modifierFlags: [])
+        let currentLanguageMenuItem = UITestAssertions.assertExists(
+            app.menuItems[Accessibility.localizedTraditionalChineseTaiwan],
+            "Application-level Space must reopen the focused language menu"
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                currentLanguageMenuItem.isHittable
+            },
+            "The reopened language menu must accept application-level keyboard navigation"
         )
         app.typeKey(.upArrow, modifierFlags: [])
+        app.typeKey(.return, modifierFlags: [])
         let restoredLanguagePicker = languagePopup(in: settingsWindow)
         assertPopupValueEventually(restoredLanguagePicker, equals: Accessibility.englishUnitedStates)
-        assertHasKeyboardFocus(
-            restoredLanguagePicker,
-            message: "Switching back to English must preserve real Accessibility focus"
-        )
+        assertSettingsTabLabels(LocalizedLabel.englishTabs, in: app)
         try performProductAccessibilityAudit(in: app)
+    }
+
+    @MainActor
+    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
 
         openSettingsTab(Accessibility.shortcutsTab, in: app)
         let recordButton = shortcutButton(Accessibility.recordShortcut, in: settingsWindow)
