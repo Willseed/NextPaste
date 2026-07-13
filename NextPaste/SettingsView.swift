@@ -605,7 +605,6 @@ private struct ClipboardSettingsTab: View {
                                 return .ignored
                             }
                             focusedTarget = .field
-                            _ = moveUITestKeyboardFocus(to: .field)
                             return .handled
 #else
                             return .ignored
@@ -627,7 +626,6 @@ private struct ClipboardSettingsTab: View {
                                     return .ignored
                                 }
                                 focusedTarget = .slider
-                                _ = moveUITestKeyboardFocus(to: .slider)
                                 return .handled
 #else
                                 return .ignored
@@ -674,6 +672,12 @@ private struct ClipboardSettingsTab: View {
             if oldTarget == .field, newTarget != .field {
                 commitDraft()
             }
+#if DEBUG && os(macOS)
+            if let newTarget,
+               DebugUITestLaunchEnvironment() != nil {
+                _ = moveUITestKeyboardFocus(to: newTarget)
+            }
+#endif
         }
         .background {
 #if DEBUG && os(macOS)
