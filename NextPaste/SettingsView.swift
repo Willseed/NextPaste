@@ -724,7 +724,16 @@ private struct ClipboardSettingsTab: View {
             return false
         }
 
-        return window.makeFirstResponder(nativeControl)
+        DispatchQueue.main.async { [weak window, weak nativeControl] in
+            guard let window,
+                  let nativeControl,
+                  window.isKeyWindow,
+                  nativeControl.window === window else {
+                return
+            }
+            _ = window.makeFirstResponder(nativeControl)
+        }
+        return true
     }
 
     private func nativeFocusControl(for target: FocusTarget, in window: NSWindow) -> NSView? {
