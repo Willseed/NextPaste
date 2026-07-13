@@ -30,13 +30,13 @@ enum ImageClipFileStoreError: Error, Equatable {
     case pathEscapesRoot(String)
 }
 
-enum ImageClipRestorationState: Equatable, Sendable {
+nonisolated enum ImageClipRestorationState: Equatable, Sendable {
     case restorable
     case missingImageFile
     case missingThumbnailFile
 }
 
-struct ImageClipRestorationRequest: Hashable, Sendable {
+nonisolated struct ImageClipRestorationRequest: Hashable, Sendable {
     let id: UUID
     let imageFilename: String?
     let thumbnailFilename: String?
