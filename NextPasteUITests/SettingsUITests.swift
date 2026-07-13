@@ -131,11 +131,11 @@ final class SettingsUITests: UITestCase {
         case minimum
         case maximum
 
-        var key: XCUIKeyboardKey {
+        var normalizedOffset: CGFloat {
             if case .minimum = self {
-                return .home
+                return 0.02
             }
-            return .end
+            return 0.98
         }
     }
 
@@ -1650,17 +1650,9 @@ final class SettingsUITests: UITestCase {
         line: UInt = #line
     ) {
         assertSliderInteractionGeometry(slider, in: settingsWindow, file: file, line: line)
-        field.tap()
-        field.typeKey(.tab, modifierFlags: [])
-        assertProbeValue(
-            Accessibility.historyLimitSlider,
-            identifier: Accessibility.clipboardFocusProbe,
-            in: app,
-            message: "The Storage Limit slider must own focus before a boundary key is sent",
-            file: file,
-            line: line
-        )
-        slider.typeKey(boundary.key, modifierFlags: [])
+        slider.coordinate(
+            withNormalizedOffset: CGVector(dx: boundary.normalizedOffset, dy: 0.5)
+        ).click()
     }
 
     private func assertSliderInteractionGeometry(
