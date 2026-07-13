@@ -23,6 +23,8 @@ final class RowActionStressTests: UITestCase {
     static let feature023InterleavedPart2 = 25...50
     static let scenarioBStressPart1 = 1...10
     static let scenarioBStressPart2 = 11...20
+    static let t042DeletePart1 = 0...24
+    static let t042DeletePart2 = 25...49
     static let feature025StressRepeatCount = 100
     static let feature025StressPart1 = 1...50
     static let feature025StressPart2 = 51...100
@@ -441,11 +443,18 @@ final class RowActionStressTests: UITestCase {
     /// stale row referencing a removed clip. Uses the shared `BoundedRetryUITestHelper`
     /// `assertVisibleRemoval` to verify each deleted clip's row disappears (no stale row).
     @MainActor
-    func testT042RapidDeleteStress() throws {
-        // Creating 51 rows through the real sheet and then deleting 50 through
-        // native row actions is intentionally heavier than XCTest's default
-        // UI-test budget. Assertions and iterations remain unchanged.
-        executionTimeAllowance = 20 * 60
+    func testT042RapidDeleteStressPart1() throws {
+        try runT042RapidDeleteStress(iterations: Self.t042DeletePart1)
+    }
+
+    @MainActor
+    func testT042RapidDeleteStressPart2() throws {
+        try runT042RapidDeleteStress(iterations: Self.t042DeletePart2)
+    }
+
+    @MainActor
+    private func runT042RapidDeleteStress(iterations: ClosedRange<Int>) throws {
+        executionTimeAllowance = 10 * 60
 
         let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .tall)
         let app = trace.app
@@ -457,10 +466,7 @@ final class RowActionStressTests: UITestCase {
 
         // Create one clip per delete iteration plus a survivor that stays present so the list
         // is never empty.
-        var clips: [String] = []
-        for index in 0..<Self.feature023StressRepeatCount {
-            clips.append("T042 rapid delete target \(index)")
-        }
+        let clips = iterations.map { "T042 rapid delete target \($0)" }
         let survivor = "T042 rapid delete survivor"
         // History is newest-first. Seed the survivor first and targets in
         // reverse order so target 0, 1, ... is always the current visible top
@@ -497,7 +503,7 @@ final class RowActionStressTests: UITestCase {
         )
 
         attachStressOutcome(
-            scenario: "T042",
+            scenario: "T042-\(iterations.lowerBound)-\(iterations.upperBound)",
             actionOutcomes: actionOutcomes,
             app: app,
             traceURL: trace.traceURL

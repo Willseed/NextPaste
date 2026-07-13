@@ -51,7 +51,6 @@ NextPasteUITests/RowActionStressTests.swift|for clip in clips {
 NextPasteUITests/RowActionStressTests.swift|for clip in clips {
 NextPasteUITests/RowActionStressTests.swift|for clip in clips.dropFirst() {
 NextPasteUITests/RowActionStressTests.swift|for image in imageTargets {
-NextPasteUITests/RowActionStressTests.swift|for index in 0..<Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
