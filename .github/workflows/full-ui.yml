@@ -32,7 +32,16 @@ jobs:
 
       - name: Install verification tools
         shell: bash
-        run: brew install ripgrep
+        run: |
+          set -euo pipefail
+          if command -v rg >/dev/null 2>&1; then
+            rg --version
+            exit 0
+          fi
+          if brew tap | /usr/bin/grep -Fxq 'aws/tap'; then
+            brew untap aws/tap
+          fi
+          brew install ripgrep
 
       - name: Verify noninteractive UI automation
         shell: bash
