@@ -792,12 +792,21 @@ final class RowActionStressTests: UITestCase {
         try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
             targets: [
                 .text(381),
-                .image(91),
+                .image(91)
+            ],
+            scenario: "Feature025-20-part1-actions-01-02"
+        )
+    }
+
+    @MainActor
+    func testFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunchIncludesImagesPart1Actions03To05() throws {
+        try runFeature025TwentyItemInterleavedNativePinUnpinAfterRelaunch(
+            targets: [
                 .text(382),
                 .image(92),
                 .text(383)
             ],
-            scenario: "Feature025-20-part1"
+            scenario: "Feature025-20-part1-actions-03-05"
         )
     }
 
