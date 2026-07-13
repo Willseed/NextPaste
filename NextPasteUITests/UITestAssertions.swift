@@ -647,7 +647,9 @@ enum UITestAssertions {
     }
 
     private static func copyFeedbackElement(in app: XCUIApplication) -> XCUIElement {
-        app.descendants(matching: .any)[UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier]
+        app.descendants(matching: .any)
+            .matching(identifier: UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier)
+            .firstMatch
     }
 
     private static func visibleClipRows(in app: XCUIApplication) -> [XCUIElement] {
