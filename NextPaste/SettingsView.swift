@@ -704,17 +704,44 @@ private struct ClipboardSettingsTab: View {
 
 #if DEBUG && os(macOS)
     private func moveUITestKeyboardFocus(backward _: Bool) -> Bool {
-        guard isSelected else { return false }
-
-        switch focusedTarget {
-        case .slider:
-            focusedTarget = .field
-        case .field:
-            focusedTarget = .slider
-        case nil:
+        guard isSelected,
+              let focusedTarget,
+              let window = NSApp.keyWindow else {
             return false
         }
-        return true
+
+        let nextTarget = focusedTarget == .slider ? FocusTarget.field : .slider
+        guard let nativeControl = nativeFocusControl(for: nextTarget, in: window) else {
+            return false
+        }
+
+        return window.makeFirstResponder(nativeControl)
+    }
+
+    private func nativeFocusControl(for target: FocusTarget, in window: NSWindow) -> NSView? {
+        guard let contentView = window.contentView else { return nil }
+
+        if let identifiedControl = contentView.firstDescendant(where: { view in
+            view.accessibilityIdentifier() == target.rawValue
+                && view.acceptsFirstResponder
+                && isNativeClipboardFocusControl(view, for: target)
+        }) {
+            return identifiedControl
+        }
+
+        return contentView.firstDescendant { view in
+            view.acceptsFirstResponder && isNativeClipboardFocusControl(view, for: target)
+        }
+    }
+
+    private func isNativeClipboardFocusControl(_ view: NSView, for target: FocusTarget) -> Bool {
+        switch target {
+        case .slider:
+            return view is NSSlider
+        case .field:
+            guard let textField = view as? NSTextField else { return false }
+            return textField.isEditable
+        }
     }
 #endif
 
@@ -1298,6 +1325,22 @@ private struct AboutSettingsTab: View {
 }
 
 #if DEBUG && os(macOS)
+private extension NSView {
+    func firstDescendant(where predicate: (NSView) -> Bool) -> NSView? {
+        if predicate(self) {
+            return self
+        }
+
+        for subview in subviews {
+            if let match = subview.firstDescendant(where: predicate) {
+                return match
+            }
+        }
+
+        return nil
+    }
+}
+
 /// A Debug UI-test-only Tab router. macOS normally builds its key-view loop from
 /// the user's AppleKeyboardUIMode preference, which can omit buttons and sliders.
 /// Consuming Tab here makes the two asserted Settings focus chains deterministic
