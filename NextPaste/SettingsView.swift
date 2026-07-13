@@ -25,6 +25,9 @@ struct SettingsView: View {
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @Environment(\.appTheme) private var appTheme
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+#if DEBUG
+    @Environment(\.debugAccessibilityOverrides) private var debugAccessibilityOverrides
+#endif
     @State private var selectedTab: Tab = .general
 
     private var settingsAccessibilityLabel: String {
@@ -102,12 +105,16 @@ struct SettingsView: View {
                     DebugUITestAccessibilityProbe(
                         identifier: "settings-color-contrast",
                         label: "Settings color contrast",
-                        value: colorSchemeContrast == .increased ? "increased" : "standard"
+                        value: debugAccessibilityOverrides.resolvedColorSchemeContrast(colorSchemeContrast) == .increased
+                            ? "increased"
+                            : "standard"
                     )
                     DebugUITestAccessibilityProbe(
                         identifier: "settings-reduce-transparency",
                         label: "Settings reduce transparency",
-                        value: reduceTransparency ? "true" : "false"
+                        value: debugAccessibilityOverrides.resolvedReduceTransparency(reduceTransparency)
+                            ? "true"
+                            : "false"
                     )
                 }
             }
