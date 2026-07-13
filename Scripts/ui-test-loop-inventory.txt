@@ -40,6 +40,7 @@ NextPasteUITests/RowActionStressTests.swift|for (index, clip) in clips.enumerate
 NextPasteUITests/RowActionStressTests.swift|for (index, clip) in clips.enumerated() {
 NextPasteUITests/RowActionStressTests.swift|for (index, clip) in clips.enumerated() {
 NextPasteUITests/RowActionStressTests.swift|for (index, expectedLabel) in sequence.enumerated() {
+NextPasteUITests/RowActionStressTests.swift|for (offset, iteration) in iterations.enumerated() {
 NextPasteUITests/RowActionStressTests.swift|for _ in 0..<5 {
 NextPasteUITests/RowActionStressTests.swift|for _ in 0..<6 {
 NextPasteUITests/RowActionStressTests.swift|for clip in [pinnedNewer, pinnedOlder] {
@@ -53,8 +54,6 @@ NextPasteUITests/RowActionStressTests.swift|for index in 0..<Self.feature023Stre
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
-NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature025StressRepeatCount {
-NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature025StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {

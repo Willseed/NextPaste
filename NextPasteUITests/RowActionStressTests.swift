@@ -20,6 +20,13 @@ final class RowActionStressTests: UITestCase {
     /// least 50 rapid interleaved iterations across different clips.
     static let feature023StressRepeatCount = 50
     static let feature025StressRepeatCount = 100
+    static let feature025StressPart1 = 1...50
+    static let feature025StressPart2 = 51...100
+
+    private enum Feature025StressTarget: String {
+        case text
+        case image
+    }
 
     // MARK: - Scenario A stress: 3 pinned -> native swipe Unpin one pinned clip (x20)
 
@@ -612,8 +619,43 @@ final class RowActionStressTests: UITestCase {
     }
 
     @MainActor
-    func testFeature025HundredNativePinUnpinAfterRelaunchIncludesImageVariant() throws {
-        executionTimeAllowance = 45 * 60
+    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart1() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .text,
+            iterations: Self.feature025StressPart1
+        )
+    }
+
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart2() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .text,
+            iterations: Self.feature025StressPart2
+        )
+    }
+
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchImagePart1() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .image,
+            iterations: Self.feature025StressPart1
+        )
+    }
+
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchImagePart2() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .image,
+            iterations: Self.feature025StressPart2
+        )
+    }
+
+    @MainActor
+    private func runFeature025HundredNativePinUnpinAfterRelaunch(
+        target: Feature025StressTarget,
+        iterations: ClosedRange<Int>
+    ) throws {
+        executionTimeAllowance = 10 * 60
         let store = try makeOnDiskStore()
         var app = launchFeature025SeededRelaunchApp(store: store)
         closeApp(app)
@@ -630,36 +672,53 @@ final class RowActionStressTests: UITestCase {
         let imageTarget = "Relaunch dataset image 099"
         var outcomes: [String] = []
 
-        history.enterSearchQuery(textTarget)
-        for iteration in 1...Self.feature025StressRepeatCount {
-            let expectedLabel = iteration.isMultiple(of: 2) ? "Unpin" : "Pin"
-            row.revealPinActionWithRightSwipe(for: textTarget, expectedLabel: expectedLabel).tap()
-            XCTAssertEqual(app.state, .runningForeground)
-            outcomes.append("text-\(expectedLabel)-\(iteration): \(app.state)")
-        }
-        UITestAssertions.assertEventuallyAccessibleTextContains(
-            assertTextRowIdentifier(for: textTarget, in: app),
-            "Unpinned",
-            timeout: 5
-        )
+        XCTAssertEqual(iterations.count, Self.feature025StressRepeatCount / 2)
+        XCTAssertTrue(iterations.lowerBound.isMultiple(of: 2) == false)
+        XCTAssertTrue(iterations.upperBound.isMultiple(of: 2))
 
-        history.clearSearch().enterSearchQuery(imageTarget)
-        for iteration in 1...Self.feature025StressRepeatCount {
-            let expectedLabel = iteration.isMultiple(of: 2) ? "Unpin" : "Pin"
-            row.revealImagePinActionWithRightSwipe(
-                forThumbnailDescription: imageTarget,
-                expectedLabel: expectedLabel
-            ).tap()
-            XCTAssertEqual(app.state, .runningForeground)
-            outcomes.append("image-\(expectedLabel)-\(iteration): \(app.state)")
+        switch target {
+        case .text:
+            history.enterSearchQuery(textTarget)
+        case .image:
+            history.enterSearchQuery(imageTarget)
         }
-        UITestAssertions.assertEventuallyAccessibleTextContains(
-            row.imageRowElement(withThumbnailDescription: imageTarget),
-            "Unpinned",
-            timeout: 5
-        )
 
-        attachStressOutcome(scenario: "Feature025-100", actionOutcomes: outcomes, app: app, traceURL: trace.traceURL)
+        for (offset, iteration) in iterations.enumerated() {
+            let expectedLabel = offset.isMultiple(of: 2) ? "Pin" : "Unpin"
+            switch target {
+            case .text:
+                row.revealPinActionWithRightSwipe(for: textTarget, expectedLabel: expectedLabel).tap()
+            case .image:
+                row.revealImagePinActionWithRightSwipe(
+                    forThumbnailDescription: imageTarget,
+                    expectedLabel: expectedLabel
+                ).tap()
+            }
+            XCTAssertEqual(app.state, .runningForeground)
+            outcomes.append("\(target.rawValue)-\(expectedLabel)-\(iteration): \(app.state)")
+        }
+
+        switch target {
+        case .text:
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                assertTextRowIdentifier(for: textTarget, in: app),
+                "Unpinned",
+                timeout: 5
+            )
+        case .image:
+            UITestAssertions.assertEventuallyAccessibleTextContains(
+                row.imageRowElement(withThumbnailDescription: imageTarget),
+                "Unpinned",
+                timeout: 5
+            )
+        }
+
+        attachStressOutcome(
+            scenario: "Feature025-100-\(target.rawValue)-\(iterations.lowerBound)-\(iterations.upperBound)",
+            actionOutcomes: outcomes,
+            app: app,
+            traceURL: trace.traceURL
+        )
     }
 
     @MainActor
