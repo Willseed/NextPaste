@@ -28,6 +28,8 @@ final class RowActionStressTests: UITestCase {
     static let feature025StressRepeatCount = 100
     static let feature025StressPart1 = 1...50
     static let feature025StressPart2 = 51...100
+    static let feature025TextPart2Part1 = 51...75
+    static let feature025TextPart2Part2 = 76...100
 
     private enum Feature025StressTarget: String {
         case text
@@ -657,15 +659,26 @@ final class RowActionStressTests: UITestCase {
     func testFeature025HundredNativePinUnpinAfterRelaunchTextPart1() throws {
         try runFeature025HundredNativePinUnpinAfterRelaunch(
             target: .text,
-            iterations: Self.feature025StressPart1
+            iterations: Self.feature025StressPart1,
+            expectedRange: Self.feature025StressPart1
         )
     }
 
     @MainActor
-    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart2() throws {
+    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart2Part1() throws {
         try runFeature025HundredNativePinUnpinAfterRelaunch(
             target: .text,
-            iterations: Self.feature025StressPart2
+            iterations: Self.feature025TextPart2Part1,
+            expectedRange: Self.feature025TextPart2Part1
+        )
+    }
+
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart2Part2() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .text,
+            iterations: Self.feature025TextPart2Part2,
+            expectedRange: Self.feature025TextPart2Part2
         )
     }
 
@@ -673,7 +686,8 @@ final class RowActionStressTests: UITestCase {
     func testFeature025HundredNativePinUnpinAfterRelaunchImagePart1() throws {
         try runFeature025HundredNativePinUnpinAfterRelaunch(
             target: .image,
-            iterations: Self.feature025StressPart1
+            iterations: Self.feature025StressPart1,
+            expectedRange: Self.feature025StressPart1
         )
     }
 
@@ -681,14 +695,16 @@ final class RowActionStressTests: UITestCase {
     func testFeature025HundredNativePinUnpinAfterRelaunchImagePart2() throws {
         try runFeature025HundredNativePinUnpinAfterRelaunch(
             target: .image,
-            iterations: Self.feature025StressPart2
+            iterations: Self.feature025StressPart2,
+            expectedRange: Self.feature025StressPart2
         )
     }
 
     @MainActor
     private func runFeature025HundredNativePinUnpinAfterRelaunch(
         target: Feature025StressTarget,
-        iterations: ClosedRange<Int>
+        iterations: ClosedRange<Int>,
+        expectedRange: ClosedRange<Int>
     ) throws {
         executionTimeAllowance = 10 * 60
         let store = try makeOnDiskStore()
@@ -707,9 +723,8 @@ final class RowActionStressTests: UITestCase {
         let imageTarget = "Relaunch dataset image 099"
         var outcomes: [String] = []
 
-        XCTAssertEqual(iterations.count, Self.feature025StressRepeatCount / 2)
-        XCTAssertTrue(iterations.lowerBound.isMultiple(of: 2) == false)
-        XCTAssertTrue(iterations.upperBound.isMultiple(of: 2))
+        XCTAssertEqual(iterations, expectedRange)
+        XCTAssertEqual(iterations.count, expectedRange.count)
 
         switch target {
         case .text:
@@ -730,17 +745,18 @@ final class RowActionStressTests: UITestCase {
             outcomes.append("\(target.rawValue)-\(expectedLabel)-\(iteration): \(app.state)")
         }
 
+        let expectedFinalLabel = iterations.count.isMultiple(of: 2) ? "Unpinned" : "Pinned"
         switch target {
         case .text:
             UITestAssertions.assertEventuallyAccessibleTextContains(
                 assertTextRowIdentifier(for: textTarget, in: app),
-                "Unpinned",
+                expectedFinalLabel,
                 timeout: 5
             )
         case .image:
             UITestAssertions.assertEventuallyAccessibleTextContains(
                 row.imageRowForSoleVisibleSearchResult(),
-                "Unpinned",
+                expectedFinalLabel,
                 timeout: 5
             )
         }
