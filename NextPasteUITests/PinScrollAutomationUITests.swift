@@ -202,17 +202,30 @@ final class PinScrollAutomationUITests: UITestCase {
         let targetID = UITestFixtures.PinScroll.id(index: targetIndex).uuidString
         let target = row(index: targetIndex, in: app)
 
-        revealPinOnce(index: targetIndex, in: app).tap()
-        XCTAssertTrue(
-            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-                self.markerValue(Marker.pendingItemID, in: app) == targetID
-                    && self.markerValue(Marker.executionCount, in: app) == "0"
-            },
-            "Pin action must publish its pending stable-ID scroll request before search cancellation"
+        assertNativeActionSurfaceReady(
+            target: target,
+            swipeSurface: app.staticTexts[UITestFixtures.PinScroll.text(index: targetIndex)],
+            in: app,
+            file: #filePath,
+            line: #line
         )
-        // Change the real searchable projection while the Pin request is still
-        // pending. The projection update is the cancellation boundary; do not
-        // let a terminal Pin-scroll marker serialize these two user actions.
+        UITestAssertions.assertAccessibleTextContains(target, "Unpinned")
+        target.rightClick()
+        let pinMenuItem = app.menuItems["toggle-pin-text-menu-item"]
+        UITestAssertions.assertExists(
+            pinMenuItem,
+            "Expected the text-row Pin context-menu action"
+        )
+        XCTAssertTrue(pinMenuItem.isEnabled && pinMenuItem.isHittable)
+        UITestAssertions.assertAccessibleTextContains(pinMenuItem, "Pin")
+        // The context-menu Pin action uses the immediate mutation path, which
+        // publishes the stable-ID request synchronously before this next UI
+        // action changes the searchable projection.
+        pinMenuItem.click()
+        // Change the real searchable projection immediately after the
+        // synchronously published Pin request. The projection update is the
+        // cancellation boundary; do not let a terminal Pin-scroll marker
+        // serialize these two user actions.
         history.enterSearchQuery(UITestFixtures.PinScroll.searchVisibleQuery)
         history.assertVisibleClipCount(16)
 
