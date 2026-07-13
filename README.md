@@ -2,7 +2,7 @@
 
 > 一個以剪貼簿為核心、本地優先的 Apple 平台剪貼簿管理員。自動捕捉你複製的內容，讓你之後能快速回顧、搜尋與重用。
 
-NextPaste 是一款以 SwiftUI、SwiftData、Observation 與 Apple 原生互動模型建構的 macOS 應用，遵循 `.specify/memory/constitution.md`（目前為 v2.7.0）的治理框架與 SDD（Spec-Driven Development）流程開發。隱私預設：剪貼簿內容保留在裝置上，除非明確取得同意，否則不外送任何遠端服務。
+NextPaste 是一款以 SwiftUI、SwiftData、Observation 與 Apple 原生互動模型建構的 macOS 應用，遵循 `.specify/memory/constitution.md`（目前為 v2.8.0）的治理框架與 SDD（Spec-Driven Development）流程開發。隱私預設：剪貼簿內容保留在裝置上，除非明確取得同意，否則不外送任何遠端服務。
 
 ## 核心流程
 
@@ -110,7 +110,7 @@ NextPaste/
 ├── NextPasteUITests/          # UI 測試（XCTest）
 ├── specs/                     # 各功能的 spec/plan/tasks/contracts
 └── .specify/                  # SDD 治理、模板、腳本與記憶
-    └── memory/constitution.md # 治理憲法（v2.7.0）
+    └── memory/constitution.md # 治理憲法（v2.8.0）
 ```
 
 ## 授權
