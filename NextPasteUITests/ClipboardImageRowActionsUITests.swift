@@ -552,8 +552,16 @@ private extension ClipboardRobot {
         line: UInt = #line
     ) -> Data {
         let expectedImageRowCount = imageRowCount() + 1
+        let priorObservationCount = clipboardMonitorObservationCount(file: file, line: line)
         writeImageFixtureForAutoCapture(fixture, file: file, line: line)
         let originalData = imageData(for: fixture, file: file, line: line)
+        waitForClipboardMonitorObservation(
+            after: priorObservationCount,
+            disposition: "captured",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
         waitForCapturedImage(
             fixture,
             expectedImageRowCount: expectedImageRowCount,

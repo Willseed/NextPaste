@@ -11,6 +11,11 @@ import AppKit
 
 @MainActor
 struct ClipboardRobot {
+    private enum ClipboardMonitorMarker {
+        static let observationCount = "clipboard-monitor-observation-count"
+        static let lastDisposition = "clipboard-monitor-last-disposition"
+    }
+
     let app: XCUIApplication
 
     init(app: XCUIApplication) {
@@ -179,6 +184,61 @@ struct ClipboardRobot {
         timeout: TimeInterval = UITestAssertions.defaultTimeout
     ) -> Bool {
         UITestAssertions.waitForImageRowCount(equals: expectedCount, in: app, timeout: timeout)
+    }
+
+    @MainActor
+    func clipboardMonitorObservationCount(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) -> Int {
+        let marker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[ClipboardMonitorMarker.observationCount],
+            "Expected the content-free clipboard monitor observation probe",
+            file: file,
+            line: line
+        )
+        let rawValue = marker.value as? String ?? marker.label
+        guard let count = Int(rawValue) else {
+            XCTFail(
+                "Clipboard monitor observation count must be an integer",
+                file: file,
+                line: line
+            )
+            return -1
+        }
+        return count
+    }
+
+    @MainActor
+    func waitForClipboardMonitorObservation(
+        after priorCount: Int,
+        disposition: String,
+        timeout: TimeInterval = UITestAssertions.defaultTimeout,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let countMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[ClipboardMonitorMarker.observationCount],
+            "Expected the clipboard monitor count probe",
+            file: file,
+            line: line
+        )
+        let dispositionMarker = UITestAssertions.assertExists(
+            app.descendants(matching: .any)[ClipboardMonitorMarker.lastDisposition],
+            "Expected the clipboard monitor disposition probe",
+            file: file,
+            line: line
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: timeout) {
+                let rawCount = countMarker.value as? String ?? countMarker.label
+                let observedDisposition = dispositionMarker.value as? String ?? dispositionMarker.label
+                return (Int(rawCount) ?? -1) > priorCount && observedDisposition == disposition
+            },
+            "Expected the real clipboard monitor to report \(disposition) after count \(priorCount)",
+            file: file,
+            line: line
+        )
     }
 
     func background() {
