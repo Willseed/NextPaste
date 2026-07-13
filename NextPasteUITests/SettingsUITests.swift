@@ -1012,6 +1012,14 @@ final class SettingsUITests: UITestCase {
         )
         setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        field.tap()
+        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "The Storage Limit slider must own focus before Right Arrow is sent"
+        )
         slider.typeKey(.rightArrow, modifierFlags: [])
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
