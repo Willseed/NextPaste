@@ -230,19 +230,39 @@ struct LocalizationCatalogTests {
             .appendingPathComponent("project.pbxproj")
     }
 
+    private struct LocalizationSourceScanConfiguration {
+        let sourceDirectoryURL: URL
+        let excludedDirectoryNames: Set<String>
+
+        static func production(repoRootURL: URL) -> Self {
+            Self(
+                sourceDirectoryURL: repoRootURL.appendingPathComponent("NextPaste"),
+                excludedDirectoryNames: ["Debug", "Fixtures"]
+            )
+        }
+    }
+
     private func loadCatalog() throws -> Catalog {
         let data = try Data(contentsOf: catalogURL)
         return try JSONDecoder().decode(Catalog.self, from: data)
     }
 
     private func sourceLocalizedStringKeys() throws -> Set<String> {
-        let nextPasteDirectory = repoRootURL.appendingPathComponent("NextPaste")
+        try sourceLocalizedStringKeys(
+            using: .production(repoRootURL: repoRootURL)
+        )
+    }
+
+    private func sourceLocalizedStringKeys(
+        using configuration: LocalizationSourceScanConfiguration
+    ) throws -> Set<String> {
+        let sourceDirectoryURL = configuration.sourceDirectoryURL
         guard let enumerator = FileManager.default.enumerator(
-            at: nextPasteDirectory,
+            at: sourceDirectoryURL,
             includingPropertiesForKeys: [.isRegularFileKey],
             options: [.skipsHiddenFiles]
         ) else {
-            Issue.record("Failed to enumerate production source files under \(nextPasteDirectory.path)")
+            Issue.record("Failed to enumerate production source files under \(sourceDirectoryURL.path)")
             return []
         }
 
@@ -252,7 +272,8 @@ struct LocalizationCatalogTests {
             let path = fileURL.path
             // Ignore generated, archived, and test-only artifacts that are not
             // part of production localization behavior.
-            if path.contains("/Debug/") || path.contains("/Fixtures/") {
+            let pathComponents = fileURL.pathComponents
+            if configuration.excludedDirectoryNames.contains(where: { pathComponents.contains($0) }) {
                 continue
             }
 
@@ -625,6 +646,32 @@ struct LocalizationCatalogTests {
         #expect(keys.contains("Verbatim text") == false)
         #expect(keys.contains("Debug literal") == false)
         #expect(interpolationSkeleton(#"Delete \(count) Items"#) == interpolationSkeleton("Delete %lld Items"))
+    }
+
+    @Test func sourceScannerHonorsConfigurableDirectoryExclusions() throws {
+        let fileManager = FileManager.default
+        let scanRoot = fileManager.temporaryDirectory
+            .appendingPathComponent("nextpaste-localization-scan-\(UUID().uuidString)", isDirectory: true)
+        let includedDirectory = scanRoot.appendingPathComponent("Included", isDirectory: true)
+        let excludedDirectory = scanRoot.appendingPathComponent("Excluded", isDirectory: true)
+        try fileManager.createDirectory(at: includedDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: excludedDirectory, withIntermediateDirectories: true)
+        defer { try? fileManager.removeItem(at: scanRoot) }
+
+        try Data(#"Text("Included localized literal")"#.utf8)
+            .write(to: includedDirectory.appendingPathComponent("Included.swift"), options: .atomic)
+        try Data(#"Text("Excluded localized literal")"#.utf8)
+            .write(to: excludedDirectory.appendingPathComponent("Excluded.swift"), options: .atomic)
+
+        let keys = try sourceLocalizedStringKeys(
+            using: LocalizationSourceScanConfiguration(
+                sourceDirectoryURL: scanRoot,
+                excludedDirectoryNames: ["Excluded"]
+            )
+        )
+
+        #expect(keys.contains("Included localized literal"))
+        #expect(keys.contains("Excluded localized literal") == false)
     }
 
     @Test func unknownLocaleFallsBackToANonemptyLocalizedValue() {
