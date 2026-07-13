@@ -28,6 +28,8 @@ final class RowActionStressTests: UITestCase {
     static let feature025StressRepeatCount = 100
     static let feature025StressPart1 = 1...50
     static let feature025StressPart2 = 51...100
+    static let feature025TextPart1Part1 = 1...25
+    static let feature025TextPart1Part2 = 26...50
     static let feature025TextPart2Part1 = 51...75
     static let feature025TextPart2Part2 = 76...100
 
@@ -661,8 +663,17 @@ final class RowActionStressTests: UITestCase {
     func testFeature025HundredNativePinUnpinAfterRelaunchTextPart1() throws {
         try runFeature025HundredNativePinUnpinAfterRelaunch(
             target: .text,
-            iterations: Self.feature025StressPart1,
-            expectedRange: Self.feature025StressPart1
+            iterations: Self.feature025TextPart1Part1,
+            expectedRange: Self.feature025TextPart1Part1
+        )
+    }
+
+    @MainActor
+    func testFeature025HundredNativePinUnpinAfterRelaunchTextPart1Part2() throws {
+        try runFeature025HundredNativePinUnpinAfterRelaunch(
+            target: .text,
+            iterations: Self.feature025TextPart1Part2,
+            expectedRange: Self.feature025TextPart1Part2
         )
     }
 
