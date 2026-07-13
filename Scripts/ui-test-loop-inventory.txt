@@ -56,7 +56,7 @@ NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.feature023StressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
 NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
-NextPasteUITests/RowActionStressTests.swift|for iteration in 1...Self.stressRepeatCount {
+NextPasteUITests/RowActionStressTests.swift|for iteration in iterations {
 NextPasteUITests/RowActionStressTests.swift|for pair in zip(textTargets, imageTargets) {
 NextPasteUITests/RowActionStressTests.swift|for text in textTargets {
 NextPasteUITests/RowActionStressTests.swift|for text: String,

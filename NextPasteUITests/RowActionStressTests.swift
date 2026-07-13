@@ -21,6 +21,8 @@ final class RowActionStressTests: UITestCase {
     static let feature023StressRepeatCount = 50
     static let feature023InterleavedPart1 = 1...24
     static let feature023InterleavedPart2 = 25...50
+    static let scenarioBStressPart1 = 1...10
+    static let scenarioBStressPart2 = 11...20
     static let feature025StressRepeatCount = 100
     static let feature025StressPart1 = 1...50
     static let feature025StressPart2 = 51...100
@@ -105,12 +107,24 @@ final class RowActionStressTests: UITestCase {
     // MARK: - Scenario B stress: 2 pinned -> scroll ~5 rows -> native swipe Pin (x20)
 
     @MainActor
-    func testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly() throws {
-        // Twenty rounds intentionally synthesize more than 220 native scroll
-        // gestures plus row actions. Keep XCTest's watchdog proportional to
-        // this declared workload; the assertions and iteration count remain
-        // unchanged.
-        executionTimeAllowance = 20 * 60
+    func testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedlyPart1() throws {
+        try runScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly(
+            iterations: Self.scenarioBStressPart1
+        )
+    }
+
+    @MainActor
+    func testScenarioBStressPinAfterTwoPinnedAndScrollRepeatedlyPart2() throws {
+        try runScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly(
+            iterations: Self.scenarioBStressPart2
+        )
+    }
+
+    @MainActor
+    private func runScenarioBStressPinAfterTwoPinnedAndScrollRepeatedly(
+        iterations: ClosedRange<Int>
+    ) throws {
+        executionTimeAllowance = 10 * 60
 
         let trace = UITestAppLauncher.makeTraceApp(windowSizePreset: .tall)
         let app = trace.app
@@ -151,7 +165,7 @@ final class RowActionStressTests: UITestCase {
 
         // Stress loop: scroll away, pin the target, unpin to reset, 20 times.
         var actionOutcomes: [String] = []
-        for iteration in 1...Self.stressRepeatCount {
+        for iteration in iterations {
             // Unpin the pinTarget if it was pinned in a previous iteration.
             // Note: "Unpinned" contains "Pinned" as a substring, so we must check
             // that the text contains "Pinned" but NOT "Unpinned".
@@ -189,7 +203,7 @@ final class RowActionStressTests: UITestCase {
         }
 
         attachStressOutcome(
-            scenario: "B",
+            scenario: "B-\(iterations.lowerBound)-\(iterations.upperBound)",
             actionOutcomes: actionOutcomes,
             app: app,
             traceURL: trace.traceURL
