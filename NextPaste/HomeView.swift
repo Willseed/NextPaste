@@ -2670,86 +2670,88 @@ struct HomeView: View {
                     value: uiTestLaunchReadinessProbe.elapsed.map { String($0) } ?? "pending",
                     label: "Rendered history launch readiness duration"
                 )
-                accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
-                accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
-                accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
-                accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
-                accessibilityMarker(identifier: "history-filter-state", value: historyFilter.rawValue, label: "History filter state")
-                accessibilityMarker(
-                    identifier: "clipboard-monitor-readiness",
-                    value: uiTestClipboardMonitorProbe.isMonitoring ? "ready" : "pending",
-                    label: "Clipboard monitor readiness"
-                )
-                accessibilityMarker(
-                    identifier: "clipboard-monitor-observation-count",
-                    value: "\(uiTestClipboardMonitorProbe.observationCount)",
-                    label: "Clipboard monitor observation count"
-                )
-                accessibilityMarker(
-                    identifier: "clipboard-monitor-last-disposition",
-                    value: uiTestClipboardMonitorProbe.lastDisposition,
-                    label: "Clipboard monitor last disposition"
-                )
-                accessibilityMarker(
-                    identifier: "history-visible-integrity-digest",
-                    value: ClipDatasetIntegritySnapshot.digest(for: visibleClips),
-                    label: "Content-free history integrity digest"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-execution-count",
-                    value: "\(uiTestPinScrollExecutionCount)",
-                    label: "Pin scroll execution count"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-last-item-id",
-                    value: uiTestPinScrollLastItemID,
-                    label: "Pin scroll last stable item identifier"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-last-decision",
-                    value: uiTestPinScrollLastDecision,
-                    label: "Pin scroll last decision"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-pending-item-id",
-                    value: pinScrollRequestState.pendingRequest?.itemID.uuidString ?? "none",
-                    label: "Pin scroll pending stable item identifier"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-visibility-readiness",
-                    value: pinScrollVisibilityIsReady ? "ready" : "pending",
-                    label: "Pin scroll aggregate visibility readiness"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-visible-item-ids",
-                    value: uiTestPinScrollVisibleItemIDs,
-                    label: "Visible Pin scroll stable item identifiers"
-                )
-                accessibilityMarker(
-                    identifier: "pin-scroll-phase",
-                    value: historyScrollPhase == .idle ? "idle" : "active",
-                    label: "Pin scroll phase"
-                )
-                accessibilityMarker(
-                    identifier: "ui-test-window-size-applied",
-                    value: uiTestAppliedWindowSize,
-                    label: "UI test window size applied"
-                )
-                // Idle OCR state is the default for every image and is not
-                // actionable. Keep only requests with an observed state in
-                // the debug accessibility tree so a large relaunch dataset
-                // does not create one marker per image during first layout.
-                ForEach(
-                    imageTextRecognitionTaskKey.filter {
-                        imageTextRecognitionCoordinator.state(for: $0) != .idle
-                    },
-                    id: \.itemID
-                ) { request in
+                if shouldRenderDeferredUITestDiagnostics {
+                    accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
+                    accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
+                    accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
+                    accessibilityMarker(identifier: "history-visible-unique-count", value: "\(Set(visibleClips.map(\.id)).count)", label: "Visible unique clip count")
+                    accessibilityMarker(identifier: "history-filter-state", value: historyFilter.rawValue, label: "History filter state")
                     accessibilityMarker(
-                        identifier: "image-ocr-state-\(request.itemID.uuidString)",
-                        value: uiTestOCRStateValue(for: request),
-                        label: "Image OCR state"
+                        identifier: "clipboard-monitor-readiness",
+                        value: uiTestClipboardMonitorProbe.isMonitoring ? "ready" : "pending",
+                        label: "Clipboard monitor readiness"
                     )
+                    accessibilityMarker(
+                        identifier: "clipboard-monitor-observation-count",
+                        value: "\(uiTestClipboardMonitorProbe.observationCount)",
+                        label: "Clipboard monitor observation count"
+                    )
+                    accessibilityMarker(
+                        identifier: "clipboard-monitor-last-disposition",
+                        value: uiTestClipboardMonitorProbe.lastDisposition,
+                        label: "Clipboard monitor last disposition"
+                    )
+                    accessibilityMarker(
+                        identifier: "history-visible-integrity-digest",
+                        value: ClipDatasetIntegritySnapshot.digest(for: visibleClips),
+                        label: "Content-free history integrity digest"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-execution-count",
+                        value: "\(uiTestPinScrollExecutionCount)",
+                        label: "Pin scroll execution count"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-last-item-id",
+                        value: uiTestPinScrollLastItemID,
+                        label: "Pin scroll last stable item identifier"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-last-decision",
+                        value: uiTestPinScrollLastDecision,
+                        label: "Pin scroll last decision"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-pending-item-id",
+                        value: pinScrollRequestState.pendingRequest?.itemID.uuidString ?? "none",
+                        label: "Pin scroll pending stable item identifier"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-visibility-readiness",
+                        value: pinScrollVisibilityIsReady ? "ready" : "pending",
+                        label: "Pin scroll aggregate visibility readiness"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-visible-item-ids",
+                        value: uiTestPinScrollVisibleItemIDs,
+                        label: "Visible Pin scroll stable item identifiers"
+                    )
+                    accessibilityMarker(
+                        identifier: "pin-scroll-phase",
+                        value: historyScrollPhase == .idle ? "idle" : "active",
+                        label: "Pin scroll phase"
+                    )
+                    accessibilityMarker(
+                        identifier: "ui-test-window-size-applied",
+                        value: uiTestAppliedWindowSize,
+                        label: "UI test window size applied"
+                    )
+                    // Idle OCR state is the default for every image and is not
+                    // actionable. Keep only requests with an observed state in
+                    // the debug accessibility tree so a large relaunch dataset
+                    // does not create one marker per image during first layout.
+                    ForEach(
+                        imageTextRecognitionTaskKey.filter {
+                            imageTextRecognitionCoordinator.state(for: $0) != .idle
+                        },
+                        id: \.itemID
+                    ) { request in
+                        accessibilityMarker(
+                            identifier: "image-ocr-state-\(request.itemID.uuidString)",
+                            value: uiTestOCRStateValue(for: request),
+                            label: "Image OCR state"
+                        )
+                    }
                 }
             }
 #endif
@@ -2782,6 +2784,13 @@ struct HomeView: View {
     }
 
 #if DEBUG && os(macOS)
+    private var shouldRenderDeferredUITestDiagnostics: Bool {
+        guard DebugUITestLaunchEnvironment()?.launchReadinessConfiguration != nil else {
+            return true
+        }
+        return uiTestLaunchReadinessProbe.elapsed != nil
+    }
+
     private func recordUITestLaunchReadinessIfNeeded(
         authoritativeHistoryCount: Int,
         mainToolbarFrame: CGRect,
