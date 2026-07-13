@@ -133,9 +133,9 @@ final class SettingsUITests: UITestCase {
 
         var key: XCUIKeyboardKey {
             if case .minimum = self {
-                return .pageDown
+                return .home
             }
-            return .pageUp
+            return .end
         }
     }
 
