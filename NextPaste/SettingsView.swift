@@ -591,6 +591,14 @@ private struct ClipboardSettingsTab: View {
                         .frame(minWidth: 180)
                         .focusable()
                         .focused($focusedTarget, equals: .slider)
+                        .onKeyPress(.leftArrow) {
+                            adjustSlider(by: -1)
+                            return .handled
+                        }
+                        .onKeyPress(.rightArrow) {
+                            adjustSlider(by: 1)
+                            return .handled
+                        }
                         .accessibilityIdentifier("history-limit-slider")
                         .accessibilityLabel(Text("Storage Limit"))
                         .accessibilityValue(Text(verbatim: String(Int(sliderValue.rounded()))))
@@ -674,6 +682,13 @@ private struct ClipboardSettingsTab: View {
         if result.shouldPersist {
             apply(result.limit)
         }
+    }
+
+    private func adjustSlider(by offset: Int) {
+        let currentValue = Int(sliderValue.rounded())
+        let adjustedLimit = HistoryLimit(currentValue + offset)
+        guard adjustedLimit.value != currentValue else { return }
+        apply(adjustedLimit)
     }
 
 #if DEBUG && os(macOS)
