@@ -8,9 +8,9 @@ NextPasteUITests/ClipRowActionsUITests.swift|for clip in clips {
 NextPasteUITests/ClipRowActionsUITests.swift|for clip in thirdClips {
 NextPasteUITests/ClipRowActionsUITests.swift|for deleteTarget in deleteTargets {
 NextPasteUITests/ClipRowActionsUITests.swift|for expectation: ScenarioBSeedReadinessExpectation
-NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
-NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
-NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
+NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
+NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
+NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
 NextPasteUITests/ClipRowActionsUITests.swift|for text: String,
 NextPasteUITests/ClipRowActionsUITests.swift|for toggleTarget in toggleTargets {
 NextPasteUITests/ClipRowActionsUITests.swift|for toggleTarget in toggleTargets {
