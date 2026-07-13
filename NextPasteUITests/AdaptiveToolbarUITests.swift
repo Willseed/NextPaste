@@ -173,7 +173,8 @@ final class AdaptiveToolbarUITests: UITestCase {
             "Expected More menu to remain available after closing Filter"
         ).tap()
         XCTAssertTrue(
-            app.descendants(matching: .any)["history-overflow-menu"].exists,
+            app.descendants(matching: .any)["history-overflow-menu"]
+                .waitForExistence(timeout: UITestAssertions.defaultTimeout),
             "Expected history menu entry to remain in compact mode"
         )
         app.typeKey(.escape, modifierFlags: [])
