@@ -1466,12 +1466,37 @@ final class SettingsUITests: UITestCase {
         tab.tap()
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-                self.settingsTabQuery(identifier: tabIdentifier, in: app).firstMatch.isSelected
+                self.settingsTabContentIsReady(identifier: tabIdentifier, in: app)
             },
-            "Expected Settings tab \(tabIdentifier) to become selected",
+            "Expected Settings tab \(tabIdentifier) to expose its interactive content",
             file: file,
             line: line
         )
+    }
+
+    private func settingsTabContentIsReady(
+        identifier: String,
+        in app: XCUIApplication
+    ) -> Bool {
+        let settingsWindow = app.windows[Accessibility.settingsWindowIdentifier]
+        switch identifier {
+        case Accessibility.generalTab:
+            let marker = settingsWindow.descendants(matching: .popUpButton)[Accessibility.appLanguagePicker]
+            return marker.exists && marker.isHittable
+        case Accessibility.clipboardTab:
+            let marker = settingsWindow.textFields[Accessibility.historyLimitField]
+            return marker.exists && marker.isHittable
+        case Accessibility.shortcutsTab:
+            let marker = settingsWindow.buttons[Accessibility.recordShortcut]
+            return marker.exists && marker.isHittable
+        case Accessibility.privacyTab:
+            return settingsWindow.buttons[Accessibility.settingsClearAllHistory].exists
+        case Accessibility.aboutTab:
+            return settingsWindow.staticTexts[Accessibility.aboutVersionIdentifier].exists
+        default:
+            XCTFail("Unknown Settings tab logical identifier \(identifier)")
+            return false
+        }
     }
 
     private func settingsTabControl(
