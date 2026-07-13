@@ -605,6 +605,7 @@ private struct ClipboardSettingsTab: View {
                                 return .ignored
                             }
                             focusedTarget = .field
+                            _ = moveUITestKeyboardFocus(to: .field)
                             return .handled
 #else
                             return .ignored
@@ -626,6 +627,7 @@ private struct ClipboardSettingsTab: View {
                                     return .ignored
                                 }
                                 focusedTarget = .slider
+                                _ = moveUITestKeyboardFocus(to: .slider)
                                 return .handled
 #else
                                 return .ignored
@@ -704,14 +706,21 @@ private struct ClipboardSettingsTab: View {
 
 #if DEBUG && os(macOS)
     private func moveUITestKeyboardFocus(backward _: Bool) -> Bool {
-        guard isSelected,
-              let focusedTarget,
-              let window = NSApp.keyWindow else {
+        guard let focusedTarget else {
             return false
         }
 
         let nextTarget = focusedTarget == .slider ? FocusTarget.field : .slider
-        guard let nativeControl = nativeFocusControl(for: nextTarget, in: window) else {
+        return moveUITestKeyboardFocus(to: nextTarget)
+    }
+
+    private func moveUITestKeyboardFocus(to target: FocusTarget) -> Bool {
+        guard isSelected,
+              let window = NSApp.keyWindow else {
+            return false
+        }
+
+        guard let nativeControl = nativeFocusControl(for: target, in: window) else {
             return false
         }
 
