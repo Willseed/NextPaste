@@ -456,7 +456,8 @@ final class SettingsUITests: UITestCase {
         commitHistoryLimit("1", field: field, slider: slider, app: app, expectedValue: "1")
         commitHistoryLimit("1000", field: field, slider: slider, app: app, expectedValue: "1000")
 
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
+        slider.adjust(toNormalizedSliderPosition: 0)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
 
         assertSliderInteractionGeometry(slider, in: settingsWindow)
@@ -476,7 +477,7 @@ final class SettingsUITests: UITestCase {
         XCTAssertEqual(intermediateValue, String(intermediateInteger), "Slider accessibility value must not be fractional")
         XCTAssertEqual(textInputValue(of: field), intermediateValue)
 
-        setSlider(slider, field: field, to: .maximum, in: settingsWindow, application: app)
+        slider.adjust(toNormalizedSliderPosition: 1)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
     }
 
