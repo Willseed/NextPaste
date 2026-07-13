@@ -8,6 +8,7 @@
 1 CreateTextClipUITests
 1 SearchAccessibilityUITests
 1 HistoryClearUITests
+1 AdaptiveToolbarUITests
 2 SettingsUITests
 2 RelaunchStabilityUITests
 3 ClipboardAutoCaptureUITests

@@ -1,3 +1,4 @@
+NextPasteUITests/AdaptiveToolbarUITests.swift|for preset in [
 NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<10 {
 NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
 NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
@@ -6,6 +7,7 @@ NextPasteUITests/ClipRowActionsUITests.swift|for clip in clips {
 NextPasteUITests/ClipRowActionsUITests.swift|for clip in clips {
 NextPasteUITests/ClipRowActionsUITests.swift|for clip in thirdClips {
 NextPasteUITests/ClipRowActionsUITests.swift|for deleteTarget in deleteTargets {
+NextPasteUITests/ClipRowActionsUITests.swift|for expectation: ScenarioBSeedReadinessExpectation
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in 1...Self.feature023ConsecutiveRunCount {
@@ -17,6 +19,7 @@ NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: UITestFixtur
 NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
 NextPasteUITests/ClipboardRobot.swift|for fixture: UITestFixtures.ImageClipboard.Fixture
 NextPasteUITests/ClipboardRobot.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
+NextPasteUITests/HistoryListUITests.swift|for preset in [
 NextPasteUITests/HistoryListUITests.swift|for preset in [
 NextPasteUITests/HistoryRobot.swift|for text in texts {
 NextPasteUITests/ImageOCRContextMenuUITests.swift|for imageRow: XCUIElement,
@@ -71,8 +74,10 @@ NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/RowRobot.swift|for clipText: String,
 NextPasteUITests/SearchAccessibilityUITests.swift|for _ in 0..<8 {
 NextPasteUITests/SettingsUITests.swift|for (identifier, expectedLabel) in expectedLabels {
+NextPasteUITests/SettingsUITests.swift|for index in 0..<windows.count {
 NextPasteUITests/SettingsUITests.swift|for invalidDraft in ["letters", "1.5", "#$%"] {
 NextPasteUITests/SettingsUITests.swift|for option in options {
+NextPasteUITests/SettingsUITests.swift|for title in sectionHeaders {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for _ in 0..<3 {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for button in app.buttons.matching(identifier: identifier).allElementsBoundByIndex {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for candidate in context.gestureCandidates {
@@ -82,6 +87,7 @@ NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboa
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
 NextPasteUITests/UITestAssertions.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
+NextPasteUITests/UITestCase.swift|for (key, value) in extraEnvironment {
 NextPasteUITests/UITestCase.swift|for (key, value) in extraEnvironment {
 NextPasteUITests/UITestCase.swift|for runningApp in NSRunningApplication.runningApplications(withBundleIdentifier: "pylot.NextPaste") {
 NextPasteUITests/UITestFixtures.swift|for offset in 0..<8 {

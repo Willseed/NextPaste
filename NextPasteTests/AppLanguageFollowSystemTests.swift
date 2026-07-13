@@ -199,19 +199,25 @@ struct AppLanguageFollowSystemPreferenceTests {
         #expect(preference.resolvedLanguage == .englishUnitedStates)
 
         preferredLanguages = ["zh-TW", "zh-Hant"]
+        var traditionalChineseUpdates = preference.$resolvedLanguage
+            .dropFirst()
+            .values
+            .makeAsyncIterator()
         NotificationCenter.default.post(
             name: NSLocale.currentLocaleDidChangeNotification,
             object: nil
         )
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(preference.resolvedLanguage == .traditionalChineseTaiwan)
+        #expect(await traditionalChineseUpdates.next() == .traditionalChineseTaiwan)
 
         preferredLanguages = ["en-US", "en"]
+        var englishUpdates = preference.$resolvedLanguage
+            .dropFirst()
+            .values
+            .makeAsyncIterator()
         NotificationCenter.default.post(
             name: NSLocale.currentLocaleDidChangeNotification,
             object: nil
         )
-        try? await Task.sleep(nanoseconds: 50_000_000)
-        #expect(preference.resolvedLanguage == .englishUnitedStates)
+        #expect(await englishUpdates.next() == .englishUnitedStates)
     }
 }
