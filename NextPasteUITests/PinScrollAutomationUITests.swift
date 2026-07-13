@@ -322,18 +322,6 @@ final class PinScrollAutomationUITests: UITestCase {
         let targetID = UITestFixtures.PinScroll.id(index: targetIndex).uuidString
         let target = row(index: targetIndex, in: app)
         let originalIdentifier = target.identifier
-        target.rightClick()
-        let pinMenuItem = app.menuItems["toggle-pin-text-menu-item"]
-
-        UITestAssertions.assertExists(pinMenuItem, "Expected the native text-row Pin menu item")
-        XCTAssertTrue(pinMenuItem.isEnabled && pinMenuItem.isHittable)
-        UITestAssertions.assertAccessibleTextContains(pinMenuItem, "Pin")
-        UITestAssertions.assertAccessibleTextContains(target, "Unpinned")
-        assertMarker(Marker.executionCount, equals: "0", in: app)
-        assertMarker(Marker.lastItemID, equals: "none", in: app)
-        assertMarker(Marker.lastDecision, equals: "none", in: app)
-        assertMarker(Marker.pendingItemID, equals: "none", in: app)
-
         let list = app.descendants(matching: .any)["clip-history-list"]
         list.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.9))
             .swipeUp(velocity: .fast)
@@ -348,6 +336,18 @@ final class PinScrollAutomationUITests: UITestCase {
             },
             "Geometry checkpoint: the keyboard Pin target must be offscreen before Pin activation"
         )
+
+        target.rightClick()
+        let pinMenuItem = app.menuItems["toggle-pin-text-menu-item"]
+
+        UITestAssertions.assertExists(pinMenuItem, "Expected the native text-row Pin menu item")
+        XCTAssertTrue(pinMenuItem.isEnabled && pinMenuItem.isHittable)
+        UITestAssertions.assertAccessibleTextContains(pinMenuItem, "Pin")
+        UITestAssertions.assertAccessibleTextContains(target, "Unpinned")
+        assertMarker(Marker.executionCount, equals: "0", in: app)
+        assertMarker(Marker.lastItemID, equals: "none", in: app)
+        assertMarker(Marker.lastDecision, equals: "none", in: app)
+        assertMarker(Marker.pendingItemID, equals: "none", in: app)
 
         try moveMenuSelection(to: pinMenuItem, in: app)
         XCTAssertTrue(
