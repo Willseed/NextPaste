@@ -413,6 +413,13 @@ private struct GeneralSettingsTab: View {
                     .accessibilityIdentifier("appearance-picker")
                     .accessibilityLabel(Text("Appearance"))
                     .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
+                    .onChange(of: appearancePreference.mode) {
+                        focusedTarget = nil
+                        Task { @MainActor in
+                            await Task.yield()
+                            focusedTarget = .appearance
+                        }
+                    }
                 }
             }
         }
