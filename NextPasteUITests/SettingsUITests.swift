@@ -339,7 +339,8 @@ final class SettingsUITests: UITestCase {
             "Expected parseable high input to clamp to 1000"
         )
 
-        setSlider(slider, field: field, to: .minimum, in: settingsWindow, application: app)
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
+        slider.adjust(toNormalizedSliderPosition: 0)
         XCTAssertTrue(
             waitForTextInputValue(field, equals: "1", timeout: UITestAssertions.defaultTimeout),
             "Expected Slider and TextField to remain synchronized at the minimum"
@@ -361,13 +362,8 @@ final class SettingsUITests: UITestCase {
         XCTAssertTrue(waitForTextInputValue(relaunchedField, equals: "1", timeout: UITestAssertions.defaultTimeout))
 
         let reopenedSlider = historyLimitSlider(in: reopenedSettings)
-        setSlider(
-            reopenedSlider,
-            field: relaunchedField,
-            to: .maximum,
-            in: reopenedSettings,
-            application: relaunchedApp
-        )
+        assertSliderInteractionGeometry(reopenedSlider, in: reopenedSettings)
+        reopenedSlider.adjust(toNormalizedSliderPosition: 1)
         XCTAssertTrue(
             waitForTextInputValue(relaunchedField, equals: "1000", timeout: UITestAssertions.defaultTimeout),
             "Expected maximum Slider position to update the TextField to 1000"
