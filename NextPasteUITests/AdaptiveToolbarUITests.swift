@@ -162,7 +162,7 @@ final class AdaptiveToolbarUITests: UITestCase {
         historyFilterMenu.tap()
 
         let pinnedMenuOption = UITestAssertions.assertExists(
-            app.descendants(matching: .any)["pinned"],
+            app.descendants(matching: .any)["history-filter-pinned"],
             "Expected pinned filter option"
         )
         XCTAssertTrue(pinnedMenuOption.isHittable, "Expected pinned filter menu item to be reachable")
