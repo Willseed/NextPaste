@@ -81,7 +81,7 @@ final class ImageOCRContextMenuUITests: UITestCase {
         )
         let clipboard = clipboardRobot(for: app)
         let imageRow = prepareSentinel(
-            for: capture(UITestFixtures.ImageClipboard.backgroundedJPEG, clipboard: clipboard),
+            for: capture(UITestFixtures.ImageClipboard.activePNG, clipboard: clipboard),
             clipboard: clipboard,
             in: app
         )
