@@ -29,6 +29,7 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     static let expectedHistoryCountKey = "NEXTPASTE_UI_TEST_EXPECTED_HISTORY_COUNT"
     static let colorSchemeContrastKey = "NEXTPASTE_UI_TEST_COLOR_SCHEME_CONTRAST"
     static let reduceTransparencyKey = "NEXTPASTE_UI_TEST_REDUCE_TRANSPARENCY"
+    static let pinScrollContextMenuTargetArgument = "-ui-test-pin-scroll-context-menu-target-id"
 
     let identifier: String
     let defaultsSuiteName: String
@@ -39,6 +40,7 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     let initialLanguageRawValue: String?
     let forceIncreasedColorContrast: Bool?
     let forceReduceTransparency: Bool?
+    let pinScrollContextMenuTargetID: UUID?
     let launchReadinessConfiguration: DebugUITestLaunchReadinessConfiguration?
 
     init?(
@@ -105,6 +107,18 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
         }
         forceIncreasedColorContrast = Self.boolValue(for: rawColorSchemeContrast)
         forceReduceTransparency = Self.boolValue(for: rawReduceTransparency)
+
+        if let rawTargetID = Self.argumentValue(
+            for: Self.pinScrollContextMenuTargetArgument,
+            in: arguments
+        ) {
+            guard let targetID = UUID(uuidString: rawTargetID) else {
+                return nil
+            }
+            pinScrollContextMenuTargetID = targetID
+        } else {
+            pinScrollContextMenuTargetID = nil
+        }
     }
 
     var defaults: UserDefaults {
@@ -122,6 +136,18 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
             return nil
         }
         return value
+    }
+
+    private static func argumentValue(
+        for key: String,
+        in arguments: [String]
+    ) -> String? {
+        guard let index = arguments.firstIndex(of: key),
+              arguments.indices.contains(index + 1) else {
+            return nil
+        }
+        let value = arguments[index + 1]
+        return value.isEmpty ? nil : value
     }
 
     private static func boolValue(for rawValue: String?) -> Bool? {

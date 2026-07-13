@@ -455,6 +455,10 @@ struct HomeView: View {
             }
             .padding(DesignTokens.Spacing.xLarge)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+#if DEBUG && os(macOS)
+            uiTestPinScrollContextMenuTrigger
+#endif
         }
         .onPreferenceChange(HistoryMeasuredFramePreferenceKey.self) { frames in
             // H3 guard: only write when the value actually changed to avoid
@@ -2880,6 +2884,37 @@ struct HomeView: View {
         }
 #endif
     }
+
+#if DEBUG && os(macOS)
+    /// A visible native context-menu host for the exact offscreen Pin-scroll
+    /// target. The host exists only for the dedicated UI-test launch argument;
+    /// its menu content is the same target-bound action set used by the real
+    /// row, and its primary action is intentionally inert because the test
+    /// activates the native menu item with Return.
+    @ViewBuilder
+    private var uiTestPinScrollContextMenuTrigger: some View {
+        if isUITesting,
+           let targetID = DebugUITestLaunchEnvironment()?.pinScrollContextMenuTargetID,
+           let targetClip = visibleClips.first(where: { $0.id == targetID }) {
+            ZStack(alignment: .bottomTrailing) {
+                imageTextContextMenu(for: targetClip) {
+                    Button(action: {}) {
+                        Text("Pin scroll context menu trigger")
+                            .frame(width: 24, height: 24)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .opacity(0.01)
+                    .accessibilityIdentifier("ui-test-pin-scroll-context-menu-trigger")
+                    .accessibilityLabel("Open Pin scroll context menu")
+                    .accessibilityHint("Opens the native context menu for the seeded stable-ID target")
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
+            .padding(8)
+        }
+    }
+#endif
 
     private func accessibilityMarker(identifier: String, value: String, label: String) -> some View {
         Text(label)

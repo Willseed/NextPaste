@@ -338,9 +338,12 @@ final class PinScrollAutomationUITests: UITestCase {
     }
 
     func testKeyboardFocusedContextMenuPinActivatesWithReturnAndAutoScrollsExactStableID() throws {
-        let app = launchPinScrollFixture(windowSizePreset: .tall)
         let targetIndex = UITestFixtures.PinScroll.rapidAIndex
         let targetID = UITestFixtures.PinScroll.id(index: targetIndex).uuidString
+        let app = launchPinScrollFixture(
+            windowSizePreset: .tall,
+            contextMenuTargetID: targetID
+        )
         let target = row(index: targetIndex, in: app)
         let originalIdentifier = target.identifier
         let list = app.descendants(matching: .any)["clip-history-list"]
@@ -358,7 +361,16 @@ final class PinScrollAutomationUITests: UITestCase {
             "Geometry checkpoint: the keyboard Pin target must be offscreen before Pin activation"
         )
 
-        target.rightClick()
+        let contextMenuTrigger = app.buttons["ui-test-pin-scroll-context-menu-trigger"]
+        UITestAssertions.assertExists(
+            contextMenuTrigger,
+            "Expected the visible Debug native context-menu trigger"
+        )
+        XCTAssertTrue(
+            contextMenuTrigger.isHittable,
+            "The Debug native context-menu trigger must remain hittable while the target is offscreen"
+        )
+        contextMenuTrigger.rightClick()
         let pinMenuItem = app.menuItems["toggle-pin-text-menu-item"]
 
         UITestAssertions.assertExists(pinMenuItem, "Expected the native text-row Pin menu item")
@@ -402,10 +414,18 @@ final class PinScrollAutomationUITests: UITestCase {
     }
 
     private func launchPinScrollFixture(
-        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize,
+        contextMenuTargetID: String? = nil
     ) -> XCUIApplication {
+        var extraArguments = [UITestAppLauncher.pinScrollAutomationSeedArgument]
+        if let contextMenuTargetID {
+            extraArguments.append(contentsOf: [
+                UITestAppLauncher.pinScrollContextMenuTargetArgument,
+                contextMenuTargetID
+            ])
+        }
         let app = launchApp(
-            extraArguments: [UITestAppLauncher.pinScrollAutomationSeedArgument],
+            extraArguments: extraArguments,
             windowSizePreset: windowSizePreset
         )
         historyRobot(for: app).assertVisibleDatasetCounts(
