@@ -938,6 +938,7 @@ struct HomeView: View {
                 historyMenu(.iconOnly)
                 SettingsControl(style: .iconOnly, onActivate: showSettingsPlaceholder)
             }
+            .frame(minWidth: 440)
             .fixedSize(horizontal: true, vertical: false)
         case .minimal:
             HStack(spacing: DesignTokens.Spacing.small) {

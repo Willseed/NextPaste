@@ -175,13 +175,9 @@ final class HistoryListUITests: UITestCase {
 
             app.activate()
             app.typeKey("f", modifierFlags: .command)
-            let searchField = history.searchField()
-            XCTAssertTrue(
-                UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-                    UITestWait.keyboardFocusState(of: searchField) == .focused
-                },
-                "Expected Command-F to focus search; observed \(UITestWait.keyboardFocusState(of: searchField))"
-            )
+            app.typeText("intentionally")
+            history.assertSearchFieldContains("intentionally")
+            history.clearSearch()
             app.typeKey(.escape, modifierFlags: [])
 
             if preset == .small {
