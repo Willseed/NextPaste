@@ -1029,7 +1029,7 @@ final class SettingsUITests: UITestCase {
             },
             "Right Arrow must update the Slider's integer value and synchronize the TextField"
         )
-        field.tap()
+        slider.typeKey(.tab, modifierFlags: [])
         assertHasKeyboardFocus(
             field,
             message: "The Storage Limit field must expose native keyboard focus"
