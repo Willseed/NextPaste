@@ -35,7 +35,7 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels() throws {
+    func testRowActionsExposeHittableControlsAndVoiceOverLabels() throws {
         let app = launchApp()
         let history = HistoryPage(app: app)
         let row = ClipRow(app: app)
@@ -59,6 +59,8 @@ final class ClipRowActionsUITests: UITestCase {
         XCTAssertEqual(pinButton.identifier, "pin-clip-button")
         XCTAssertTrue(pinButton.isHittable)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+
+        row.dismissRevealedSwipeActions(on: textRow)
 
         let deleteButton = row.revealDeleteAction(for: ClipboardFixture.RowActions.accessibleAction)
         XCTAssertEqual(deleteButton.identifier, "delete-clip-button")
