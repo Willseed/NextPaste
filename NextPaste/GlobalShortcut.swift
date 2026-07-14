@@ -87,7 +87,15 @@ struct GlobalShortcut: Codable, Equatable, Hashable, Sendable {
         case "tab":
             displayKey = String(localized: "Tab", bundle: bundle, locale: locale)
         default:
-            displayKey = keyCharacter.uppercased()
+            if keyCharacter == "key\(keyCode)" {
+                displayKey = String(
+                    format: String(localized: "Key %lld", bundle: bundle, locale: locale),
+                    locale: locale,
+                    Int64(keyCode)
+                )
+            } else {
+                displayKey = keyCharacter.uppercased()
+            }
         }
         if modifierNames.isEmpty {
             return displayKey

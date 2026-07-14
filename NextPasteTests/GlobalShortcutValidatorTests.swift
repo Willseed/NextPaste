@@ -219,6 +219,24 @@ struct GlobalShortcutValidatorTests {
                 bundle: bundle
             ) == "Command+Shift+空白鍵"
         )
+
+        let unknownKeyShortcut = GlobalShortcut(
+            keyCode: 0x7F,
+            keyCharacter: "key127",
+            modifiers: [.control]
+        )
+        #expect(
+            unknownKeyShortcut.displayString(
+                language: .englishUnitedStates,
+                bundle: bundle
+            ) == "Control+Key 127"
+        )
+        #expect(
+            unknownKeyShortcut.displayString(
+                language: .traditionalChineseTaiwan,
+                bundle: bundle
+            ) == "Control+按鍵 127"
+        )
     }
 
     // MARK: Codable

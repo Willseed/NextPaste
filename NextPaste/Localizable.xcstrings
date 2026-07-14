@@ -1035,6 +1035,22 @@
         }
       }
     },
+    "Key %lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Key %lld"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "按鍵 %lld"
+          }
+        }
+      }
+    },
     "Keep up to %lld unpinned clipboard items. Pinned items are always kept.": {
       "localizations": {
         "en": {
