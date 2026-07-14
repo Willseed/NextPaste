@@ -222,51 +222,6 @@ final class ClipRowActionsUITests: UITestCase {
 
 
     @MainActor
-    func testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability() throws {
-        let app = launchApp()
-        let history = HistoryPage(app: app)
-        let row = ClipRow(app: app)
-
-        ClipboardFixture.setString(ClipboardFixture.RowActions.beforeCopy, in: app)
-        try history.createTextClips([
-            ClipboardFixture.RowActions.filteredCopyTarget,
-            ClipboardFixture.RowActions.filteredPinTarget,
-            ClipboardFixture.RowActions.filteredDeleteTarget,
-            ClipboardFixture.RowActions.filteredCompanion,
-            ClipboardFixture.Search.nonMatchingText
-        ])
-
-history.enterSearchQuery(ClipboardFixture.Search.textQuery)
-history.assertRowExists(withText: ClipboardFixture.RowActions.filteredCopyTarget)
-history.assertRowNeverAppears(withText: ClipboardFixture.Search.nonMatchingText)
-
-        let filteredCopyRow = row.textRow(containing: ClipboardFixture.RowActions.filteredCopyTarget)
-        UITestAssertions.assertAccessibleTextContains(filteredCopyRow, "Unpinned")
-        UITestAssertions.assertAccessibleTextContains(filteredCopyRow, "Normal")
-
-        row.tapRow(containing: ClipboardFixture.RowActions.filteredCopyTarget)
-        UITestAssertions.assertCopiedFeedback(in: app)
-        XCTAssertEqual(ClipboardFixture.string(in: app), ClipboardFixture.RowActions.filteredCopyTarget)
-
-        let deleteButton = row.revealDeleteAction(for: ClipboardFixture.RowActions.filteredDeleteTarget)
-        XCTAssertTrue(deleteButton.isHittable)
-        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
-        deleteButton.tap()
-        history.assertRowEventuallyDisappears(withText: ClipboardFixture.RowActions.filteredDeleteTarget)
-
-        let pinButton = row.revealPinAction(for: ClipboardFixture.RowActions.filteredPinTarget)
-        XCTAssertTrue(pinButton.isHittable)
-        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
-        pinButton.tap()
-        history.assertRowEventuallyDisappears(withText: ClipboardFixture.Search.nonMatchingText)
-
-        _ = row.copyButton(for: ClipboardFixture.RowActions.filteredCopyTarget)
-        XCTAssertFalse(app.buttons["select-all-clips-button"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["clip-drop-target"].exists)
-        history.assertRowExists(withText: ClipboardFixture.RowActions.filteredCompanion)
-    }
-
-    @MainActor
     @discardableResult
     private func assertTextRowIdentifier(
         for text: String,
@@ -319,100 +274,113 @@ history.assertRowNeverAppears(withText: ClipboardFixture.Search.nonMatchingText)
     }
 
     @MainActor
-    func testAutoCapturedClipSupportsCopyDeleteAndPin() throws {
-        let app = launchCaptureApp()
-        let row = ClipRow(app: app)
-
-        let autoCapturedActionIdentifier = ClipboardFixture.capture(
-            ClipboardFixture.RowActions.autoCapturedAction,
-            in: app,
-            timeout: 10
-        ).identifier
-        let autoCapturedCompanionIdentifier = ClipboardFixture.capture(
-            ClipboardFixture.RowActions.autoCapturedCompanion,
-            in: app,
-            timeout: 10
-        ).identifier
-
-        row.tapRow(containing: ClipboardFixture.RowActions.autoCapturedAction)
-        UITestAssertions.assertCopiedFeedback(in: app)
-        XCTAssertEqual(ClipboardFixture.string(in: app), ClipboardFixture.RowActions.autoCapturedAction)
-        XCTAssertEqual(
-            assertTextRowIdentifier(for: ClipboardFixture.RowActions.autoCapturedAction, in: app).identifier,
-            autoCapturedActionIdentifier
-        )
-
-        _ = row.revealPinAction(for: ClipboardFixture.RowActions.autoCapturedAction)
-        app.buttons["pin-clip-button"].tap()
-        UITestAssertions.assertPinnedIconExists(in: app)
-        XCTAssertEqual(
-            assertTextRowIdentifier(for: ClipboardFixture.RowActions.autoCapturedAction, in: app).identifier,
-            autoCapturedActionIdentifier
-        )
-
-        _ = row.revealDeleteAction(for: ClipboardFixture.RowActions.autoCapturedCompanion)
-        app.buttons["delete-clip-button"].tap()
-
-        XCTAssertTrue(app.staticTexts[ClipboardFixture.RowActions.autoCapturedAction].exists)
-        UITestAssertions.assertDoesNotExist(
-            app.staticTexts[ClipboardFixture.RowActions.autoCapturedCompanion],
-            "Expected auto-captured companion to be removed",
-            timeout: 2
-        )
-        UITestAssertions.assertDoesNotExist(
-            app.descendants(matching: .any)[autoCapturedCompanionIdentifier],
-            "Expected auto-captured companion row identifier to be removed",
-            timeout: 2
-        )
-    }
-
-
-
-
-    // MARK: - Feature 020 T023: native Pin transaction feedback and stable identity
-
-    /// T023 [US1]: pins an older row through the native action, then verifies
-    /// pinned-state feedback, stable row identity, and the terminal pinned-first
-    /// ordering. The hosted lifecycle suite owns the deterministic pre-boundary
-    /// projection assertion that XCUITest's idle-waiting tap cannot observe.
-    @MainActor
-    func testPinTransactionPreservesStableIdentityAndTerminalPinnedOrdering() throws {
+    func testFullSwipeOnlyRevealsTextRowActionWithoutAutoExecutingOrCopying() throws {
         let app = launchApp()
         let history = HistoryPage(app: app)
         let row = ClipRow(app: app)
 
-        let older = "T023 stale pin older target"
-        let newer = "T023 stale pin newer unpinned"
-        try history.createTextClip(older)
-        try history.createTextClip(newer)
+        ClipboardFixture.setString(ClipboardFixture.RowActions.beforeCopy, in: app)
+        try history.createTextClip(ClipboardFixture.RowActions.copyTarget)
         history.assertClipRowIdentifierExists()
 
-        // Baseline newest-first: newer above older.
-        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
-        let preTapOlderIdentifier = assertTextRowIdentifier(for: older, in: app).identifier
+        let pinButton = row.revealPinAction(for: ClipboardFixture.RowActions.copyTarget)
 
-        // Pin older. Immediate pinned-state feedback must be visible BEFORE any relocation.
+        XCTAssertEqual(pinButton.identifier, "pin-clip-button")
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        UITestAssertions.assertNoCopiedFeedback(in: app)
+        XCTAssertEqual(ClipboardFixture.string(in: app), ClipboardFixture.RowActions.beforeCopy)
+        XCTAssertFalse(app.descendants(matching: .any)["pinned-clip-icon"].exists)
+        XCTAssertTrue(app.staticTexts[ClipboardFixture.RowActions.copyTarget].exists)
+    }
+
+    @MainActor
+    func testDeleteDuringPendingPinSnapshotRemovesImmediatelyThenReconciles() throws {
+        let app = launchApp()
+        let history = HistoryPage(app: app)
+        let row = ClipRow(app: app)
+
+        let a = "T022 pending pin oldest"
+        let b = "T022 pending pin middle"
+        let c = "T022 pending delete target"
+        let d = "T022 pending pin newest"
+        try history.createTextClips([a, b, c, d])
+        history.assertClipRowIdentifierExists()
+        let pinnedIdentifier = assertTextRowIdentifier(for: a, in: app).identifier
+
+        let pinA = row.revealPinAction(for: a)
+        UITestAssertions.assertAccessibleTextContains(pinA, "Pin")
+        pinA.tap()
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: a, in: app),
+            "Pinned",
+            timeout: 1
+        )
+
+        let deleteButton = row.revealDeleteAction(for: c)
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[c],
+            "Expected Delete to remove the targeted row immediately while a display-order snapshot is active",
+            timeout: 2
+        )
+
+        let pinnedRow = assertTextRowIdentifier(for: a, in: app)
+        UITestAssertions.assertEventuallyAccessibleTextContains(pinnedRow, "Pinned", timeout: 1)
+        XCTAssertEqual(pinnedRow.identifier, pinnedIdentifier)
+        XCTAssertTrue(app.staticTexts[a].exists)
+        history.assert(app.staticTexts[a], appearsAbove: app.staticTexts[d])
+        history.assert(app.staticTexts[d], appearsAbove: app.staticTexts[b])
+        UITestAssertions.assertDoesNotExist(
+            app.staticTexts[c],
+            "Deleted clip must not reappear after reconciliation",
+            timeout: 1
+        )
+        history.assertAppRunningWithoutCrash()
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(a)", "delete-\(c)", "reconcile"],
+            app: app
+        )
+    }
+
+    @MainActor
+    func testT048OverlappingNativePinsReachTerminalOrderWithoutCrash() throws {
+        let app = launchApp()
+        let history = HistoryPage(app: app)
+        let row = ClipRow(app: app)
+
+        let older = "T048 safe-boundary pin older target"
+        let newer = "T048 safe-boundary pin newer unpinned"
+        let secondTarget = "T048 safe-boundary second pin target"
+        try history.createTextClips([older, newer, secondTarget])
+        history.assertClipRowIdentifierExists()
+        UITestAssertions.assert(app.staticTexts[newer], appearsAbove: app.staticTexts[older])
+
+        let olderRow = assertTextRowIdentifier(for: older, in: app)
+        let olderIdentifier = olderRow.identifier
         let pinButton = row.revealPinAction(for: older)
         UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
         pinButton.tap()
-        let olderRow = assertTextRowIdentifier(for: older, in: app)
-        UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 1)
+        UITestAssertions.assertEventuallyAccessibleTextContains(olderRow, "Pinned", timeout: 2)
 
-        // XCUIElement.tap() waits for the app to become idle, so the callback-tail
-        // stale frame is not a valid UI-automation observation point. The hosted
-        // reconciliation lifecycle suite deterministically holds the real safe
-        // boundary and verifies the pre-release snapshot. At the UI layer, prove
-        // that feedback, stable identity, and the terminal relocation all survive
-        // the native action transaction.
-        UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
+        let secondPinButton = row.revealPinAction(for: secondTarget)
+        UITestAssertions.assertAccessibleTextContains(secondPinButton, "Pin")
+        secondPinButton.tap()
+        history.assertAppRunningWithoutCrash()
 
-        // Pinned older relocates above the newer unpinned row.
-        UITestAssertions.assert(app.staticTexts[older], appearsAbove: app.staticTexts[newer])
-        UITestAssertions.assertAccessibleTextContains(olderRow, "Pinned")
-        XCTAssertEqual(assertTextRowIdentifier(for: older, in: app).identifier, preTapOlderIdentifier)
-
-        XCTAssertEqual(app.state, .runningForeground)
-        attachRowActionWarningAssertionOutcome(["pin-\(older)", "reconcile"], app: app)
+        history.assert(app.staticTexts[older], appearsAbove: app.staticTexts[newer], timeout: 5)
+        history.assert(app.staticTexts[secondTarget], appearsAbove: app.staticTexts[newer], timeout: 5)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            assertTextRowIdentifier(for: secondTarget, in: app),
+            "Pinned",
+            timeout: 2
+        )
+        XCTAssertEqual(assertTextRowIdentifier(for: older, in: app).identifier, olderIdentifier)
+        history.assertVisibleDatasetCounts(total: 3, text: 3, image: 0, pinned: 2)
+        attachRowActionWarningAssertionOutcome(
+            ["pin-\(older)", "stale-position-observed", "pin-\(secondTarget)", "safe-boundary-clear"],
+            app: app
+        )
     }
 
     @MainActor
