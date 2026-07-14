@@ -11,7 +11,7 @@ import AppKit
 
 @MainActor
 enum ClipboardFixture {
-    static let defaultTimeout: TimeInterval = 5
+    nonisolated static let defaultTimeout: TimeInterval = 5
 
     // MARK: - Clipboard manipulation
 
