@@ -2421,11 +2421,6 @@ struct HomeView: View {
         reconciliationEnvironmentMirror.clips = clips
         reconciliationEnvironmentMirror.searchText = searchText
         reconciliationEnvironmentMirror.visibleClipIDs = visibleClips.map(\.id)
-        // Body evaluation is the first point at which the installed view has
-        // observed the current @Query result. Keep the shared reference holder
-        // in sync for bare-view lifecycle tests; the installed task(id:) remains
-        // the normal query-observation path.
-        initialLoadState.hasCompletedInitialLoad = true
 #endif
     }
 
@@ -2442,6 +2437,12 @@ struct HomeView: View {
     /// hosted integration evidence; tests cannot mutate the projection.
     internal var reconciliationRenderedClipIDs: [UUID] {
         reconciliationEnvironmentMirror.visibleClipIDs
+    }
+
+    /// Read-only hosted lifecycle evidence that the first installed `@Query`
+    /// result has completed its load task.
+    internal var reconciliationHasCompletedInitialLoad: Bool {
+        initialLoadState.hasCompletedInitialLoad
     }
 
     /// Exact UUID snapshot that drives `visibleClips` while AppKit owns a row

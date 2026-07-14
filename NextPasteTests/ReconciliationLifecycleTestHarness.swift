@@ -169,7 +169,7 @@ final class ReconciliationLifecycleTestHarness {
         case hostingUnsupportedOnPlatform
     }
 
-    init(clipText: String = "lifecycle-fixture") throws {
+    init(clipText: String = "lifecycle-fixture", installHost: Bool = true) throws {
         let container: ModelContainer
         if let suiteContainer = Self.suiteContainer {
             container = suiteContainer
@@ -209,15 +209,35 @@ final class ReconciliationLifecycleTestHarness {
         self.safeBoundary = boundary
         self.homeView = view
 
-        #if os(macOS)
+#if os(macOS)
+        self.hostingView = nil
+        self.hostWindow = nil
+
+        if installHost {
+            self.installHost()
+        }
+#else
+        // The reconciliation lifecycle is macOS-only. On other platforms the
+        // harness still provides the held value, container, and double, but
+        // cannot host via `NSHostingView`.
+        throw HarnessError.hostingUnsupportedOnPlatform
+#endif
+    }
+
+#if os(macOS)
+    /// Install the hosted copy after the caller has had an opportunity to drive
+    /// the real entry point before the first installed `@Query` result.
+    func installHost() {
+        guard hostingView == nil, hostWindow == nil else { return }
+
         // Host the view with a real `modelContext` injected via `.modelContainer`
         // so the installed copy carries a valid `@Environment(\.modelContext)`.
-        let hosted = AnyView(view.modelContainer(container))
+        let hosted = AnyView(homeView.modelContainer(container))
         let host = NSHostingView(rootView: hosted)
         // Force a concrete frame so SwiftUI installs the view graph and seeds
         // `@State` storage boxes for the held value.
         host.frame = NSRect(x: 0, y: 0, width: 320, height: 240)
-        self.hostingView = host
+        hostingView = host
         // Install the hosting view in a real off-screen `NSWindow` so SwiftUI
         // evaluates the body, `@Query` fetches against the in-memory container,
         // and the shared lifecycle/display-order holders plus safe-boundary cell
@@ -234,14 +254,9 @@ final class ReconciliationLifecycleTestHarness {
         window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
         window.orderFrontRegardless()
-        self.hostWindow = window
-        #else
-        // The reconciliation lifecycle is macOS-only. On other platforms the
-        // harness still provides the held value, container, and double, but
-        // cannot host via `NSHostingView`.
-        throw HarnessError.hostingUnsupportedOnPlatform
-        #endif
+        hostWindow = window
     }
+#endif
 }
 
 // MARK: - Real entry-point drivers
@@ -311,10 +326,11 @@ extension ReconciliationLifecycleTestHarness {
     }
 
     /// Wait (bounded, no fixed sleep) until the hosted body has evaluated and
-    /// populated the shared environment mirror with the live `@Query` dataset,
-    /// so production methods that read `effectiveReconciliationModelContext`
+    /// the first installed `@Query` load task has completed. This ensures
+    /// production methods that read `effectiveReconciliationModelContext`
     /// (the store, delete) and the Task-body UUID re-resolution observe the real
-    /// hosted context instead of the held value's empty `@Environment` default.
+    /// hosted context instead of the held value's empty `@Environment` default,
+    /// and that the load-complete mutation gate is open.
     func awaitBodyInstalled() async {
         let expectedIDs = [companionClip.id, clip.id]
         await ReconciliationLifecycleAssertions.awaitCondition(
@@ -323,6 +339,7 @@ extension ReconciliationLifecycleTestHarness {
         ) { [weak self] in
             guard let self else { return false }
             return self.homeView.reconciliationRenderedClipIDs == expectedIDs
+                && self.homeView.reconciliationHasCompletedInitialLoad
         }
     }
 

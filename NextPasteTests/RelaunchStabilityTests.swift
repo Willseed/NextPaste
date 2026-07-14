@@ -97,10 +97,28 @@ struct RelaunchStabilityTests {
         }
     }
 
-    @Test("load-complete guard blocks pin mutation before initial load")
-    func loadCompleteGuardBlocksPinMutationBeforeInitialLoad() {
-        #expect(HomeView.canProcessPinMutation(hasCompletedInitialLoad: false) == false)
-        #expect(HomeView.canProcessPinMutation(hasCompletedInitialLoad: true))
+    @MainActor
+    @Test("load-complete guard blocks pre-query mutation and permits post-query mutation")
+    func loadCompleteGuardBlocksPreQueryMutationAndPermitsPostQueryMutation() async throws {
+        let harness = try ReconciliationLifecycleTestHarness(installHost: false)
+        defer { harness.dispose() }
+
+        harness.driveTogglePin()
+        #expect(harness.safeBoundary.pendingWaitCount == 0)
+        #expect(harness.refetchClipFresh()?.isPinned == false)
+
+        harness.installHost()
+        await harness.awaitBodyInstalled()
+        harness.driveTogglePin()
+        await ReconciliationLifecycleAssertions.awaitCondition(
+            message: "Post-query pin mutation must reach the safe-boundary await."
+        ) { [weak harness] in
+            (harness?.safeBoundary.pendingWaitCount ?? 0) >= 1
+        }
+
+        harness.safeBoundary.releaseNext()
+        await harness.awaitRenderedProjection(harness.pinnedRenderedProjectionIDs)
+        #expect(harness.refetchClipFresh()?.isPinned == true)
     }
 
     @Test("UI-test fixtures storage and probes remain compile-time Debug gated")
