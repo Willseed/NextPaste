@@ -2550,28 +2550,8 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testT052Part01ConsecutiveRunPinIterations01Through10() throws {
-        try runT052ConsecutivePinIterations(1...10)
-    }
-
-    @MainActor
-    func testT052Part02ConsecutiveRunPinIterations11Through20() throws {
-        try runT052ConsecutivePinIterations(11...20)
-    }
-
-    @MainActor
-    func testT052Part03ConsecutiveRunPinIterations21Through30() throws {
-        try runT052ConsecutivePinIterations(21...30)
-    }
-
-    @MainActor
-    func testT052Part04ConsecutiveRunPinIterations31Through40() throws {
-        try runT052ConsecutivePinIterations(31...40)
-    }
-
-    @MainActor
-    func testT052Part05ConsecutiveRunPinIterations41Through50() throws {
-        try runT052ConsecutivePinIterations(41...Self.feature023ConsecutiveRunCount)
+    func testT052ConsecutiveRunPinIterations50() throws {
+        try runT052ConsecutivePinIterations(1...Self.feature023ConsecutiveRunCount)
     }
 
     /// T053 UI test: CONSECUTIVE-RUN 50 executions of the Unpin automatic
@@ -2632,28 +2612,8 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testT053Part01ConsecutiveRunUnpinIterations01Through10() throws {
-        try runT053ConsecutiveUnpinIterations(1...10)
-    }
-
-    @MainActor
-    func testT053Part02ConsecutiveRunUnpinIterations11Through20() throws {
-        try runT053ConsecutiveUnpinIterations(11...20)
-    }
-
-    @MainActor
-    func testT053Part03ConsecutiveRunUnpinIterations21Through30() throws {
-        try runT053ConsecutiveUnpinIterations(21...30)
-    }
-
-    @MainActor
-    func testT053Part04ConsecutiveRunUnpinIterations31Through40() throws {
-        try runT053ConsecutiveUnpinIterations(31...40)
-    }
-
-    @MainActor
-    func testT053Part05ConsecutiveRunUnpinIterations41Through50() throws {
-        try runT053ConsecutiveUnpinIterations(41...Self.feature023ConsecutiveRunCount)
+    func testT053ConsecutiveRunUnpinIterations50() throws {
+        try runT053ConsecutiveUnpinIterations(1...Self.feature023ConsecutiveRunCount)
     }
 
     /// T054 UI test: CONSECUTIVE-RUN 50 executions of the Delete automatic
@@ -2698,28 +2658,8 @@ final class ClipRowActionsUITests: UITestCase {
     }
 
     @MainActor
-    func testT054Part01ConsecutiveRunDeleteIterations01Through10() throws {
-        try runT054ConsecutiveDeleteIterations(1...10)
-    }
-
-    @MainActor
-    func testT054Part02ConsecutiveRunDeleteIterations11Through20() throws {
-        try runT054ConsecutiveDeleteIterations(11...20)
-    }
-
-    @MainActor
-    func testT054Part03ConsecutiveRunDeleteIterations21Through30() throws {
-        try runT054ConsecutiveDeleteIterations(21...30)
-    }
-
-    @MainActor
-    func testT054Part04ConsecutiveRunDeleteIterations31Through40() throws {
-        try runT054ConsecutiveDeleteIterations(31...40)
-    }
-
-    @MainActor
-    func testT054Part05ConsecutiveRunDeleteIterations41Through50() throws {
-        try runT054ConsecutiveDeleteIterations(41...Self.feature023ConsecutiveRunCount)
+    func testT054ConsecutiveRunDeleteIterations50() throws {
+        try runT054ConsecutiveDeleteIterations(1...Self.feature023ConsecutiveRunCount)
     }
 
     // MARK: - Feature 023 Phase 8 (Polish) — FR-017 native row-action UX regression

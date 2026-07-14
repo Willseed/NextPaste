@@ -435,9 +435,9 @@ if [[ "${MODE}" == "pr" ]]; then
     -only-testing:NextPasteUITests/NextPasteUITests/testIsolatedLaunchExposesReadyMainWindow \
     -only-testing:NextPasteUITests/HistoryListUITests/testHistoryShowsNewestFirstAndReadableLongMultilinePreview \
     -only-testing:NextPasteUITests/SettingsUITests/testToolbarSettingsLinkOpensSingleSettingsWindow \
-    -only-testing:NextPasteUITests/PinScrollAutomationUITests/testNativePinActionButtonIsAccessibleAndTriggersStableIDMutation \
+    -only-testing:NextPasteUITests/PinScrollAutomationUITests/testOffscreenPinAutoScrollsTheExactSameStableItemID \
     -only-testing:NextPasteUITests/SearchAccessibilityUITests/testCommandFFocusesNativeSearchFieldAndTypingFiltersHistory \
-    -only-testing:NextPasteUITests/SearchAccessibilityUITests/testRapidFocusChangesAndSettingsRoundTripRemainStable
+    -only-testing:NextPasteUITests/SearchAccessibilityUITests/testSearchResultAccessibilityMarkerReflectsMatchingAndEmptyStates
   assert_no_swiftui_runtime_warnings UISmoke "${ui_start_time}"
 else
   run_build_for_testing NO
