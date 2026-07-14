@@ -449,28 +449,15 @@ struct HistoryPage {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let expected = [
-            "history-visible-count": total,
-            "history-visible-text-count": text,
-            "history-visible-image-count": image,
-            "history-visible-pinned-count": pinned,
-            "history-visible-unique-count": total
-        ]
-        let markers = app.descendants(matching: .any).matching(
-            NSPredicate(format: "identifier IN %@", Array(expected.keys))
-        )
-        var observed: [String: Int] = [:]
+        let expected = [total, text, image, pinned, total]
+        var observed: [Int]?
         let matched = UITestWait.until(timeout: timeout) {
-            observed = Dictionary(uniqueKeysWithValues: markers.allElementsBoundByIndex.compactMap { marker in
-                let raw = marker.value as? String ?? marker.label
-                guard let value = Int(raw) else { return nil }
-                return (marker.identifier, value)
-            })
+            observed = datasetCounts()
             return observed == expected
         }
         XCTAssertTrue(
             matched,
-            "Expected visible dataset counts (expected), got (observed)",
+            "Expected visible dataset counts \(expected), got \(observed ?? [])",
             file: file,
             line: line
         )
@@ -773,6 +760,12 @@ struct HistoryPage {
         let marker = app.descendants(matching: .any)[identifier]
         guard marker.exists else { return nil }
         return marker.value as? String ?? marker.label
+    }
+
+    private func datasetCounts() -> [Int]? {
+        guard let raw = markerStringValue("history-visible-dataset-counts") else { return nil }
+        let values = raw.split(separator: "|", omittingEmptySubsequences: false).compactMap { Int($0) }
+        return values.count == 5 ? values : nil
     }
 
     private func assertMarkerValue(

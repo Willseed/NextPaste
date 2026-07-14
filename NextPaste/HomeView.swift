@@ -2687,6 +2687,17 @@ struct HomeView: View {
                     label: "Rendered history launch readiness duration"
                 )
                 if shouldRenderDeferredUITestDiagnostics {
+                    accessibilityMarker(
+                        identifier: "history-visible-dataset-counts",
+                        value: [
+                            visibleClips.count,
+                            visibleTextClipCount,
+                            visibleImageClipCount,
+                            visiblePinnedClipCount,
+                            Set(visibleClips.map(\.id)).count
+                        ].map(String.init).joined(separator: "|"),
+                        label: "Visible dataset counts"
+                    )
                     accessibilityMarker(identifier: "history-visible-text-count", value: "\(visibleTextClipCount)", label: "Visible text clip count")
                     accessibilityMarker(identifier: "history-visible-image-count", value: "\(visibleImageClipCount)", label: "Visible image clip count")
                     accessibilityMarker(identifier: "history-visible-pinned-count", value: "\(visiblePinnedClipCount)", label: "Visible pinned clip count")
