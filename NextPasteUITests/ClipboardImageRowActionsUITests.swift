@@ -31,6 +31,21 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         XCTAssertNotEqual(ClipboardFixture.string(in: app), PasteboardSentinel.beforeSuccessfulCopy)
     }
 
+    @MainActor
+    func testCopyFailureLeavesPasteboardUnchangedAndShowsNoFeedback() throws {
+        let app = launchCaptureApp(extraArguments: ["-simulate-clipboard-failure"])
+        let row = clipRow(for: app)
+        let fixture = ClipboardFixture.ImageClipboard.copyFailure
+
+        ClipboardFixture.captureImage(fixture, in: app)
+        ClipboardFixture.setString(PasteboardSentinel.beforeFailedCopy, in: app)
+        row.tapImageRow(withThumbnailDescription: fixture.thumbnailDescription)
+
+        UITestAssertions.assertNoImageCopiedFeedback(in: app)
+        XCTAssertEqual(ClipboardFixture.string(in: app), PasteboardSentinel.beforeFailedCopy)
+        XCTAssertTrue(pasteboardImageData(for: fixture, in: app) == nil)
+    }
+
 
     // MARK: - Delete
 
@@ -96,6 +111,50 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         // moves to the top of the unpinned section and appears above the newer
         // unpinned clip — not below it as a newest-first restore would require.
         history.assert(olderRow, appearsAbove: newerRow)
+    }
+
+    // MARK: - Feature 023 Phase 7 (US4) — teardown crash protection preserved
+
+    /// T046 image-side regression: the image row-action crash-reproduction
+    /// flow completes with no crash after immediate reconciliation.
+    @MainActor
+    func testT046ImageCrashReproductionFlowsRemainRunningNoCrash() throws {
+        let app = launchCaptureApp()
+        let row = clipRow(for: app)
+
+        let pinTarget = ClipboardFixture.ImageClipboard.olderPinTarget
+        let deleteTarget = ClipboardFixture.ImageClipboard.deleteTarget
+
+        ClipboardFixture.captureImage(pinTarget, in: app)
+        ClipboardFixture.captureImage(deleteTarget, in: app)
+        ClipboardFixture.assertImageRow(for: pinTarget, in: app)
+        ClipboardFixture.assertImageRow(for: deleteTarget, in: app)
+
+        let pinButton = row.revealImagePinAction(
+            forThumbnailDescription: pinTarget.thumbnailDescription
+        )
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image pin")
+        historyPage(for: app).assertImagePinnedIconExists()
+
+        let unpinButton = row.revealImagePinAction(
+            forThumbnailDescription: pinTarget.thumbnailDescription,
+            expectedLabel: "Unpin"
+        )
+        UITestAssertions.assertAccessibleTextContains(unpinButton, "Unpin")
+        unpinButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image unpin")
+        historyPage(for: app).assertImagePinnedIconEventuallyDisappears()
+
+        let deleteButton = row.revealImageDeleteAction(
+            forThumbnailDescription: deleteTarget.thumbnailDescription
+        )
+        UITestAssertions.assertAccessibleTextContains(deleteButton, "Delete")
+        deleteButton.tap()
+        XCTAssertEqual(app.state, .runningForeground, "App crashed during T046 image delete")
+        ClipboardFixture.assertImageRowDoesNotExist(for: deleteTarget, in: app)
+        ClipboardFixture.assertImageRow(for: pinTarget, in: app)
     }
 
 }
