@@ -51,8 +51,32 @@ enum ClipboardFixture {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        let history = HistoryPage(app: app)
+        let priorObservationCount = history.clipboardMonitorObservationCount(file: file, line: line)
         setString(text, in: app, file: file, line: line)
-        return waitForCapturedText(text, in: app, timeout: timeout, file: file, line: line)
+        history.waitForClipboardMonitorObservation(
+            after: priorObservationCount,
+            disposition: "captured",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
+        let row = history.row(withText: text, timeout: timeout, file: file, line: line)
+        let prefix = "clip-row-"
+        XCTAssertTrue(
+            row.identifier.hasPrefix(prefix),
+            "Expected captured history row to expose a stable clip-row identifier, got \(row.identifier)",
+            file: file,
+            line: line
+        )
+        let uuidString = String(row.identifier.dropFirst(prefix.count))
+        XCTAssertNotNil(
+            UUID(uuidString: uuidString),
+            "Expected captured history row identifier to contain a UUID, got \(row.identifier)",
+            file: file,
+            line: line
+        )
+        return row
     }
 
     static func waitForCapturedText(

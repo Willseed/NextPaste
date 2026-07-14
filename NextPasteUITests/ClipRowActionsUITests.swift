@@ -318,19 +318,19 @@ history.assertRowNeverAppears(withText: ClipboardFixture.Search.nonMatchingText)
     }
 
     @MainActor
-    func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
+    func testAutoCapturedClipSupportsCopyDeleteAndPin() throws {
         let app = launchCaptureApp()
         let row = ClipRow(app: app)
 
-        ClipboardFixture.capture(ClipboardFixture.RowActions.autoCapturedAction, in: app, timeout: 10)
-        ClipboardFixture.capture(ClipboardFixture.RowActions.autoCapturedCompanion, in: app, timeout: 10)
-        let autoCapturedActionIdentifier = assertTextRowIdentifier(
-            for: ClipboardFixture.RowActions.autoCapturedAction,
-            in: app
+        let autoCapturedActionIdentifier = ClipboardFixture.capture(
+            ClipboardFixture.RowActions.autoCapturedAction,
+            in: app,
+            timeout: 10
         ).identifier
-        let autoCapturedCompanionIdentifier = assertTextRowIdentifier(
-            for: ClipboardFixture.RowActions.autoCapturedCompanion,
-            in: app
+        let autoCapturedCompanionIdentifier = ClipboardFixture.capture(
+            ClipboardFixture.RowActions.autoCapturedCompanion,
+            in: app,
+            timeout: 10
         ).identifier
 
         row.tapRow(containing: ClipboardFixture.RowActions.autoCapturedAction)
