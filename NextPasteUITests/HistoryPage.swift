@@ -432,7 +432,7 @@ struct HistoryPage {
     func visibleImageClipCount() -> Int? { markerValue("history-visible-image-count") }
     func visiblePinnedClipCount() -> Int? { markerValue("history-visible-pinned-count") }
     func visibleUniqueClipCount() -> Int? { markerValue("history-visible-unique-count") }
-    func visibleIntegrityDigest() -> String? { markerStringValue("history-visible-integrity-digest") }
+    func visibleIntegrityDigest() -> String? { datasetState()?.last }
 
     func assertVisibleClipCount(
         _ expected: Int,
@@ -443,16 +443,20 @@ struct HistoryPage {
         assertMarkerValue("history-visible-count", equals: expected, timeout: timeout, file: file, line: line)
     }
 
+    @discardableResult
     func assertVisibleDatasetCounts(
         total: Int, text: Int, image: Int, pinned: Int,
         timeout: TimeInterval = ClipboardFixture.defaultTimeout,
         file: StaticString = #filePath,
         line: UInt = #line
-    ) {
+    ) -> String? {
         let expected = [total, text, image, pinned, total]
         var observed: [Int]?
+        var digest: String?
         let matched = UITestWait.until(timeout: timeout) {
-            observed = datasetCounts()
+            guard let state = datasetState(), state.count == 6 else { return false }
+            observed = state.prefix(5).compactMap { Int($0) }
+            digest = state.last
             return observed == expected
         }
         XCTAssertTrue(
@@ -461,6 +465,7 @@ struct HistoryPage {
             file: file,
             line: line
         )
+        return matched ? digest : nil
     }
 
     func launchReadinessDuration(
@@ -762,10 +767,10 @@ struct HistoryPage {
         return marker.value as? String ?? marker.label
     }
 
-    private func datasetCounts() -> [Int]? {
-        guard let raw = markerStringValue("history-visible-dataset-counts") else { return nil }
-        let values = raw.split(separator: "|", omittingEmptySubsequences: false).compactMap { Int($0) }
-        return values.count == 5 ? values : nil
+    private func datasetState() -> [String]? {
+        guard let raw = markerStringValue("history-visible-dataset-state") else { return nil }
+        let values = raw.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        return values.count == 6 ? values : nil
     }
 
     private func assertMarkerValue(

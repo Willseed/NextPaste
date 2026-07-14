@@ -20,12 +20,12 @@ final class RelaunchStabilityUITests: UITestCase {
     func testRelaunchWith500MixedItemsKeepsAppRunningAndDatasetIntact() throws {
         let store = try makeOnDiskStore()
         var app = launchSeededLargeDataset(store: store)
-        let expectedDigest = try XCTUnwrap(historyPage(for: app).visibleIntegrityDigest())
+        let expectedDigest = try XCTUnwrap(assertLargeDataset(in: app))
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
-        assertLargeDataset(in: app)
-        XCTAssertEqual(historyPage(for: app).visibleIntegrityDigest(), expectedDigest)
+        let actualDigest = try XCTUnwrap(assertLargeDataset(in: app))
+        XCTAssertEqual(actualDigest, expectedDigest)
         XCTAssertEqual(app.state, .runningForeground)
     }
 
@@ -116,7 +116,8 @@ final class RelaunchStabilityUITests: UITestCase {
     }
 
     @MainActor
-    private func assertLargeDataset(in app: XCUIApplication) {
+    @discardableResult
+    private func assertLargeDataset(in app: XCUIApplication) -> String? {
         historyPage(for: app).assertVisibleDatasetCounts(
             total: Fixture.totalCount,
             text: Fixture.textCount,

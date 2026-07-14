@@ -2688,6 +2688,18 @@ struct HomeView: View {
                 )
                 if shouldRenderDeferredUITestDiagnostics {
                     accessibilityMarker(
+                        identifier: "history-visible-dataset-state",
+                        value: [
+                            "\(visibleClips.count)",
+                            "\(visibleTextClipCount)",
+                            "\(visibleImageClipCount)",
+                            "\(visiblePinnedClipCount)",
+                            "\(Set(visibleClips.map(\.id)).count)",
+                            ClipDatasetIntegritySnapshot.digest(for: visibleClips)
+                        ].joined(separator: "|"),
+                        label: "Content-free visible dataset state"
+                    )
+                    accessibilityMarker(
                         identifier: "history-visible-dataset-counts",
                         value: [
                             visibleClips.count,
