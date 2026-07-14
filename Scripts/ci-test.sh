@@ -15,7 +15,7 @@ readonly BUILD_CONFIGURATION="Debug"
 readonly VISION_INTEGRATION_SELECTOR="NextPasteTests/VisionImageTextRecognizerIntegrationTests"
 readonly APPEARANCE_INTEGRATION_SELECTOR="NextPasteTests/AppKitAppearanceIntegrationTests"
 readonly RENDERED_ORDER_INTEGRATION_SELECTOR="NextPasteTests/RenderedOrderReconciliationIntegrationTests"
-readonly UI_SHARDS=(capture history relaunch row-actions settings)
+readonly UI_SHARDS=(core settings row-actions media persistence)
 readonly FOCUSED_VALUE_WARNING="FocusedValue update tried to update multiple times per frame."
 readonly SETTINGS_WARNING="Please use SettingsLink for opening the Settings scene."
 
@@ -56,7 +56,7 @@ case "${MODE}" in
     ;;
   full-ui)
     case "${SHARD}" in
-      capture|history|relaunch|row-actions|settings)
+      core|settings|row-actions|media|persistence)
         ;;
       *)
         /bin/echo "error: full-ui mode requires one of: ${UI_SHARDS[*]}" >&2
@@ -451,7 +451,7 @@ if [[ "${MODE}" == "pr" ]]; then
   run_test_phase UISmoke UI 1200 NO NO \
     -only-testing:NextPasteUITests/NextPasteUITests/testIsolatedLaunchExposesReadyMainWindow \
     -only-testing:NextPasteUITests/HistoryListUITests/testHistoryShowsNewestFirstAndReadableLongMultilinePreview \
-    -only-testing:NextPasteUITests/SettingsUITests/testToolbarSettingsLinkOpensSingleSettingsWindow \
+    -only-testing:NextPasteUITests/SettingsUITests/testCommandCommaOpensSingleSettingsWindowAndExposesRequiredTabs \
     -only-testing:NextPasteUITests/PinScrollAutomationUITests/testOffscreenPinAutoScrollsTheExactSameStableItemID \
     -only-testing:NextPasteUITests/SearchAccessibilityUITests/testCommandFFocusesNativeSearchFieldAndTypingFiltersHistory \
     -only-testing:NextPasteUITests/ClipboardAutoCaptureUITests/testAutoCaptureRefreshesHistoryWithoutManualSave
