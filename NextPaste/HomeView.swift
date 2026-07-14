@@ -2899,7 +2899,11 @@ struct HomeView: View {
            let targetClip = visibleClips.first(where: { $0.id == targetID }) {
             ZStack(alignment: .bottomTrailing) {
                 imageTextContextMenu(for: targetClip) {
-                    Button(action: {}) {
+                    Button(action: {
+                        // Intentionally inert: this Debug-only control only hosts the
+                        // target-bound native context menu; the UI test activates its
+                        // menu item with Return.
+                    }) {
                         Text("Pin scroll context menu trigger")
                             .frame(width: 24, height: 24)
                             .contentShape(Rectangle())
