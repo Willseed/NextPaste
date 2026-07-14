@@ -5,6 +5,7 @@
 //  Created by pony on 2026/6/25.
 //
 
+import Foundation
 import XCTest
 
 final class ClipRowActionsUITests: UITestCase {
@@ -412,6 +413,246 @@ history.assertRowNeverAppears(withText: ClipboardFixture.Search.nonMatchingText)
 
         XCTAssertEqual(app.state, .runningForeground)
         attachRowActionWarningAssertionOutcome(["pin-\(older)", "reconcile"], app: app)
+    }
+
+    @MainActor
+    func testPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash() throws {
+        let seedReadiness = try configureScenarioBSeedReadiness()
+        let app = launchApp(
+            extraArguments: scenarioBLaunchArguments(for: seedReadiness),
+            windowSizePreset: .small
+        )
+        try assertScenarioBSeedReady(seedReadiness)
+
+        let history = HistoryPage(app: app)
+        let row = ClipRow(app: app)
+        let pinTarget = ClipboardFixture.RowActions.scrollPinTarget
+        let fillers = (0..<5).map { "Feature 019 scroll pin filler \($0)" }
+        let pinnedNewer = ClipboardFixture.RowActions.scrollPinPinnedNewer
+        let pinnedOlder = ClipboardFixture.RowActions.scrollPinPinnedOlder
+
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        let pinTargetRow = assertTextRowIdentifier(for: pinTarget, in: app)
+        let pinTargetRowIdentifier = pinTargetRow.identifier
+        let pinnedNewerRow = assertTextRowIdentifier(for: pinnedNewer, in: app)
+        let pinnedOlderRow = assertTextRowIdentifier(for: pinnedOlder, in: app)
+        let firstFillerRow = assertTextRowIdentifier(for: fillers[0], in: app)
+        let pinTargetStaticText = app.staticTexts[pinTarget]
+
+        history.assert(pinnedNewerRow, appearsAbove: pinnedOlderRow)
+        history.assert(pinnedOlderRow, appearsAbove: firstFillerRow)
+        XCTAssertFalse(
+            pinTargetStaticText.isHittable,
+            "Scenario B target must begin offscreen before recycled-row scrolling"
+        )
+
+        let list = app.descendants(matching: .any)["clip-history-list"]
+        XCTAssertTrue(list.waitForExistence(timeout: UITestAssertions.defaultTimeout))
+        for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
+            list.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(
+            pinTargetStaticText.waitForExistence(timeout: UITestAssertions.defaultTimeout)
+                && pinTargetStaticText.isHittable,
+            "Expected offscreen pin target to become hittable after scrolling"
+        )
+        XCTAssertFalse(
+            app.staticTexts[pinnedNewer].isHittable,
+            "Pinned rows must leave the viewport so the target uses recycled row geometry"
+        )
+
+        let pinButton = row.revealPinAction(for: pinTarget)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        pinButton.tap()
+
+        XCTAssertEqual(app.state, .runningForeground)
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 3)
+        XCTAssertEqual(pinTargetRow.identifier, pinTargetRowIdentifier)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            pinTargetRow,
+            "Pinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                pinTargetRow.exists && pinTargetRow.isHittable
+            },
+            "Expected the pinned recycled target to return to the viewport"
+        )
+
+        history.assert(pinTargetRow, appearsAbove: pinnedNewerRow, timeout: 15)
+        history.assert(pinnedNewerRow, appearsAbove: pinnedOlderRow, timeout: 15)
+        history.assert(pinnedOlderRow, appearsAbove: firstFillerRow, timeout: 15)
+        attachRowActionWarningAssertionOutcome(["pin-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    @MainActor
+    func testRevealAndDismissPinAfterTwoPinnedAndFiveRowScrollDoesNotCrash() throws {
+        let seedReadiness = try configureScenarioBSeedReadiness()
+        let app = launchApp(
+            extraArguments: scenarioBLaunchArguments(for: seedReadiness),
+            windowSizePreset: .small
+        )
+        try assertScenarioBSeedReady(seedReadiness)
+
+        let history = HistoryPage(app: app)
+        let row = ClipRow(app: app)
+        let pinTarget = ClipboardFixture.RowActions.scrollPinTarget
+        let pinnedNewer = ClipboardFixture.RowActions.scrollPinPinnedNewer
+        let pinnedOlder = ClipboardFixture.RowActions.scrollPinPinnedOlder
+
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        let initialDigest = try XCTUnwrap(history.visibleIntegrityDigest())
+        let pinTargetRow = assertTextRowIdentifier(for: pinTarget, in: app)
+        let pinnedNewerRow = assertTextRowIdentifier(for: pinnedNewer, in: app)
+        let pinnedOlderRow = assertTextRowIdentifier(for: pinnedOlder, in: app)
+        XCTAssertFalse(app.staticTexts[pinTarget].isHittable)
+
+        let list = app.descendants(matching: .any)["clip-history-list"]
+        XCTAssertTrue(list.waitForExistence(timeout: UITestAssertions.defaultTimeout))
+        for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
+            list.swipeUp(velocity: .fast)
+        }
+        XCTAssertTrue(app.staticTexts[pinTarget].isHittable)
+        XCTAssertFalse(app.staticTexts[pinnedNewer].isHittable)
+
+        let pinButton = row.revealPinAction(for: pinTarget)
+        UITestAssertions.assertAccessibleTextContains(pinButton, "Pin")
+        XCTAssertTrue(pinButton.isHittable)
+        XCTAssertEqual(app.state, .runningForeground)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            pinTargetRow,
+            "Unpinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+
+        row.dismissRevealedSwipeActions(on: pinTargetRow)
+        XCTAssertEqual(app.state, .runningForeground)
+        UITestAssertions.assertEventuallyAccessibleTextContains(
+            pinTargetRow,
+            "Unpinned",
+            timeout: UITestAssertions.defaultTimeout
+        )
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        XCTAssertEqual(history.visibleIntegrityDigest(), initialDigest)
+
+        row.performSubThresholdRightSwipe(onTextRow: pinTarget)
+        row.assertNoSwipeActionsRevealed()
+        XCTAssertEqual(app.state, .runningForeground)
+        history.assertVisibleDatasetCounts(total: 8, text: 8, image: 0, pinned: 2)
+        XCTAssertEqual(history.visibleIntegrityDigest(), initialDigest)
+
+        for _ in 0..<10 {
+            list.swipeDown(velocity: .fast)
+        }
+        history.assert(pinnedNewerRow, appearsAbove: pinnedOlderRow)
+        XCTAssertEqual(history.visibleIntegrityDigest(), initialDigest)
+        attachRowActionWarningAssertionOutcome(["reveal-only-\(pinTarget): \(app.state)"], app: app)
+    }
+
+    private static let scenarioBFixtureVersion = "row-action-scenario-b-v1"
+    private static let scenarioBFixtureDigest =
+        "4b3cdd89b47bd3a31e5bc354ca8af1cd01b784f3a1dd4a4e6f6ee17a3808047a"
+    private static let scenarioBExpectedCount = 8
+
+    private struct ScenarioBSeedReadinessExpectation {
+        let markerURL: URL
+        let runID: String
+    }
+
+    private struct ScenarioBSeedReadinessMarker: Decodable {
+        let schemaVersion: Int
+        let fixtureVersion: String
+        let runID: String
+        let state: String
+        let expectedCount: Int
+        let persistedCount: Int?
+        let fixtureDigest: String
+        let errorCode: String?
+    }
+
+    private enum ScenarioBSeedReadinessFailure: Error {
+        case notReady
+    }
+
+    private func configureScenarioBSeedReadiness() throws -> ScenarioBSeedReadinessExpectation {
+        let launchEnvironment = try XCTUnwrap(
+            UITestLaunchEnvironmentRegistry.current(),
+            "Expected an isolated UI-test launch environment before Scenario B launch"
+        )
+        let markerURL = launchEnvironment.rootURL
+            .appendingPathComponent("row-action-scenario-b-seed-readiness.json", isDirectory: false)
+        try? FileManager.default.removeItem(at: markerURL)
+        return ScenarioBSeedReadinessExpectation(
+            markerURL: markerURL,
+            runID: UUID().uuidString.lowercased()
+        )
+    }
+
+    @MainActor
+    private func scenarioBLaunchArguments(
+        for expectation: ScenarioBSeedReadinessExpectation
+    ) -> [String] {
+        [
+            UITestAppLauncher.rowActionScenarioBSeedArgument,
+            UITestAppLauncher.rowActionScenarioBSeedReadinessFileArgument,
+            expectation.markerURL.path,
+            UITestAppLauncher.rowActionScenarioBSeedReadinessRunIDArgument,
+            expectation.runID
+        ]
+    }
+
+    private func assertScenarioBSeedReady(
+        _ expectation: ScenarioBSeedReadinessExpectation,
+        timeout: TimeInterval = 10,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        var marker: ScenarioBSeedReadinessMarker?
+        var observation = "absent"
+        let published = UITestWait.until(timeout: timeout) {
+            guard FileManager.default.fileExists(atPath: expectation.markerURL.path) else {
+                observation = "absent"
+                return false
+            }
+            guard let data = try? Data(contentsOf: expectation.markerURL),
+                  let decoded = try? JSONDecoder().decode(ScenarioBSeedReadinessMarker.self, from: data) else {
+                observation = "malformed"
+                return false
+            }
+            guard decoded.runID == expectation.runID else {
+                observation = "stale runID \(decoded.runID) state \(decoded.state)"
+                return false
+            }
+            marker = decoded
+            observation = decoded.state
+            return true
+        }
+
+        guard published, let marker else {
+            XCTFail(
+                "Scenario B seed readiness did not publish a matching marker: \(observation)",
+                file: file,
+                line: line
+            )
+            throw ScenarioBSeedReadinessFailure.notReady
+        }
+        guard marker.state == "ready",
+              marker.schemaVersion == 1,
+              marker.fixtureVersion == Self.scenarioBFixtureVersion,
+              marker.expectedCount == Self.scenarioBExpectedCount,
+              marker.persistedCount == Self.scenarioBExpectedCount,
+              marker.fixtureDigest == Self.scenarioBFixtureDigest else {
+            XCTFail(
+                "Scenario B seed readiness published an incompatible marker: state=\(marker.state), "
+                    + "count=\(String(describing: marker.persistedCount)), digest=\(marker.fixtureDigest), "
+                    + "error=\(String(describing: marker.errorCode))",
+                file: file,
+                line: line
+            )
+            throw ScenarioBSeedReadinessFailure.notReady
+        }
     }
 
 }
