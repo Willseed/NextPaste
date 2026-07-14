@@ -115,8 +115,9 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
             RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous)
                 .stroke(rowBorderColor, lineWidth: rowBorderWidth)
         )
+#if DEBUG && os(macOS)
         .overlay(alignment: .topLeading) {
-            if let surfaceAccessibility {
+            if DebugUITestLaunchEnvironment() != nil, let surfaceAccessibility {
                 Text(surfaceAccessibility.label)
                     .font(.caption2)
                     .frame(width: 1, height: 1)
@@ -126,6 +127,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
                     .accessibilityValue(surfaceAccessibility.value(effectiveInteractionState))
             }
         }
+#endif
         .opacity(rowOpacity)
         .scaleEffect(rowScale)
         .animation(appMotion.animation(effectiveInteractionState.animationDuration), value: effectiveInteractionState)

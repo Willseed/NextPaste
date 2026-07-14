@@ -2487,8 +2487,8 @@ struct HomeView: View {
             }
             .accessibilityIdentifier(RowActionControlGroup.deleteButtonIdentifier)
             .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
-            .accessibilityHint(Text(RowActionControlGroup.deleteActionLabel))
-            .help(Text(RowActionControlGroup.deleteActionLabel))
+            .accessibilityHint(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
+            .help(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
             .lineLimit(1)
         }
         .swipeActions(edge: .leading, allowsFullSwipe: false) {
@@ -2508,8 +2508,10 @@ struct HomeView: View {
             .accessibilityLabel(
                 Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
             )
-            .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
-            .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+            .accessibilityHint(
+                Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+            )
+            .help(Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))))
             .lineLimit(1)
         }
     }
@@ -2546,8 +2548,10 @@ struct HomeView: View {
         .accessibilityLabel(
             Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
         )
-        .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
-        .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .accessibilityHint(
+            Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        )
+        .help(Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))))
         .lineLimit(1)
     }
 
@@ -2647,8 +2651,10 @@ struct HomeView: View {
         .accessibilityLabel(
             Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
         )
-        .accessibilityHint(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
-        .help(Text(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        .accessibilityHint(
+            Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned)))
+        )
+        .help(Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))))
         .lineLimit(1)
 
         Button(role: .destructive) {
@@ -2661,8 +2667,8 @@ struct HomeView: View {
         }
         .accessibilityIdentifier("delete-image-menu-item")
         .accessibilityLabel(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
-        .accessibilityHint(Text(RowActionControlGroup.deleteActionLabel))
-        .help(Text(RowActionControlGroup.deleteActionLabel))
+        .accessibilityHint(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
+        .help(Text(LocalizedStringKey(RowActionControlGroup.deleteActionLabel)))
         .lineLimit(1)
     }
 
@@ -2675,11 +2681,11 @@ struct HomeView: View {
         // Overlay the markers in a fixed one-point surface so their identifiers
         // and values remain queryable without affecting product geometry.
         ZStack(alignment: .topLeading) {
-            accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
-            accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
-            accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
 #if DEBUG && os(macOS)
             if isUITesting {
+                accessibilityMarker(identifier: "home-canvas", value: appTheme.canvas.hex, label: "Warm cream canvas")
+                accessibilityMarker(identifier: "single-column-history-layout", value: "adaptive-full-width", label: "Single column history layout")
+                accessibilityMarker(identifier: "history-surface", value: "primary", label: "History surface")
                 accessibilityMarker(identifier: "history-visible-count", value: "\(visibleClips.count)", label: "Visible clip count")
                 accessibilityMarker(
                     identifier: "history-launch-readiness-duration",
@@ -2815,9 +2821,7 @@ struct HomeView: View {
                 accessibilityMarker(
                     identifier: "search-result-count",
                     value: "\(visibleClips.count)",
-                    label: visibleClips.isEmpty
-                        ? "No search results"
-                        : "\(visibleClips.count) search result\(visibleClips.count == 1 ? "" : "s")"
+                    label: searchResultAccessibilityLabel
                 )
             }
         }
@@ -2835,6 +2839,18 @@ struct HomeView: View {
 
     private var visiblePinnedClipCount: Int {
         visibleClips.filter(\.isPinned).count
+    }
+
+    private var searchResultAccessibilityLabel: String {
+        let count = visibleClips.count
+        guard count > 0 else {
+            return locale.nextPasteLocalized("No search results")
+        }
+
+        let format = count == 1
+            ? locale.nextPasteLocalized("%lld search result")
+            : locale.nextPasteLocalized("%lld search results")
+        return String(format: format, locale: locale, Int64(count))
     }
 
 #if DEBUG && os(macOS)

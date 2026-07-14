@@ -374,6 +374,16 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
         if thumbnailDescription == "nextpaste.thumbnail.screenshot"
             || thumbnailDescription.range(of: "screenshot", options: .caseInsensitive) != nil {
             subject = locale.nextPasteLocalized("Screenshot")
+        } else if imageFormatLabel == "Image" {
+            guard let imageWidth, let imageHeight else {
+                return locale.nextPasteLocalized("Image clipboard clip")
+            }
+            return String(
+                format: locale.nextPasteLocalized("Clipboard image, %lld by %lld pixels"),
+                locale: locale,
+                Int64(imageWidth),
+                Int64(imageHeight)
+            )
         } else if let imageFormatLabel {
             subject = imageFormatLabel
         } else if thumbnailDescription == "Image clipboard clip" {
@@ -393,7 +403,13 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
     }
 
     func localizedMetadata(locale: Locale) -> String {
-        metadata == "Image" ? locale.nextPasteLocalized("Image") : metadata
+        if metadata == "Image" {
+            return locale.nextPasteLocalized("Image")
+        }
+        if imageFormatLabel == "Image", let imageWidth, let imageHeight {
+            return "\(imageWidth) x \(imageHeight) \(locale.nextPasteLocalized("Image"))"
+        }
+        return metadata
     }
 
     func localizedAccessibilityLabel(locale: Locale) -> String {
@@ -488,6 +504,6 @@ struct ImageClipboardRowPresentation: Equatable, Identifiable {
             return "HEIF"
         }
 
-        return "IMAGE"
+        return "Image"
     }
 }

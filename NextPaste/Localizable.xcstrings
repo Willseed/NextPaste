@@ -1568,6 +1568,40 @@
         }
       }
     },
+    "%lld search result": {
+      "comment": "VoiceOver search status when exactly one clipboard item matches. The argument is the result count.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld search result"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個搜尋結果"
+          }
+        }
+      }
+    },
+    "%lld search results": {
+      "comment": "VoiceOver search status when multiple clipboard items match. The argument is the result count.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld search results"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 個搜尋結果"
+          }
+        }
+      }
+    },
     "Search Clipboard History": {
       "localizations": {
         "en": {
@@ -2459,6 +2493,13 @@
         "zh-Hant": { "stringUnit": { "state": "translated", "value": "%@剪貼簿圖片，%lld × %lld 像素" } }
       }
     },
+    "Clipboard image, %lld by %lld pixels": {
+      "comment": "Image description used when the clipboard image format is unknown. The arguments are width and height.",
+      "localizations": {
+        "en": { "stringUnit": { "state": "translated", "value": "Clipboard image, %lld by %lld pixels" } },
+        "zh-Hant": { "stringUnit": { "state": "translated", "value": "剪貼簿圖片，%lld × %lld 像素" } }
+      }
+    },
     "Control the app's visual style.": {
       "localizations": {
         "en": {
@@ -2509,6 +2550,23 @@
       "localizations": {
         "en": { "stringUnit": { "state": "translated", "value": "No clips yet" } },
         "zh-Hant": { "stringUnit": { "state": "translated", "value": "尚無剪貼項目" } }
+      }
+    },
+    "No search results": {
+      "comment": "VoiceOver search status when no clipboard items match the active query.",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No search results"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "找不到搜尋結果"
+          }
+        }
       }
     },
     "No matching clips": {

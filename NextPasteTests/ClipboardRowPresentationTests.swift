@@ -334,6 +334,30 @@ struct ClipboardRowPresentationTests {
         #expect(presentation.localizedAccessibilityValue(locale: traditionalChinese).contains("縮圖檔案"))
     }
 
+    @Test("unknown image formats use the localized image fallback")
+    func unknownImageFormatsUseLocalizedFallback() {
+        let id = UUID()
+        let clip = makeImageClip(id: id)
+        clip.imageUTType = "com.example.unknown-image"
+        clip.imageFilename = "\(id.uuidString).unknown"
+        let presentation = ImageClipboardRowPresentation(content: .init(clip: clip))
+
+        #expect(presentation.localizedMetadata(locale: Locale(identifier: "en_US")) == "64 x 48 Image")
+        #expect(presentation.localizedMetadata(locale: Locale(identifier: "zh_Hant_TW")) == "64 x 48 圖片")
+        #expect(
+            presentation.localizedThumbnailDescription(locale: Locale(identifier: "en_US"))
+                == "Clipboard image, 64 by 48 pixels"
+        )
+        #expect(
+            presentation.localizedThumbnailDescription(locale: Locale(identifier: "zh_Hant_TW"))
+                == "剪貼簿圖片，64 × 48 像素"
+        )
+        #expect(
+            presentation.localizedAccessibilityLabel(locale: Locale(identifier: "zh_Hant_TW"))
+                .contains("Image") == false
+        )
+    }
+
     private func makeImageClip(
         id: UUID,
         fixture: ImageTestFixtures.ImageFixture = ImageTestFixtures.png,

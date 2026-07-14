@@ -61,6 +61,7 @@ struct LocalizationCatalogTests {
         "New Clip",
         "NextPaste keeps your clipboard history on this Mac. Content is stored locally and is never sent to a server.",
         "No clips match this filter",
+        "No search results",
         "No Text Found in Image",
         "None",
         "Option",
@@ -108,6 +109,7 @@ struct LocalizationCatalogTests {
         "Clear the active search query",
         "Clear Unpinned History…",
         "Clip was not saved. Try again.",
+        "Clipboard image, %lld by %lld pixels",
         "Copied",
         "Custom",
         "Custom (%lld)",
@@ -132,6 +134,8 @@ struct LocalizationCatalogTests {
         "Search Clipboard History",
         "Search, filter, and clear clipboard history",
         "Search clips",
+        "%lld search result",
+        "%lld search results",
         "Search history",
         "Settings are not available yet.",
         "This Action Cannot Be Undone",
@@ -193,7 +197,10 @@ struct LocalizationCatalogTests {
             #"\bText\s*\(\s*LocalizedStringKey\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\bSettingsTextHint\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\b(?:SettingsSection|SettingsControlRow|AppToolbar)\s*\([^)]*?\btitle:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bSettingsTabItem\s*\([^)]*?\btitle:\s*"((?:\\.|[^"\\])+)""#,
             #"\bSettingsControlRow\s*\([^)]*?\bdescription:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bAdaptiveControlButtonStyle\s*\([^)]*?\baccessibilityLabel:\s*"((?:\\.|[^"\\])+)""#,
+            #"\bAdaptiveControlButtonStyle\s*\([^)]*?\baccessibilityHintText:\s*"((?:\\.|[^"\\])+)""#,
             #"String\s*\(\s*localized:\s*"((?:\\.|[^"\\])+)""#,
             #"\.nextPasteLocalized\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.localizedString\s*\(\s*forKey:\s*"((?:\\.|[^"\\])+)""#,
@@ -201,6 +208,7 @@ struct LocalizationCatalogTests {
             #"\.accessibilityLabel\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityValue\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityHint\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
+            #"\.accessibilityHint\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.help\s*\(\s*Text\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityLabel\s*\(\s*"((?:\\.|[^"\\])+)""#,
             #"\.accessibilityValue\s*\(\s*"((?:\\.|[^"\\])+)""#,
@@ -409,6 +417,7 @@ struct LocalizationCatalogTests {
             "Clear clipboard history",
             "Clear the active search query",
             "Clip was not saved. Try again.",
+            "Clipboard image, %lld by %lld pixels",
             "Clips",
             "Close",
             "Command",
@@ -456,6 +465,7 @@ struct LocalizationCatalogTests {
             "New Text Clip",
             "NextPaste keeps your clipboard history on this Mac. Content is stored locally and is never sent to a server.",
             "No clips match this filter",
+            "No search results",
             "None",
             "No Text Found in Image",
             "Option",
@@ -478,6 +488,8 @@ struct LocalizationCatalogTests {
             "Search Clipboard History",
             "Search, filter, and clear clipboard history",
             "Search clips",
+            "%lld search result",
+            "%lld search results",
             "Search history",
             "Settings",
             "Settings are not available yet.",
@@ -616,6 +628,12 @@ struct LocalizationCatalogTests {
         Text(LocalizedStringKey("Localized text key"))
         Text("Delete \(count) Items")
         SettingsTextHint("Global Shortcut")
+        SettingsTabItem(title: "Settings tab title", icon: "gear", identifier: "tab")
+        AdaptiveControlButtonStyle(
+            presentation: .labeled,
+            accessibilityLabel: "Adaptive control label",
+            accessibilityHintText: "Adaptive control hint"
+        )
         Label("New Clip", systemImage: "plus")
         Toggle("Toggle title", isOn: $isEnabled)
         NavigationLink("Navigation title") { EmptyView() }
@@ -624,6 +642,9 @@ struct LocalizationCatalogTests {
         DisclosureGroup("Disclosure group title") { EmptyView() }
         Section(header: "Section header", footer: "Section footer") { EmptyView() }
         .confirmationDialog("Clear All History", isPresented: $isPresented) { }
+        .accessibilityHint("Direct accessibility hint")
+        let localizedMarkerLabel = locale.nextPasteLocalized("No search results")
+        accessibilityMarker(identifier: "search-result-count", value: "0", label: localizedMarkerLabel)
         let runtimeTitle = "Runtime title"
         Text(runtimeTitle)
         Text(verbatim: "Verbatim text")
@@ -637,6 +658,9 @@ struct LocalizationCatalogTests {
         #expect(keys.contains("Localized text key"))
         #expect(keys.contains(#"Delete \(count) Items"#))
         #expect(keys.contains("Global Shortcut"))
+        #expect(keys.contains("Settings tab title"))
+        #expect(keys.contains("Adaptive control label"))
+        #expect(keys.contains("Adaptive control hint"))
         #expect(keys.contains("New Clip"))
         #expect(keys.contains("Toggle title"))
         #expect(keys.contains("Navigation title"))
@@ -646,6 +670,8 @@ struct LocalizationCatalogTests {
         #expect(keys.contains("Section header"))
         #expect(keys.contains("Section footer"))
         #expect(keys.contains("Clear All History"))
+        #expect(keys.contains("Direct accessibility hint"))
+        #expect(keys.contains("No search results"))
         #expect(keys.contains("Runtime title") == false)
         #expect(keys.contains("Verbatim text") == false)
         #expect(keys.contains("Debug literal") == false)
