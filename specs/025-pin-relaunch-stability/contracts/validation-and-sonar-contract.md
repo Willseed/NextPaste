@@ -10,7 +10,7 @@
 | Layer | What is Validated | Framework | Target |
 |-------|-------------------|-----------|--------|
 | Unit | Container-level load-failure clean-store recovery, load-complete guard, content-free diagnostic records (`store-load-failed`, `image-file-missing`), on-disk restart-equivalent pin state/ordering, 100-rep single-item mutation (incl. image clip), 20-item interleaved mutation (text + image), determinism | Swift `Testing` (`@Test`/`#expect`); XCTest for `PinStateMutationStore` direct tests | `NextPasteTests` |
-| UI | Relaunch with persisted data, Auto Capture + relaunch, 500-item dataset load, 3-second launch budget, item-level `image-file-missing` recovery, 10-round relaunch cycles (per-round comparison), 100-rep native pin/unpin (incl. image clip), 20-item interleaved native pin/unpin (text + image) | XCTest | `NextPasteUITests` |
+| UI | Relaunch with persisted data, Auto Capture + relaunch, 500-item dataset load, 3-second launch budget, item-level `image-file-missing` recovery, 10-round relaunch cycles (per-round comparison), 100-rep native pin/unpin (incl. image clip), 20-item interleaved native pin/unpin (text + image) | XCTest | `NextPasteUITests`; CI semantic shards: `capture`, `history`, `relaunch`, `row-actions`, `settings` |
 | Build | Project compiles for macOS; no new diagnostics | `xcodebuild` | `NextPaste` scheme |
 
 ## Automated Validation Matrix
@@ -31,6 +31,24 @@
 | 100-rep native pin/unpin stress (incl. image-clip variant) (T018) | FR-004, FR-016, SC-003 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
 | 20-item interleaved native stress (text + image clips) (T019) | FR-006, FR-016, SC-004 | UI (Targeted) | `-only-testing:NextPasteUITests/RowActionStressTests` |
 
+## Full UI semantic shard evidence
+
+The complete UI surface is partitioned into five CI shards: `capture`, `history`, `relaunch`,
+`row-actions`, and `settings`. The authoritative manifest is
+`Scripts/ui-test-shards.txt`; `Scripts/ci-test.sh` requires all five names and verifies that every
+concrete UI test method appears exactly once.
+
+Each shard is executed with its semantic name, for example:
+
+```bash
+Scripts/ci-test.sh --mode full-ui --shard relaunch
+```
+
+The five shard jobs in `.github/workflows/full-ui.yml` are independent but the UI test execution
+within each job remains serialized. A dry run or static policy check is not a test pass. Acceptance
+evidence requires the actual shard result with zero failures and zero skips; failure diagnostics are
+kept in the CI artifact for the corresponding shard.
+
 ## Manual Validation Matrix
 
 | Scenario | FR/SC Covered | Method | Evidence |
@@ -46,7 +64,7 @@ Manual validation supplements automated coverage only where native platform beha
 | Regression Scope | Trigger | Command |
 |------------------|---------|---------|
 | Full unit suite | Feature completion | `xcodebuild … -only-testing:NextPasteTests test` |
-| Full UI suite | Feature completion / release readiness | `xcodebuild … -only-testing:NextPasteUITests test` |
+| Full UI suite | Feature completion / release readiness | `Scripts/ci-test.sh --mode full-ui --shard <name>` for each of `capture`, `history`, `relaunch`, `row-actions`, and `settings` |
 | Full regression | Release readiness | `xcodebuild … -scheme NextPaste test` |
 
 Full regression is reserved for feature completion / release readiness because this feature touches app launch (`NextPasteApp.makeModelContainer`), persistence (load-failure recovery), and shared clipboard capture infrastructure (Constitution Principle VIII). The reason is recorded here.
@@ -81,6 +99,7 @@ Shared behavior is validated once at the unit layer; divergent platform behavior
 | Gate | Evidence Required |
 |------|-------------------|
 | All automated validation matrix tests pass | `xcodebuild` test run report (0 failures) |
+| Full UI semantic shard matrix passes | Five shard test reports, one each for `capture`, `history`, `relaunch`, `row-actions`, and `settings`, with 0 failures and 0 skips |
 | SC-001 (10 rounds, 0 crashes) | UI test run report |
 | SC-009 (500 items, 0 crashes, 100% accuracy) | UI test run report |
 | SC-010 (item-level `image-file-missing`, item omitted, diagnostic observable) | UI test run report + diagnostic event capture |
@@ -99,6 +118,7 @@ No SonarQube integration is configured in this repository. There is no checked-i
 |----------|--------|-----------|
 | Build success | `xcodebuild … build` | Build log |
 | Targeted test pass | `xcodebuild … -only-testing:… test` | Test run report |
+| Full UI semantic shard matrix | `Scripts/ci-test.sh --mode full-ui --shard <name>` for each of the five shard names | Per-shard test run report and CI artifact |
 | Full regression pass | `xcodebuild … -scheme NextPaste test` | Test run report |
 | Launch budget measurement | UI test timing assertion | Test run report |
 | Crash count = 0 | `CrashSignalDetector` + `app.state` assertions | Test run report |
@@ -112,6 +132,8 @@ States: `Pending` → `Executing` → `Passed` / `Failed`.
 - A validation entry is `Pending` until its test is executed.
 - `Passed` requires an actual test run report with 0 failures for that entry.
 - `Failed` requires the failure to be recorded and addressed before re-execution.
+- A dry run or static validation result is `Static-validated`, not `Passed`; it cannot substitute for
+  the actual Xcode test result.
 - AI must not mark a validation entry `Passed` without executed evidence.
 
 ## Propagation Progress

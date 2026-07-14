@@ -59,8 +59,8 @@ configurations:
 
 | Configuration | Script selection | Purpose |
 | --- | --- | --- |
-| `Unit` | `NextPasteTests`, excluding `VisionImageTextRecognizerIntegrationTests` and `AppKitAppearanceIntegrationTests` | All unit, source-policy, localization-catalog, preference, store, coordinator, and hosted lifecycle tests |
-| `Integration` | `NextPasteTests/VisionImageTextRecognizerIntegrationTests` and `NextPasteTests/AppKitAppearanceIntegrationTests` | Real Apple Vision smoke tests and real `NSApplication` appearance integration |
+| `Unit` | `NextPasteTests`, excluding `VisionImageTextRecognizerIntegrationTests`, `AppKitAppearanceIntegrationTests`, and `RenderedOrderReconciliationIntegrationTests` | All unit, source-policy, localization-catalog, preference, store, coordinator, and hosted lifecycle tests |
+| `Integration` | `NextPasteTests/VisionImageTextRecognizerIntegrationTests`, `NextPasteTests/AppKitAppearanceIntegrationTests`, and `NextPasteTests/RenderedOrderReconciliationIntegrationTests` | Real Apple Vision, native `NSApplication` appearance, and hosted rendered-order integration |
 | `UI` | `NextPasteUITests`, non-parallel | All end-to-end XCUITests |
 
 Code coverage and test timeouts are enabled in the Test Plan. Coverage is scoped to the
@@ -136,6 +136,7 @@ xcodebuild -quiet \
   -only-testing:NextPasteTests \
   -skip-testing:NextPasteTests/VisionImageTextRecognizerIntegrationTests \
   -skip-testing:NextPasteTests/AppKitAppearanceIntegrationTests \
+  -skip-testing:NextPasteTests/RenderedOrderReconciliationIntegrationTests \
   test-without-building
 
 # Real Vision and native AppKit appearance integration tests
@@ -151,6 +152,7 @@ xcodebuild -quiet \
   -resultBundlePath '<run-dir>/Integration.xcresult' \
   -only-testing:NextPasteTests/VisionImageTextRecognizerIntegrationTests \
   -only-testing:NextPasteTests/AppKitAppearanceIntegrationTests \
+  -only-testing:NextPasteTests/RenderedOrderReconciliationIntegrationTests \
   test-without-building
 
 # All UI tests, serialized
@@ -172,6 +174,25 @@ xcodebuild -quiet \
 plutil -convert json -o /dev/null NextPaste/Localizable.xcstrings
 ```
 
+## Full UI semantic shards
+
+The complete UI suite remains serialized at the test-plan level. CI also exposes the same suite as
+five semantic shards so failures map to a product boundary instead of an unstable numeric stage:
+
+```bash
+Scripts/ci-test.sh --mode full-ui --shard capture
+Scripts/ci-test.sh --mode full-ui --shard history
+Scripts/ci-test.sh --mode full-ui --shard relaunch
+Scripts/ci-test.sh --mode full-ui --shard row-actions
+Scripts/ci-test.sh --mode full-ui --shard settings
+```
+
+`Scripts/ui-test-shards.txt` is the shard manifest. `Scripts/ci-test.sh` fails closed unless all
+five names are present and the manifest is exhaustive and unique across the concrete UI methods.
+`.github/workflows/full-ui.yml` runs one matrix job for each name. A dry run validates selection and
+repository policy only; a shard is acceptance evidence only after its actual Xcode test execution
+produces a clean result with zero failures and zero skips.
+
 `<run-dir>` is a fresh `mktemp` directory created by the script. `--dry-run` prints the actual
 resolved Xcode binary and generated paths. Formatter and lint are reported truthfully as
 “Project not configured”; the repository contains neither a formatter command/configuration nor
@@ -192,7 +213,7 @@ directory:
 | `TestBuild.xcresult`, `TestBuild-build-summary.json` | Build-for-testing evidence |
 | `<phase>-inventory.json` | Xcode-enumerated test inventory that the phase must execute exactly |
 | `Unit.xcresult`, `Unit-summary.json` | Unit and localization result evidence |
-| `Integration.xcresult`, `Integration-summary.json` | Real Vision and native AppKit appearance result evidence |
+| `Integration.xcresult`, `Integration-summary.json` | Real Vision, native AppKit appearance, and rendered-order integration result evidence |
 | `UI.xcresult`, `UI-summary.json` | XCUITest result evidence and attachments |
 | `<phase>-coverage.txt`, `<phase>-coverage.json` | `xccov` target summary and machine-readable coverage |
 | `<phase>-tests.json` | Detailed tests, emitted when a phase is not clean |
@@ -463,8 +484,8 @@ the real native Pin action; no test calls `scrollTo`.
 
 | ID | Acceptance requirement | Automated evidence | Status / remaining gap |
 | --- | --- | --- | --- |
-| REG-01 | Run every existing unit test | Unit phase selects all `NextPasteTests` except the two suites moved to Integration | **Mapped — gate-enforced.** |
-| REG-02 | Run every real-framework integration test | Integration phase selects the complete `VisionImageTextRecognizerIntegrationTests` and `AppKitAppearanceIntegrationTests` suites | **Mapped — gate-enforced.** |
+| REG-01 | Run every existing unit test | Unit phase selects all `NextPasteTests` except the three suites moved to Integration | **Mapped — gate-enforced.** |
+| REG-02 | Run every real-framework integration test | Integration phase selects the complete `VisionImageTextRecognizerIntegrationTests`, `AppKitAppearanceIntegrationTests`, and `RenderedOrderReconciliationIntegrationTests` suites | **Mapped — gate-enforced.** |
 | REG-03 | Run every existing/new UI test | UI phase selects all `NextPasteUITests` | **Mapped — gate-enforced.** |
 | REG-04 | No runtime skips or expected failures | `summarize_xcresult` fails the script if either count is nonzero | **Mapped — gate-enforced.** |
 | REG-05 | No `XCTSkip` or `XCTExpectFailure` left in source | `Scripts/check-test-hygiene.sh`, invoked by `Scripts/verify.sh` | **Static-validated.** Current executable scan passed. |
