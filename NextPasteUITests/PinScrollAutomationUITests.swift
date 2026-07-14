@@ -114,11 +114,24 @@ final class PinScrollAutomationUITests: UITestCase {
         )
         pinMenuItem.click()
 
-        assertMarker(Marker.lastItemID, equals: targetID, in: app, timeout: Self.pinMutationTimeout)
-        assertMarker(Marker.lastDecision, equals: "scroll", in: app, timeout: Self.pinMutationTimeout)
-        assertMarker(Marker.pendingItemID, equals: "none", in: app, timeout: Self.pinMutationTimeout)
-        assertMarker(Marker.scrollPhase, equals: "idle", in: app, timeout: Self.pinMutationTimeout)
-        let terminalExecutionCount = try XCTUnwrap(markerValue(Marker.executionCount, in: app))
+        var observedTerminalState: [String]?
+        let reachedTerminalState = UITestWait.until(timeout: Self.pinMutationTimeout) {
+            guard let state = self.pinScrollState(in: app) else { return false }
+            observedTerminalState = state
+            return state[1] == targetID
+                && (state[2] == "scroll" || state[2] == "no-scroll")
+                && state[3] == "none"
+                && state[6] == "idle"
+        }
+        guard reachedTerminalState, let terminalState = observedTerminalState else {
+            XCTFail(
+                "Expected the target Pin request to reach a consumed terminal state, "
+                    + "got \(observedTerminalState ?? [])"
+            )
+            return
+        }
+        let terminalExecutionCount = terminalState[0]
+        let terminalDecision = terminalState[2]
 
         history.enterSearchQuery(ClipboardFixture.PinScroll.searchVisibleQuery)
         history.assertVisibleClipCount(16)
@@ -129,8 +142,9 @@ final class PinScrollAutomationUITests: UITestCase {
         )
         assertMarker(Marker.executionCount, equals: terminalExecutionCount, in: app)
         assertMarker(Marker.lastItemID, equals: targetID, in: app)
-        assertMarker(Marker.lastDecision, equals: "scroll", in: app)
+        assertMarker(Marker.lastDecision, equals: terminalDecision, in: app)
         assertMarker(Marker.pendingItemID, equals: "none", in: app)
+        assertMarker(Marker.scrollPhase, equals: "idle", in: app)
     }
 
     func testUnpinnedFilterHidesPinnedTargetWithoutIssuingAStaleScroll() {
