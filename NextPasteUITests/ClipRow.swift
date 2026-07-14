@@ -240,6 +240,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealDeleteAction(for: clipText, file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     func pin(
@@ -248,6 +249,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealPinAction(for: clipText, file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     func unpin(
@@ -256,6 +258,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealPinAction(for: clipText, expectedLabel: "Unpin", file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     func deleteImage(
@@ -264,6 +267,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealImageDeleteAction(forThumbnailDescription: description, file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     func pinImage(
@@ -272,6 +276,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealImagePinAction(forThumbnailDescription: description, file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     func unpinImage(
@@ -280,6 +285,7 @@ struct ClipRow {
         line: UInt = #line
     ) {
         revealImagePinAction(forThumbnailDescription: description, expectedLabel: "Unpin", file: file, line: line).tap()
+        waitForSwipeActionsToDismiss(file: file, line: line)
     }
 
     // MARK: - Assert action availability
@@ -424,13 +430,13 @@ struct ClipRow {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        XCTAssertFalse(
-            app.buttons[ActionIdentifier.pin].waitForExistence(timeout: timeout),
+        XCTAssertTrue(
+            app.buttons[ActionIdentifier.pin].waitForNonExistence(timeout: timeout),
             "Expected pin swipe action to remain hidden",
             file: file, line: line
         )
-        XCTAssertFalse(
-            app.buttons[ActionIdentifier.delete].waitForExistence(timeout: timeout),
+        XCTAssertTrue(
+            app.buttons[ActionIdentifier.delete].waitForNonExistence(timeout: timeout),
             "Expected delete swipe action to remain hidden",
             file: file, line: line
         )
@@ -517,23 +523,34 @@ struct ClipRow {
         file: StaticString,
         line: UInt
     ) -> XCUIElement {
-        // Row-scoped query: find the action button that is hittable and vertically
-        // aligned with the targeted row, so the tap always acts on the intended row.
-        let buttons = row.buttons.matching(identifier: identifier)
+        // Native SwiftUI swipe actions are accessibility overlays, not guaranteed
+        // descendants of the row that owns them. Query the app-level overlay and
+        // select the button aligned with the swiped row.
+        let buttons = app.buttons.matching(identifier: identifier)
+        var matchedButton: XCUIElement?
         let matched = UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
+            let rowFrame = row.frame
+            matchedButton = nil
             for button in buttons.allElementsBoundByIndex {
-                if button.isHittable && abs(button.frame.midY - row.frame.midY) <= row.frame.height / 2 {
-                    return true
+                guard button.exists, button.isHittable, button.frame.height > 0 else {
+                    continue
+                }
+                let verticallyAligned = abs(button.frame.midY - rowFrame.midY)
+                    <= max(rowFrame.height, button.frame.height) / 2
+                let hasExpectedLabel = ClipboardFixture.combinedAccessibilityText(of: button)
+                    .localizedCaseInsensitiveContains(expectedLabel)
+                if verticallyAligned && hasExpectedLabel {
+                    matchedButton = button
+                    break
                 }
             }
-            return false
+            return matchedButton != nil
         }
-        guard matched else {
+        guard matched, let button = matchedButton else {
             XCTFail("\(expectedLabel) action was not revealed for \(rowDescription)",
                     file: file, line: line)
             return app.buttons[identifier]
         }
-        let button = buttons.firstMatch
         XCTAssertEqual(button.identifier, identifier, file: file, line: line)
         XCTAssertTrue(
             ClipboardFixture.combinedAccessibilityText(of: button)
@@ -542,6 +559,22 @@ struct ClipRow {
             file: file, line: line
         )
         return button
+    }
+
+    private func waitForSwipeActionsToDismiss(
+        timeout: TimeInterval = ClipboardFixture.defaultTimeout,
+        file: StaticString,
+        line: UInt
+    ) {
+        let pinButton = app.buttons[ActionIdentifier.pin]
+        let deleteButton = app.buttons[ActionIdentifier.delete]
+        XCTAssertTrue(
+            pinButton.waitForNonExistence(timeout: timeout)
+                && deleteButton.waitForNonExistence(timeout: timeout),
+            "Expected native swipe actions to reach their dismissed terminal state",
+            file: file,
+            line: line
+        )
     }
 
     private func assertActionAvailability(
