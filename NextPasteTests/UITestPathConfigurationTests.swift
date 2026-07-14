@@ -19,7 +19,7 @@ private enum UITestPathConfigurationContract {
     static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
     static let storeFileName = "NextPaste.store"
     static let dataDirectoryName = "ImageStore"
-    static let onDiskStoreFolderPrefix = "NextPaste-025-ui-store-"
+    static let onDiskStoreFolderPrefix = "NextPaste-ui-store-"
     static let traceFileNamePrefix = "row-actions-"
     static let traceFileExtension = "jsonl"
 }

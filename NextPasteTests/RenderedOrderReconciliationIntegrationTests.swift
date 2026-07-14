@@ -8,10 +8,11 @@
 //  (`clip-row-<UUID>`).
 //
 //  This is NOT a UI test (no XCUITest / `UITestCase` app launch). It installs a
-//  real SwiftUI `HomeView` in an `NSHostingView` inside an off-screen
+//  real SwiftUI `HomeView` in an `NSHostingView` inside a controlled visible
 //  `NSWindow`, drives the real `scheduleTogglePin(_:)` entry point, and reads
-//  the published accessibility tree directly through the in-process AppKit
-//  `NSAccessibilityProtocol` API.
+//  the published accessibility tree through in-process AppKit accessibility
+//  APIs (`NSAccessibilityProtocol` and the current process's `AXUIElement`
+//  application tree).
 //
 //  It deliberately does NOT prove the UI updated by reading the
 //  `reconciliationRenderedClipIDs` / `RowActionDisplayOrderState` mirror. That
@@ -28,6 +29,7 @@ import SwiftData
 import SwiftUI
 #if os(macOS)
 import AppKit
+import ApplicationServices
 #endif
 @testable import NextPaste
 
@@ -54,6 +56,13 @@ final class RenderedOrderHostedFixture {
     let homeView: HomeView
     private(set) var hostingView: NSHostingView<AnyView>?
     private(set) var hostWindow: NSWindow?
+
+    var accessibilityRoot: NSAccessibilityProtocol? {
+        if let hostWindow {
+            return hostWindow
+        }
+        return hostingView
+    }
 
     /// Deterministic, stable fixture UUIDs so the row accessibility IDs are
     /// reproducible across runs: `clip-row-<alphaID>` / `clip-row-<bravoID>`.
@@ -103,20 +112,27 @@ final class RenderedOrderHostedFixture {
         self.hostingView = host
 
         let window = NSWindow(
-            contentRect: NSRect(x: -10_000, y: -10_000, width: 360, height: 320),
-            styleMask: [.borderless],
+            contentRect: NSRect(x: 120, y: 120, width: 360, height: 320),
+            styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
         )
         window.contentView = host
+        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = true
         window.isMovableByWindowBackground = false
         window.isReleasedWhenClosed = false
-        window.orderFrontRegardless()
+        window.standardWindowButton(.closeButton)?.isHidden = true
+        NSApp?.activate(ignoringOtherApps: true)
+        window.makeKeyAndOrderFront(nil)
+        window.displayIfNeeded()
+        host.layoutSubtreeIfNeeded()
         self.hostWindow = window
     }
 
     func layoutIfNeeded() {
         hostingView?.layoutSubtreeIfNeeded()
+        hostWindow?.displayIfNeeded()
     }
 
     func dispose() {
@@ -138,7 +154,9 @@ final class RenderedOrderHostedFixture {
 /// accessibility children in visual order, so the first occurrence of each row
 /// identifier reflects its rendered position. Each target identifier is
 /// collected at most once, so a row surfaced through both attributes is not
-/// double-counted.
+/// double-counted. If the hosted SwiftUI view does not expose the complete
+/// subtree through the in-process protocol, the same assertion falls back to a
+/// depth-first walk of the current process's published `AXUIElement` tree.
 @MainActor
 enum RenderedAccessibilityOrder {
     static func rowOrder(
@@ -147,7 +165,77 @@ enum RenderedAccessibilityOrder {
     ) -> [String] {
         var collected: [String] = []
         traverse(root, matching: identifiers, collected: &collected, depth: 0)
+        if Set(collected) == identifiers {
+            return collected
+        }
+        let applicationOrder = applicationRowOrder(matching: identifiers)
+        if Set(applicationOrder) == identifiers {
+            return applicationOrder
+        }
         return collected
+    }
+
+    private static func applicationRowOrder(matching identifiers: Set<String>) -> [String] {
+        let application = AXUIElementCreateApplication(
+            ProcessInfo.processInfo.processIdentifier
+        )
+        var collected: [String] = []
+        traverseApplicationElement(
+            application,
+            matching: identifiers,
+            collected: &collected,
+            depth: 0
+        )
+        return collected
+    }
+
+    private static func traverseApplicationElement(
+        _ element: AXUIElement,
+        matching identifiers: Set<String>,
+        collected: inout [String],
+        depth: Int
+    ) {
+        if depth > 60 {
+            return
+        }
+        if let identifier = applicationIdentifier(for: element),
+           identifiers.contains(identifier),
+           collected.contains(identifier) == false {
+            collected.append(identifier)
+            return
+        }
+        for child in applicationChildren(of: element) {
+            traverseApplicationElement(
+                child,
+                matching: identifiers,
+                collected: &collected,
+                depth: depth + 1
+            )
+        }
+    }
+
+    private static func applicationChildren(of element: AXUIElement) -> [AXUIElement] {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXChildrenAttribute as CFString,
+            &value
+        ) == .success else {
+            return []
+        }
+        return value as? [AXUIElement] ?? []
+    }
+
+    private static func applicationIdentifier(for element: AXUIElement) -> String? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(
+            element,
+            kAXIdentifierAttribute as CFString,
+            &value
+        ) == .success else {
+            return nil
+        }
+        return value as? String
     }
 
     private static func traverse(
@@ -194,8 +282,9 @@ struct RenderedOrderReconciliationIntegrationTests {
         defer { fixture.dispose() }
 
         let targets: Set<String> = [fixture.alphaRowIdentifier, fixture.bravoRowIdentifier]
-        guard let host = fixture.hostingView else {
-            Issue.record("The NSHostingView must be installed before asserting rendered order.")
+        guard let host = fixture.hostingView,
+              let accessibilityRoot = fixture.accessibilityRoot else {
+            Issue.record("The hosted accessibility root must be installed before asserting rendered order.")
             return
         }
 
@@ -209,7 +298,7 @@ struct RenderedOrderReconciliationIntegrationTests {
             guard let fixture else { return false }
             fixture.layoutIfNeeded()
             let order = RenderedAccessibilityOrder.rowOrder(
-                from: fixture.hostingView ?? host,
+                from: fixture.accessibilityRoot ?? host,
                 matching: targets
             )
             return Set(order) == targets
@@ -218,7 +307,7 @@ struct RenderedOrderReconciliationIntegrationTests {
         // BEFORE: newest-first ordering places the newer clip (bravo) above the
         // older clip (alpha) in the ACTUAL rendered accessibility tree.
         let beforeOrder = RenderedAccessibilityOrder.rowOrder(
-            from: host,
+            from: accessibilityRoot,
             matching: targets
         )
         #expect(
@@ -243,7 +332,7 @@ struct RenderedOrderReconciliationIntegrationTests {
         // WHILE THE SNAPSHOT IS HELD: the rendered accessibility tree must still
         // show the frozen pre-pin order, proving the snapshot holds publication.
         let duringOrder = RenderedAccessibilityOrder.rowOrder(
-            from: host,
+            from: accessibilityRoot,
             matching: targets
         )
         #expect(
@@ -263,14 +352,14 @@ struct RenderedOrderReconciliationIntegrationTests {
             timeout: .seconds(5),
             message: "After pinning alpha, the rendered accessibility tree must publish alpha above bravo."
         ) { [weak fixture] in
-            guard let fixture, let host = fixture.hostingView else { return false }
+            guard let fixture, let accessibilityRoot = fixture.accessibilityRoot else { return false }
             fixture.layoutIfNeeded()
-            let order = RenderedAccessibilityOrder.rowOrder(from: host, matching: targets)
+            let order = RenderedAccessibilityOrder.rowOrder(from: accessibilityRoot, matching: targets)
             return order == [fixture.alphaRowIdentifier, fixture.bravoRowIdentifier]
         }
 
         let afterOrder = RenderedAccessibilityOrder.rowOrder(
-            from: host,
+            from: accessibilityRoot,
             matching: targets
         )
         #expect(

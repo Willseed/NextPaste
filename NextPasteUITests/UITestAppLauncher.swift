@@ -322,7 +322,7 @@ enum UITestAppLauncher {
         // both the user's Application Support data and either process's private
         // container while remaining removable by the test teardown.
         let rootURL = pathConfiguration.artifactRootURL
-            .appendingPathComponent("NextPaste-025-ui-store-\(UUID().uuidString)", isDirectory: true)
+            .appendingPathComponent("NextPaste-ui-store-\(UUID().uuidString)", isDirectory: true)
             .standardizedFileURL
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         return OnDiskStore(

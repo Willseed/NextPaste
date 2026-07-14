@@ -15,6 +15,7 @@ readonly BUILD_CONFIGURATION="Debug"
 readonly LOCALIZATION_CATALOG="${REPO_ROOT}/NextPaste/Localizable.xcstrings"
 readonly VISION_INTEGRATION_SELECTOR="NextPasteTests/VisionImageTextRecognizerIntegrationTests"
 readonly APPEARANCE_INTEGRATION_SELECTOR="NextPasteTests/AppKitAppearanceIntegrationTests"
+readonly RENDERED_ORDER_INTEGRATION_SELECTOR="NextPasteTests/RenderedOrderReconciliationIntegrationTests"
 
 DRY_RUN=0
 case "${1:-}" in
@@ -380,11 +381,14 @@ run_build_phase TestBuild Debug "${DESTINATION}" \
 run_test_phase Unit Unit \
   -only-testing:NextPasteTests \
   -skip-testing:"${VISION_INTEGRATION_SELECTOR}" \
-  -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
+  -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
+  -skip-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"
 
 run_test_phase Integration Integration \
+  -parallel-testing-enabled NO \
   -only-testing:"${VISION_INTEGRATION_SELECTOR}" \
-  -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
+  -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
+  -only-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"
 
 run_test_phase UI UI \
   -parallel-testing-enabled NO \

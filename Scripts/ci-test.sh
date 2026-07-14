@@ -425,7 +425,7 @@ if [[ "${MODE}" == "pr" ]]; then
     -skip-testing:"${VISION_INTEGRATION_SELECTOR}" \
     -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
     -skip-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"
-  run_test_phase Integration Integration 900 NO YES \
+  run_test_phase Integration Integration 900 NO NO \
     -only-testing:"${VISION_INTEGRATION_SELECTOR}" \
     -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
     -only-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"

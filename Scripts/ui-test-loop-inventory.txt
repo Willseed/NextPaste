@@ -22,7 +22,6 @@ NextPasteUITests/PinScrollAutomationUITests.swift|for _ in 0..<5 where markerVal
 NextPasteUITests/PinScrollAutomationUITests.swift|for attempt in 0...maximumPresses {
 NextPasteUITests/RelaunchStabilityUITests.swift|for text in captures {
 NextPasteUITests/RelaunchStabilityUITests.swift|for text in captures {
-NextPasteUITests/RowActionTraceLogParser.swift|for record in records {
 NextPasteUITests/SettingsPage.swift|for identifier in Tab.all {
 NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundByIndex {
 NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundByIndex {
