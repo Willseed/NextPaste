@@ -276,14 +276,37 @@ final class PinScrollAutomationUITests: UITestCase {
             image: 0,
             pinned: 1
         )
-        assertMarker(Marker.appliedWindowSize, equals: windowSizePreset.rawValue, in: app)
-        assertMarker(Marker.visibilityReadiness, equals: "ready", in: app)
-        assertMarker(Marker.scrollPhase, equals: "idle", in: app)
-        assertMarker(Marker.executionCount, equals: "0", in: app)
-        assertMarker(Marker.lastItemID, equals: "none", in: app)
-        assertMarker(Marker.lastDecision, equals: "none", in: app)
-        assertMarker(Marker.pendingItemID, equals: "none", in: app)
+        assertInitialPinScrollState(expectedWindowSize: windowSizePreset.rawValue, in: app)
         return app
+    }
+
+    private func assertInitialPinScrollState(
+        expectedWindowSize: String,
+        in app: XCUIApplication,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        let expected = [expectedWindowSize, "ready", "idle", "0", "none", "none", "none"]
+        var observed: [String]?
+        let matched = UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
+            guard let state = self.pinScrollState(in: app), state.count == 9 else { return false }
+            observed = [
+                state[7],
+                state[4],
+                state[6],
+                state[0],
+                state[1],
+                state[2],
+                state[3]
+            ]
+            return observed == expected
+        }
+        XCTAssertTrue(
+            matched,
+            "Expected initial Pin scroll state \(expected), got \(observed ?? [])",
+            file: file,
+            line: line
+        )
     }
 
     private func row(index: Int, in app: XCUIApplication) -> XCUIElement {
@@ -396,9 +419,34 @@ final class PinScrollAutomationUITests: UITestCase {
     }
 
     private func markerValue(_ identifier: String, in app: XCUIApplication) -> String? {
+        if let index = pinScrollStateIndex[identifier], let state = pinScrollState(in: app) {
+            return state[index]
+        }
         let marker = app.descendants(matching: .any)[identifier]
         guard marker.exists else { return nil }
         return marker.value as? String ?? marker.label
+    }
+
+    private var pinScrollStateIndex: [String: Int] {
+        [
+            Marker.executionCount: 0,
+            Marker.lastItemID: 1,
+            Marker.lastDecision: 2,
+            Marker.pendingItemID: 3,
+            Marker.visibilityReadiness: 4,
+            Marker.visibleItemIDs: 5,
+            Marker.scrollPhase: 6,
+            Marker.appliedWindowSize: 7,
+            Marker.historyFilter: 8
+        ]
+    }
+
+    private func pinScrollState(in app: XCUIApplication) -> [String]? {
+        let marker = app.descendants(matching: .any)["pin-scroll-state"]
+        guard marker.exists else { return nil }
+        let raw = marker.value as? String ?? marker.label
+        let state = raw.split(separator: "|", omittingEmptySubsequences: false).map(String.init)
+        return state.count == 9 ? state : nil
     }
 
     private func assertMarker(

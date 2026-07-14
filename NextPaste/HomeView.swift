@@ -2736,6 +2736,21 @@ struct HomeView: View {
                         label: "Content-free history integrity digest"
                     )
                     accessibilityMarker(
+                        identifier: "pin-scroll-state",
+                        value: [
+                            "\(uiTestPinScrollExecutionCount)",
+                            uiTestPinScrollLastItemID,
+                            uiTestPinScrollLastDecision,
+                            pinScrollRequestState.pendingRequest?.itemID.uuidString ?? "none",
+                            pinScrollVisibilityIsReady ? "ready" : "pending",
+                            uiTestPinScrollVisibleItemIDs,
+                            historyScrollPhase == .idle ? "idle" : "active",
+                            uiTestAppliedWindowSize,
+                            historyFilter.rawValue
+                        ].joined(separator: "|"),
+                        label: "Pin scroll diagnostic state"
+                    )
+                    accessibilityMarker(
                         identifier: "pin-scroll-execution-count",
                         value: "\(uiTestPinScrollExecutionCount)",
                         label: "Pin scroll execution count"
