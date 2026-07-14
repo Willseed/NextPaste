@@ -149,9 +149,9 @@ final class DeterministicSafeBoundaryAwaiter: RowActionSafeBoundaryAwaiting {
 @MainActor
 final class ReconciliationLifecycleTestHarness {
     // SwiftData's SwiftUI query observation can outlive synchronous host
-    // removal. Keep one store alive for the serialized suite so a subsequent
-    // context save cannot notify an observer whose store was deallocated.
-    private static var suiteContainer: ModelContainer?
+    // removal. Keep each store alive after teardown, but never share a store
+    // between test cases that may run in parallel across suites.
+    private static var retainedContainers: [ModelContainer] = []
 
     let container: ModelContainer
     let context: ModelContext
@@ -170,20 +170,15 @@ final class ReconciliationLifecycleTestHarness {
     }
 
     init(clipText: String = "lifecycle-fixture", installHost: Bool = true) throws {
-        let container: ModelContainer
-        if let suiteContainer = Self.suiteContainer {
-            container = suiteContainer
-        } else {
-            container = try SwiftDataTestSupport.makeInMemoryContainer(
-                for: Schema([ClipItem.self])
-            )
-            Self.suiteContainer = container
-        }
+        let container = try SwiftDataTestSupport.makeInMemoryContainer(
+            for: Schema([ClipItem.self])
+        )
+        Self.retainedContainers.append(container)
         self.container = container
 
         let context = ModelContext(container)
-        // The suite is serialized, so resetting before the fixture is seeded
-        // gives every test an empty authoritative store without replacing it.
+        // The fresh container gives every test an empty authoritative store
+        // without sharing rows or query observers with another test.
         for existingClip in try context.fetch(FetchDescriptor<ClipItem>()) {
             context.delete(existingClip)
         }
