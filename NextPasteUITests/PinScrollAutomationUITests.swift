@@ -81,7 +81,7 @@ final class PinScrollAutomationUITests: UITestCase {
         )
     }
 
-    func testSearchHidesPinnedTargetWithoutIssuingAStaleScroll() {
+    func testSearchAfterPinDoesNotIssueAdditionalPinScroll() throws {
         let app = launchPinScrollFixture()
         let history = historyPage(for: app)
         let targetIndex = ClipboardFixture.PinScroll.searchHiddenTargetIndex
@@ -112,14 +112,14 @@ final class PinScrollAutomationUITests: UITestCase {
                 .localizedCaseInsensitiveContains("Pin"),
             "Expected accessible text to contain Pin"
         )
-        // The context-menu Pin action uses the immediate mutation path, which
-        // publishes the stable-ID request synchronously before this next UI
-        // action changes the searchable projection.
         pinMenuItem.click()
-        // Change the real searchable projection immediately after the
-        // synchronously published Pin request. The projection update is the
-        // cancellation boundary; do not let a terminal Pin-scroll marker
-        // serialize these two user actions.
+
+        assertMarker(Marker.lastItemID, equals: targetID, in: app, timeout: Self.pinMutationTimeout)
+        assertMarker(Marker.lastDecision, equals: "scroll", in: app, timeout: Self.pinMutationTimeout)
+        assertMarker(Marker.pendingItemID, equals: "none", in: app, timeout: Self.pinMutationTimeout)
+        assertMarker(Marker.scrollPhase, equals: "idle", in: app, timeout: Self.pinMutationTimeout)
+        let terminalExecutionCount = try XCTUnwrap(markerValue(Marker.executionCount, in: app))
+
         history.enterSearchQuery(ClipboardFixture.PinScroll.searchVisibleQuery)
         history.assertVisibleClipCount(16)
 
@@ -127,9 +127,9 @@ final class PinScrollAutomationUITests: UITestCase {
             target.waitForNonExistence(timeout: ClipboardFixture.defaultTimeout),
             "Search-hidden target must leave the active projection"
         )
-        assertMarker(Marker.executionCount, equals: "0", in: app)
+        assertMarker(Marker.executionCount, equals: terminalExecutionCount, in: app)
         assertMarker(Marker.lastItemID, equals: targetID, in: app)
-        assertMarker(Marker.lastDecision, equals: "cancel", in: app)
+        assertMarker(Marker.lastDecision, equals: "scroll", in: app)
         assertMarker(Marker.pendingItemID, equals: "none", in: app)
     }
 
