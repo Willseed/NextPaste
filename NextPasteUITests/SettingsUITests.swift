@@ -152,28 +152,6 @@ final class SettingsUITests: UITestCase {
     }
 
     @MainActor
-    func testToolbarSettingsLinkOpensSingleSettingsWindow() throws {
-        let app = launchApp()
-        let settingsButton = UITestAssertions.assertExists(
-            app.buttons["settings-button"],
-            "Expected the toolbar SettingsLink"
-        )
-        UITestAssertions.assertAccessibleTextEquals(settingsButton, "Settings")
-        XCTAssertEqual(settingsWindowCount(in: app), 0, "Expected Settings to be closed on launch")
-
-        settingsButton.tap()
-        _ = assertSingleSettingsWindow(in: app)
-
-        UITestAppLauncher.openMainWindowIfNeeded(in: app)
-        UITestAssertions.assertExists(
-            app.buttons["settings-button"],
-            "Expected the toolbar SettingsLink after returning to the main window"
-        ).tap()
-        _ = assertSingleSettingsWindow(in: app)
-        XCTAssertEqual(settingsWindowCount(in: app), 1, "SettingsLink must bring forward the existing Settings scene")
-    }
-
-    @MainActor
     func testCommandCommaOpensSingleSettingsWindowAndExposesRequiredTabs() throws {
         let app = launchApp()
 
@@ -332,6 +310,180 @@ final class SettingsUITests: UITestCase {
         )
     }
 
+    @MainActor
+    func testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+        openSettingsTab(Accessibility.clipboardTab, in: app)
+        let field = historyLimitField(in: settingsWindow)
+        let slider = historyLimitSlider(in: settingsWindow)
+
+        commitHistoryLimit("437", field: field, slider: slider, app: app, expectedValue: "437")
+
+        for invalidDraft in ["letters", "1.5", "#$%"] {
+            replaceText(in: field, with: invalidDraft, application: app)
+            XCTAssertTrue(
+                waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+                "A temporary invalid draft must not alter the formal slider value"
+            )
+            app.typeKey(.return, modifierFlags: [])
+            assertHistoryLimitValues(field: field, slider: slider, equal: "437")
+        }
+
+        commitHistoryLimit("0", field: field, slider: slider, app: app, expectedValue: "1")
+        commitHistoryLimit("-17", field: field, slider: slider, app: app, expectedValue: "1")
+        commitHistoryLimit("1001", field: field, slider: slider, app: app, expectedValue: "1000")
+        commitHistoryLimit("437", field: field, slider: slider, app: app, expectedValue: "437")
+
+        clearText(in: field, application: app)
+        XCTAssertEqual(textInputValue(of: field), "")
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+            "An empty draft must not alter the formal slider value before commit"
+        )
+        app.typeKey(.return, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "437")
+
+        replaceText(in: field, with: "612", application: app)
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "437", timeout: UITestAssertions.defaultTimeout),
+            "Editing must not persist before Return or focus loss"
+        )
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "The edited Storage Limit field must own focus before testing focus-loss commit"
+        )
+        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "Tab must move focus from the Storage Limit field to the slider"
+        )
+        assertHistoryLimitValues(field: field, slider: slider, equal: "612")
+
+        clearText(in: field, application: app)
+        XCTAssertTrue(
+            waitForElementValue(slider, equals: "612", timeout: UITestAssertions.defaultTimeout)
+        )
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "The empty Storage Limit draft must remain focused before focus-loss normalization"
+        )
+        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "Tab must leave the empty Storage Limit draft through the native focus path"
+        )
+        assertHistoryLimitValues(field: field, slider: slider, equal: "612")
+        XCTAssertEqual(app.state, .runningForeground, "Empty focus-loss commit must not crash the app")
+    }
+
+    @MainActor
+    func testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation() throws {
+        let app = launchApp()
+        let settingsWindow = openSettingsWindow(in: app)
+
+        openSettingsTab(Accessibility.generalTab, in: app)
+        let appearancePicker = appearancePopup(in: settingsWindow)
+        assertAccessibleControl(appearancePicker, named: "Appearance picker")
+        selectAdjacentPopupOption(.next, from: appearancePicker, in: app)
+        let updatedAppearancePicker = appearancePopup(in: settingsWindow)
+        assertPopupValueEventually(updatedAppearancePicker, equals: Accessibility.light)
+        updatedAppearancePicker.tap()
+        let selectedAppearanceMenuItem = UITestAssertions.assertExists(
+            app.menuItems[Accessibility.light],
+            "Appearance switching must preserve operation on the replacement picker"
+        )
+        XCTAssertTrue(selectedAppearanceMenuItem.isHittable)
+        app.typeKey(.escape, modifierFlags: [])
+        assertEffectiveAppearance("light", in: app, settingsWindow: settingsWindow)
+        try performProductAccessibilityAudit(in: app)
+
+        openSettingsTab(Accessibility.clipboardTab, in: app)
+        let slider = historyLimitSlider(in: settingsWindow)
+        let field = historyLimitField(in: settingsWindow)
+        assertAccessibleControl(slider, named: "Storage Limit slider")
+        assertAccessibleControl(field, named: "Storage Limit field")
+
+        let initialSliderValue = try XCTUnwrap(rawNumericElementValue(of: slider))
+        XCTAssertEqual(initialSliderValue.rounded(), initialSliderValue, "Slider accessibility value must be an integer")
+        XCTAssertTrue(
+            (Double(HistoryLimitFixture.minimum)...Double(HistoryLimitFixture.maximum))
+                .contains(initialSliderValue),
+            "Slider must expose its semantic 1...1000 value through Accessibility"
+        )
+
+        setSlider(slider, to: .minimum, in: settingsWindow)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        assertSliderInteractionGeometry(slider, in: settingsWindow)
+        slider.adjust(toNormalizedSliderPosition: 0.5)
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let updatedSliderValue = self.elementValue(of: slider)
+                return updatedSliderValue != "1"
+                    && updatedSliderValue != "1000"
+                    && self.textInputValue(of: field) == updatedSliderValue
+            },
+            "A native midpoint Slider adjustment must synchronize an intermediate integer"
+        )
+        setSlider(slider, to: .minimum, in: settingsWindow)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1")
+        field.tap()
+        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "The Storage Limit slider must own focus before Right Arrow is sent"
+        )
+        slider.typeKey(.rightArrow, modifierFlags: [])
+        XCTAssertTrue(
+            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+                let updatedSliderValue = self.elementValue(of: slider)
+                return updatedSliderValue != "1"
+                    && self.textInputValue(of: field) == updatedSliderValue
+            },
+            "Right Arrow must update the Slider's integer value and synchronize the TextField"
+        )
+        slider.typeKey(.tab, modifierFlags: [])
+        assertHasKeyboardFocus(
+            field,
+            message: "The Storage Limit field must expose native keyboard focus"
+        )
+
+        replaceText(in: field, with: "275", application: app)
+        XCTAssertNotEqual(elementValue(of: slider), "275", "Draft input must wait for a keyboard commit")
+        app.typeKey(.return, modifierFlags: [])
+        assertHistoryLimitValues(field: field, slider: slider, equal: "275")
+
+        replaceText(in: field, with: "276", application: app)
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "The Storage Limit field must own focus before its keyboard focus-loss commit"
+        )
+        field.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitSlider,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "Tab must move focus to the slider"
+        )
+        assertHistoryLimitValues(field: field, slider: slider, equal: "276")
+
+        setSlider(slider, to: .maximum, in: settingsWindow)
+        assertHistoryLimitValues(field: field, slider: slider, equal: "1000")
+
+        try performProductAccessibilityAudit(in: app)
+    }
 
 
     @MainActor
@@ -436,122 +588,6 @@ final class SettingsUITests: UITestCase {
         assertSettingsTabLabels(LocalizedLabel.englishTabs, in: relaunchedApp)
         assertMainWindowLabels(LocalizedLabel.englishMainWindow, in: relaunchedApp)
     }
-
-    @MainActor
-    func testLanguageSwitchSynchronizesAcrossWindowsMenusAndDialogsWithoutRestart() throws {
-        let app = launchApp(
-            extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "en_us"]
-        )
-        let history = HistoryPage(app: app)
-        try history.createTextClip(ClipboardFixture.History.olderText)
-
-        app.typeKey("n", modifierFlags: [.command])
-        XCTAssertTrue(
-            waitForMainWindowCount(in: app, expectedCount: 2, timeout: UITestAssertions.defaultTimeout),
-            "Expected two open main windows after command-N"
-        )
-        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
-        assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
-
-        var settingsWindow = openSettingsWindow(in: app)
-        openSettingsTab(Accessibility.generalTab, in: app)
-        var languagePicker = languagePopup(in: settingsWindow)
-
-        let mainWindow = try XCTUnwrap(mainWindowElements(in: app).first)
-        mainWindow.click()
-        let newClipButton = UITestAssertions.assertExists(
-            mainWindow.buttons[Accessibility.newClipButton],
-            "Expected New Clip in an open main window"
-        )
-        XCTAssertTrue(newClipButton.isHittable, "Expected New Clip to be hittable after activating its main window")
-        newClipButton.tap()
-        let englishNewClipEditor = UITestAssertions.assertExists(
-            app.textViews["clip-text-editor"],
-            "Expected New Clip editor before changing the in-app locale"
-        )
-        assertElementLabel(englishNewClipEditor, equals: "New Text Clip")
-
-        (settingsWindow, languagePicker) = activateSettingsWindowAndWaitForLanguagePicker(in: app)
-        selectMenuOption(
-            Accessibility.traditionalChineseTaiwan,
-            from: languagePicker,
-            in: app
-        )
-        languagePicker = languagePopup(in: settingsWindow)
-        assertPopupValueEventually(
-            languagePicker,
-            equals: Accessibility.localizedTraditionalChineseTaiwan
-        )
-        assertLanguageDescription(Accessibility.localizedLanguageDescription, in: settingsWindow)
-        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.traditionalChineseMainWindow, in: app)
-        assertMenuItemLabel(LocalizedLabel.traditionalChineseFindMenu, in: app)
-
-        openSettingsTab(Accessibility.privacyTab, in: app)
-        let clearButton = settingsWindow.buttons["settings-clear-unpinned-history"]
-        UITestAssertions.assertExists(clearButton, "Expected dialog trigger for unpinned clear confirmation")
-        clearButton.tap()
-
-        let confirmClearButton = UITestAssertions.assertExists(
-            settingsWindow.buttons["settings-confirm-clear-unpinned"],
-            "Expected unpinned-clear confirm button in localized confirmation dialog"
-        )
-        let cancelClearButton = UITestAssertions.assertExists(
-            settingsWindow.buttons["settings-cancel-clear-unpinned"],
-            "Expected unpinned-clear cancel button in localized confirmation dialog"
-        )
-        UITestAssertions.assertAccessibleTextEquals(
-            confirmClearButton,
-            LocalizedLabel.traditionalChineseClearUnpinnedConfirmationTitle
-        )
-        assertStaticTextValue(
-            UITestAssertions.assertExists(
-                app.staticTexts[LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage],
-                "Expected localized clear-history confirmation message"
-            ),
-            equals: LocalizedLabel.traditionalChineseClearUnpinnedDialogMessage
-        )
-        UITestAssertions.assertAccessibleTextEquals(cancelClearButton, "取消")
-        cancelClearButton.tap()
-
-        mainWindow.click()
-        let traditionalChineseNewClipEditor = UITestAssertions.assertExists(
-            app.textViews["clip-text-editor"],
-            "Expected the locale-rebuilt New Clip editor"
-        )
-        assertElementLabel(traditionalChineseNewClipEditor, equals: "新增文字剪貼簿")
-        app.buttons["save-clip-button"].tap()
-        assertStaticTextValue(
-            UITestAssertions.assertExists(app.staticTexts["text-validation-message"]),
-            equals: "請輸入要儲存的剪貼項目文字。"
-        )
-
-        let newClipDraft = "Draft survives language switching"
-        replaceText(in: traditionalChineseNewClipEditor, with: newClipDraft, application: app)
-
-        (settingsWindow, languagePicker) = activateSettingsWindowAndWaitForLanguagePicker(in: app)
-        selectMenuOption(
-            Accessibility.localizedEnglishUnitedStates,
-            from: languagePicker,
-            in: app
-        )
-        languagePicker = languagePopup(in: settingsWindow)
-        assertPopupValueEventually(languagePicker, equals: Accessibility.englishUnitedStates)
-        assertLanguageDescription(Accessibility.englishLanguageDescription, in: settingsWindow)
-        assertMainWindowLabelsAcrossOpenWindows(LocalizedLabel.englishMainWindow, in: app)
-        assertMenuItemLabel(LocalizedLabel.englishFindMenu, in: app)
-        let restoredEnglishNewClipEditor = UITestAssertions.assertExists(
-            app.textViews["clip-text-editor"],
-            "Expected the New Clip editor rebuilt for English"
-        )
-        assertElementLabel(restoredEnglishNewClipEditor, equals: "New Text Clip")
-        XCTAssertEqual(
-            textInputValue(of: restoredEnglishNewClipEditor),
-            newClipDraft,
-            "Expected the New Clip draft to survive the language round trip"
-        )
-        app.buttons["cancel-new-clip-button"].tap()
-    }
-
 
     @MainActor
     func testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight() throws {

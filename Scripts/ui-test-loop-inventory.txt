@@ -31,6 +31,7 @@ NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundBy
 NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundByIndex {
 NextPasteUITests/SettingsUITests.swift|for (identifier, expectedLabel) in expectedLabels {
 NextPasteUITests/SettingsUITests.swift|for index in 0..<windows.count {
+NextPasteUITests/SettingsUITests.swift|for invalidDraft in ["letters", "1.5", "#$%"] {
 NextPasteUITests/SettingsUITests.swift|for option in options {
 NextPasteUITests/SettingsUITests.swift|for title in sectionHeaders {
 NextPasteUITests/UITestAppLauncher.swift|for entry in contents {
