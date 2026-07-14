@@ -270,7 +270,7 @@ final class SettingsUITests: UITestCase {
     @MainActor
     func testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows() throws {
         let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
-        let history = HistoryRobot(app: app)
+        let history = HistoryPage(app: app)
 
         let settingsWindow = openSettingsWindow(in: app)
         openSettingsTab(Accessibility.clipboardTab, in: app)
@@ -442,8 +442,8 @@ final class SettingsUITests: UITestCase {
         let app = launchApp(
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "en_us"]
         )
-        let history = HistoryRobot(app: app)
-        try history.createTextClip(UITestFixtures.History.olderText)
+        let history = HistoryPage(app: app)
+        try history.createTextClip(ClipboardFixture.History.olderText)
 
         app.typeKey("n", modifierFlags: [.command])
         XCTAssertTrue(
@@ -633,7 +633,7 @@ final class SettingsUITests: UITestCase {
     @MainActor
     func testDataPrivacyClearActionsShowLocalizedConfirmationDialogs() throws {
         let englishApp = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
-        let englishHistory = HistoryRobot(app: englishApp)
+        let englishHistory = HistoryPage(app: englishApp)
         englishHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         var settingsWindow = openSettingsWindow(in: englishApp)
         openSettingsTab(Accessibility.privacyTab, in: englishApp)
@@ -713,7 +713,7 @@ final class SettingsUITests: UITestCase {
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
             windowSizePreset: .defaultSize
         )
-        let chineseHistory = HistoryRobot(app: chineseApp)
+        let chineseHistory = HistoryPage(app: chineseApp)
         chineseHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         settingsWindow = openSettingsWindow(in: chineseApp)
         openSettingsTab(Accessibility.privacyTab, in: chineseApp)
@@ -2002,7 +2002,7 @@ final class SettingsUITests: UITestCase {
     @MainActor
     private func assertHistorySearchFinds(
         _ clipText: String,
-        history: HistoryRobot,
+        history: HistoryPage,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
@@ -2015,14 +2015,14 @@ final class SettingsUITests: UITestCase {
     @MainActor
     private func assertHistorySearchMisses(
         _ clipText: String,
-        history: HistoryRobot,
+        history: HistoryPage,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
         history.clearSearch(file: file, line: line)
         history.enterSearchQuery(clipText, file: file, line: line)
         history.assertSearchEmptyState(file: file, line: line)
-        history.assertRowDoesNotExist(withText: clipText, file: file, line: line)
+        history.assertRowNeverAppears(withText: clipText, file: file, line: line)
         history.clearSearch(file: file, line: line)
     }
 }

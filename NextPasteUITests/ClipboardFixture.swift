@@ -340,6 +340,7 @@ enum ClipboardFixture {
     // MARK: - Fixture data: History
 
     enum History {
+        static let emptyStateTitle = "No clips yet"
         static let olderText = "Older local clip"
         static let newerText = "Newer local clip"
         static let longMultilineText = String(repeating: "A", count: 60) + "\n" + String(repeating: "B", count: 80)

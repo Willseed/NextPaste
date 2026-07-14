@@ -87,7 +87,7 @@ enum UITestAssertions {
 
     @discardableResult
     static func assertImageRow(
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         in app: XCUIApplication,
         isPinned: Bool? = nil,
         timeout: TimeInterval = defaultTimeout,
@@ -107,12 +107,12 @@ enum UITestAssertions {
 
     static func assertImageRowAccessibility(
         _ row: XCUIElement,
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         isPinned: Bool? = nil,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        let prefix = UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix
+        let prefix = ClipboardFixture.ImageClipboard.Accessibility.rowIdentifierPrefix
         XCTAssertTrue(
             row.identifier.hasPrefix(prefix),
             "Expected image row to use the image row identifier prefix",
@@ -163,7 +163,7 @@ enum UITestAssertions {
     }
 
     static func assertImageRowDoesNotExist(
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         in app: XCUIApplication,
         timeout: TimeInterval = 2,
         file: StaticString = #filePath,
@@ -180,7 +180,7 @@ enum UITestAssertions {
 
     @discardableResult
     static func assertImageThumbnail(
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         in app: XCUIApplication,
         timeout: TimeInterval = defaultTimeout,
         file: StaticString = #filePath,
@@ -229,12 +229,12 @@ enum UITestAssertions {
     }
 
     static func imageRow(
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         in app: XCUIApplication
     ) -> XCUIElement {
         let predicate = NSPredicate(
             format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
-            UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix,
+            ClipboardFixture.ImageClipboard.Accessibility.rowIdentifierPrefix,
             fixture.thumbnailDescription
         )
         return app.descendants(matching: .any).matching(predicate).firstMatch
@@ -243,7 +243,7 @@ enum UITestAssertions {
     static func imageRowCount(in app: XCUIApplication) -> Int {
         let predicate = NSPredicate(
             format: "identifier BEGINSWITH %@",
-            UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix
+            ClipboardFixture.ImageClipboard.Accessibility.rowIdentifierPrefix
         )
         let identifiers = app.descendants(matching: .any)
             .matching(predicate)
@@ -253,12 +253,12 @@ enum UITestAssertions {
     }
 
     static func imageThumbnail(
-        for fixture: UITestFixtures.ImageClipboard.Fixture,
+        for fixture: ClipboardFixture.ImageClipboard.Fixture,
         in app: XCUIApplication
     ) -> XCUIElement {
         let predicate = NSPredicate(
             format: "identifier == %@ AND label CONTAINS %@",
-            UITestFixtures.ImageClipboard.Accessibility.thumbnailIdentifier,
+            ClipboardFixture.ImageClipboard.Accessibility.thumbnailIdentifier,
             fixture.thumbnailAccessibilityLabel
         )
         return app.descendants(matching: .any).matching(predicate).firstMatch
@@ -365,8 +365,8 @@ enum UITestAssertions {
     ) {
         let feedbackPredicate = NSPredicate(
             format: "identifier == %@ AND label == %@",
-            UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier,
-            UITestFixtures.ImageClipboard.Accessibility.copyFeedbackLabel
+            ClipboardFixture.ImageClipboard.Accessibility.copyFeedbackIdentifier,
+            ClipboardFixture.ImageClipboard.Accessibility.copyFeedbackLabel
         )
         assertExists(
             app.descendants(matching: .any).matching(feedbackPredicate).firstMatch,
@@ -620,7 +620,7 @@ enum UITestAssertions {
         line: UInt = #line
     ) {
         assertExists(
-            app.descendants(matching: .any)[UITestFixtures.ImageClipboard.Accessibility.pinnedIconIdentifier],
+            app.descendants(matching: .any)[ClipboardFixture.ImageClipboard.Accessibility.pinnedIconIdentifier],
             "Expected pinned image clip icon",
             timeout: timeout,
             file: file,
@@ -636,7 +636,7 @@ enum UITestAssertions {
     ) {
         XCTAssertTrue(
             waitForDisappearance(
-                of: app.descendants(matching: .any)[UITestFixtures.ImageClipboard.Accessibility.pinnedIconIdentifier],
+                of: app.descendants(matching: .any)[ClipboardFixture.ImageClipboard.Accessibility.pinnedIconIdentifier],
                 timeout: timeout
             ),
             "Expected pinned image clip icon to disappear",
@@ -647,7 +647,7 @@ enum UITestAssertions {
 
     private static func copyFeedbackElement(in app: XCUIApplication) -> XCUIElement {
         app.descendants(matching: .any)
-            .matching(identifier: UITestFixtures.ImageClipboard.Accessibility.copyFeedbackIdentifier)
+            .matching(identifier: ClipboardFixture.ImageClipboard.Accessibility.copyFeedbackIdentifier)
             .firstMatch
     }
 

@@ -211,7 +211,6 @@ enum UITestAppLauncher {
     static let uiTestingArgument = "-ui-testing"
     static let uiTestOnDiskStoreArgument = "-ui-test-on-disk-store"
     static let relaunchDatasetSeedArgument = "-ui-test-seed-relaunch-dataset"
-    static let rowActionScenarioBSeedArgument = "-ui-test-seed-row-action-scenario-b"
     static let pinScrollAutomationSeedArgument = "-ui-test-seed-pin-scroll-automation"
     static let pinScrollContextMenuTargetArgument = "-ui-test-pin-scroll-context-menu-target-id"
     static let relaunchImageDeletionArgument = "-ui-test-delete-relaunch-image-index"

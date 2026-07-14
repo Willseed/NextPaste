@@ -74,7 +74,7 @@ final class HistoryClearUITests: UITestCase {
         )
         XCTAssertEqual(
             ClipboardFixture.accessibleText(of: emptyStateTitle),
-            UITestFixtures.VisualIdentity.emptyTitle
+            ClipboardFixture.History.emptyStateTitle
         )
     }
 }
