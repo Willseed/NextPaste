@@ -91,7 +91,7 @@ struct SettingsView: View {
                 }
                 .tag(Tab.about)
         }
-        .frame(minWidth: 500, minHeight: 360)
+        .frame(minWidth: 500, idealWidth: 708, minHeight: 360)
         .background(appTheme.canvas.color)
 #if DEBUG && os(macOS)
         .overlay(alignment: .bottomLeading) {
@@ -157,24 +157,94 @@ private struct SettingsSection<Content: View>: View {
     @Environment(\.appTheme) private var appTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
             Text(title)
-                .font(.title3)
-                .fontWeight(.semibold)
+                .font(DesignTokens.Typography.title.font)
                 .foregroundStyle(appTheme.textPrimary.color)
                 .accessibilityAddTraits(.isHeader)
 
             if let description {
                 description
-                    .font(.caption)
+                    .font(DesignTokens.Typography.metadata.font)
                     .foregroundStyle(appTheme.textSecondary.color)
             }
 
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 content()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+private struct SettingsCard<Content: View>: View {
+    enum Role {
+        case standard
+        case inset
+        case danger
+    }
+
+    let role: Role
+    @ViewBuilder let content: () -> Content
+    @Environment(\.appTheme) private var appTheme
+
+    init(
+        role: Role = .standard,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.role = role
+        self.content = content
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
+            content()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DesignTokens.Spacing.large)
+        .background(backgroundColor)
+        .clipShape(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.card, style: .continuous)
+                .stroke(borderColor, lineWidth: 1)
+                .allowsHitTesting(false)
+                .accessibilityHidden(true)
+        )
+    }
+
+    private var backgroundColor: Color {
+        switch role {
+        case .standard:
+            appTheme.surface.color
+        case .inset:
+            appTheme.card.color
+        case .danger:
+            appTheme.errorSurface.color
+        }
+    }
+
+    private var borderColor: Color {
+        switch role {
+        case .standard:
+            appTheme.borderSubtle.color
+        case .inset:
+            appTheme.separator.color
+        case .danger:
+            appTheme.errorBorder.color
+        }
+    }
+}
+
+private struct SettingsSeparator: View {
+    @Environment(\.appTheme) private var appTheme
+
+    var body: some View {
+        Rectangle()
+            .fill(appTheme.separator.color)
+            .frame(height: 1)
+            .accessibilityHidden(true)
     }
 }
 
@@ -213,27 +283,29 @@ private struct SettingsControlRow<Control: View>: View {
     }
 
     var body: some View {
-        AdaptiveSettingsControlLayout(horizontalSpacing: 20, verticalSpacing: 4) {
+        AdaptiveSettingsControlLayout(
+            horizontalSpacing: DesignTokens.Spacing.large,
+            verticalSpacing: DesignTokens.Spacing.small
+        ) {
             settingsRowLabel
             control()
         }
-        .padding(.vertical, 1)
     }
 
     private var settingsRowLabel: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
             Text(title)
-                .font(.body)
+                .font(DesignTokens.Typography.body.font)
                 .foregroundStyle(appTheme.textPrimary.color)
             if let localizedDescription {
                 Text(localizedDescription)
-                    .font(.caption)
+                    .font(DesignTokens.Typography.metadata.font)
                     .foregroundStyle(appTheme.textSecondary.color)
                     .accessibilityLabel(Text(localizedDescription))
                     .accessibilityIdentifier(descriptionIdentifier)
             } else if let verbatimDescription {
                 Text(verbatim: verbatimDescription)
-                    .font(.caption)
+                    .font(DesignTokens.Typography.metadata.font)
                     .foregroundStyle(appTheme.textSecondary.color)
                     .accessibilityLabel(Text(verbatim: verbatimDescription))
                     .accessibilityIdentifier(descriptionIdentifier)
@@ -250,23 +322,22 @@ private struct AdaptiveSettingsControlLayout: Layout {
     let horizontalSpacing: CGFloat
     let verticalSpacing: CGFloat
 
+    private struct Metrics {
+        let usesHorizontalPlacement: Bool
+        let labelSize: CGSize
+        let controlSize: CGSize
+        let width: CGFloat
+        let height: CGFloat
+    }
+
     func sizeThatFits(
         proposal: ProposedViewSize,
         subviews: Subviews,
         cache _: inout ()
     ) -> CGSize {
         guard subviews.count == 2 else { return .zero }
-
-        let labelSize = subviews[0].sizeThatFits(.unspecified)
-        let controlSize = subviews[1].sizeThatFits(.unspecified)
-        let horizontalWidth = labelSize.width + horizontalSpacing + controlSize.width
-        let availableWidth = proposal.width ?? horizontalWidth
-        let usesHorizontalPlacement = horizontalWidth <= availableWidth
-        let contentHeight = usesHorizontalPlacement
-            ? max(labelSize.height, controlSize.height)
-            : labelSize.height + verticalSpacing + controlSize.height
-
-        return CGSize(width: availableWidth, height: contentHeight)
+        let metrics = metrics(availableWidth: proposal.width, subviews: subviews)
+        return CGSize(width: metrics.width, height: metrics.height)
     }
 
     func placeSubviews(
@@ -277,56 +348,144 @@ private struct AdaptiveSettingsControlLayout: Layout {
     ) {
         guard subviews.count == 2 else { return }
 
-        let labelSize = subviews[0].sizeThatFits(.unspecified)
-        let controlSize = subviews[1].sizeThatFits(.unspecified)
-        let usesHorizontalPlacement = labelSize.width + horizontalSpacing + controlSize.width <= bounds.width
+        let metrics = metrics(availableWidth: bounds.width, subviews: subviews)
 
         subviews[0].place(
             at: bounds.origin,
             anchor: .topLeading,
-            proposal: ProposedViewSize(labelSize)
+            proposal: ProposedViewSize(metrics.labelSize)
         )
         subviews[1].place(
             at: CGPoint(
-                x: bounds.minX + (usesHorizontalPlacement ? labelSize.width + horizontalSpacing : 0),
-                y: bounds.minY + (usesHorizontalPlacement ? 0 : labelSize.height + verticalSpacing)
+                x: metrics.usesHorizontalPlacement
+                    ? bounds.maxX - metrics.controlSize.width
+                    : bounds.minX,
+                y: bounds.minY + (metrics.usesHorizontalPlacement
+                    ? 0
+                    : metrics.labelSize.height + verticalSpacing)
             ),
             anchor: .topLeading,
-            proposal: ProposedViewSize(controlSize)
+            proposal: ProposedViewSize(metrics.controlSize)
+        )
+    }
+
+    private func metrics(availableWidth proposedWidth: CGFloat?, subviews: Subviews) -> Metrics {
+        let labelIdealSize = subviews[0].sizeThatFits(.unspecified)
+        let controlIdealSize = subviews[1].sizeThatFits(.unspecified)
+        let naturalWidth = labelIdealSize.width + horizontalSpacing + controlIdealSize.width
+        let availableWidth = max(0, proposedWidth ?? naturalWidth)
+        let minimumLabelWidth = min(labelIdealSize.width, 220)
+        let usesHorizontalPlacement = controlIdealSize.width <= availableWidth
+            && controlIdealSize.width + horizontalSpacing + minimumLabelWidth <= availableWidth
+        let labelWidth = usesHorizontalPlacement
+            ? max(0, availableWidth - horizontalSpacing - controlIdealSize.width)
+            : availableWidth
+        let labelSize = subviews[0].sizeThatFits(
+            ProposedViewSize(width: labelWidth, height: nil)
+        )
+        let controlWidth = min(controlIdealSize.width, availableWidth)
+        let controlSize = subviews[1].sizeThatFits(
+            ProposedViewSize(width: controlWidth, height: nil)
+        )
+        let contentHeight = usesHorizontalPlacement
+            ? max(labelSize.height, controlSize.height)
+            : labelSize.height + verticalSpacing + controlSize.height
+
+        return Metrics(
+            usesHorizontalPlacement: usesHorizontalPlacement,
+            labelSize: labelSize,
+            controlSize: controlSize,
+            width: availableWidth,
+            height: contentHeight
         )
     }
 }
 
-private struct SettingsTextHint: View {
-    let text: Text
-    let identifier: String?
-    @Environment(\.appTheme) private var appTheme
+/// Reflows the existing action subviews without replacing them, preserving
+/// keyboard focus while long localized button titles move between rows.
+private struct AdaptiveSettingsActionLayout: Layout {
+    let horizontalSpacing: CGFloat
+    let verticalSpacing: CGFloat
 
-    init(_ key: LocalizedStringKey, identifier: String? = nil) {
-        self.text = Text(key)
-        self.identifier = identifier
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache _: inout ()
+    ) -> CGSize {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let naturalWidth = sizes.map(\.width).reduce(0, +)
+            + horizontalSpacing * CGFloat(max(0, sizes.count - 1))
+        let availableWidth = max(0, proposal.width ?? naturalWidth)
+        let usesHorizontalPlacement = naturalWidth <= availableWidth
+        let height = usesHorizontalPlacement
+            ? sizes.map(\.height).max() ?? 0
+            : sizes.map(\.height).reduce(0, +)
+                + verticalSpacing * CGFloat(max(0, sizes.count - 1))
+        return CGSize(width: availableWidth, height: height)
     }
 
-    init(verbatim text: String, identifier: String? = nil) {
-        self.text = Text(verbatim: text)
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal _: ProposedViewSize,
+        subviews: Subviews,
+        cache _: inout ()
+    ) {
+        let sizes = subviews.map { $0.sizeThatFits(.unspecified) }
+        let naturalWidth = sizes.map(\.width).reduce(0, +)
+            + horizontalSpacing * CGFloat(max(0, sizes.count - 1))
+        let usesHorizontalPlacement = naturalWidth <= bounds.width
+        var origin = bounds.origin
+
+        for (index, subview) in subviews.enumerated() {
+            let size = sizes[index]
+            subview.place(
+                at: origin,
+                anchor: .topLeading,
+                proposal: ProposedViewSize(size)
+            )
+            if usesHorizontalPlacement {
+                origin.x += size.width + horizontalSpacing
+            } else {
+                origin.y += size.height + verticalSpacing
+            }
+        }
+    }
+}
+
+private struct SettingsTextHint: View {
+    let key: LocalizedStringKey
+    @Environment(\.appTheme) private var appTheme
+
+    init(_ key: LocalizedStringKey) {
+        self.key = key
+    }
+
+    var body: some View {
+        Text(key)
+            .font(DesignTokens.Typography.metadata.font)
+            .foregroundStyle(appTheme.textSecondary.color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SettingsErrorText: View {
+    let text: String
+    let identifier: String
+    @Environment(\.appTheme) private var appTheme
+
+    init(verbatim text: String, identifier: String) {
+        self.text = text
         self.identifier = identifier
     }
 
     var body: some View {
-        Group {
-            if let identifier {
-                text
-                    .font(.caption)
-                    .foregroundStyle(appTheme.textSecondary.color)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityIdentifier(identifier)
-            } else {
-                text
-                    .font(.caption)
-                    .foregroundStyle(appTheme.textSecondary.color)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
+        Text(verbatim: text)
+            .font(DesignTokens.Typography.metadata.font)
+            .foregroundStyle(appTheme.errorText.color)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityIdentifier(identifier)
+            .accessibilityLabel(Text(verbatim: text))
     }
 }
 
@@ -335,12 +494,12 @@ private struct SettingsScrollArea<Content: View>: View {
 
     var body: some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: DesignTokens.Spacing.medium) {
+            VStack(alignment: .leading, spacing: DesignTokens.Spacing.xLarge) {
                 content()
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, DesignTokens.Spacing.medium)
-            .padding(.vertical, DesignTokens.Spacing.medium)
+            .frame(maxWidth: 660, alignment: .leading)
+            .frame(maxWidth: .infinity, alignment: .center)
+            .padding(DesignTokens.Spacing.xLarge)
         }
     }
 }
@@ -361,70 +520,77 @@ private struct GeneralSettingsTab: View {
     var body: some View {
         SettingsScrollArea {
             SettingsSection(title: "General", description: nil) {
-                SettingsControlRow(
-                    title: "App Language",
-                    verbatimDescription: locale.nextPasteLocalized(
-                        "Changes apply immediately throughout NextPaste."
-                    ),
-                    descriptionIdentifier: "app-language-description"
-                ) {
-#if os(macOS)
-                    AppLanguagePopUpButton(
-                        selection: Binding(
-                            get: { appLanguagePreference.language },
-                            set: { language in
-                                appLanguagePreference.persist(language)
-                                focusedTarget = .language
-                            }
+                SettingsCard {
+                    SettingsControlRow(
+                        title: "App Language",
+                        verbatimDescription: locale.nextPasteLocalized(
+                            "Changes apply immediately throughout NextPaste."
                         ),
-                        locale: locale
-                    )
-                    .focusable()
-                    .focused($focusedTarget, equals: .language)
+                        descriptionIdentifier: "app-language-description"
+                    ) {
+#if os(macOS)
+                        AppLanguagePopUpButton(
+                            selection: Binding(
+                                get: { appLanguagePreference.language },
+                                set: { language in
+                                    appLanguagePreference.persist(language)
+                                    focusedTarget = .language
+                                }
+                            ),
+                            locale: locale
+                        )
+                        .frame(minWidth: 170, alignment: .trailing)
+                        .focusable()
+                        .focused($focusedTarget, equals: .language)
 #else
-                    Picker("App Language", selection: Binding(
-                        get: { appLanguagePreference.language },
-                        set: { appLanguagePreference.persist($0) }
-                    )) {
-                        ForEach(AppLanguage.allCases, id: \.self) { language in
-                            Text(language.displayNameKey).tag(language)
+                        Picker("App Language", selection: Binding(
+                            get: { appLanguagePreference.language },
+                            set: { appLanguagePreference.persist($0) }
+                        )) {
+                            ForEach(AppLanguage.allCases, id: \.self) { language in
+                                Text(language.displayNameKey).tag(language)
+                            }
                         }
-                    }
-                    .pickerStyle(.menu)
-                    .focusable()
-                    .focused($focusedTarget, equals: .language)
-                    .accessibilityIdentifier("app-language-picker")
-                    .accessibilityLabel(Text("App Language"))
-                    .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
+                        .pickerStyle(.menu)
+                        .frame(minWidth: 170, alignment: .trailing)
+                        .focusable()
+                        .focused($focusedTarget, equals: .language)
+                        .accessibilityIdentifier("app-language-picker")
+                        .accessibilityLabel(Text("App Language"))
+                        .accessibilityValue(Text(appLanguagePreference.language.displayNameKey))
 #endif
-                }
-
-                SettingsControlRow(
-                    title: "Appearance",
-                    verbatimDescription: locale.nextPasteLocalized(
-                        "Control the app's visual style."
-                    ),
-                    descriptionIdentifier: "appearance-description"
-                ) {
-                    Picker("Appearance", selection: Binding(
-                        get: { appearancePreference.mode },
-                        set: { appearancePreference.persist($0) }
-                    )) {
-                        ForEach(AppearanceMode.allCases, id: \.self) { mode in
-                            Text(mode.displayNameKey).tag(mode)
-                        }
                     }
-                    .pickerStyle(.menu)
-                    .focusable()
-                    .focused($focusedTarget, equals: .appearance)
-                    .accessibilityIdentifier("appearance-picker")
-                    .accessibilityLabel(Text("Appearance"))
-                    .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
-                    .onChange(of: appearancePreference.mode) {
-                        focusedTarget = nil
-                        Task { @MainActor in
-                            await Task.yield()
-                            focusedTarget = .appearance
+
+                    SettingsSeparator()
+
+                    SettingsControlRow(
+                        title: "Appearance",
+                        verbatimDescription: locale.nextPasteLocalized(
+                            "Control the app's visual style."
+                        ),
+                        descriptionIdentifier: "appearance-description"
+                    ) {
+                        Picker("Appearance", selection: Binding(
+                            get: { appearancePreference.mode },
+                            set: { appearancePreference.persist($0) }
+                        )) {
+                            ForEach(AppearanceMode.allCases, id: \.self) { mode in
+                                Text(mode.displayNameKey).tag(mode)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(minWidth: 170, alignment: .trailing)
+                        .focusable()
+                        .focused($focusedTarget, equals: .appearance)
+                        .accessibilityIdentifier("appearance-picker")
+                        .accessibilityLabel(Text("Appearance"))
+                        .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
+                        .onChange(of: appearancePreference.mode) {
+                            focusedTarget = nil
+                            Task { @MainActor in
+                                await Task.yield()
+                                focusedTarget = .appearance
+                            }
                         }
                     }
                 }
@@ -538,6 +704,7 @@ private struct ClipboardSettingsTab: View {
     @EnvironmentObject private var historyLimitPreference: HistoryLimitPreference
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+    @Environment(\.appTheme) private var appTheme
     let isSelected: Bool
     @State private var draftText = ""
     @State private var sliderValue = Double(HistoryLimit.defaultLimit.value)
@@ -566,86 +733,100 @@ private struct ClipboardSettingsTab: View {
                 title: "Clipboard",
                 description: nil
             ) {
-                SettingsControlRow(
-                    title: "Storage Limit",
-                    verbatimDescription: storageLimitDescription
-                ) {
-                    HStack(spacing: 12) {
-                        Slider(
-                            value: Binding(
-                                get: { sliderValue },
-                                set: { newValue in
-                                    let draftLimit = HistoryLimit(Int(newValue.rounded()))
-                                    sliderValue = Double(draftLimit.value)
-                                    draftText = String(draftLimit.value)
-                                }
-                            ),
-                            in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
-                            step: 1,
-                            onEditingChanged: { isEditing in
-                                if isEditing == false {
-                                    apply(HistoryLimit(Int(sliderValue.rounded())))
-                                }
-                            }
-                        )
-                        .frame(minWidth: 180)
-                        .focusable()
-                        .focused($focusedTarget, equals: .slider)
-                        .onKeyPress(.leftArrow) {
-                            adjustSlider(by: -1)
-                            return .handled
-                        }
-                        .onKeyPress(.rightArrow) {
-                            adjustSlider(by: 1)
-                            return .handled
-                        }
-                        .onKeyPress(.tab) {
-#if DEBUG && os(macOS)
-                            guard DebugUITestLaunchEnvironment() != nil else {
-                                return .ignored
-                            }
-                            focusedTarget = .field
-                            return .handled
-#else
-                            return .ignored
-#endif
-                        }
-                        .accessibilityIdentifier("history-limit-slider")
-                        .accessibilityLabel(Text("Storage Limit"))
-                        .accessibilityValue(Text(verbatim: String(Int(sliderValue.rounded()))))
+                SettingsCard {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.xSmall) {
+                        Text("Storage Limit")
+                            .font(DesignTokens.Typography.body.font)
+                            .foregroundStyle(appTheme.textPrimary.color)
 
-                        TextField("1–1000", text: $draftText)
-                            .labelsHidden()
-                            .frame(width: 76)
-                            .multilineTextAlignment(.trailing)
-                            .focused($focusedTarget, equals: .field)
-                            .onSubmit(commitDraft)
+                        Text(verbatim: storageLimitDescription)
+                            .font(DesignTokens.Typography.metadata.font)
+                            .foregroundStyle(appTheme.textSecondary.color)
+                    }
+                    .accessibilityElement(children: .combine)
+
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                        HStack(spacing: DesignTokens.Spacing.medium) {
+                            Slider(
+                                value: Binding(
+                                    get: { sliderValue },
+                                    set: { newValue in
+                                        let draftLimit = HistoryLimit(Int(newValue.rounded()))
+                                        sliderValue = Double(draftLimit.value)
+                                        draftText = String(draftLimit.value)
+                                    }
+                                ),
+                                in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
+                                step: 1,
+                                onEditingChanged: { isEditing in
+                                    if isEditing == false {
+                                        apply(HistoryLimit(Int(sliderValue.rounded())))
+                                    }
+                                }
+                            )
+                            .frame(minWidth: 180, maxWidth: .infinity)
+                            .focusable()
+                            .focused($focusedTarget, equals: .slider)
+                            .onKeyPress(.leftArrow) {
+                                adjustSlider(by: -1)
+                                return .handled
+                            }
+                            .onKeyPress(.rightArrow) {
+                                adjustSlider(by: 1)
+                                return .handled
+                            }
                             .onKeyPress(.tab) {
 #if DEBUG && os(macOS)
                                 guard DebugUITestLaunchEnvironment() != nil else {
                                     return .ignored
                                 }
-                                focusedTarget = .slider
+                                focusedTarget = .field
                                 return .handled
 #else
                                 return .ignored
 #endif
                             }
-                            .accessibilityIdentifier("history-limit-field")
-                            .accessibilityLabel(Text("Storage Limit Value"))
+                            .accessibilityIdentifier("history-limit-slider")
+                            .accessibilityLabel(Text("Storage Limit"))
+                            .accessibilityValue(Text(verbatim: String(Int(sliderValue.rounded()))))
+
+                            TextField("1–1000", text: $draftText)
+                                .labelsHidden()
+                                .frame(width: 76)
+                                .multilineTextAlignment(.trailing)
+                                .focused($focusedTarget, equals: .field)
+                                .onSubmit(commitDraft)
+                                .onKeyPress(.tab) {
+#if DEBUG && os(macOS)
+                                    guard DebugUITestLaunchEnvironment() != nil else {
+                                        return .ignored
+                                    }
+                                    focusedTarget = .slider
+                                    return .handled
+#else
+                                    return .ignored
+#endif
+                                }
+                                .accessibilityIdentifier("history-limit-field")
+                                .accessibilityLabel(Text("Storage Limit Value"))
+                        }
+
+                        SettingsTextHint("1–1000")
+                            .accessibilityLabel(Text("Storage Limit Range"))
                     }
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                SettingsTextHint("1–1000")
-
-                if let retentionErrorKey {
-                    let localizedError = currentLanguage.localizationBundle().localizedString(
-                        forKey: retentionErrorKey,
-                        value: retentionErrorKey,
-                        table: nil
-                    )
-                    SettingsTextHint(verbatim: localizedError, identifier: "history-limit-error")
-                        .accessibilityLabel(Text(verbatim: localizedError))
+                    if let retentionErrorKey {
+                        let localizedError = currentLanguage.localizationBundle().localizedString(
+                            forKey: retentionErrorKey,
+                            value: retentionErrorKey,
+                            table: nil
+                        )
+                        SettingsErrorText(
+                            verbatim: localizedError,
+                            identifier: "history-limit-error"
+                        )
+                    }
                 }
             }
         }
@@ -849,128 +1030,142 @@ private struct ShortcutsSettingsTab: View {
                 title: "Shortcuts",
                 description: nil
             ) {
-                SettingsTextHint("Global Shortcut")
+                SettingsCard {
+                    SettingsTextHint("Global Shortcut")
 
-                HStack {
-                    Text(currentShortcutDisplay)
-                        .font(.system(.body, design: .monospaced))
-                        .accessibilityIdentifier("global-shortcut-current-value")
-                        .accessibilityLabel(Text("Current global shortcut"))
-                        .accessibilityValue(currentShortcutDisplay)
+                    SettingsCard(role: .inset) {
+                        SettingsControlRow(
+                            title: "Current global shortcut",
+                            description: nil
+                        ) {
+                            Text(currentShortcutDisplay)
+                                .font(.system(.body, design: .monospaced))
+                                .foregroundStyle(appTheme.textPrimary.color)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("global-shortcut-current-value")
+                                .accessibilityLabel(Text("Current global shortcut"))
+                                .accessibilityValue(currentShortcutDisplay)
+                        }
 
-                    Spacer()
-
-                    if isRecording {
-                        Text("Press a key combination…")
-                            .foregroundStyle(appTheme.textSecondary.color)
-                            .accessibilityIdentifier("global-shortcut-recording-hint")
-                    } else if let validationError {
-                        Text(
-                            validationError.localizedDescription(
+                        if isRecording {
+                            Text("Press a key combination…")
+                                .font(DesignTokens.Typography.metadata.font)
+                                .foregroundStyle(appTheme.textSecondary.color)
+                                .fixedSize(horizontal: false, vertical: true)
+                                .accessibilityIdentifier("global-shortcut-recording-hint")
+                        } else if let validationError {
+                            let localizedError = validationError.localizedDescription(
                                 language: appLanguagePreference.resolvedLanguage
                             )
-                        )
-                        .foregroundStyle(appTheme.errorText.color)
-                        .accessibilityIdentifier("global-shortcut-validation-error")
+                            SettingsErrorText(
+                                verbatim: localizedError,
+                                identifier: "global-shortcut-validation-error"
+                            )
+                        } else if registrationError {
+                            SettingsErrorText(
+                                verbatim: String(
+                                    localized: "Shortcut is already in use.",
+                                    bundle: appLanguagePreference.resolvedLanguage.localizationBundle(),
+                                    locale: appLanguagePreference.resolvedLanguage.locale
+                                ),
+                                identifier: "global-shortcut-registration-error"
+                            )
+                        }
+                    }
+
+                    SettingsSeparator()
+
+                    AdaptiveSettingsActionLayout(
+                        horizontalSpacing: DesignTokens.Spacing.small,
+                        verticalSpacing: DesignTokens.Spacing.small
+                    ) {
+                        Button {
+                            focusedTarget = .record
+                            if isRecording {
+                                stopRecording()
+                            } else {
+                                startRecording()
+                            }
+                        } label: {
+                            if isRecording {
+                                Text("Cancel Recording")
+                            } else {
+                                Text("Record Shortcut")
+                            }
+                        }
+                        .focusable()
+                        .focused($focusedTarget, equals: .record)
+                        .accessibilityIdentifier("global-shortcut-record-button")
                         .accessibilityLabel(
-                            validationError.localizedDescription(
-                                language: appLanguagePreference.resolvedLanguage
+                            isRecording ? Text("Cancel Recording") : Text("Record Shortcut")
+                        )
+                        .accessibilityHint(
+                            isRecording ? Text("Cancel Recording") : Text("Record a new global keyboard shortcut")
+                        )
+                        .help(isRecording ? Text("Cancel Recording") : Text("Record Shortcut"))
+                        .lineLimit(1)
+                        .buttonStyle(
+                            AdaptiveThemedButtonStyle(
+                                presentation: .labeled,
+                                isSelected: isRecording,
+                                isFocused: focusedTarget == .record
                             )
                         )
-                    } else if registrationError {
-                        Text("Shortcut is already in use.")
-                            .foregroundStyle(appTheme.errorText.color)
-                            .accessibilityIdentifier("global-shortcut-registration-error")
-                    }
-                }
 
-                HStack {
-                    Button {
-                        focusedTarget = .record
-                        if isRecording {
-                            stopRecording()
-                        } else {
-                            startRecording()
+                        Button("Clear Shortcut") {
+                            focusedTarget = .clear
+                            clearShortcut()
                         }
-                    } label: {
-                        if isRecording {
-                            Text("Cancel Recording")
-                        } else {
-                            Text("Record Shortcut")
-                        }
-                    }
-                    .focusable()
-                    .focused($focusedTarget, equals: .record)
-                    .accessibilityIdentifier("global-shortcut-record-button")
-                    .accessibilityLabel(
-                        isRecording ? Text("Cancel Recording") : Text("Record Shortcut")
-                    )
-                    .accessibilityHint(
-                        isRecording ? Text("Cancel Recording") : Text("Record a new global keyboard shortcut")
-                    )
-                    .help(isRecording ? Text("Cancel Recording") : Text("Record Shortcut"))
-                    .lineLimit(1)
-                    .buttonStyle(
-                        AdaptiveThemedButtonStyle(
-                            presentation: .labeled,
-                            isSelected: isRecording,
-                            isFocused: focusedTarget == .record
-                        )
-                    )
-
-                    Button("Clear Shortcut") {
-                        focusedTarget = .clear
-                        clearShortcut()
-                    }
-                    .disabled(preference.shortcut == nil)
-                    .focusable()
-                    .focused($focusedTarget, equals: .clear)
+                        .disabled(preference.shortcut == nil)
+                        .focusable()
+                        .focused($focusedTarget, equals: .clear)
 #if DEBUG && os(macOS)
-                    .onKeyPress(.space) {
-                        guard focusedTarget == .clear,
-                              preference.shortcut != nil else {
-                            return .ignored
+                        .onKeyPress(.space) {
+                            guard focusedTarget == .clear,
+                                  preference.shortcut != nil else {
+                                return .ignored
+                            }
+                            clearShortcut()
+                            return .handled
                         }
-                        clearShortcut()
-                        return .handled
-                    }
 #endif
-                    .accessibilityIdentifier("global-shortcut-clear-button")
-                    .accessibilityLabel(Text("Clear Shortcut"))
-                    .accessibilityHint(Text("Disable the global keyboard shortcut"))
-                    .help(Text("Clear Shortcut"))
-                    .lineLimit(1)
-                    .buttonStyle(
-                        AdaptiveThemedButtonStyle(
-                            presentation: .labeled,
-                            isFocused: focusedTarget == .clear
+                        .accessibilityIdentifier("global-shortcut-clear-button")
+                        .accessibilityLabel(Text("Clear Shortcut"))
+                        .accessibilityHint(Text("Disable the global keyboard shortcut"))
+                        .help(Text("Clear Shortcut"))
+                        .lineLimit(1)
+                        .buttonStyle(
+                            AdaptiveThemedButtonStyle(
+                                presentation: .labeled,
+                                isFocused: focusedTarget == .clear
+                            )
                         )
-                    )
 
-                    Button("Reset to Default") {
-                        focusedTarget = .reset
-                        resetToDefault()
-                    }
-                    .focusable()
-                    .focused($focusedTarget, equals: .reset)
+                        Button("Reset to Default") {
+                            focusedTarget = .reset
+                            resetToDefault()
+                        }
+                        .focusable()
+                        .focused($focusedTarget, equals: .reset)
 #if os(macOS)
-                    .onKeyPress(.space) {
-                        guard focusedTarget == .reset else { return .ignored }
-                        resetToDefault()
-                        return .handled
-                    }
+                        .onKeyPress(.space) {
+                            guard focusedTarget == .reset else { return .ignored }
+                            resetToDefault()
+                            return .handled
+                        }
 #endif
-                    .accessibilityIdentifier("global-shortcut-reset-button")
-                    .accessibilityLabel(Text("Reset to Default"))
-                    .accessibilityHint(Text("Restore the default global keyboard shortcut"))
-                    .help(Text("Reset to Default"))
-                    .lineLimit(1)
-                    .buttonStyle(
-                        AdaptiveThemedButtonStyle(
-                            presentation: .labeled,
-                            isFocused: focusedTarget == .reset
+                        .accessibilityIdentifier("global-shortcut-reset-button")
+                        .accessibilityLabel(Text("Reset to Default"))
+                        .accessibilityHint(Text("Restore the default global keyboard shortcut"))
+                        .help(Text("Reset to Default"))
+                        .lineLimit(1)
+                        .buttonStyle(
+                            AdaptiveThemedButtonStyle(
+                                presentation: .labeled,
+                                isFocused: focusedTarget == .reset
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -1162,6 +1357,7 @@ private struct DataPrivacySettingsTab: View {
 
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appLanguagePreference: AppLanguagePreference
+    @Environment(\.appTheme) private var appTheme
     let isSelected: Bool
     @State private var isPresentingClearUnpinnedConfirmation = false
     @State private var isPresentingClearAllConfirmation = false
@@ -1200,53 +1396,78 @@ private struct DataPrivacySettingsTab: View {
     var body: some View {
         SettingsScrollArea {
             SettingsSection(title: "Data & Privacy", description: nil) {
-                SettingsTextHint(verbatim: dataDescription, identifier: "data-privacy-description")
-                SettingsTextHint(verbatim: clearDescription)
-
-                SettingsControlRow(
-                    title: "Clear Unpinned History…",
-                    description: "Clear unpinned items only."
-                ) {
-                    Button("Clear Unpinned History…") {
-                        focusedTarget = .clearUnpinned
-                        isPresentingClearUnpinnedConfirmation = true
-                    }
-                    .accessibilityIdentifier("settings-clear-unpinned-history")
-                    .disabled(unpinnedCount == 0)
-                    .help(Text("Clear Unpinned History"))
-                    .accessibilityHint(Text("Clear Unpinned History"))
-                    .focusable()
-                    .focused($focusedTarget, equals: .clearUnpinned)
-                    .lineLimit(1)
-                    .buttonStyle(
-                        AdaptiveThemedButtonStyle(
-                            presentation: .labeled,
-                            isFocused: focusedTarget == .clearUnpinned
-                        )
-                    )
+                SettingsCard {
+                    Text(verbatim: dataDescription)
+                        .font(DesignTokens.Typography.body.font)
+                        .foregroundStyle(appTheme.textSecondary.color)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("data-privacy-description")
+                        .accessibilityLabel(Text(verbatim: dataDescription))
                 }
 
-                SettingsControlRow(
-                    title: "Clear All History…",
-                    description: "Clear all clipboard history from this device."
-                ) {
-                    Button("Clear All History…") {
-                        focusedTarget = .clearAll
-                        isPresentingClearAllConfirmation = true
+                SettingsCard(role: .danger) {
+                    VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                        Text("Clear clipboard history")
+                            .font(DesignTokens.Typography.body.font)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(appTheme.errorText.color)
+                            .accessibilityAddTraits(.isHeader)
+
+                        Text(verbatim: clearDescription)
+                            .font(DesignTokens.Typography.metadata.font)
+                            .foregroundStyle(appTheme.errorText.color)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
-                    .accessibilityIdentifier("settings-clear-all-history")
-                    .disabled(allCount == 0)
-                    .help(Text("Clear All History"))
-                    .accessibilityHint(Text("Clear All History"))
-                    .focusable()
-                    .focused($focusedTarget, equals: .clearAll)
-                    .lineLimit(1)
-                    .buttonStyle(
-                        AdaptiveThemedButtonStyle(
-                            presentation: .labeled,
-                            isFocused: focusedTarget == .clearAll
+
+                    SettingsSeparator()
+
+                    SettingsControlRow(
+                        title: "Clear Unpinned History…",
+                        description: "Clear unpinned items only."
+                    ) {
+                        Button("Clear Unpinned History…") {
+                            focusedTarget = .clearUnpinned
+                            isPresentingClearUnpinnedConfirmation = true
+                        }
+                        .accessibilityIdentifier("settings-clear-unpinned-history")
+                        .disabled(unpinnedCount == 0)
+                        .help(Text("Clear Unpinned History"))
+                        .accessibilityHint(Text("Clear Unpinned History"))
+                        .focusable()
+                        .focused($focusedTarget, equals: .clearUnpinned)
+                        .lineLimit(1)
+                        .buttonStyle(
+                            AdaptiveThemedButtonStyle(
+                                presentation: .labeled,
+                                isFocused: focusedTarget == .clearUnpinned
+                            )
                         )
-                    )
+                    }
+
+                    SettingsSeparator()
+
+                    SettingsControlRow(
+                        title: "Clear All History…",
+                        description: "Clear all clipboard history from this device."
+                    ) {
+                        Button("Clear All History…") {
+                            focusedTarget = .clearAll
+                            isPresentingClearAllConfirmation = true
+                        }
+                        .accessibilityIdentifier("settings-clear-all-history")
+                        .disabled(allCount == 0)
+                        .help(Text("Clear All History"))
+                        .accessibilityHint(Text("Clear All History"))
+                        .focusable()
+                        .focused($focusedTarget, equals: .clearAll)
+                        .lineLimit(1)
+                        .buttonStyle(
+                            AdaptiveThemedButtonStyle(
+                                presentation: .labeled,
+                                isFocused: focusedTarget == .clearAll
+                            )
+                        )
+                    }
                 }
             }
         }
@@ -1361,7 +1582,7 @@ private struct AboutSettingsTab: View {
                 title: "About",
                 description: nil
             ) {
-                VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
+                SettingsCard {
                     Text("NextPaste")
                         .font(DesignTokens.Typography.title.font)
                         .foregroundStyle(appTheme.textPrimary.color)
@@ -1370,8 +1591,10 @@ private struct AboutSettingsTab: View {
                         .font(DesignTokens.Typography.body.font)
                         .foregroundStyle(appTheme.textSecondary.color)
 
+                    SettingsSeparator()
+
                     SettingsControlRow(title: "Version", description: nil) {
-                        Text(appVersion)
+                        Text(verbatim: appVersion)
                             .font(DesignTokens.Typography.metadata.font)
                             .foregroundStyle(appTheme.textSecondary.color)
                             .accessibilityIdentifier("about-app-version")
