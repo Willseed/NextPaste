@@ -127,8 +127,17 @@ enum ClipboardFixture {
         file: StaticString = #filePath,
         line: UInt = #line
     ) -> XCUIElement {
+        let history = HistoryPage(app: app)
+        let priorObservationCount = history.clipboardMonitorObservationCount(file: file, line: line)
         let expectedCount = imageRowCount(in: app) + 1
         writeImage(fixture, in: app, file: file, line: line)
+        history.waitForClipboardMonitorObservation(
+            after: priorObservationCount,
+            disposition: "captured",
+            timeout: timeout,
+            file: file,
+            line: line
+        )
         return waitForCapturedImage(
             fixture,
             in: app,
