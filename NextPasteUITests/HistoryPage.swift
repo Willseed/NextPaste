@@ -449,11 +449,31 @@ struct HistoryPage {
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
-        assertMarkerValue("history-visible-count", equals: total, timeout: timeout, file: file, line: line)
-        assertMarkerValue("history-visible-text-count", equals: text, timeout: timeout, file: file, line: line)
-        assertMarkerValue("history-visible-image-count", equals: image, timeout: timeout, file: file, line: line)
-        assertMarkerValue("history-visible-pinned-count", equals: pinned, timeout: timeout, file: file, line: line)
-        assertMarkerValue("history-visible-unique-count", equals: total, timeout: timeout, file: file, line: line)
+        let expected = [
+            "history-visible-count": total,
+            "history-visible-text-count": text,
+            "history-visible-image-count": image,
+            "history-visible-pinned-count": pinned,
+            "history-visible-unique-count": total
+        ]
+        let markers = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier IN %@", Array(expected.keys))
+        )
+        var observed: [String: Int] = [:]
+        let matched = UITestWait.until(timeout: timeout) {
+            observed = Dictionary(uniqueKeysWithValues: markers.allElementsBoundByIndex.compactMap { marker in
+                let raw = marker.value as? String ?? marker.label
+                guard let value = Int(raw) else { return nil }
+                return (marker.identifier, value)
+            })
+            return observed == expected
+        }
+        XCTAssertTrue(
+            matched,
+            "Expected visible dataset counts (expected), got (observed)",
+            file: file,
+            line: line
+        )
     }
 
     func launchReadinessDuration(
