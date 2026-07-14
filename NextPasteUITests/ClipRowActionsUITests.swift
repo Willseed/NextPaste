@@ -11,9 +11,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testTappingRowCopiesTextAndShowsCopiedFeedback() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyTarget)
@@ -37,8 +37,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.accessibleAction)
         history.assertClipRowIdentifierExists()
@@ -74,9 +74,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testClipboardFailureDoesNotShowCopiedFeedbackOrChangeRowText() throws {
         let app = launchClipboardFailureApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.copyFailure)
         history.assertClipRowIdentifierExists()
@@ -101,8 +101,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testRightSwipeRevealsPinActionForTextRow() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
         history.assertClipRowIdentifierExists()
@@ -117,8 +117,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testRightSwipeRevealsUnpinActionForPinnedTextRow() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
         history.assertClipRowIdentifierExists()
@@ -136,8 +136,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testLeftSwipeRevealsDeleteActionForTextRow() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
         history.assertClipRowIdentifierExists()
@@ -152,8 +152,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testLeftSwipeDeleteRemovesOnlySelectedClip() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
         try history.createTextClip(UITestFixtures.RowActions.deleteCompanion)
@@ -191,8 +191,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testRightSwipePinTogglesIconAndPinnedOrdering() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
         try history.createTextClip(UITestFixtures.RowActions.newerUnpinned)
@@ -269,8 +269,8 @@ final class ClipRowActionsUITests: UITestCase {
         addTeardownBlock {
             self.closeApp(app)
         }
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)
         try history.createTextClip(UITestFixtures.RowActions.deleteTarget)
@@ -439,8 +439,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testPinningThirdTextClipAfterNativeSwipeActionsDoesNotCrash() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         let clips = [
             UITestFixtures.RowActions.thirdPinOlder,
             UITestFixtures.RowActions.thirdPinMiddle,
@@ -476,8 +476,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testPinningAfterRecentlyDismissedNativeRowActionDoesNotCrash() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         try history.createTextClips([
             UITestFixtures.RowActions.recentlyActiveDismissed,
@@ -506,8 +506,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testTenConsecutiveNativeRowActionFlowsRemainRunningForWarningAssertionCapture() throws {
         let app = launchApp(windowSizePreset: .tall)
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         let toggleTargets = (1...3).map { "Feature 019 toggle target \($0)" }
         let deleteTargets = (1...4).map { "Feature 019 delete target \($0)" }
         var actionOutcomes: [String] = []
@@ -561,9 +561,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testFullSwipeOnlyRevealsTextRowActionWithoutAutoExecutingOrCopying() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyTarget)
@@ -582,9 +582,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testSubThresholdSwipeDoesNotRevealTextRowActionOrCopy() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyTarget)
@@ -601,9 +601,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testVerticalGestureDoesNotRevealTextRowActionOrCopy() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClips([
@@ -625,9 +625,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testRowActionsWorkWithLocalUITestingStore() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeLocalOnlyCopy)
         try history.createTextClip(UITestFixtures.RowActions.localOnlyPinnedCopy)
@@ -681,9 +681,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testFilteredTextRowsPreserveCopyPinDeleteSwipeKeyboardAndAccessibilityAvailability() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClips([
@@ -915,8 +915,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testAutoCapturedClipSupportsCopyDeleteAndPinOffline() throws {
         let app = launchCaptureApp()
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.capture(UITestFixtures.RowActions.autoCapturedAction, timeout: 10)
         clipboard.capture(UITestFixtures.RowActions.autoCapturedCompanion, timeout: 10)
@@ -964,8 +964,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testUnpinOneOfThreePinnedClipsDoesNotCrash() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         let clips = [
             UITestFixtures.RowActions.unpinThreeOlder,
             UITestFixtures.RowActions.unpinThreeMiddle,
@@ -1023,8 +1023,8 @@ final class ClipRowActionsUITests: UITestCase {
         try assertScenarioBSeedReady(seedReadiness)
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock { self.closeApp(app) }
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // DEBUG launch seeding creates the exact fresh fixture without setup swipes:
         // 8 text rows, 2 already pinned, then 5 fillers before the target.
@@ -1134,8 +1134,8 @@ final class ClipRowActionsUITests: UITestCase {
         try assertScenarioBSeedReady(seedReadiness)
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock { self.closeApp(app) }
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         let pinTarget = UITestFixtures.RowActions.scrollPinTarget
         let pinnedNewer = UITestFixtures.RowActions.scrollPinPinnedNewer
         let pinnedOlder = UITestFixtures.RowActions.scrollPinPinnedOlder
@@ -1418,9 +1418,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testFirstVisibleRowActionsRemainAvailableAfterVisibilityCorrection() throws {
         let app = launchApp(windowSizePreset: .small)
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.copyTarget)
@@ -1459,8 +1459,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testMultipleAccumulatedPinUnpinActionsReconcileOnOneExplicitInput() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // Created oldest-first: a (oldest), b, c, d (newest). Visible newest-first: d, c, b, a.
         let a = "T021 accumulated pin oldest"
@@ -1545,8 +1545,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testDeleteDuringPendingPinSnapshotRemovesImmediatelyThenReconciles() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // Created oldest-first: a (oldest, pin target), b, c (delete target), d (newest).
         // Visible newest-first: d, c, b, a.
@@ -1614,8 +1614,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testPinTransactionPreservesStableIdentityAndTerminalPinnedOrdering() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let older = "T023 stale pin older target"
         let newer = "T023 stale pin newer unpinned"
@@ -1678,8 +1678,8 @@ final class ClipRowActionsUITests: UITestCase {
         }
 
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         var bundle = NativeSwipeEvidenceBundle(environmentCapability: environment)
 
         // 2. Fixture clips (existing createTextClips).
@@ -1757,8 +1757,8 @@ final class ClipRowActionsUITests: UITestCase {
         }
 
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // 2–5. Fixture + pre-swipe classified checks, then the native Pin reveal.
         let anchor = "T032-smoke pinned anchor"
@@ -1819,8 +1819,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT033PinReconcilesWithoutTriggerSynthesizedInputOrFixedSleep() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let anchor = "T033 regression pinned anchor"
         let target = "T033 regression pin target"
@@ -1865,8 +1865,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT034NewlyPinnedClipAppearsAboveAllExistingPinnedClips() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // Created oldest-first. Visible newest-first: filler, target, anchor2, anchor1.
         let anchor1 = "T034 pinned anchor oldest"
@@ -1927,8 +1927,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT036UnpinBecomesFirstRowOfUnpinnedSectionViaBoundedRetry() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // Created oldest-first. Visible newest-first: unpinnedAnchor, target, pinAnchor.
         let pinAnchor = "T036 pinned anchor clip"
@@ -1991,8 +1991,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT037UnpinReconcilesWithoutTriggerSynthesizedInputOrFixedSleep() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let pinAnchor = "T037 regression pinned anchor"
         let target = "T037 regression unpin target"
@@ -2050,8 +2050,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT038NewlyUnpinnedClipAppearsAboveAllExistingUnpinnedClips() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         // Created oldest-first. Visible newest-first: filler, target, unpinnedAnchor2,
         // unpinnedAnchor1.
@@ -2148,8 +2148,8 @@ final class ClipRowActionsUITests: UITestCase {
         }
 
         let app = launchApp(windowSizePreset: .tall)
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
         var bundle = NativeSwipeEvidenceBundle(environmentCapability: environment)
 
         // Crash-reproduction flow 1 (Feature 019): pin the third clip after the
@@ -2237,8 +2237,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT047StableRowIdentitySurvivesNativePinTransaction() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let older = "T047 teardown pin older target"
         let newer = "T047 teardown pin newer unpinned"
@@ -2305,8 +2305,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT048OverlappingNativePinsReachTerminalOrderWithoutCrash() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let older = "T048 safe-boundary pin older target"
         let newer = "T048 safe-boundary pin newer unpinned"
@@ -2386,8 +2386,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT050DeleteAutomaticReconciliationRemovesClipViaBoundedRetry() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let deleteTarget = "T050 delete reconciliation target"
         let survivor = "T050 delete reconciliation survivor"
@@ -2435,8 +2435,8 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT051DeleteReconcilesWithoutTriggerSynthesizedInputOrFixedSleep() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let row = RowRobot(app: app)
 
         let deleteTarget = "T051 no-trigger delete target"
         let survivor = "T051 no-trigger delete survivor"
@@ -2515,8 +2515,8 @@ final class ClipRowActionsUITests: UITestCase {
         for iteration in iterations {
             try withFreshAppForConsecutiveRun { app in
 
-            let history = historyRobot(for: app)
-            let row = rowRobot(for: app)
+            let history = HistoryRobot(app: app)
+            let row = RowRobot(app: app)
             let anchor = "T052 consecutive pin anchor #\(iteration)"
             let target = "T052 consecutive pin target #\(iteration)"
             let filler = "T052 consecutive pin filler #\(iteration)"
@@ -2569,8 +2569,8 @@ final class ClipRowActionsUITests: UITestCase {
         for iteration in iterations {
             try withFreshAppForConsecutiveRun { app in
 
-            let history = historyRobot(for: app)
-            let row = rowRobot(for: app)
+            let history = HistoryRobot(app: app)
+            let row = RowRobot(app: app)
             let pinAnchor = "T053 consecutive unpin pin anchor #\(iteration)"
             let target = "T053 consecutive unpin target #\(iteration)"
             let unpinnedAnchor = "T053 consecutive unpin unpinned anchor #\(iteration)"
@@ -2631,8 +2631,8 @@ final class ClipRowActionsUITests: UITestCase {
         for iteration in iterations {
             try withFreshAppForConsecutiveRun { app in
 
-            let history = historyRobot(for: app)
-            let row = rowRobot(for: app)
+            let history = HistoryRobot(app: app)
+            let row = RowRobot(app: app)
             let deleteTarget = "T054 consecutive delete target #\(iteration)"
             let survivor = "T054 consecutive delete survivor #\(iteration)"
             try history.createTextClip(deleteTarget)
@@ -2686,9 +2686,9 @@ final class ClipRowActionsUITests: UITestCase {
     @MainActor
     func testT064RowActionUXBaselinePreservedLabelsIconsAccessibilitySwipeKeyboard() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let clipboard = clipboardRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = HistoryRobot(app: app)
+        let clipboard = ClipboardRobot(app: app)
+        let row = RowRobot(app: app)
 
         clipboard.setString(UITestFixtures.RowActions.beforeCopy)
         try history.createTextClip(UITestFixtures.RowActions.olderPinTarget)

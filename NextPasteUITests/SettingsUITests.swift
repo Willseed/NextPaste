@@ -331,7 +331,7 @@ final class SettingsUITests: UITestCase {
     @MainActor
     func testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows() throws {
         let app = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
-        let history = historyRobot(for: app)
+        let history = HistoryRobot(app: app)
 
         let settingsWindow = openSettingsWindow(in: app)
         openSettingsTab(Accessibility.clipboardTab, in: app)
@@ -611,7 +611,7 @@ final class SettingsUITests: UITestCase {
         let app = launchApp(
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "en_us"]
         )
-        let history = historyRobot(for: app)
+        let history = HistoryRobot(app: app)
         try history.createTextClip(UITestFixtures.History.olderText)
 
         app.typeKey("n", modifierFlags: [.command])
@@ -1126,7 +1126,7 @@ final class SettingsUITests: UITestCase {
     @MainActor
     func testDataPrivacyClearActionsShowLocalizedConfirmationDialogs() throws {
         let englishApp = launchApp(extraArguments: [Fixture.settingsHistoryLimitSeedArgument])
-        let englishHistory = historyRobot(for: englishApp)
+        let englishHistory = HistoryRobot(app: englishApp)
         englishHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         var settingsWindow = openSettingsWindow(in: englishApp)
         openSettingsTab(Accessibility.privacyTab, in: englishApp)
@@ -1206,7 +1206,7 @@ final class SettingsUITests: UITestCase {
             extraEnvironment: [UITestLaunchEnvironment.initialLanguageKey: "zh_TW"],
             windowSizePreset: .defaultSize
         )
-        let chineseHistory = historyRobot(for: chineseApp)
+        let chineseHistory = HistoryRobot(app: chineseApp)
         chineseHistory.assertVisibleDatasetCounts(total: 12, text: 12, image: 0, pinned: 1)
         settingsWindow = openSettingsWindow(in: chineseApp)
         openSettingsTab(Accessibility.privacyTab, in: chineseApp)
