@@ -18,6 +18,7 @@ final class ClipboardMonitor {
 
     private(set) var isMonitoring = false
     private var lastObservedChangeCount: Int?
+    private var pendingUnavailablePayloadChangeCount: Int?
     private var task: ClipboardMonitorTask?
 
     init(
@@ -38,6 +39,7 @@ final class ClipboardMonitor {
         guard isMonitoring == false else { return }
 
         isMonitoring = true
+        pendingUnavailablePayloadChangeCount = nil
         lastObservedChangeCount = reader.currentChangeCount()
         task = scheduler.scheduleRepeating(pollInterval) { [weak self] in
             self?.pollClipboard()
@@ -55,6 +57,7 @@ final class ClipboardMonitor {
         isMonitoring = false
         task?.cancel()
         task = nil
+        pendingUnavailablePayloadChangeCount = nil
 #if DEBUG && os(macOS)
         if DebugUITestLaunchEnvironment() != nil {
             DebugUITestClipboardMonitorProbe.shared.recordMonitoringStopped()
@@ -70,8 +73,19 @@ final class ClipboardMonitor {
             return
         }
 
+        let payload = reader.currentPayload()
+        if payload == nil, pendingUnavailablePayloadChangeCount != changeCount {
+            // NSPasteboard publishes a new ownership change before all
+            // representations are necessarily readable. Confirm an empty
+            // snapshot on the next regular poll so a representation published
+            // under the same change count is not permanently skipped.
+            pendingUnavailablePayloadChangeCount = changeCount
+            return
+        }
+
+        pendingUnavailablePayloadChangeCount = nil
         lastObservedChangeCount = changeCount
-        let outcome = captureService.captureClipboardPayload(reader.currentPayload(), observedAt: now())
+        let outcome = captureService.captureClipboardPayload(payload, observedAt: now())
 #if DEBUG && os(macOS)
         if DebugUITestLaunchEnvironment() != nil {
             DebugUITestClipboardMonitorProbe.shared.record(outcome)

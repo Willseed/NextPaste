@@ -246,6 +246,32 @@ struct ClipboardCaptureTests {
         #expect(try SwiftDataTestSupport.fetchImageMetadata(in: context).isEmpty)
     }
 
+    @Test("rechecks a transient empty pasteboard snapshot before consuming its change count")
+    func rechecksTransientEmptyPasteboardSnapshot() throws {
+        let context = try SwiftDataTestSupport.makeInMemoryContext()
+        let scheduler = TestClipboardScheduler()
+        let reader = TestClipboardReader(changeCount: 0, payload: nil)
+        let service = ClipboardCaptureService(modelContext: context)
+        let monitor = ClipboardMonitor(
+            reader: reader.client,
+            scheduler: scheduler.client,
+            captureService: service,
+            pollInterval: 0.1
+        )
+
+        monitor.start()
+
+        reader.changeCount = 1
+        scheduler.fire()
+
+        reader.payload = .text("Payload published after pasteboard ownership changed")
+        scheduler.fire()
+
+        #expect(try SwiftDataTestSupport.fetchHistoryTexts(in: context) == [
+            "Payload published after pasteboard ownership changed"
+        ])
+    }
+
     @Test("ignores duplicate and non-text clipboard payloads")
     func ignoresDuplicateAndNonTextPayloads() throws {
         let context = try SwiftDataTestSupport.makeInMemoryContext()
