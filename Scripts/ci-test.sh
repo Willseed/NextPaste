@@ -15,6 +15,7 @@ readonly BUILD_CONFIGURATION="Debug"
 readonly VISION_INTEGRATION_SELECTOR="NextPasteTests/VisionImageTextRecognizerIntegrationTests"
 readonly APPEARANCE_INTEGRATION_SELECTOR="NextPasteTests/AppKitAppearanceIntegrationTests"
 readonly RENDERED_ORDER_INTEGRATION_SELECTOR="NextPasteTests/RenderedOrderReconciliationIntegrationTests"
+readonly UI_SHARDS=(capture history relaunch row-actions settings)
 readonly FOCUSED_VALUE_WARNING="FocusedValue update tried to update multiple times per frame."
 readonly SETTINGS_WARNING="Please use SettingsLink for opening the Settings scene."
 
@@ -30,7 +31,7 @@ while (($# > 0)); do
       shift 2
       ;;
     --shard)
-      [[ $# -ge 2 ]] || { /bin/echo "error: --shard requires a number" >&2; exit 64; }
+      [[ $# -ge 2 ]] || { /bin/echo "error: --shard requires a semantic name" >&2; exit 64; }
       SHARD="$2"
       shift 2
       ;;
@@ -39,7 +40,7 @@ while (($# > 0)); do
       shift
       ;;
     --help|-h)
-    /bin/echo "Usage: Scripts/ci-test.sh [--mode pr|full-ui] [--shard STAGE] [--dry-run]"
+    /bin/echo "Usage: Scripts/ci-test.sh [--mode pr|full-ui] [--shard NAME] [--dry-run]"
       exit 0
       ;;
     *)
@@ -54,7 +55,14 @@ case "${MODE}" in
     [[ -z "${SHARD}" ]] || { /bin/echo "error: --shard is valid only with --mode full-ui" >&2; exit 64; }
     ;;
   full-ui)
-    [[ "${SHARD}" =~ ^[1-9][0-9]*$ ]] || { /bin/echo "error: full-ui mode requires a positive integer --shard stage" >&2; exit 64; }
+    case "${SHARD}" in
+      capture|history|relaunch|row-actions|settings)
+        ;;
+      *)
+        /bin/echo "error: full-ui mode requires one of: ${UI_SHARDS[*]}" >&2
+        exit 64
+        ;;
+    esac
     ;;
   *)
     /bin/echo "error: unsupported mode: ${MODE}" >&2
@@ -163,6 +171,7 @@ validate_shard_manifest() {
   [[ -f "${SHARD_MANIFEST}" ]] || fail "missing UI shard manifest: ${SHARD_MANIFEST}"
   local discovered="${RUN_DIR}/ui-methods-discovered.txt"
   local assigned="${RUN_DIR}/ui-methods-assigned.txt"
+  local declared="${RUN_DIR}/ui-shards-declared.txt"
   local source
 
   for source in "${REPO_ROOT}/NextPasteUITests"/*.swift; do
@@ -179,6 +188,14 @@ validate_shard_manifest() {
       }
     ' "${source}"
   done | /usr/bin/sort > "${discovered}"
+  /usr/bin/awk '!/^#/ && NF == 2 { print $1 }' "${SHARD_MANIFEST}" | /usr/bin/sort -u > "${declared}"
+  local shard_name
+  for shard_name in "${UI_SHARDS[@]}"; do
+    /usr/bin/grep -Fxq "${shard_name}" "${declared}" \
+      || fail "UI shard manifest is missing semantic shard: ${shard_name}"
+  done
+  [[ "$(wc -l < "${declared}" | tr -d ' ')" == "${#UI_SHARDS[@]}" ]] \
+    || fail "UI shard manifest must contain exactly ${#UI_SHARDS[@]} semantic shards"
   /usr/bin/awk '!/^#/ && NF == 2 { print $2 }' "${SHARD_MANIFEST}" | /usr/bin/sort > "${assigned}"
 
   [[ -s "${discovered}" ]] || fail "no concrete UI test methods were discovered"
