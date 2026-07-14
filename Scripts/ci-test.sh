@@ -14,6 +14,7 @@ readonly SHARD_MANIFEST="${SCRIPT_DIR}/ui-test-shards.txt"
 readonly BUILD_CONFIGURATION="Debug"
 readonly VISION_INTEGRATION_SELECTOR="NextPasteTests/VisionImageTextRecognizerIntegrationTests"
 readonly APPEARANCE_INTEGRATION_SELECTOR="NextPasteTests/AppKitAppearanceIntegrationTests"
+readonly RENDERED_ORDER_INTEGRATION_SELECTOR="NextPasteTests/RenderedOrderReconciliationIntegrationTests"
 readonly FOCUSED_VALUE_WARNING="FocusedValue update tried to update multiple times per frame."
 readonly SETTINGS_WARNING="Please use SettingsLink for opening the Settings scene."
 
@@ -422,15 +423,15 @@ if [[ "${MODE}" == "pr" ]]; then
   run_test_phase Unit Unit 1800 YES YES \
     -only-testing:NextPasteTests \
     -skip-testing:"${VISION_INTEGRATION_SELECTOR}" \
-    -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
+    -skip-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
+    -skip-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"
   run_test_phase Integration Integration 900 NO YES \
     -only-testing:"${VISION_INTEGRATION_SELECTOR}" \
-    -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}"
+    -only-testing:"${APPEARANCE_INTEGRATION_SELECTOR}" \
+    -only-testing:"${RENDERED_ORDER_INTEGRATION_SELECTOR}"
 
   ui_start_time="$(/bin/date '+%Y-%m-%d %H:%M:%S%z')"
   run_test_phase UISmoke UI 1200 NO NO \
-    -only-testing:NextPasteUITests/NextPasteUITests/testDefaultPathConfigurationFeedsTheActiveLaunchEnvironment \
-    -only-testing:NextPasteUITests/NextPasteUITests/testCustomPathConfigurationPropagatesStorageAndTraceURLs \
     -only-testing:NextPasteUITests/NextPasteUITests/testIsolatedLaunchExposesReadyMainWindow \
     -only-testing:NextPasteUITests/HistoryListUITests/testHistoryShowsNewestFirstAndReadableLongMultilinePreview \
     -only-testing:NextPasteUITests/SettingsUITests/testToolbarSettingsLinkOpensSingleSettingsWindow \

@@ -23,15 +23,15 @@ final class HistoryClearUITests: UITestCase {
     @MainActor
     func testClearUnpinnedMenuSupportsCancelAndConfirmWhilePreservingPinnedRows() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = historyPage(for: app)
+        let row = clipRow(for: app)
 
         try history.createTextClips([
-            UITestFixtures.ClearHistory.unpinnedFirst,
-            UITestFixtures.ClearHistory.pinnedKeep,
-            UITestFixtures.ClearHistory.unpinnedSecond
+            ClipboardFixture.ClearHistory.unpinnedFirst,
+            ClipboardFixture.ClearHistory.pinnedKeep,
+            ClipboardFixture.ClearHistory.unpinnedSecond
         ])
-        row.pin(UITestFixtures.ClearHistory.pinnedKeep)
+        row.pin(ClipboardFixture.ClearHistory.pinnedKeep)
 
         let overflowMenu = history.historyOverflowMenu()
         XCTAssertEqual(overflowMenu.identifier, "history-overflow-menu")
@@ -41,56 +41,59 @@ final class HistoryClearUITests: UITestCase {
         XCTAssertEqual(clearUnpinnedMenuItem.identifier, "menu-clear-unpinned-history")
         clearUnpinnedMenuItem.tap()
 
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "Clear Unpinned History"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "Clear Unpinned History")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-unpinned confirmation title"
         )
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "2 unpinned items"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "2 unpinned items")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-unpinned confirmation count"
         )
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "1 pinned item will be preserved"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "1 pinned item will be preserved")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-unpinned pinned-preservation warning"
         )
-        let cancelButton = UITestAssertions.assertExists(
-            app.buttons["cancel-clear-unpinned-button"],
+        let cancelButton = app.buttons["cancel-clear-unpinned-button"]
+        XCTAssertTrue(
+            cancelButton.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-unpinned cancel button"
         )
         cancelButton.tap()
 
-        history
-            .assertRowExists(withText: UITestFixtures.ClearHistory.unpinnedFirst)
-            .assertRowExists(withText: UITestFixtures.ClearHistory.pinnedKeep)
-            .assertRowExists(withText: UITestFixtures.ClearHistory.unpinnedSecond)
+        history.assertRowExists(withText: ClipboardFixture.ClearHistory.unpinnedFirst)
+        history.assertRowExists(withText: ClipboardFixture.ClearHistory.pinnedKeep)
+        history.assertRowExists(withText: ClipboardFixture.ClearHistory.unpinnedSecond)
 
         history.historyOverflowMenu().tap()
         history.clearUnpinnedMenuItem().tap()
 
-        let confirmButton = UITestAssertions.assertExists(
-            app.buttons["confirm-clear-unpinned-button"],
+        let confirmButton = app.buttons["confirm-clear-unpinned-button"]
+        XCTAssertTrue(
+            confirmButton.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-unpinned confirm button"
         )
         XCTAssertEqual(confirmButton.identifier, "confirm-clear-unpinned-button")
         confirmButton.tap()
 
-        history
-            .assertRowDoesNotExist(withText: UITestFixtures.ClearHistory.unpinnedFirst)
-            .assertRowExists(withText: UITestFixtures.ClearHistory.pinnedKeep)
-            .assertRowDoesNotExist(withText: UITestFixtures.ClearHistory.unpinnedSecond)
+        history.assertRowEventuallyDisappears(withText: ClipboardFixture.ClearHistory.unpinnedFirst)
+        history.assertRowExists(withText: ClipboardFixture.ClearHistory.pinnedKeep)
+        history.assertRowEventuallyDisappears(withText: ClipboardFixture.ClearHistory.unpinnedSecond)
     }
 
     @MainActor
     func testClearAllMenuWarnsAboutPinnedRowsAndDeletesEverything() throws {
         let app = launchApp()
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = historyPage(for: app)
+        let row = clipRow(for: app)
 
         try history.createTextClips([
-            UITestFixtures.ClearHistory.clearAllUnpinned,
-            UITestFixtures.ClearHistory.clearAllPinned
+            ClipboardFixture.ClearHistory.clearAllUnpinned,
+            ClipboardFixture.ClearHistory.clearAllPinned
         ])
-        row.pin(UITestFixtures.ClearHistory.clearAllPinned)
+        row.pin(ClipboardFixture.ClearHistory.clearAllPinned)
 
         let overflowMenu = history.historyOverflowMenu()
         XCTAssertEqual(overflowMenu.identifier, "history-overflow-menu")
@@ -100,35 +103,39 @@ final class HistoryClearUITests: UITestCase {
         XCTAssertEqual(clearAllMenuItem.identifier, "menu-clear-all-history")
         clearAllMenuItem.tap()
 
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "Clear All History"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "Clear All History")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-all confirmation title"
         )
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "all 2 items"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "all 2 items")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-all confirmation count"
         )
-        UITestAssertions.assertExists(
-            confirmationStaticText(in: app, containing: "including 1 pinned item"),
+        XCTAssertTrue(
+            confirmationStaticText(in: app, containing: "including 1 pinned item")
+                .waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-all pinned warning"
         )
-        let confirmButton = UITestAssertions.assertExists(
-            app.buttons["confirm-clear-all-button"],
+        let confirmButton = app.buttons["confirm-clear-all-button"]
+        XCTAssertTrue(
+            confirmButton.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected clear-all confirm button"
         )
         XCTAssertEqual(confirmButton.identifier, "confirm-clear-all-button")
         confirmButton.tap()
 
-        history
-            .assertRowDoesNotExist(withText: UITestFixtures.ClearHistory.clearAllUnpinned)
-            .assertRowDoesNotExist(withText: UITestFixtures.ClearHistory.clearAllPinned)
+        history.assertRowEventuallyDisappears(withText: ClipboardFixture.ClearHistory.clearAllUnpinned)
+        history.assertRowEventuallyDisappears(withText: ClipboardFixture.ClearHistory.clearAllPinned)
 
-        let emptyStateTitle = UITestAssertions.assertExists(
-            app.staticTexts["empty-state-title"],
+        let emptyStateTitle = app.staticTexts["empty-state-title"]
+        XCTAssertTrue(
+            emptyStateTitle.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected empty history title"
         )
-        UITestAssertions.assertAccessibleTextEquals(
-            emptyStateTitle,
+        XCTAssertEqual(
+            ClipboardFixture.accessibleText(of: emptyStateTitle),
             UITestFixtures.VisualIdentity.emptyTitle
         )
     }

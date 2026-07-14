@@ -18,28 +18,16 @@ final class EmptyTextClipUITests: UITestCase {
         let editor = try openNewClip(in: app)
 
         app.buttons["save-clip-button"].tap()
-
         let validationMessage = app.staticTexts["text-validation-message"]
         XCTAssertTrue(validationMessage.waitForExistence(timeout: 5))
-        XCTAssertEqual(validationMessage.accessibleText, "Enter text to save a clip.")
+        XCTAssertEqual(ClipboardFixture.accessibleText(of: validationMessage), "Enter text to save a clip.")
         XCTAssertTrue(editor.exists)
-
-        app.buttons["cancel-new-clip-button"].tap()
-        XCTAssertTrue(app.staticTexts["No clips yet"].waitForExistence(timeout: 5))
-    }
-
-    @MainActor
-    func testWhitespaceSaveShowsValidationAndDoesNotInsertClip() throws {
-        let app = launchApp()
-        let editor = try openNewClip(in: app)
 
         editor.tap()
         editor.typeText("     ")
         app.buttons["save-clip-button"].tap()
-
-        let validationMessage = app.staticTexts["text-validation-message"]
         XCTAssertTrue(validationMessage.waitForExistence(timeout: 5))
-        XCTAssertEqual(validationMessage.accessibleText, "Enter text to save a clip.")
+        XCTAssertEqual(ClipboardFixture.accessibleText(of: validationMessage), "Enter text to save a clip.")
         XCTAssertTrue(app.textViews["clip-text-editor"].exists)
 
         app.buttons["cancel-new-clip-button"].tap()
@@ -69,15 +57,5 @@ final class EmptyTextClipUITests: UITestCase {
         let editor = app.textViews["clip-text-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
         return editor
-    }
-}
-
-private extension XCUIElement {
-    var accessibleText: String {
-        if !label.isEmpty {
-            return label
-        }
-
-        return value as? String ?? ""
     }
 }

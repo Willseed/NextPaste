@@ -13,6 +13,7 @@ class UITestCase: XCTestCase {
         try super.setUpWithError()
         continueAfterFailure = false
         try UITestLaunchEnvironmentRegistry.beginTest(named: name)
+        UITestAppLauncher.cleanupStaleTestRoots()
         addTeardownBlock {
             UITestLaunchEnvironmentRegistry.finishTest()
         }
@@ -32,10 +33,10 @@ class UITestCase: XCTestCase {
             app.launchEnvironment[key] = value
         }
         app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
             self.closeApp(app)
         }
+        UITestAppLauncher.prepareMainWindow(in: app)
         return app
     }
 
@@ -58,10 +59,10 @@ class UITestCase: XCTestCase {
             app.launchEnvironment[key] = value
         }
         app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
             self.closeApp(app)
         }
+        UITestAppLauncher.prepareMainWindow(in: app)
         return app
     }
 
@@ -78,10 +79,10 @@ class UITestCase: XCTestCase {
             windowSizePreset: windowSizePreset
         )
         launch.app.launch()
-        UITestAppLauncher.prepareMainWindow(in: launch.app)
         addTeardownBlock {
             self.closeApp(launch.app)
         }
+        UITestAppLauncher.prepareMainWindow(in: launch.app)
         return launch
     }
 
@@ -98,10 +99,10 @@ class UITestCase: XCTestCase {
             windowSizePreset: windowSizePreset
         )
         app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock {
             self.closeApp(app)
         }
+        UITestAppLauncher.prepareMainWindow(in: app)
         return app
     }
 
@@ -121,18 +122,18 @@ class UITestCase: XCTestCase {
     }
 
     @MainActor
-    func historyRobot(for app: XCUIApplication) -> HistoryRobot {
-        HistoryRobot(app: app)
+    func historyPage(for app: XCUIApplication) -> HistoryPage {
+        HistoryPage(app: app)
     }
 
     @MainActor
-    func clipboardRobot(for app: XCUIApplication) -> ClipboardRobot {
-        ClipboardRobot(app: app)
+    func clipRow(for app: XCUIApplication) -> ClipRow {
+        ClipRow(app: app)
     }
 
     @MainActor
-    func rowRobot(for app: XCUIApplication) -> RowRobot {
-        RowRobot(app: app)
+    func settingsPage(for app: XCUIApplication) -> SettingsPage {
+        SettingsPage(app: app)
     }
 
     @MainActor
@@ -147,13 +148,7 @@ class UITestCase: XCTestCase {
             return
         }
 
-#if os(macOS)
-        for runningApp in NSRunningApplication.runningApplications(withBundleIdentifier: "pylot.NextPaste") {
-            if runningApp.terminate() == false {
-                _ = runningApp.forceTerminate()
-            }
-        }
-#endif
+        app.terminate()
         _ = app.wait(for: .notRunning, timeout: 5)
     }
 }

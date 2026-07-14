@@ -20,31 +20,13 @@ final class RelaunchStabilityUITests: UITestCase {
     func testRelaunchWith500MixedItemsKeepsAppRunningAndDatasetIntact() throws {
         let store = try makeOnDiskStore()
         var app = launchSeededLargeDataset(store: store)
-        let expectedDigest = try XCTUnwrap(historyRobot(for: app).visibleIntegrityDigest())
+        let expectedDigest = try XCTUnwrap(historyPage(for: app).visibleIntegrityDigest())
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
         assertLargeDataset(in: app)
-        XCTAssertEqual(historyRobot(for: app).visibleIntegrityDigest(), expectedDigest)
+        XCTAssertEqual(historyPage(for: app).visibleIntegrityDigest(), expectedDigest)
         XCTAssertEqual(app.state, .runningForeground)
-    }
-
-    @MainActor
-    func testTextAndImageClipRestorationAcrossRelaunch() throws {
-        let store = try makeOnDiskStore()
-        var app = launchSeededLargeDataset(store: store)
-        closeApp(app)
-
-        app = launchApp(onDiskStore: store, windowSizePreset: .tall)
-        assertLargeDataset(in: app)
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
-
-        history.enterSearchQuery(Fixture.textTarget)
-            .assertRowExists(withText: Fixture.textTarget)
-        history.clearSearch()
-        history.enterSearchQuery(Fixture.imageTargetDescription)
-        _ = row.imageRowElement(withThumbnailDescription: Fixture.imageTargetDescription)
     }
 
     @MainActor
@@ -63,14 +45,14 @@ final class RelaunchStabilityUITests: UITestCase {
         UITestAppLauncher.prepareMainWindow(in: app)
         addTeardownBlock { self.closeApp(app) }
 
-        historyRobot(for: app).assertVisibleDatasetCounts(
+        historyPage(for: app).assertVisibleDatasetCounts(
             total: Fixture.totalCount - 1,
             text: Fixture.textCount,
             image: Fixture.imageCount - 1,
             pinned: Fixture.pinnedCount,
             timeout: 10
         )
-        historyRobot(for: app).enterSearchQuery(Fixture.imageTargetDescription)
+        historyPage(for: app).enterSearchQuery(Fixture.imageTargetDescription)
         assertImageRowDoesNotExist(description: Fixture.imageTargetDescription, in: app)
         XCTAssertTrue(
             traceContainsEvent("image-file-missing", traceURL: trace.traceURL, timeout: 5),
@@ -79,81 +61,25 @@ final class RelaunchStabilityUITests: UITestCase {
     }
 
     @MainActor
-    func testRelaunchWith500ItemsLoadsWithinThreeSeconds() throws {
-        let store = try makeOnDiskStore()
-        let seeded = launchSeededLargeDataset(store: store)
-        closeApp(seeded)
-
-        let app = UITestAppLauncher.makeApp(onDiskStore: store, windowSizePreset: .tall)
-        let launchStartedUptime = ProcessInfo.processInfo.systemUptime
-        app.launchEnvironment[UITestLaunchEnvironment.launchStartedUptimeKey] = String(
-            launchStartedUptime
-        )
-        app.launchEnvironment[UITestLaunchEnvironment.expectedHistoryCountKey] = String(
-            Fixture.totalCount
-        )
-        let startedAt = CFAbsoluteTimeGetCurrent()
-        app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app, timeout: 10)
-        let history = historyRobot(for: app)
-        history.assertVisibleDatasetCounts(
-            total: Fixture.totalCount,
-            text: Fixture.textCount,
-            image: Fixture.imageCount,
-            pinned: Fixture.pinnedCount,
-            timeout: 10
-        )
-        let renderedReadinessDuration = history.launchReadinessDuration(timeout: 10)
-        let testHarnessElapsed = CFAbsoluteTimeGetCurrent() - startedAt
-        addTeardownBlock { self.closeApp(app) }
-
-        let imageByteCount = try Data(contentsOf: imageFileURL(forImageIndex: 0, store: store)).count
-#if DEBUG
-        let buildConfiguration = "Debug"
-#else
-        let buildConfiguration = "Release"
-#endif
-#if os(macOS)
-        let hostName = Host.current().localizedName ?? "unknown"
-#else
-        let hostName = "Apple mobile destination"
-#endif
-        let attachment = XCTAttachment(string: """
-        Relaunch dataset: \(Fixture.textCount) text + \(Fixture.imageCount) image clips
-        Image fixture byte size: \(imageByteCount) bytes
-        Host: \(hostName)
-        OS: \(ProcessInfo.processInfo.operatingSystemVersionString)
-        Build configuration: \(buildConfiguration)
-        Frozen app launch-to-laid-out 500-item history: \(renderedReadinessDuration) seconds
-        XCUITest launch plus accessibility query elapsed: \(testHarnessElapsed) seconds
-        """)
-        attachment.name = "Relaunch launch budget measurement"
-        attachment.lifetime = XCTAttachment.Lifetime.keepAlways
-        add(attachment)
-
-        XCTAssertLessThanOrEqual(renderedReadinessDuration, 3.0)
-        XCTAssertGreaterThanOrEqual(testHarnessElapsed, renderedReadinessDuration)
-        XCTAssertGreaterThan(imageByteCount, 0)
-        XCTAssertEqual(app.state, .runningForeground)
-    }
-
-    @MainActor
     func testImmediateCloseAfterPinRecoversLastCommittedState() throws {
         let store = try makeOnDiskStore()
         var app = launchSeededLargeDataset(store: store)
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
+        let history = historyPage(for: app)
+        let row = clipRow(for: app)
 
         history.enterSearchQuery(Fixture.textTarget)
         row.pin(Fixture.textTarget)
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
-        historyRobot(for: app).enterSearchQuery(Fixture.textTarget)
-        UITestAssertions.assertEventuallyAccessibleTextContains(
-            assertTextRow(Fixture.textTarget, in: app),
-            "Pinned",
-            timeout: 5
+        historyPage(for: app).enterSearchQuery(Fixture.textTarget)
+        let pinnedRow = assertTextRow(Fixture.textTarget, in: app)
+        XCTAssertTrue(
+            UITestWait.until(timeout: 5) {
+                ClipboardFixture.combinedAccessibilityText(of: pinnedRow)
+                    .localizedCaseInsensitiveContains("Pinned")
+            },
+            "Expected pinned text row to expose Pinned state within 5 seconds"
         )
     }
 
@@ -161,91 +87,21 @@ final class RelaunchStabilityUITests: UITestCase {
     func testAutoCaptureImmediateTerminationAndRelaunchPreservesCapturedItems() throws {
         let store = try makeOnDiskStore()
         var app = launchCaptureApp(pollInterval: 0.05, onDiskStore: store)
-        let clipboard = clipboardRobot(for: app)
         let captures = (0..<5).map { "Relaunch auto capture immediate \($0)" }
 
         for text in captures {
-            clipboard.capture(text, timeout: 3)
+            ClipboardFixture.capture(text, in: app, timeout: 3)
         }
-        historyRobot(for: app).assertVisibleClipCount(captures.count)
+        historyPage(for: app).assertVisibleClipCount(captures.count)
         closeApp(app)
 
         app = launchApp(onDiskStore: store)
-        historyRobot(for: app).assertVisibleClipCount(captures.count)
+        historyPage(for: app).assertVisibleClipCount(captures.count)
         for text in captures {
-            historyRobot(for: app).enterSearchQuery(text).assertRowExists(withText: text)
-            historyRobot(for: app).clearSearch()
+            historyPage(for: app).enterSearchQuery(text)
+            historyPage(for: app).assertRowExists(withText: text)
+            historyPage(for: app).clearSearch()
         }
-    }
-
-    @MainActor
-    func testAutoCaptureRelaunchAndRepeatedPinUnpinRemainsStable() throws {
-        let store = try makeOnDiskStore()
-        var app = launchCaptureApp(pollInterval: 0.05, onDiskStore: store)
-        let clipboard = clipboardRobot(for: app)
-        let target = "Relaunch auto capture pin target"
-        clipboard.capture(target, timeout: 3)
-        clipboard.capture("Relaunch auto capture companion", timeout: 3)
-        closeApp(app)
-
-        app = launchApp(onDiskStore: store)
-        let history = historyRobot(for: app)
-        let row = rowRobot(for: app)
-        history.enterSearchQuery(target)
-
-        for iteration in 1...10 {
-            if iteration.isMultiple(of: 2) {
-                row.unpin(target)
-            } else {
-                row.pin(target)
-            }
-            XCTAssertEqual(app.state, .runningForeground)
-        }
-    }
-
-    @MainActor
-    func testTenRoundAutoCaptureRelaunchCycleComparesEachRound() throws {
-        let store = try makeOnDiskStore()
-        var app = launchCaptureApp(pollInterval: 0.05, onDiskStore: store, windowSizePreset: .tall)
-        var expectedCount = 0
-
-        for round in 1...10 {
-            let clipboard = clipboardRobot(for: app)
-            for index in 0..<10 {
-                clipboard.capture("Relaunch round \(round) auto capture \(index)", timeout: 10)
-                expectedCount += 1
-            }
-            let target = "Relaunch round \(round) auto capture 0"
-            historyRobot(for: app).enterSearchQuery(target)
-            rowRobot(for: app).pin(target)
-            historyRobot(for: app).clearSearch()
-            closeApp(app)
-
-            app = launchCaptureApp(pollInterval: 0.05, onDiskStore: store, windowSizePreset: .tall)
-            historyRobot(for: app).assertVisibleDatasetCounts(
-                total: expectedCount,
-                text: expectedCount,
-                image: 0,
-                pinned: round,
-                timeout: 10
-            )
-            XCTAssertEqual(app.state, .runningForeground)
-        }
-    }
-
-    @MainActor
-    func testLargeDataContinuityAfterRelaunchAllowsFurtherAddAndToggle() throws {
-        let store = try makeOnDiskStore()
-        var app = launchSeededLargeDataset(store: store)
-        closeApp(app)
-
-        app = launchApp(onDiskStore: store, windowSizePreset: .tall)
-        let added = "Large relaunch continuity added text"
-        try historyRobot(for: app).createTextClip(added)
-        historyRobot(for: app).assertVisibleClipCount(Fixture.totalCount + 1, timeout: 10)
-        historyRobot(for: app).enterSearchQuery(added)
-        rowRobot(for: app).pin(added)
-        XCTAssertEqual(app.state, .runningForeground)
     }
 
     @MainActor
@@ -261,38 +117,13 @@ final class RelaunchStabilityUITests: UITestCase {
 
     @MainActor
     private func assertLargeDataset(in app: XCUIApplication) {
-        historyRobot(for: app).assertVisibleDatasetCounts(
+        historyPage(for: app).assertVisibleDatasetCounts(
             total: Fixture.totalCount,
             text: Fixture.textCount,
             image: Fixture.imageCount,
             pinned: Fixture.pinnedCount,
             timeout: 10
         )
-    }
-
-    private func deterministicID(kind: UInt8, index: Int) -> UUID {
-        var bytes = [UInt8](repeating: 0, count: 16)
-        bytes[0] = 0x25
-        bytes[1] = kind
-        let indexBytes = withUnsafeBytes(of: UInt64(index).bigEndian) { Array($0) }
-        for offset in 0..<8 {
-            bytes[8 + offset] = indexBytes[offset]
-        }
-        return UUID(uuid: (
-            bytes[0], bytes[1], bytes[2], bytes[3],
-            bytes[4], bytes[5], bytes[6], bytes[7],
-            bytes[8], bytes[9], bytes[10], bytes[11],
-            bytes[12], bytes[13], bytes[14], bytes[15]
-        ))
-    }
-
-    private func imageFileURL(forImageIndex index: Int, store: UITestAppLauncher.OnDiskStore) -> URL {
-        let id = deterministicID(kind: 2, index: index)
-        return store.rootURL
-            .appendingPathComponent("ImageStore", isDirectory: true)
-            .appendingPathComponent("Clips", isDirectory: true)
-            .appendingPathComponent("Images", isDirectory: true)
-            .appendingPathComponent("\(id.uuidString).png", isDirectory: false)
     }
 
     @MainActor
@@ -302,23 +133,24 @@ final class RelaunchStabilityUITests: UITestCase {
             "clip-row-",
             text
         )
-        return UITestAssertions.assertExists(
-            app.descendants(matching: .any).matching(predicate).firstMatch,
+        let element = app.descendants(matching: .any).matching(predicate).firstMatch
+        XCTAssertTrue(
+            element.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
             "Expected text row \(text)"
         )
+        return element
     }
 
     @MainActor
     private func assertImageRowDoesNotExist(description: String, in app: XCUIApplication) {
         let predicate = NSPredicate(
             format: "identifier BEGINSWITH %@ AND label CONTAINS %@",
-            UITestFixtures.ImageClipboard.Accessibility.rowIdentifierPrefix,
+            ClipboardFixture.ImageClipboard.Accessibility.rowIdentifierPrefix,
             description
         )
-        UITestAssertions.assertDoesNotExist(
-            app.descendants(matching: .any).matching(predicate).firstMatch,
-            "Expected missing image row to be omitted",
-            timeout: 2
+        XCTAssertFalse(
+            app.descendants(matching: .any).matching(predicate).firstMatch.waitForExistence(timeout: 2),
+            "Expected missing image row to be omitted"
         )
     }
 

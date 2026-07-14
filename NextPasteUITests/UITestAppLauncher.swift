@@ -336,7 +336,7 @@ enum UITestAppLauncher {
             onDiskStore: onDiskStore,
             windowSizePreset: windowSizePreset
         )
-        app.launchArguments.append(UITestFixtures.Search.offlineLaunchArgument)
+        app.launchArguments.append(ClipboardFixture.Search.offlineLaunchArgument)
         return app
     }
 
@@ -370,6 +370,30 @@ enum UITestAppLauncher {
             rootURL: rootURL,
             storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
         )
+    }
+
+    /// Safely removes stale test-root directories that are older than the given
+    /// age threshold. Only directories matching the test identifier pattern
+    /// within the shared test artifact root are considered — production data is
+    /// never touched.
+    nonisolated static func cleanupStaleTestRoots(maxAgeHours: Int = 24) {
+#if os(macOS)
+        let rootURL = UITestPathConfiguration.systemDefault.artifactRootURL
+        guard FileManager.default.fileExists(atPath: rootURL.path) else { return }
+        guard let contents = try? FileManager.default.contentsOfDirectory(
+            at: rootURL,
+            includingPropertiesForKeys: [.creationDateKey]
+        ) else { return }
+        let cutoff = Date().addingTimeInterval(-TimeInterval(maxAgeHours * 3600))
+        for entry in contents {
+            // Only clean up entries that look like test identifiers (contain a hyphen
+            // separating the readable name from the UUID suffix).
+            guard entry.lastPathComponent.contains("-") else { continue }
+            guard let creationDate = try? entry.resourceValues(forKeys: [.creationDateKey]).creationDate,
+                  creationDate < cutoff else { continue }
+            try? FileManager.default.removeItem(at: entry)
+        }
+#endif
     }
 
     static func prepareMainWindow(
@@ -469,7 +493,7 @@ enum UITestAppLauncher {
         let readyButton = app.buttons[mainWindowReadyIdentifier]
         app.typeKey("m", modifierFlags: [.command])
         XCTAssertTrue(
-            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
+            UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
                 app.state != .notRunning
                     && readyButton.exists
                     && readyButton.isHittable == false
