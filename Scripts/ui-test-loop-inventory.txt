@@ -19,6 +19,7 @@ NextPasteUITests/ClipboardFixture.swift|for fixture: ImageClipboard.Fixture,
 NextPasteUITests/ClipboardFixture.swift|for offset in 0..<8 { bytes[8 + offset] = indexBytes[offset] }
 NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: ClipboardFixture.ImageClipboard.Fixture,
 NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: ClipboardFixture.ImageClipboard.Fixture,
+NextPasteUITests/HistoryListUITests.swift|for preset in [
 NextPasteUITests/HistoryPage.swift|for text in texts {
 NextPasteUITests/ImageOCRContextMenuUITests.swift|for imageRow: XCUIElement,
 NextPasteUITests/ImageOCRContextMenuUITests.swift|for imageRow: XCUIElement,

@@ -57,4 +57,39 @@ final class SearchAccessibilityUITests: UITestCase {
         XCTAssertEqual(app.state, .runningForeground)
     }
 
+    @MainActor
+    func testSearchResultAccessibilityMarkerReflectsMatchingAndEmptyStates() throws {
+        let app = launchApp()
+        let history = historyPage(for: app)
+
+        try history.createTextClips([
+            ClipboardFixture.Search.matchingText,
+            ClipboardFixture.Search.nonMatchingText
+        ])
+
+        history.searchButton().tap()
+        history.enterSearchQuery(ClipboardFixture.Search.textQuery)
+        history.assertRowExists(withText: ClipboardFixture.Search.matchingText)
+        history.assertRowEventuallyDisappears(withText: ClipboardFixture.Search.nonMatchingText)
+
+        let matchingMarker = app.descendants(matching: .any)["search-result-count"]
+        XCTAssertTrue(
+            matchingMarker.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
+            "Expected search result accessibility marker while filtering"
+        )
+        XCTAssertEqual(ClipboardFixture.accessibleText(of: matchingMarker), "1 search result")
+        XCTAssertEqual(matchingMarker.value as? String, "1")
+
+        history.clearSearch()
+        history.enterSearchQuery(ClipboardFixture.Search.noMatchQuery)
+        history.assertSearchEmptyState()
+
+        let emptyMarker = app.descendants(matching: .any)["search-result-count"]
+        XCTAssertTrue(
+            emptyMarker.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
+            "Expected empty search-result accessibility marker"
+        )
+        XCTAssertEqual(ClipboardFixture.accessibleText(of: emptyMarker), "No search results")
+        XCTAssertEqual(emptyMarker.value as? String, "0")
+    }
 }

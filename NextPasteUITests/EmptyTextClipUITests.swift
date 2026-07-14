@@ -34,6 +34,19 @@ final class EmptyTextClipUITests: UITestCase {
         XCTAssertTrue(app.staticTexts["No clips yet"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testCancelDoesNotInsertDraftText() throws {
+        let app = launchApp()
+        let draftText = "Draft should not be saved"
+        let editor = try openNewClip(in: app)
+
+        editor.tap()
+        editor.typeText(draftText)
+        app.buttons["cancel-new-clip-button"].tap()
+
+        XCTAssertTrue(app.staticTexts["No clips yet"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts[draftText].exists)
+    }
 
     @MainActor
     private func openNewClip(in app: XCUIApplication) throws -> XCUIElement {
