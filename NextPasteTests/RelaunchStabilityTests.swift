@@ -8,7 +8,7 @@ import SwiftData
 import Testing
 @testable import NextPaste
 
-@Suite("Relaunch stability")
+@Suite("Relaunch stability", .serialized)
 struct RelaunchStabilityTests {
     @MainActor
     @Test("container load failure emits diagnostic and launches a clean store")
