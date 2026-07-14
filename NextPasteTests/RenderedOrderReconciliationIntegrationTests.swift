@@ -180,10 +180,12 @@ enum RenderedAccessibilityOrder {
             ProcessInfo.processInfo.processIdentifier
         )
         var collected: [String] = []
+        var visited = Set<AXUIElement>()
         traverseApplicationElement(
             application,
             matching: identifiers,
             collected: &collected,
+            visited: &visited,
             depth: 0
         )
         return collected
@@ -193,9 +195,12 @@ enum RenderedAccessibilityOrder {
         _ element: AXUIElement,
         matching identifiers: Set<String>,
         collected: inout [String],
+        visited: inout Set<AXUIElement>,
         depth: Int
     ) {
-        if depth > 60 {
+        guard depth <= 60,
+              collected.count < identifiers.count,
+              visited.insert(element).inserted else {
             return
         }
         if let identifier = applicationIdentifier(for: element),
@@ -209,6 +214,7 @@ enum RenderedAccessibilityOrder {
                 child,
                 matching: identifiers,
                 collected: &collected,
+                visited: &visited,
                 depth: depth + 1
             )
         }
