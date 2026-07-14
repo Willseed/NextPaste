@@ -148,7 +148,7 @@ struct ClipRow {
         line: UInt = #line
     ) -> XCUIElement {
         let row = textRow(containing: clipText, file: file, line: line)
-        let surface = swipeSurface(in: row, file: file, line: line)
+        let surface = swipeSurface(in: row)
         surface.swipeLeft(velocity: .slow)
         return waitForAction(
             identifier: ActionIdentifier.delete,
@@ -167,7 +167,7 @@ struct ClipRow {
         line: UInt = #line
     ) -> XCUIElement {
         let row = textRow(containing: clipText, file: file, line: line)
-        let surface = swipeSurface(in: row, file: file, line: line)
+        let surface = swipeSurface(in: row)
         surface.swipeRight(velocity: .slow)
         return waitForAction(
             identifier: ActionIdentifier.pin,
@@ -504,9 +504,7 @@ struct ClipRow {
     // MARK: - Private helpers
 
     private func swipeSurface(
-        in row: XCUIElement,
-        file: StaticString,
-        line: UInt
+        in row: XCUIElement
     ) -> XCUIElement {
         let preview = row.staticTexts["clipboard-row-preview"]
         if preview.waitForExistence(timeout: ClipboardFixture.defaultTimeout) {
