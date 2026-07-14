@@ -710,12 +710,13 @@ private struct ClipboardSettingsTab: View {
 
 #if DEBUG && os(macOS)
     private func moveUITestKeyboardFocus(backward _: Bool) -> Bool {
-        guard let focusedTarget else {
+        guard isSelected, let currentFocusedTarget = focusedTarget else {
             return false
         }
 
-        let nextTarget = focusedTarget == .slider ? FocusTarget.field : .slider
-        return moveUITestKeyboardFocus(to: nextTarget)
+        let nextTarget = currentFocusedTarget == .slider ? FocusTarget.field : .slider
+        focusedTarget = nextTarget
+        return true
     }
 
     private func moveUITestKeyboardFocus(to target: FocusTarget) -> Bool {

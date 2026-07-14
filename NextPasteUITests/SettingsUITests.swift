@@ -453,6 +453,12 @@ final class SettingsUITests: UITestCase {
             "Right Arrow must update the Slider's integer value and synchronize the TextField"
         )
         slider.typeKey(.tab, modifierFlags: [])
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.clipboardFocusProbe,
+            in: app,
+            message: "Tab must publish logical focus to the field before the native bridge"
+        )
         assertHasKeyboardFocus(
             field,
             message: "The Storage Limit field must expose native keyboard focus"
