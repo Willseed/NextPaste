@@ -12,6 +12,9 @@ corresponding verification output and CI run. A commit is accepted only when its
 `Scripts/verify.sh` execution and latest GitHub workflow both succeed with zero failures and zero
 skips. Any partial or missing mapping blocks acceptance before execution begins.
 
+A retained UI selector is static coverage evidence, not a runtime pass claim. Runtime acceptance
+requires the selector to execute in Xcode and produce a result with zero failures and zero skips.
+
 The status labels used below are:
 
 | Status | Meaning |
@@ -180,11 +183,11 @@ The complete UI suite remains serialized at the test-plan level. CI also exposes
 five semantic shards so failures map to a product boundary instead of an unstable numeric stage:
 
 ```bash
-Scripts/ci-test.sh --mode full-ui --shard capture
-Scripts/ci-test.sh --mode full-ui --shard history
-Scripts/ci-test.sh --mode full-ui --shard relaunch
-Scripts/ci-test.sh --mode full-ui --shard row-actions
+Scripts/ci-test.sh --mode full-ui --shard core
 Scripts/ci-test.sh --mode full-ui --shard settings
+Scripts/ci-test.sh --mode full-ui --shard row-actions
+Scripts/ci-test.sh --mode full-ui --shard media
+Scripts/ci-test.sh --mode full-ui --shard persistence
 ```
 
 `Scripts/ui-test-shards.txt` is the shard manifest. `Scripts/ci-test.sh` fails closed unless all
@@ -192,6 +195,10 @@ five names are present and the manifest is exhaustive and unique across the conc
 `.github/workflows/full-ui.yml` runs one matrix job for each name. A dry run validates selection and
 repository policy only; a shard is acceptance evidence only after its actual Xcode test execution
 produces a clean result with zero failures and zero skips.
+
+The approved inventory contains exactly 52 selectors: `core` 13, `settings` 8, `row-actions` 14,
+`media` 9, and `persistence` 8. The manifest is authoritative for shard assignment; source
+discovery and the manifest must remain exhaustive and unique.
 
 `<run-dir>` is a fresh `mktemp` directory created by the script. `--dry-run` prints the actual
 resolved Xcode binary and generated paths. Formatter and lint are reported truthfully as
@@ -246,10 +253,10 @@ newer than macOS 26.0 or the active host before Xcode attempts test enumeration.
 
 | ID | Acceptance requirement | Automated evidence | Status / remaining gap |
 | --- | --- | --- | --- |
-| A-01 | Every acceptance item is automated; no manual substitute | This map, `Scripts/check-test-hygiene.sh`, and `Scripts/verify.sh` identify and enforce the available evidence | **Mapped — gate-enforced.** All acceptance rows have concrete automation; the complete gate must still execute with zero failures and zero skips. |
+| A-01 | Every acceptance item is automated; no manual substitute | This map, `Scripts/check-test-hygiene.sh`, and `Scripts/verify.sh` identify available evidence and explicit gaps | **Partial — retained UI survivors and lower-layer evidence are mapped; rows marked pending/partial remain unresolved.** |
 | A-02 | Use Apple test APIs and existing Swift Testing only | XCTest/XCUITest targets, Swift Testing unit target, Test Plan, Vision, NSPasteboard, UserDefaults, SwiftData | **Mapped — gate-enforced.** |
 | A-03 | Platform boundaries are injectable/testable | `ImageTextRecognizing`, `ClipboardTextWriting`, injected `UserDefaults`, in-memory/temporary SwiftData, `PinScrollRequestState` | **Mapped — gate-enforced.** Names differ from the brief's examples but preserve the required seams. |
-| A-04 | Test doubles replace only nondeterministic boundaries | `testImageOCRContextMenuCopiesRecognizedMultilineText`; `testImageOCRNoTextLeavesNamedPasteboardUnchanged`; `testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard`; `testImageOCRLoadingTransitionsFromDisabledToRecognizedAction` | **Mapped — gate-enforced.** These drive the real row/context-menu/coordinator/write path. |
+| A-04 | Test doubles replace only nondeterministic boundaries | `ImageOCRContextMenuUITests.testImageOCRContextMenuCopiesRecognizedMultilineText`; `testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard`; `testImageOCRLoadingTransitionsFromDisabledToRecognizedAction`; lower-layer `ImageTextRecognitionCoordinatorTests.whitespaceAndNoTextNeverWrite` | **Partial — the retained OCR UI paths drive the real row/context-menu/coordinator/write path; no-text menu-state coverage remains lower-layer only.** |
 | A-05 | Keep a real Apple Vision integration smoke test | `VisionImageTextRecognizerIntegrationTests` | **Mapped — gate-enforced.** |
 | A-06 | UI tests isolate defaults, data, pasteboard, and fixtures and clean up | `NextPasteUITests.testIsolatedLaunchExposesReadyMainWindow`; all tests inherit `UITestCase`; `UITestLaunchEnvironmentRegistry` setup/teardown | **Mapped — gate-enforced.** |
 | A-07 | Test-only state is Debug/UI-test-only and uses stable accessibility identifiers | `DebugUITestLaunchEnvironment`; `DebugUITestSurfaceIsolationTests`; `RelaunchStabilityTests.uiTestSurfacesRemainDebugOnly`; Debug-only seeder/probes; Release build | **Mapped — gate-enforced.** Complete environment validation, not a bare launch argument, gates storage, monitor overrides, simulated failures, and probes; Release compiles the inert branches. |
@@ -297,10 +304,10 @@ newer than macOS 26.0 or the active host before Xcode attempts test enumeration.
 | ID | Acceptance requirement | Automated evidence | Status |
 | --- | --- | --- | --- |
 | OCRUI-01 | Success: capture image, `rightClick()`, native Copy Image Text exists/enabled, exact multiline text reaches named pasteboard, nonempty | `ImageOCRContextMenuUITests.testImageOCRContextMenuCopiesRecognizedMultilineText` | **Mapped — gate-enforced.** |
-| OCRUI-02 | No text: action becomes absent/disabled and sentinel remains | `testImageOCRNoTextLeavesNamedPasteboardUnchanged` | **Mapped — gate-enforced.** |
+| OCRUI-02 | No text: action becomes absent/disabled and sentinel remains | `ImageTextRecognitionCoordinatorTests.whitespaceAndNoTextNeverWrite`; `ClipboardWriterTests.nonemptyTextWriterRejectsEmptyStringWithoutChangingInjectedPasteboard` | **Partial — lower-layer evidence exists; no retained Full UI selector proves the no-text menu state.** |
 | OCRUI-03 | Error: app remains running, copy is unavailable, pasteboard unchanged, localized error shown | `testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard` | **Mapped — gate-enforced.** Uses Traditional Chinese assertions. |
 | OCRUI-04 | In progress: disabled loading item, controlled completion, action becomes enabled | `testImageOCRLoadingTransitionsFromDisabledToRecognizedAction` | **Mapped — gate-enforced.** |
-| OCRUI-05 | Existing original-image Copy, Pin/Unpin, Delete still execute | `testImageContextMenuOriginalCopyPinUnpinAndDeleteActionsExecute`; `ClipboardImageRowActionsUITests.testImageContextMenuExposesIdleCopyTextAndPreservesExistingActions` | **Mapped — gate-enforced.** |
+| OCRUI-05 | Existing original-image Copy, Pin/Unpin, Delete still execute | `ClipboardImageRowActionsUITests.testCopyActionPlacesPreservedImageBackOnPasteboard`; `testLeftSwipeDeleteRemovesOnlySelectedImageClip`; `testRightSwipePinTogglesImageClipOrderingAndUnpinMovesToTopOfUnpinnedSection` | **Mapped — selected by the retained image row-action survivors; runtime result remains separate.** |
 | PB-01 | UI/App processes share one unique named pasteboard and clean it | All `UITestCase` tests via `UITestLaunchEnvironment`; OCR UI tests use `UITestAppLauncher.pasteboard(for:)` | **Mapped — gate-enforced.** |
 | PB-02 | Writer clears incompatible contents and writes `.string` readable as identical text | `ClipboardWriterTests.namedPasteboardWriterClearsPriorTypesAndWritesOnlyString`; `nonemptyTextWriterPreservesExactMultilineContentOnInjectedPasteboard` | **Mapped — gate-enforced.** |
 | PB-03 | Empty text is not written | `nonemptyTextWriterRejectsEmptyStringWithoutChangingInjectedPasteboard` | **Mapped — gate-enforced.** |
@@ -356,8 +363,8 @@ invalid-input/focus-loss, and real-retention tests named below.
 
 | ID | Required XCUITest variant | Current assertion | Status / remaining gap |
 | --- | --- | --- | --- |
-| LIMITUI-01 | Type `1`, Return, Slider becomes minimum | `SettingsUITests.testHistoryLimitSliderAndFieldSynchronizeAtBoundariesAndIntermediateInteger` commits `1` through the TextField and asserts both controls | **Mapped — gate-enforced.** |
-| LIMITUI-02 | Type `1000`, Return, Slider becomes maximum | Exact field and slider value assertions | **Mapped — gate-enforced.** |
+| LIMITUI-01 | Type `1`, Return, Slider becomes minimum | `SettingsUITests.testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows` sets the native Slider to minimum and asserts field value `1`; `HistoryLimitPreferenceTests` covers direct legal-value persistence | **Partial — the retained UI survivor does not type `1` directly into the field.** |
+| LIMITUI-02 | Type `1000`, Return, Slider becomes maximum | `SettingsUITests.testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows` types `1000` and asserts both controls | **Mapped — selected by the retained Settings survivor; runtime result remains separate.** |
 | LIMITUI-03 | Type `0`, commit, legal recovery/clamp | `SettingsUITests.testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` asserts clamp to `1` in both controls | **Mapped — gate-enforced.** |
 | LIMITUI-04 | Type `1001`, commit, clamp to `1000` | Exact recovery assertion | **Mapped — gate-enforced.** |
 | LIMITUI-05 | Type a negative value; never make it formal | `testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` commits `-17` and asserts the legal value `1` | **Mapped — gate-enforced.** |
@@ -365,9 +372,9 @@ invalid-input/focus-loss, and real-retention tests named below.
 | LIMITUI-07 | Type letters; restore prior valid value | `letters` returns to `1000` | **Mapped — gate-enforced.** |
 | LIMITUI-08 | Clear the field; app remains running | `testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` clears the field, commits by Return and Tab, and asserts `.runningForeground` | **Mapped — gate-enforced.** |
 | LIMITUI-09 | Commit empty field; restore prior valid value | `testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` asserts restoration to the previous value after both Return and focus-loss commits | **Mapped — gate-enforced.** |
-| LIMITUI-10 | Slider change immediately updates field | Minimum and maximum normalized-position adjustments update the field | **Mapped — gate-enforced.** |
-| LIMITUI-11 | Slider never emits a fractional formal value | `testHistoryLimitSliderAndFieldSynchronizeAtBoundariesAndIntermediateInteger` adjusts to normalized position `0.5`, parses the accessibility value as `Int`, rejects a decimal point, and asserts matching field text | **Mapped — gate-enforced.** |
-| LIMITUI-12 | Relaunch retains the value | The same isolated suite relaunches and asserts `1` | **Mapped — gate-enforced.** |
+| LIMITUI-10 | Slider change immediately updates field | `SettingsUITests.testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows` adjusts the native Slider to minimum and maximum and asserts the field values | **Mapped — selected by the retained Settings survivor; runtime result remains separate.** |
+| LIMITUI-11 | Slider never emits a fractional formal value | `HistoryLimitPreferenceTests.validValuesRemainUnchanged`; `SettingsUITests.testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` rejects `1.5` as a temporary draft | **Partial — the deleted intermediate Slider-position UI assertion has no retained Full UI equivalent; lower-layer integer policy and invalid-draft UI coverage remain.** |
+| LIMITUI-12 | Relaunch retains the value | `SettingsUITests.testStorageLimitSynchronizesSliderAndFieldAndTrimsOnlyOldestUnpinnedRows` relaunches and asserts persisted value `1` | **Mapped — selected by the retained Settings survivor; runtime result remains separate.** |
 
 #### Retention/store behavior
 
@@ -396,7 +403,7 @@ invalid-input/focus-loss, and real-retention tests named below.
 | APP-03 | Follow System encodes/decodes and persists | `systemRoundTripsThroughCodable`; `everyAppearanceModePersistsAcrossInstances` | **Mapped — gate-enforced.** |
 | APP-04 | Unknown legacy value falls back | `invalidPersistedModeFallsBackToSystem` | **Mapped — gate-enforced.** |
 | APP-05 | Values map to SwiftUI `ColorScheme` and native AppKit appearance | `systemMapsToNilColorScheme`; `lightMapsToLightColorScheme`; `darkMapsToDarkColorScheme`; `appearanceModesMapToNativeAppKitAppearances` | **Mapped — gate-enforced.** |
-| APPUI-01 | Picker exposes System/Light/Dark and each choice updates the app | `SettingsUITests.testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight` proves option exposure plus Light/Dark switching; `testFollowSystemClearsNativeOverrideAndPersistsAcrossRelaunch` selects Follow System, proves the native override is cleared, matches both windows to the native effective appearance, and repeats those assertions after relaunch | **Mapped — gate-enforced.** |
+| APPUI-01 | Picker exposes System/Light/Dark and each choice updates the app | `SettingsUITests.testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight` proves option exposure plus Light/Dark switching; `AppearancePreferenceTests` covers System persistence and AppKit mapping | **Partial — no retained Full UI selector exercises selecting Follow System, clearing the native override, and relaunching.** |
 | APPUI-02 | Root effective appearance is light/dark, based on real environment/AppKit state | `testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight` queries the `effective-appearance-main` environment probe for Light and Dark, including relaunches | **Mapped — gate-enforced.** |
 | APPUI-03 | Main list and Settings window receive the same appearance | `testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight` asserts `effective-appearance-main` and `effective-appearance-settings` together after each change/relaunch | **Mapped — gate-enforced.** |
 | APPUI-04 | Dark survives relaunch | `testEffectiveAppearanceUpdatesBothWindowsAndPersistsDarkThenLight` | **Mapped — gate-enforced.** |
@@ -440,19 +447,20 @@ replacement publication.
 
 #### Pin-scroll XCUITest acceptance
 
-The deterministic fixture contains 64 rows and every test launches a fresh store. Tests invoke
-the real native Pin action; no test calls `scrollTo`.
+The Pin-scroll fixture contains 64 rows and every test launches a fresh store. The two recycled-row
+survivors use the separate Scenario B seed: eight rows, two initially pinned rows, five filler rows,
+and an offscreen target. Tests invoke the real native Pin/action surface; no test calls `scrollTo`.
 
 | ID | End-to-end requirement | Automated evidence | Status / remaining gap |
 | --- | --- | --- | --- |
 | PINUI-01 | Long list, deterministic window, native Pin, reordered stable-ID target automatically returns to viewport | `PinScrollAutomationUITests.testOffscreenPinAutoScrollsTheExactSameStableItemID` | **Mapped — gate-enforced.** Asserts execution count, `scroll` decision, exact UUID, pinned state, and hittability. |
-| PINUI-02 | Initially visible target emits no programmatic scroll | `testInitiallyVisiblePinDoesNotExecuteProgrammaticScroll` | **Mapped — gate-enforced.** |
-| PINUI-03 | Rapid A/B/C leaves C as latest target | `testRapidPinsAThenBThenCLeaveCLatest` performs all three native actions without terminal-decision waits, proves A/B/C all became pinned, and asserts C is the final stable-ID diagnostic target | **Mapped — gate-enforced.** Stale-request consumption is additionally covered at unit level. |
-| PINUI-04 | Pin then Delete removes the same stable target without a stale follow-up | `testPinThenDeleteRemovesTheSameTargetWithoutStaleScroll` waits for the real Pin scroll to settle, invokes native Delete, and asserts exact-ID removal, one completed scroll, no pending request, and app survival; unit test `unavailableTargetCancelsRequest` covers deletion before execution | **Mapped — gate-enforced.** |
-| PINUI-05 | Search-visible Pin target remains valid and auto-scrolls | `testSearchVisiblePinnedTargetRemainsInProjectionAndAutoScrolls` asserts the filtered projection, exact stable ID, one real scroll, and pinned state | **Mapped — gate-enforced.** |
+| PINUI-02 | Initially visible target emits no programmatic scroll | `PinScrollRequestStateTests.fullyVisibleTargetDoesNotScroll`; `unpinAndNoOpDoNotRequestScrolling` | **Partial — lower-layer evidence exists; no retained Full UI selector covers this exact initially-visible case.** |
+| PINUI-03 | Rapid A/B/C leaves C as latest target | `ClipRowActionsUITests.testT048OverlappingNativePinsReachTerminalOrderWithoutCrash` exercises overlapping native Pin actions, stable row identity, terminal ordering, dataset integrity, and app survival; stale-request convergence remains covered at unit level | **Mapped — selected by the retained row-action survivor; runtime result remains separate.** |
+| PINUI-04 | Pin then Delete removes the same stable target without a stale follow-up | `ClipRowActionsUITests.testDeleteDuringPendingPinSnapshotRemovesImmediatelyThenReconciles` asserts immediate exact-row deletion, stable pinned identity, terminal ordering, and app survival | **Mapped — selected by the retained row-action survivor; runtime result remains separate.** |
+| PINUI-05 | Search-visible Pin target remains valid and auto-scrolls | Lower-layer projection/reconciliation tests cover stable ordering and lifecycle boundaries; the retained UI inventory covers search-hidden and Unpinned-filter cancellation instead | **Pending — no retained Full UI selector proves the search-visible auto-scroll variant.** |
 | PINUI-06 | Search-hidden target does not issue a stale extra scroll | `testSearchHidesPinnedTargetWithoutIssuingAStaleScroll` changes the native searchable projection immediately after Pin, then asserts target removal, exactly one completed Pin scroll, and no pending request | **Mapped — gate-enforced.** |
 | PINUI-07 | Distinct non-search filter state Pin behavior | `testUnpinnedFilterHidesPinnedTargetWithoutIssuingAStaleScroll` activates the real Unpinned filter, Pins through the native action, proves exact-target removal, zero scroll execution, and app survival | **Mapped — gate-enforced.** |
-| PINUI-08 | Unpin never triggers auto-scroll | `testUnpinNeverRequestsOrExecutesAutomaticScroll` | **Mapped — gate-enforced.** |
+| PINUI-08 | Unpin never triggers auto-scroll | `PinScrollRequestStateTests.unpinAndNoOpDoNotRequestScrolling`; `ClipboardImageRowActionsUITests.testRightSwipePinTogglesImageClipOrderingAndUnpinMovesToTopOfUnpinnedSection` covers image Pin/Unpin ordering | **Partial — lower-layer no-scroll evidence and retained image ordering coverage exist; no dedicated text-row Full UI no-scroll selector remains.** |
 | PINUI-09 | Native Pin action is accessibility-discoverable and uses the stable-ID mutation path | `PinScrollAutomationUITests.testOffscreenPinAutoScrollsTheExactSameStableItemID` exercises native Pin and validates the resulting stable target and scroll settlement | **Mapped — gate-enforced.** |
 | PINUI-10 | Keyboard activation reaches the same Pin/scroll path | `testKeyboardFocusedContextMenuPinActivatesWithReturnAndAutoScrollsExactStableID` opens the native text-row context menu, keyboard-selects its stable Pin item, activates only with Return, and asserts the exact UUID becomes pinned, visible, and hittable after one real scroll | **Mapped — gate-enforced.** |
 
@@ -466,7 +474,7 @@ the real native Pin action; no test calls `scrollTo`.
 | AX-04 | Storage-limit TextField has a nonempty label | `testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation` requires `history-limit-field` and explicitly asserts its nonempty label, enabled state, and hittability | **Mapped — gate-enforced.** |
 | AX-05 | Appearance picker is present in the accessibility tree | `testCommandCommaOpensSingleSettingsWindowAndExposesRequiredTabs`; `testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation` requires `appearance-picker` and operates it by keyboard | **Mapped — gate-enforced.** |
 | AX-06 | OCR context-menu option has localized names | English assertions in the OCR success/regression tests; `testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard` asserts Traditional Chinese Copy Image Text, failure, retry, Copy Original Image, Pin, and Delete labels | **Mapped — gate-enforced.** |
-| AX-07 | Disabled OCR states expose disabled items | OCR no-text, error, and loading UI tests | **Mapped — gate-enforced.** |
+| AX-07 | Disabled OCR states expose disabled items | `ImageOCRContextMenuUITests.testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard`; `testImageOCRLoadingTransitionsFromDisabledToRecognizedAction`; lower-layer no-text coordinator/writer tests | **Partial — error/loading UI states are retained; no-text disabled-menu state is lower-layer only.** |
 | AX-08 | Pin action is discoverable with stable identifier/label | `ClipRowActionsUITests.testRowActionsExposeKeyboardReachableControlsAndVoiceOverLabels`; `ClipboardImageRowActionsUITests.testRightSwipePinTogglesImageClipOrderingAndUnpinMovesToTopOfUnpinnedSection` | **Mapped — gate-enforced.** |
 | AX-09 | Image item has an appropriate description | No equivalent automated coverage exists for description-only assertions in current image-row surface tests | **Pending coverage gap.** |
 | AX-10 | Decorative icons do not create duplicate VoiceOver elements | `ThemeContractTests.decorativeControlSymbolsAreAccessibilityHidden`; OCR context-menu descendant assertion; per-tab accessibility audits | **Mapped — gate-enforced.** |
@@ -475,7 +483,7 @@ the real native Pin action; no test calls `scrollTo`.
 | KEY-01 | Tab moves focus away from the active Settings field and commits on focus loss | `testHistoryLimitRejectsInvalidAndEmptyDraftsAndCommitsOnFocusLoss` proves the commit; `testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation` independently verifies native focused elements through `XCUIElement` snapshots | **Mapped — gate-enforced.** |
 | KEY-02 | Return commits storage-limit input | Storage-limit UI test uses Return for `1000`, invalid letters, and `1001` | **Mapped — gate-enforced.** |
 | KEY-03 | Space/Return activates the focused applicable Settings control | `testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation` uses Space to open identified pop-up controls and Return to choose values | **Mapped — gate-enforced.** |
-| KEY-04 | Escape dismisses the context menu | OCR and image-context-menu UI tests press Escape; `testImageContextMenuExposesIdleCopyTextAndPreservesExistingActions` asserts disappearance | **Mapped — gate-enforced.** |
+| KEY-04 | Escape dismisses the context menu | Retained OCR context-menu selectors press Escape, including `ImageOCRContextMenuUITests.testImageOCRContextMenuCopiesRecognizedMultilineText` and `testImageOCRErrorIsLocalizedAndDoesNotModifyNamedPasteboard` | **Mapped — selected by retained OCR UI survivors; runtime result remains separate.** |
 | KEY-05 | Keyboard Pin reaches the Pin/scroll logic | `PinScrollAutomationUITests.testKeyboardFocusedContextMenuPinActivatesWithReturnAndAutoScrollsExactStableID` opens the native text-row context menu, moves keyboard selection to `toggle-pin-text-menu-item`, activates it with Return without tapping the item, and asserts exact stable-ID Pin, scroll, visibility, and hittability results | **Mapped — gate-enforced.** |
 | KEY-06 | Language change does not lose focus into an unusable state | `testSettingsControlsExposeAccessibleLabelsValuesAndKeyboardOperation` changes language by keyboard in both directions through the same identified picker and continues operating it after each locale update | **Mapped — gate-enforced.** |
 | KEY-07 | Appearance change leaves current window operable | Appearance test performs successive picker operations after each change | **Mapped — gate-enforced.** |
@@ -488,7 +496,7 @@ the real native Pin action; no test calls `scrollTo`.
 | REG-02 | Run every real-framework integration test | Integration phase selects the complete `VisionImageTextRecognizerIntegrationTests`, `AppKitAppearanceIntegrationTests`, and `RenderedOrderReconciliationIntegrationTests` suites | **Mapped — gate-enforced.** |
 | REG-03 | Run every existing/new UI test | UI phase selects all `NextPasteUITests` | **Mapped — gate-enforced.** |
 | REG-04 | No runtime skips or expected failures | `summarize_xcresult` fails the script if either count is nonzero | **Mapped — gate-enforced.** |
-| REG-05 | No `XCTSkip` or `XCTExpectFailure` left in source | `Scripts/check-test-hygiene.sh`, invoked by `Scripts/verify.sh` | **Static-validated.** Current executable scan passed. |
+| REG-05 | No `XCTSkip` or `XCTExpectFailure` left in source | `Scripts/check-test-hygiene.sh`, invoked by `Scripts/verify.sh` | **Static-validated.** The current executable scan is a required preflight; its run evidence belongs to the verification output. |
 | REG-06 | No fixed sleeps used for UI synchronization | Repository-wide test-source scan in `Scripts/check-test-hygiene.sh`; selected source-policy tests | **Static-validated.** The scan rejects `Task.sleep`, `Thread.sleep`, `sleep`, `usleep`, `DispatchQueue.main.asyncAfter`, and run-loop pumping. |
 | REG-07 | No commented-out failure, empty test, always-true assertion, or unjustified retry | `Scripts/check-test-hygiene.sh` scans both test roots, detects empty XCTest and Swift Testing functions, and requires an exact reviewed UI-test loop-token inventory | **Static-validated.** Current executable scan passed. |
 | INFRA-01 | Shared Test Plan has Unit, Integration, UI, timeouts, and coverage | `NextPaste.xctestplan`; fail-closed script checks exact configuration/target counts, identities, coverage target, timeouts, and serialized UI execution | **Static-validated.** Plan parses and is discoverable before every run. |
@@ -514,17 +522,18 @@ run's strict summaries and GitHub check provide the mutable result.
 | 7 | OCR context menu is exercised with `rightClick()` | **Mapped; gate-enforced.** |
 | 8 | OCR copy is checked through an isolated test pasteboard | **Mapped; gate-enforced.** |
 | 9 | Language switching and relaunch persistence are automated | **Mapped in both directions; gate-enforced.** |
-| 10 | Every storage-limit boundary and invalid UI input is automated | **Mapped; gate-enforced.** |
-| 11 | Slider/TextField bidirectional synchronization is automated | **Mapped at both boundaries and an intermediate integer; gate-enforced.** |
-| 12 | Appearance switching and relaunch persistence are automated | **Mapped for Light, Dark, and Follow System, including native override/effective-appearance assertions across relaunch; gate-enforced.** |
+| 10 | Every storage-limit boundary and invalid UI input is automated | **Partial.** Retained UI coverage handles the tested clamp, invalid-draft, focus-loss, min/max, and relaunch paths; direct `1` field-entry and intermediate Slider-position assertions are not retained. |
+| 11 | Slider/TextField bidirectional synchronization is automated | **Partial.** Retained UI coverage proves current min/max synchronization; lower-layer integer policy covers formal values, but the deleted intermediate Slider-position UI assertion is not retained. |
+| 12 | Appearance switching and relaunch persistence are automated | **Partial.** Retained UI coverage proves Light/Dark switching and relaunch; Follow System native-override clearing across relaunch is lower-layer mapped but has no retained Full UI selector. |
 | 13 | Actual Pin-triggered list auto-scroll is proven by XCUITest | **Mapped; gate-enforced.** |
 | 14 | Rapid Pin stale-request handling is automated | **Mapped at unit/UI levels; gate-enforced.** |
-| 15 | Accessibility assertions pass | **Mapped through explicit assertions, native focus snapshots, decorative-symbol policy, and per-tab audits; gate-enforced.** |
+| 15 | Accessibility assertions pass | **Partial.** Retained Settings, row-action, OCR, and keyboard assertions are mapped; image-description-only coverage remains an explicit gap. |
 | 16 | `Scripts/verify.sh` exits 0 | **Required: the script must exit 0.** |
 | 17 | Worktree contains no DerivedData/`.xcresult`/build artifacts | **Current fail-closed preflight passes; the full script will repeat the same check after all phases.** |
 | 18 | No skips, hidden failures, or manual substitutes | **Mapped through runtime xcresult gates, exact Xcode-enumerated inventories, and repository-wide source hygiene; gate-enforced.** |
 
-No acceptance row remains unmapped or partial. Acceptance always requires the complete script—
-including every executable unit method, Vision/AppKit integration test, and UI test—to finish with
-zero failures and zero skips for the exact commit, followed by a successful corresponding GitHub
+The map intentionally contains explicit partial/pending rows where a removed survivor no longer
+proves the original variant. Acceptance still requires the complete script—including every
+executable unit method, Vision/AppKit integration test, and retained UI test—to finish with zero
+failures and zero skips for the exact commit, followed by a successful corresponding GitHub
 workflow. No manual verification step is part of that path.
