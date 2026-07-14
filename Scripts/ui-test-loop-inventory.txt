@@ -5,21 +5,11 @@ NextPasteUITests/ClipRow.swift|for clipText: String,
 NextPasteUITests/ClipRow.swift|for clipText: String,
 NextPasteUITests/ClipRow.swift|for clipText: String,
 NextPasteUITests/ClipRow.swift|for clipText: String,
-NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<10 {
-NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
-NextPasteUITests/ClipRowActionsUITests.swift|for _ in 0..<5 where app.staticTexts[pinTarget].isHittable == false {
-NextPasteUITests/ClipRowActionsUITests.swift|for clip in [anchor1, anchor2] {
-NextPasteUITests/ClipRowActionsUITests.swift|for clip in clips {
-NextPasteUITests/ClipRowActionsUITests.swift|for clip in clips {
-NextPasteUITests/ClipRowActionsUITests.swift|for clip in thirdClips {
-NextPasteUITests/ClipRowActionsUITests.swift|for deleteTarget in deleteTargets {
 NextPasteUITests/ClipRowActionsUITests.swift|for expectation: ScenarioBSeedReadinessExpectation
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
 NextPasteUITests/ClipRowActionsUITests.swift|for iteration in iterations {
 NextPasteUITests/ClipRowActionsUITests.swift|for text: String,
-NextPasteUITests/ClipRowActionsUITests.swift|for toggleTarget in toggleTargets {
-NextPasteUITests/ClipRowActionsUITests.swift|for toggleTarget in toggleTargets {
 NextPasteUITests/ClipboardFixture.swift|for fixture: ImageClipboard.Fixture,
 NextPasteUITests/ClipboardFixture.swift|for fixture: ImageClipboard.Fixture,
 NextPasteUITests/ClipboardFixture.swift|for fixture: ImageClipboard.Fixture,
@@ -31,7 +21,6 @@ NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: ClipboardFix
 NextPasteUITests/ClipboardImageRowActionsUITests.swift|for fixture: ClipboardFixture.ImageClipboard.Fixture,
 NextPasteUITests/ClipboardRobot.swift|for fixture: UITestFixtures.ImageClipboard.Fixture
 NextPasteUITests/ClipboardRobot.swift|for fixture: UITestFixtures.ImageClipboard.Fixture,
-NextPasteUITests/HistoryListUITests.swift|for preset in [
 NextPasteUITests/HistoryPage.swift|for text in texts {
 NextPasteUITests/HistoryRobot.swift|for text in texts {
 NextPasteUITests/ImageOCRContextMenuUITests.swift|for imageRow: XCUIElement,
@@ -58,7 +47,6 @@ NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundBy
 NextPasteUITests/SettingsPage.swift|for window in app.windows.allElementsBoundByIndex {
 NextPasteUITests/SettingsUITests.swift|for (identifier, expectedLabel) in expectedLabels {
 NextPasteUITests/SettingsUITests.swift|for index in 0..<windows.count {
-NextPasteUITests/SettingsUITests.swift|for invalidDraft in ["letters", "1.5", "#$%"] {
 NextPasteUITests/SettingsUITests.swift|for option in options {
 NextPasteUITests/SettingsUITests.swift|for title in sectionHeaders {
 NextPasteUITests/SwipeSynthesisRecorder.swift|for _ in 0..<3 {

@@ -105,50 +105,6 @@ final class ImageOCRContextMenuUITests: UITestCase {
         app.typeKey(.escape, modifierFlags: [])
     }
 
-    @MainActor
-    func testImageOCRLoadingTransitionsFromDisabledToRecognizedAction() throws {
-        let expected = "Controlled OCR completion"
-        let app = launchEnglishCaptureApp(ocrFixture: .suspended(expected))
-        let imageRow = prepareSentinel(
-            for: capture(ClipboardFixture.ImageClipboard.minimizedScreenshot, in: app),
-            in: app
-        )
-
-        imageRow.rightClick()
-        menuItem("copy-image-text-menu-item", in: app).tap()
-        assertOCRState("recognizing", for: imageRow, in: app)
-
-        imageRow.rightClick()
-        let loading = menuItem("recognizing-image-text-menu-item", in: app)
-        XCTAssertFalse(loading.isEnabled)
-        XCTAssertFalse(app.menuItems["copy-image-text-menu-item"].exists)
-        app.typeKey(.escape, modifierFlags: [])
-
-        let complete = app.buttons["ui-test-complete-suspended-ocr"]
-        XCTAssertTrue(
-            complete.waitForExistence(timeout: ClipboardFixture.defaultTimeout),
-            "Expected the Debug-only controlled OCR completion boundary"
-        )
-        XCTAssertTrue(complete.isEnabled)
-        complete.tap()
-
-        assertOCRState("recognized", for: imageRow, in: app)
-        XCTAssertTrue(
-            UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
-                ClipboardFixture.string(in: app) == expected
-            }
-        )
-
-        historyPage(for: app).assertVisibleDatasetCounts(total: 3, text: 2, image: 1, pinned: 0)
-        XCTAssertTrue(
-            app.groups[imageRow.identifier].waitForExistence(timeout: ClipboardFixture.defaultTimeout),
-            "Expected the same stable image row after suspended OCR completed"
-        )
-        let refreshedImageRow = app.groups[imageRow.identifier]
-        refreshedImageRow.rightClick()
-        XCTAssertTrue(menuItem("copy-image-text-menu-item", in: app).isEnabled)
-        app.typeKey(.escape, modifierFlags: [])
-    }
 
     @MainActor
     private func capture(

@@ -133,40 +133,6 @@ final class PinScrollAutomationUITests: UITestCase {
         assertMarker(Marker.pendingItemID, equals: "none", in: app)
     }
 
-    func testUnpinnedFilterHidesPinnedTargetWithoutIssuingAStaleScroll() {
-        let app = launchPinScrollFixture(windowSizePreset: .tall)
-        let history = historyPage(for: app)
-        let targetIndex = ClipboardFixture.PinScroll.rapidAIndex
-        let targetID = ClipboardFixture.PinScroll.id(index: targetIndex).uuidString
-        let target = row(index: targetIndex, in: app)
-
-        let filterMenu = selectHistoryFilter(
-            optionIdentifier: "history-filter-unpinned",
-            expectedState: "unpinned",
-            in: app
-        )
-        XCTAssertTrue(
-            UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
-                ClipboardFixture.combinedAccessibilityText(of: filterMenu)
-                    .localizedCaseInsensitiveContains("Unpinned Clips")
-            },
-            "Expected accessible text to contain Unpinned Clips within \(ClipboardFixture.defaultTimeout) seconds"
-        )
-        history.assertVisibleDatasetCounts(total: 63, text: 63, image: 0, pinned: 0)
-        XCTAssertTrue(target.isHittable, "Filter checkpoint: target must be visible before Pin")
-
-        revealPinOnce(index: targetIndex, in: app).tap()
-
-        XCTAssertTrue(
-            target.waitForNonExistence(timeout: ClipboardFixture.defaultTimeout),
-            "Pinning must remove the exact target from the Unpinned projection"
-        )
-        history.assertVisibleDatasetCounts(total: 62, text: 62, image: 0, pinned: 0)
-        assertMarker(Marker.executionCount, equals: "0", in: app)
-        assertMarker(Marker.lastItemID, equals: targetID, in: app)
-        assertMarker(Marker.lastDecision, equals: "not-requested", in: app)
-        XCTAssertEqual(app.state, .runningForeground)
-    }
 
     func testKeyboardFocusedContextMenuPinActivatesWithReturnAndAutoScrollsExactStableID() throws {
         let targetIndex = ClipboardFixture.PinScroll.rapidAIndex

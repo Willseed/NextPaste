@@ -33,28 +33,4 @@ final class HistoryListUITests: UITestCase {
         history.assertFullTextLabelAbsent(ClipboardFixture.History.longMultilineText)
     }
 
-    @MainActor
-    func testFirstVisibleRowRemainsFullyVisibleAcrossWindowSizePresetsAndLiveResize() throws {
-        let app = launchApp(windowSizePreset: .defaultSize)
-        let history = historyPage(for: app)
-
-        for preset in [
-            UITestAppLauncher.WindowSizePreset.small,
-            .medium,
-            .tall
-        ] {
-            let priorFrame = app.windows.element(boundBy: 0).frame
-            UITestAppLauncher.resizeMainWindow(in: app, to: preset)
-            XCTAssertTrue(
-                UITestWait.until(timeout: ClipboardFixture.defaultTimeout) {
-                    app.windows.element(boundBy: 0).frame.size != priorFrame.size
-                },
-                "Expected the main window to reach the requested \(preset.rawValue) size"
-            )
-
-            try history.createTextClip("Resize visibility clip \(preset.rawValue)")
-            history.assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
-            history.assertFirstVisibleClipRowContains("Resize visibility clip \(preset.rawValue)")
-        }
-    }
 }

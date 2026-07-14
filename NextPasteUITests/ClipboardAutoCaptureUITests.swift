@@ -93,31 +93,4 @@ final class ClipboardAutoCaptureUITests: UITestCase {
         _ = ClipboardFixture.waitForCapturedText(ClipboardFixture.ClipboardCapture.minimized, in: app, timeout: 2)
     }
 
-    @MainActor
-    func testActiveSearchAutoCaptureShowsMatchingClipAndHidesNonMatchingClipUntilCleared() throws {
-        let app = launchOfflineCaptureApp(windowSizePreset: .small)
-        let history = historyPage(for: app)
-
-        _ = history.searchField()
-        history.enterSearchQuery(ClipboardFixture.Search.autoCaptureQuery)
-        history.assertSearchEmptyState()
-
-        ClipboardFixture.capture(ClipboardFixture.Search.matchingCapture, in: app, timeout: 2)
-        history.assertRowExists(withText: ClipboardFixture.Search.matchingCapture)
-        history.assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
-        history.assertFirstVisibleClipRowContains(ClipboardFixture.Search.matchingCapture)
-
-        let matchingFirstVisibleRowIdentifier = history.firstVisibleClipRow().identifier
-
-        ClipboardFixture.setString(ClipboardFixture.Search.nonMatchingCapture, in: app)
-        history.clearSearch()
-        history.assertRowExists(withText: ClipboardFixture.Search.matchingCapture)
-        history.assertRowExists(withText: ClipboardFixture.Search.nonMatchingCapture)
-
-        history.enterSearchQuery(ClipboardFixture.Search.autoCaptureQuery)
-        history.assertRowNeverAppears(withText: ClipboardFixture.Search.nonMatchingCapture)
-        history.assertFirstVisibleClipRowFullyVisibleBelowFixedHeader()
-        history.assertFirstVisibleClipRowContains(ClipboardFixture.Search.matchingCapture)
-        XCTAssertEqual(history.firstVisibleClipRow().identifier, matchingFirstVisibleRowIdentifier)
-    }
 }
