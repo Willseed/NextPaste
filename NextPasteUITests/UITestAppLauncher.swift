@@ -283,31 +283,6 @@ enum UITestAppLauncher {
         return TraceLaunch(app: app, traceURL: traceURL)
     }
 
-    static func launchTraceApp(
-        onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize,
-        traceDirectoryURL: URL? = nil
-    ) -> TraceLaunch {
-        let launch = makeTraceApp(
-            onDiskStore: onDiskStore,
-            windowSizePreset: windowSizePreset,
-            traceDirectoryURL: traceDirectoryURL
-        )
-        launch.app.launch()
-        prepareMainWindow(in: launch.app)
-        return launch
-    }
-
-    static func launchApp(
-        onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize
-    ) -> XCUIApplication {
-        let app = makeApp(onDiskStore: onDiskStore, windowSizePreset: windowSizePreset)
-        app.launch()
-        prepareMainWindow(in: app)
-        return app
-    }
-
     static func makeAutoCaptureApp(
         pollInterval: TimeInterval = 0.1,
         onDiskStore: OnDiskStore? = nil,
@@ -336,21 +311,6 @@ enum UITestAppLauncher {
             windowSizePreset: windowSizePreset
         )
         app.launchArguments.append(ClipboardFixture.Search.offlineLaunchArgument)
-        return app
-    }
-
-    static func launchAutoCaptureApp(
-        pollInterval: TimeInterval = 0.1,
-        onDiskStore: OnDiskStore? = nil,
-        windowSizePreset: WindowSizePreset = .defaultSize
-    ) -> XCUIApplication {
-        let app = makeAutoCaptureApp(
-            pollInterval: pollInterval,
-            onDiskStore: onDiskStore,
-            windowSizePreset: windowSizePreset
-        )
-        app.launch()
-        prepareMainWindow(in: app)
         return app
     }
 

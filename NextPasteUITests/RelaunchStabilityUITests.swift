@@ -35,15 +35,15 @@ final class RelaunchStabilityUITests: UITestCase {
         var app = launchSeededLargeDataset(store: store)
         closeApp(app)
 
-        let trace = UITestAppLauncher.makeTraceApp(onDiskStore: store, windowSizePreset: .tall)
+        let trace = launchTraceApp(
+            onDiskStore: store,
+            windowSizePreset: .tall,
+            extraArguments: [
+                UITestAppLauncher.relaunchImageDeletionArgument,
+                "\(Fixture.missingImageIndex)"
+            ]
+        )
         app = trace.app
-        app.launchArguments.append(contentsOf: [
-            UITestAppLauncher.relaunchImageDeletionArgument,
-            "\(Fixture.missingImageIndex)"
-        ])
-        app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
-        addTeardownBlock { self.closeApp(app) }
 
         historyPage(for: app).assertVisibleDatasetCounts(
             total: Fixture.totalCount - 1,

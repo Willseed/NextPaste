@@ -98,32 +98,6 @@ final class ClipboardImageRowActionsUITests: UITestCase {
         history.assert(olderRow, appearsAbove: newerRow)
     }
 
-    // MARK: - Feature 023 Phase 7 (US4) — teardown crash protection preserved
-
-    /// T046 [US4, SC-007, FR-016] image-side regression: the existing Feature
-    /// 014–020 image row-action crash-reproduction flows still complete with no
-    /// crash after Feature 023 immediate automatic reconciliation landed.
-    /// Exercises the canonical image-side crash surface: reveal the Pin action
-    /// on an image row, pin it, then reveal the Unpin action on the now-pinned
-    /// image row and toggle back, plus a Delete on a second image row — the
-    /// combination that previously crashed during AppKit row-action teardown.
-    /// Asserts the app stays `runningForeground` throughout. No
-    /// `triggerDisplayOrderReconciliation`, no synthesized reconciliation input,
-    /// and no fixed-duration sleep.
-
-    // MARK: - Helpers
-
-    @MainActor
-    private func launchImageCopyFailureApp(pollInterval: TimeInterval = 0.1) -> XCUIApplication {
-        let app = UITestAppLauncher.makeAutoCaptureApp(pollInterval: pollInterval)
-        app.launchArguments.append("-simulate-clipboard-failure")
-        app.launch()
-        UITestAppLauncher.prepareMainWindow(in: app)
-        addTeardownBlock {
-            self.closeApp(app)
-        }
-        return app
-    }
 }
 
 // MARK: - Pasteboard image-data helpers

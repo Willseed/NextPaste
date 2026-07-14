@@ -33,11 +33,7 @@ class UITestCase: XCTestCase {
             app.launchEnvironment[key] = value
         }
         app.launch()
-        addTeardownBlock {
-            self.closeApp(app)
-        }
-        UITestAppLauncher.prepareMainWindow(in: app)
-        return app
+        return registerLaunchedApp(app)
     }
 
     @MainActor
@@ -47,6 +43,7 @@ class UITestCase: XCTestCase {
         onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
         windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize,
         ocrFixture: UITestOCRFixture? = nil,
+        extraArguments: [String] = [],
         extraEnvironment: [String: String] = [:]
     ) -> XCUIApplication {
         let app = UITestAppLauncher.makeAutoCaptureApp(
@@ -55,15 +52,12 @@ class UITestCase: XCTestCase {
             windowSizePreset: windowSizePreset
         )
         ocrFixture?.configure(app)
+        app.launchArguments.append(contentsOf: extraArguments)
         for (key, value) in extraEnvironment {
             app.launchEnvironment[key] = value
         }
         app.launch()
-        addTeardownBlock {
-            self.closeApp(app)
-        }
-        UITestAppLauncher.prepareMainWindow(in: app)
-        return app
+        return registerLaunchedApp(app)
     }
 
     @MainActor
@@ -71,18 +65,32 @@ class UITestCase: XCTestCase {
     func launchTraceCaptureApp(
         pollInterval: TimeInterval = 0.1,
         onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
-        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize,
+        extraArguments: [String] = []
     ) -> UITestAppLauncher.TraceLaunch {
         let launch = UITestAppLauncher.makeTraceCaptureApp(
             pollInterval: pollInterval,
             onDiskStore: onDiskStore,
             windowSizePreset: windowSizePreset
         )
-        launch.app.launch()
-        addTeardownBlock {
-            self.closeApp(launch.app)
-        }
-        UITestAppLauncher.prepareMainWindow(in: launch.app)
+        launch.app.launchArguments.append(contentsOf: extraArguments)
+        _ = registerLaunchedApp(launch.app)
+        return launch
+    }
+
+    @MainActor
+    @discardableResult
+    func launchTraceApp(
+        onDiskStore: UITestAppLauncher.OnDiskStore? = nil,
+        windowSizePreset: UITestAppLauncher.WindowSizePreset = .defaultSize,
+        extraArguments: [String] = []
+    ) -> UITestAppLauncher.TraceLaunch {
+        let launch = UITestAppLauncher.makeTraceApp(
+            onDiskStore: onDiskStore,
+            windowSizePreset: windowSizePreset
+        )
+        launch.app.launchArguments.append(contentsOf: extraArguments)
+        _ = registerLaunchedApp(launch.app)
         return launch
     }
 
@@ -99,11 +107,7 @@ class UITestCase: XCTestCase {
             windowSizePreset: windowSizePreset
         )
         app.launch()
-        addTeardownBlock {
-            self.closeApp(app)
-        }
-        UITestAppLauncher.prepareMainWindow(in: app)
-        return app
+        return registerLaunchedApp(app)
     }
 
     @MainActor
@@ -143,12 +147,26 @@ class UITestCase: XCTestCase {
         }
 
         app.activate()
-        app.typeKey("q", modifierFlags: .command)
+        if app.wait(for: .runningForeground, timeout: 2) {
+            app.typeKey("q", modifierFlags: .command)
+        }
         if app.wait(for: .notRunning, timeout: 5) {
             return
         }
 
         app.terminate()
-        _ = app.wait(for: .notRunning, timeout: 5)
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 5),
+            "Expected UI-test app to reach the not-running terminal state"
+        )
+    }
+
+    @MainActor
+    private func registerLaunchedApp(_ app: XCUIApplication) -> XCUIApplication {
+        addTeardownBlock {
+            self.closeApp(app)
+        }
+        UITestAppLauncher.prepareMainWindow(in: app)
+        return app
     }
 }
