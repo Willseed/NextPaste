@@ -47,10 +47,7 @@ struct SettingsPage {
 
     // MARK: - Open / close
 
-    func openSettings(
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
+    func openSettings() {
         app.activate()
         app.typeKey(",", modifierFlags: .command)
     }
@@ -65,10 +62,7 @@ struct SettingsPage {
         button.tap()
     }
 
-    func closeSettings(
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
+    func closeSettings() {
         app.typeKey("w", modifierFlags: .command)
     }
 
