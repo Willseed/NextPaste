@@ -14,13 +14,18 @@ final class RelaunchStabilityUITests: UITestCase {
         static let textTarget = "Relaunch dataset text 399"
         static let imageTargetDescription = "Relaunch dataset image 099"
         static let missingImageIndex = 99
+        static let immediateCloseSeedArgument = "-ui-test-seed-settings-history-limit"
+        static let immediateCloseTarget = "History limit unpinned clip 11"
+        static let immediateCloseTotalCount = 12
+        static let immediateClosePinnedCount = 1
     }
 
     @MainActor
     func testRelaunchWith500MixedItemsKeepsAppRunningAndDatasetIntact() throws {
         let store = try makeOnDiskStore()
-        var app = launchSeededLargeDataset(store: store)
-        let expectedDigest = try XCTUnwrap(assertLargeDataset(in: app))
+        let seededDataset = launchSeededLargeDataset(store: store)
+        var app = seededDataset.app
+        let expectedDigest = try XCTUnwrap(seededDataset.digest)
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
@@ -32,7 +37,7 @@ final class RelaunchStabilityUITests: UITestCase {
     @MainActor
     func testMissingImageFileOmittedAndDiagnosticObserved() throws {
         let store = try makeOnDiskStore()
-        var app = launchSeededLargeDataset(store: store)
+        var app = launchSeededLargeDataset(store: store).app
         closeApp(app)
 
         let trace = launchTraceApp(
@@ -63,17 +68,27 @@ final class RelaunchStabilityUITests: UITestCase {
     @MainActor
     func testImmediateCloseAfterPinRecoversLastCommittedState() throws {
         let store = try makeOnDiskStore()
-        var app = launchSeededLargeDataset(store: store)
+        var app = launchApp(
+            extraArguments: [Fixture.immediateCloseSeedArgument],
+            onDiskStore: store,
+            windowSizePreset: .tall
+        )
         let history = historyPage(for: app)
         let row = clipRow(for: app)
 
-        history.enterSearchQuery(Fixture.textTarget)
-        row.pin(Fixture.textTarget)
+        history.assertVisibleDatasetCounts(
+            total: Fixture.immediateCloseTotalCount,
+            text: Fixture.immediateCloseTotalCount,
+            image: 0,
+            pinned: Fixture.immediateClosePinnedCount
+        )
+        history.enterSearchQuery(Fixture.immediateCloseTarget)
+        row.pin(Fixture.immediateCloseTarget)
         closeApp(app)
 
         app = launchApp(onDiskStore: store, windowSizePreset: .tall)
-        historyPage(for: app).enterSearchQuery(Fixture.textTarget)
-        let pinnedRow = assertTextRow(Fixture.textTarget, in: app)
+        historyPage(for: app).enterSearchQuery(Fixture.immediateCloseTarget)
+        let pinnedRow = assertTextRow(Fixture.immediateCloseTarget, in: app)
         XCTAssertTrue(
             UITestWait.until(timeout: 5) {
                 ClipboardFixture.combinedAccessibilityText(of: pinnedRow)
@@ -105,14 +120,16 @@ final class RelaunchStabilityUITests: UITestCase {
     }
 
     @MainActor
-    private func launchSeededLargeDataset(store: UITestAppLauncher.OnDiskStore) -> XCUIApplication {
+    private func launchSeededLargeDataset(
+        store: UITestAppLauncher.OnDiskStore
+    ) -> (app: XCUIApplication, digest: String?) {
         let app = launchApp(
             extraArguments: [UITestAppLauncher.relaunchDatasetSeedArgument],
             onDiskStore: store,
             windowSizePreset: .tall
         )
-        assertLargeDataset(in: app)
-        return app
+        let digest = assertLargeDataset(in: app)
+        return (app, digest)
     }
 
     @MainActor
