@@ -23,6 +23,7 @@ final class SettingsUITests: UITestCase {
         static let languageFocusProbe = "settings-language-focus"
         static let shortcutsFocusProbe = "settings-shortcuts-focus"
         static let clipboardFocusProbe = "settings-clipboard-focus"
+        static let clipboardNativeFocusProbe = "settings-clipboard-native-focus"
         static let privacyFocusProbe = "settings-privacy-focus"
         static let englishUnitedStates = "English (United States)"
         static let traditionalChineseTaiwan = "Traditional Chinese (Taiwan)"
@@ -459,12 +460,19 @@ final class SettingsUITests: UITestCase {
             in: app,
             message: "Tab must publish logical focus to the field before the native bridge"
         )
-        assertHasKeyboardFocus(
-            field,
-            message: "The Storage Limit field must expose native keyboard focus"
+        assertProbeValue(
+            Accessibility.historyLimitField,
+            identifier: Accessibility.clipboardNativeFocusProbe,
+            in: app,
+            message: "The native bridge must make the Storage Limit field the AppKit first responder"
         )
 
-        replaceText(in: field, with: "275", application: app)
+        app.typeKey("a", modifierFlags: .command)
+        app.typeText("275")
+        XCTAssertTrue(
+            waitForTextInputValue(field, equals: "275", timeout: UITestAssertions.defaultTimeout),
+            "The Storage Limit field must accept keyboard input without a tap after Tab focus"
+        )
         XCTAssertNotEqual(elementValue(of: slider), "275", "Draft input must wait for a keyboard commit")
         app.typeKey(.return, modifierFlags: [])
         assertHistoryLimitValues(field: field, slider: slider, equal: "275")
@@ -1387,28 +1395,6 @@ final class SettingsUITests: UITestCase {
         )
         app.typeKey(direction.key, modifierFlags: [])
         app.typeKey(.return, modifierFlags: [])
-    }
-
-    private func assertHasKeyboardFocus(
-        _ element: XCUIElement,
-        message: String,
-        file: StaticString = #filePath,
-        line: UInt = #line
-    ) {
-        XCTAssertTrue(
-            UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
-                guard let snapshot = try? element.snapshot(),
-                      let hasFocus = snapshot.dictionaryRepresentation[
-                          XCUIElement.AttributeName.hasFocus
-                      ] as? NSNumber else {
-                    return false
-                }
-                return hasFocus.boolValue
-            },
-            message,
-            file: file,
-            line: line
-        )
     }
 
     private func assertPopupMenuOptions(

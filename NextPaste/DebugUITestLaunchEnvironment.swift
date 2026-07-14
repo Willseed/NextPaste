@@ -386,6 +386,34 @@ struct DebugUITestAccessibilityProbe: View {
     }
 }
 
+/// Debug UI-test-only projection of the AppKit first responder selected by a
+/// native focus bridge. The value is updated from the actual window after the
+/// bridge runs; it is not a second focus state.
+@MainActor
+final class DebugUITestNativeFocusProbe: ObservableObject {
+    static let shared = DebugUITestNativeFocusProbe()
+
+    @Published private(set) var value = "none"
+
+    func record(_ value: String) {
+        self.value = value
+    }
+}
+
+struct DebugUITestNativeFocusAccessibilityProbe: View {
+    @ObservedObject private var probe = DebugUITestNativeFocusProbe.shared
+    let identifier: String
+    let label: String
+
+    var body: some View {
+        DebugUITestAccessibilityProbe(
+            identifier: identifier,
+            label: label,
+            value: probe.value
+        )
+    }
+}
+
 /// Read-only visibility into the real AppKit application appearance used by
 /// deterministic UI assertions. Production behavior is never routed through
 /// this probe.

@@ -657,6 +657,10 @@ private struct ClipboardSettingsTab: View {
                     label: "Settings clipboard focus",
                     value: focusedTarget?.rawValue ?? "none"
                 )
+                DebugUITestNativeFocusAccessibilityProbe(
+                    identifier: "settings-clipboard-native-focus",
+                    label: "Settings clipboard native focus"
+                )
             }
 #endif
         }
@@ -722,23 +726,54 @@ private struct ClipboardSettingsTab: View {
     private func moveUITestKeyboardFocus(to target: FocusTarget) -> Bool {
         guard isSelected,
               let window = NSApp.keyWindow else {
+            DebugUITestNativeFocusProbe.shared.record("none")
             return false
         }
 
         guard let nativeControl = nativeFocusControl(for: target, in: window) else {
+            DebugUITestNativeFocusProbe.shared.record("none")
             return false
         }
 
-        DispatchQueue.main.async { [weak window, weak nativeControl] in
+        DispatchQueue.main.async { [weak window] in
             guard let window,
-                  let nativeControl,
                   window.isKeyWindow,
                   nativeControl.window === window else {
+                DebugUITestNativeFocusProbe.shared.record("none")
                 return
             }
-            _ = window.makeFirstResponder(nativeControl)
+            guard window.makeFirstResponder(nativeControl) else {
+                DebugUITestNativeFocusProbe.shared.record("none")
+                return
+            }
+            DebugUITestNativeFocusProbe.shared.record(
+                nativeFocusTarget(in: window)?.rawValue ?? "none"
+            )
         }
         return true
+    }
+
+    private func nativeFocusTarget(in window: NSWindow) -> FocusTarget? {
+        guard let firstResponder = window.firstResponder else { return nil }
+
+        for target in [FocusTarget.slider, .field] {
+            guard let nativeControl = nativeFocusControl(for: target, in: window) else {
+                continue
+            }
+            if firstResponder === nativeControl {
+                return target
+            }
+            if let responderView = firstResponder as? NSView,
+               responderView.isDescendant(of: nativeControl) {
+                return target
+            }
+            if let textField = nativeControl as? NSTextField,
+               textField.currentEditor() === firstResponder {
+                return target
+            }
+        }
+
+        return nil
     }
 
     private func nativeFocusControl(for target: FocusTarget, in window: NSWindow) -> NSView? {
