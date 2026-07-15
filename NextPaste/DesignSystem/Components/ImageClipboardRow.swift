@@ -39,9 +39,9 @@ struct ImageClipboardRow: View {
         SharedRowPresentation(
             isPinned: presentation.isPinned,
             interactionState: presentation.interactionState,
-            visualStyle: .staticCard,
-            tracksHover: false,
-            showsPinnedAccentMarker: false,
+            visualStyle: .interactive,
+            tracksHover: true,
+            showsPinnedAccentMarker: true,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: presentation.rowAccessibilityIdentifier,
                 // AppKit exposes this SwiftUI container as an AXGroup and does
