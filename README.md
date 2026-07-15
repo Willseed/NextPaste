@@ -2,7 +2,23 @@
 
 > 一個以剪貼簿為核心、本地優先的 Apple 平台剪貼簿管理員。自動捕捉你複製的內容，讓你之後能快速回顧、搜尋與重用。
 
-NextPaste 是一款以 SwiftUI、SwiftData、Observation 與 Apple 原生互動模型建構的 macOS 應用，遵循 `.specify/memory/constitution.md`（目前為 v2.8.0）的治理框架與 SDD（Spec-Driven Development）流程開發。隱私預設：剪貼簿內容保留在裝置上，除非明確取得同意，否則不外送任何遠端服務。
+NextPaste 會自動保存文字與圖片剪貼簿內容，並提供搜尋、釘選與快速複製，讓常用內容隨時可取用。所有剪貼簿歷史預設保留在裝置上；除非明確取得同意，否則不會外送至遠端服務。
+
+應用以 SwiftUI、SwiftData、Observation 與 Apple 原生互動模型建構，並遵循 `.specify/memory/constitution.md`（目前為 v2.8.0）的治理框架與 SDD（Spec-Driven Development）流程開發。
+
+## 安裝
+
+### Mac App Store
+
+[前往 NextPaste 的 Mac App Store 正式頁面](https://apps.apple.com/us/app/nextpaste/id6791212237)。公開供應狀態與地區可用性以 App Store 顯示為準。
+
+### Homebrew
+
+使用 [`willseed/tap`](https://github.com/Willseed/homebrew-tap) 中的 `nextpaste` cask 安裝：
+
+```bash
+brew install --cask willseed/tap/nextpaste
+```
 
 ## 核心流程
 
