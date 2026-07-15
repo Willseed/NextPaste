@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none" role="img" aria-label="NextPaste icon">
+  <title>NextPaste icon</title>
+  <defs>
+    <linearGradient id="np-grad" gradientUnits="userSpaceOnUse" x1="58" y1="58" x2="458" y2="458">
+      <stop offset="0" stop-color="#1F6F68"/>
+      <stop offset="1" stop-color="#C89B3C"/>
+    </linearGradient>
+  </defs>
+
+  <!-- back card: faded duplicate (recedes) -->
+  <path d="M348 128 L348 114 A56 56 0 0 0 292 58 L114 58 A56 56 0 0 0 58 114 L58 292 A56 56 0 0 0 114 348 L128 348"
+        fill="none" stroke="#B8A7E8" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- front card: hero -->
+  <rect x="168" y="168" width="290" height="290" rx="56"
+        fill="none" stroke="url(#np-grad)" stroke-width="30"/>
+
+  <!-- N -->
+  <path d="M255 386 L255 240 L371 386 L371 240"
+        fill="none" stroke="url(#np-grad)" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
