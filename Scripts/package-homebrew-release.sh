@@ -107,6 +107,11 @@ case "$output_dir" in
         echo "error: RELEASE_OUTPUT_DIR must be outside the repository" >&2
         exit 64
         ;;
+    /*) ;;
+    *)
+        echo "error: unexpected RELEASE_OUTPUT_DIR value: $output_dir" >&2
+        exit 64
+        ;;
 esac
 
 archive_path="$output_dir/NextPaste.xcarchive"
