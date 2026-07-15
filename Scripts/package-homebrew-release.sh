@@ -89,6 +89,18 @@ fi
 
 release_tag="${RELEASE_TAG:-v$version}"
 homebrew_minimum_macos="${minimum_macos%.0}"
+case "$homebrew_minimum_macos" in
+    26) homebrew_macos_requirement=":tahoe" ;;
+    15) homebrew_macos_requirement=":sequoia" ;;
+    14) homebrew_macos_requirement=":sonoma" ;;
+    13) homebrew_macos_requirement=":ventura" ;;
+    12) homebrew_macos_requirement=":monterey" ;;
+    11) homebrew_macos_requirement=":big_sur" ;;
+    *)
+        echo "error: unsupported Homebrew macOS requirement: $minimum_macos" >&2
+        exit 64
+        ;;
+esac
 output_dir="${RELEASE_OUTPUT_DIR:-$(mktemp -d "${TMPDIR:-/tmp}/NextPaste-release.XXXXXX")}"
 case "$output_dir" in
     "$repo_root"|"$repo_root"/*)
@@ -188,7 +200,7 @@ cask "nextpaste" do
   desc "Local-first clipboard history manager"
   homepage "https://github.com/Willseed/NextPaste"
 
-  depends_on macos: ">= $homebrew_minimum_macos"
+  depends_on macos: $homebrew_macos_requirement
 
   app "NextPaste.app"
 end
