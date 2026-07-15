@@ -194,12 +194,14 @@ Scripts/ci-test.sh --mode full-ui --shard persistence
 five names are present and the manifest is exhaustive and unique across the concrete UI methods.
 `.github/workflows/full-ui.yml` runs one matrix job for each name. It retains manual and nightly
 entry points, and it also starts automatically after a successful `main`-branch push run of the
-`Verify` workflow. The automatic path checks out `workflow_run.head_sha` and verifies that exact
-commit before running tests; pull-request `workflow_run` events do not execute the privileged
-downstream jobs. The concurrency key includes the upstream event and conclusion, so a failed or
-cancelled Verify cannot cancel an in-progress Full UI run from a successful push. A dry run
-validates selection and repository policy only; a shard is acceptance evidence only after its
-actual Xcode test execution produces a clean result with zero failures and zero skips.
+`Verify` workflow. The automatic path requires the upstream head repository to equal this
+repository and its head branch to equal `main`, checks out `workflow_run.head_sha`, and verifies that
+exact commit before running tests. The pinned checkout action also refuses fork pull-request code by
+default; pull-request and fork `workflow_run` events do not execute the downstream jobs. The
+concurrency key includes the upstream event and conclusion, so a failed or cancelled Verify cannot
+cancel an in-progress Full UI run from a successful push. A dry run validates selection and
+repository policy only; a shard is acceptance evidence only after its actual Xcode test execution
+produces a clean result with zero failures and zero skips.
 
 The approved inventory contains exactly 52 selectors: `core` 13, `settings` 8, `row-actions` 14,
 `media` 9, and `persistence` 8. The manifest is authoritative for shard assignment; source
@@ -251,9 +253,9 @@ Failure diagnostics are uploaded under `if: failure()`.
 
 After a successful `main`-branch push run of `Verify`, `.github/workflows/full-ui.yml` starts through
 `workflow_run` and checks out the upstream `head_sha`. A job-level condition rejects unsuccessful
-runs and non-push upstream events. Manual dispatch and the nightly schedule continue to use the
-commit selected by their own event. Neither workflow uses `continue-on-error` or suppresses a
-failing test exit status.
+runs, non-push upstream events, non-`main` heads, and heads whose repository does not equal the
+current repository. Manual dispatch and the nightly schedule continue to use the commit selected by
+their own event. Neither workflow uses `continue-on-error` or suppresses a failing test exit status.
 `Scripts/check-github-actions.sh` runs `actionlint -no-color` and fails closed on invalid YAML,
 expressions, or context placement. `Scripts/check-macos-host-compatibility.sh` resolves Debug and
 Release settings for the app, unit-test, and UI-test targets and rejects any deployment target
@@ -516,7 +518,7 @@ and an offscreen target. Tests invoke the real native Pin/action surface; no tes
 | INFRA-03 | One script runs formatter status, lint status, GitHub Actions validation, macOS host/deployment compatibility, artifact preflight/postflight, Debug/Release builds, executable-method inventory, all test phases, localization, `.xcresult`, strict build/test summaries, and coverage | `Scripts/verify.sh`; `Scripts/count-xctest-methods.sh`; `Scripts/check-macos-host-compatibility.sh`; `Scripts/check-github-actions.sh` runs `actionlint -no-color` as a blocking preflight | **Static-validated.** Shell syntax, comparator/inventory self-tests, resolved target settings, workflow lint, and dry run are blocking preflights. |
 | INFRA-04 | Formatter/lint handling is truthful | Script emits “Project not configured” for both | **Static-validated.** No formatter/lint config was found. |
 | INFRA-05 | Results are not committed | Fresh external temp run directory plus mandatory repository artifact preflight/postflight | **Mapped — gate-enforced.** |
-| INFRA-06 | Repository CI executes the complete verification gate | `.github/workflows/verify.yml` runs bounded policy, Debug, unit, integration, and UI-smoke verification on push/pull request; a successful `main` push then triggers all five Full UI shards at the verified SHA. The authoritative local `Scripts/verify.sh` additionally owns Release-build and complete single-run gate evidence. | **Partial — CI enforces the bounded Verify → Full UI path, but does not execute every phase owned by `Scripts/verify.sh`.** |
+| INFRA-06 | Repository CI executes the complete verification gate | `.github/workflows/verify.yml` runs bounded policy, Debug, unit, integration, and UI-smoke verification on push/pull request; a successful same-repository `main` push then triggers all five Full UI shards at the verified SHA. The authoritative local `Scripts/verify.sh` additionally owns Release-build and complete single-run gate evidence. | **Partial — CI enforces the bounded Verify → Full UI path, but does not execute every phase owned by `Scripts/verify.sh`.** |
 
 ## Completion-gate ledger
 

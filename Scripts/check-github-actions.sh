@@ -36,6 +36,9 @@ require_full_ui_fragment 'branches: [main]'
 require_full_ui_fragment 'group: full-ui-${{ github.event_name }}-${{ github.event.workflow_run.event || github.ref }}-${{ github.event.workflow_run.conclusion || github.ref }}'
 require_full_ui_fragment "github.event.workflow_run.conclusion == 'success'"
 require_full_ui_fragment "github.event.workflow_run.event == 'push'"
+require_full_ui_fragment 'github.event.workflow_run.head_repository.full_name == github.repository'
+require_full_ui_fragment "github.event.workflow_run.head_branch == 'main'"
+require_full_ui_fragment 'uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0'
 require_full_ui_fragment 'ref: ${{ github.event.workflow_run.head_sha || github.sha }}'
 require_full_ui_fragment 'persist-credentials: false'
 require_full_ui_fragment 'EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}'
