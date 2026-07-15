@@ -150,7 +150,8 @@ if [[ "$actual_bundle_identifier" != "$bundle_identifier" || "$actual_minimum_ma
 fi
 
 codesign --verify --deep --strict --verbose=2 "$app_path"
-if ! codesign -d --verbose=4 "$app_path" 2>&1 | grep -q 'flags=.*runtime'; then
+signature_details="$(codesign -d --verbose=4 "$app_path" 2>&1)"
+if ! grep -q 'flags=.*runtime' <<<"$signature_details"; then
     echo "error: exported application is not signed with Hardened Runtime" >&2
     exit 65
 fi
