@@ -579,11 +579,11 @@ private struct GeneralSettingsTab: View {
                             }
                         }
                         .pickerStyle(.menu)
+                        .labelsHidden()
                         .frame(minWidth: 170, alignment: .trailing)
                         .focusable()
                         .focused($focusedTarget, equals: .appearance)
                         .accessibilityIdentifier("appearance-picker")
-                        .accessibilityLabel(Text("Appearance"))
                         .accessibilityValue(Text(appearancePreference.mode.displayNameKey))
                         .onChange(of: appearancePreference.mode) {
                             focusedTarget = nil
@@ -695,6 +695,146 @@ private struct AppLanguagePopUpButton: NSViewRepresentable {
 
 // MARK: - Clipboard
 
+#if os(macOS)
+/// Keeps the storage limit's one-item keyboard and accessibility increments
+/// without asking AppKit to create the dense automatic tick marks.
+struct HistoryLimitSliderControl: NSViewRepresentable {
+    @Binding var value: Double
+    let accessibilityLabel: String
+    let onEditingChanged: (Bool) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeNSView(context: Context) -> HistoryLimitNSSlider {
+        let slider = Self.makeSlider(value: value, accessibilityLabel: accessibilityLabel)
+        slider.target = context.coordinator
+        slider.action = #selector(Coordinator.valueChanged(_:))
+        slider.onEditingChanged = onEditingChanged
+        return slider
+    }
+
+    func updateNSView(_ slider: HistoryLimitNSSlider, context: Context) {
+        context.coordinator.parent = self
+        slider.onEditingChanged = onEditingChanged
+
+        let normalizedValue = Self.normalized(value)
+        if slider.doubleValue != normalizedValue {
+            slider.doubleValue = normalizedValue
+        }
+        Self.configureAccessibility(
+            for: slider,
+            label: accessibilityLabel
+        )
+    }
+
+    static func makeSlider(
+        value: Double,
+        accessibilityLabel: String
+    ) -> HistoryLimitNSSlider {
+        let slider = HistoryLimitNSSlider(frame: .zero)
+        slider.cell = HistoryLimitSliderCell()
+        slider.minValue = Double(HistoryLimit.minimum)
+        slider.maxValue = Double(HistoryLimit.maximum)
+        slider.numberOfTickMarks = 0
+        slider.allowsTickMarkValuesOnly = false
+        slider.altIncrementValue = 1
+        slider.isContinuous = true
+        slider.doubleValue = normalized(value)
+        configureAccessibility(
+            for: slider,
+            label: accessibilityLabel
+        )
+        return slider
+    }
+
+    private static func configureAccessibility(
+        for slider: NSSlider,
+        label: String
+    ) {
+        slider.setAccessibilityIdentifier("history-limit-slider")
+        slider.setAccessibilityLabel(label)
+        slider.cell?.setAccessibilityIdentifier("history-limit-slider")
+        slider.cell?.setAccessibilityLabel(label)
+    }
+
+    private static func normalized(_ value: Double) -> Double {
+        Double(HistoryLimit(Int(value.rounded())).value)
+    }
+
+    @MainActor
+    final class Coordinator: NSObject {
+        var parent: HistoryLimitSliderControl
+
+        init(parent: HistoryLimitSliderControl) {
+            self.parent = parent
+        }
+
+        @objc func valueChanged(_ sender: NSSlider) {
+            let normalizedValue = Self.normalized(sender.doubleValue)
+            sender.doubleValue = normalizedValue
+            HistoryLimitSliderControl.configureAccessibility(
+                for: sender,
+                label: parent.accessibilityLabel
+            )
+            parent.value = normalizedValue
+            if (sender as? HistoryLimitNSSlider)?.isTrackingPointer != true {
+                parent.onEditingChanged(false)
+            }
+        }
+
+        private static func normalized(_ value: Double) -> Double {
+            HistoryLimitSliderControl.normalized(value)
+        }
+    }
+}
+
+final class HistoryLimitSliderCell: NSSliderCell {
+    override func accessibilityPerformIncrement() -> Bool {
+        adjustValue(by: 1)
+    }
+
+    override func accessibilityPerformDecrement() -> Bool {
+        adjustValue(by: -1)
+    }
+
+    private func adjustValue(by offset: Double) -> Bool {
+        guard let slider = controlView as? NSSlider else { return false }
+        let adjustedValue = min(
+            slider.maxValue,
+            max(slider.minValue, slider.doubleValue + offset)
+        )
+        guard adjustedValue != slider.doubleValue else { return false }
+
+        slider.doubleValue = adjustedValue
+        let sentAction = slider.sendAction(slider.action, to: slider.target)
+        if sentAction {
+            NSAccessibility.post(element: self, notification: .valueChanged)
+        }
+        return sentAction
+    }
+}
+
+final class HistoryLimitNSSlider: NSSlider {
+    var onEditingChanged: ((Bool) -> Void)?
+    private(set) var isTrackingPointer = false
+
+    override var acceptsFirstResponder: Bool { true }
+
+    override func mouseDown(with event: NSEvent) {
+        window?.makeFirstResponder(self)
+        isTrackingPointer = true
+        onEditingChanged?(true)
+        defer {
+            isTrackingPointer = false
+            onEditingChanged?(false)
+        }
+        super.mouseDown(with: event)
+    }
+}
+#endif
+
 private struct ClipboardSettingsTab: View {
     private enum FocusTarget: String, Hashable {
         case slider = "history-limit-slider"
@@ -727,6 +867,14 @@ private struct ClipboardSettingsTab: View {
         )
     }
 
+    private var storageLimitAccessibilityLabel: String {
+        String(
+            localized: "Storage Limit",
+            bundle: currentLanguage.localizationBundle(),
+            locale: currentLanguage.locale
+        )
+    }
+
     var body: some View {
         SettingsScrollArea {
             SettingsSection(
@@ -747,23 +895,22 @@ private struct ClipboardSettingsTab: View {
 
                     VStack(alignment: .leading, spacing: DesignTokens.Spacing.small) {
                         HStack(spacing: DesignTokens.Spacing.medium) {
-                            Slider(
-                                value: Binding(
-                                    get: { sliderValue },
-                                    set: { newValue in
-                                        let draftLimit = HistoryLimit(Int(newValue.rounded()))
-                                        sliderValue = Double(draftLimit.value)
-                                        draftText = String(draftLimit.value)
-                                    }
-                                ),
-                                in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
-                                step: 1,
-                                onEditingChanged: { isEditing in
-                                    if isEditing == false {
-                                        apply(HistoryLimit(Int(sliderValue.rounded())))
-                                    }
-                                }
-                            )
+                            Group {
+#if os(macOS)
+                                HistoryLimitSliderControl(
+                                    value: historyLimitSliderBinding,
+                                    accessibilityLabel: storageLimitAccessibilityLabel,
+                                    onEditingChanged: handleHistoryLimitSliderEditingChanged
+                                )
+#else
+                                Slider(
+                                    value: historyLimitSliderBinding,
+                                    in: Double(HistoryLimit.minimum)...Double(HistoryLimit.maximum),
+                                    step: 1,
+                                    onEditingChanged: handleHistoryLimitSliderEditingChanged
+                                )
+#endif
+                            }
                             .frame(minWidth: 180, maxWidth: .infinity)
                             .focusable()
                             .focused($focusedTarget, equals: .slider)
@@ -883,6 +1030,23 @@ private struct ClipboardSettingsTab: View {
         draftText = result.normalizedText
         if result.shouldPersist {
             apply(result.limit)
+        }
+    }
+
+    private var historyLimitSliderBinding: Binding<Double> {
+        Binding(
+            get: { sliderValue },
+            set: { newValue in
+                let draftLimit = HistoryLimit(Int(newValue.rounded()))
+                sliderValue = Double(draftLimit.value)
+                draftText = String(draftLimit.value)
+            }
+        )
+    }
+
+    private func handleHistoryLimitSliderEditingChanged(_ isEditing: Bool) {
+        if isEditing == false {
+            apply(HistoryLimit(Int(sliderValue.rounded())))
         }
     }
 

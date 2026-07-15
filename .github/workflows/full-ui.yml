@@ -1,12 +1,16 @@
 name: Full UI
 
 on:
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
   schedule:
     - cron: '30 18 * * *'
 
 concurrency:
-  group: full-ui-${{ github.ref }}
+  group: full-ui-${{ github.event_name }}-${{ github.event.workflow_run.event || github.ref }}-${{ github.event.workflow_run.conclusion || github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -20,6 +24,14 @@ env:
 jobs:
   ui-stage:
     name: Full UI shard ${{ matrix.shard }}
+    if: >-
+      ${{
+        github.event_name != 'workflow_run' ||
+        (
+          github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push'
+        )
+      }}
     runs-on: macos-26
     timeout-minutes: 18
     strategy:
@@ -29,6 +41,18 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Verify checked-out commit
+        if: github.event_name == 'workflow_run'
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
 
       - name: Install verification tools
         shell: bash
