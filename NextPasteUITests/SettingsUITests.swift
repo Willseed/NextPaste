@@ -140,15 +140,20 @@ final class SettingsUITests: UITestCase {
         }
     }
 
-    private enum SliderBoundary {
+    private enum SliderPosition {
         case minimum
+        case midpoint
         case maximum
 
         var normalizedOffset: CGFloat {
-            if case .minimum = self {
+            switch self {
+            case .minimum:
                 return 0.02
+            case .midpoint:
+                return 0.5
+            case .maximum:
+                return 0.98
             }
-            return 0.98
         }
     }
 
@@ -424,7 +429,7 @@ final class SettingsUITests: UITestCase {
         setSlider(slider, to: .minimum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
         assertSliderInteractionGeometry(slider, in: settingsWindow)
-        slider.adjust(toNormalizedSliderPosition: 0.5)
+        setSlider(slider, to: .midpoint, in: settingsWindow)
         XCTAssertTrue(
             UITestWait.until(timeout: UITestAssertions.defaultTimeout) {
                 let updatedSliderValue = self.elementValue(of: slider)
@@ -432,7 +437,7 @@ final class SettingsUITests: UITestCase {
                     && updatedSliderValue != "1000"
                     && self.textInputValue(of: field) == updatedSliderValue
             },
-            "A native midpoint Slider adjustment must synchronize an intermediate integer"
+            "A native midpoint pointer adjustment must synchronize an intermediate integer"
         )
         setSlider(slider, to: .minimum, in: settingsWindow)
         assertHistoryLimitValues(field: field, slider: slider, equal: "1")
@@ -1203,14 +1208,14 @@ final class SettingsUITests: UITestCase {
 
     private func setSlider(
         _ slider: XCUIElement,
-        to boundary: SliderBoundary,
+        to position: SliderPosition,
         in settingsWindow: XCUIElement,
         file: StaticString = #filePath,
         line: UInt = #line
     ) {
         assertSliderInteractionGeometry(slider, in: settingsWindow, file: file, line: line)
         slider.coordinate(
-            withNormalizedOffset: CGVector(dx: boundary.normalizedOffset, dy: 0.5)
+            withNormalizedOffset: CGVector(dx: position.normalizedOffset, dy: 0.5)
         ).click()
     }
 

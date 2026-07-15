@@ -43,6 +43,8 @@ require_full_ui_fragment 'ref: ${{ github.event.workflow_run.head_sha || github.
 require_full_ui_fragment 'persist-credentials: false'
 require_full_ui_fragment 'EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}'
 require_full_ui_fragment 'test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"'
+require_full_ui_fragment 'timeout-minutes: 22'
+require_full_ui_fragment 'timeout-minutes: 18'
 require_full_ui_fragment 'contents: read'
 require_full_ui_fragment 'workflow_dispatch:'
 require_full_ui_fragment 'schedule:'

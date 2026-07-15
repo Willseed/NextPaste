@@ -37,7 +37,8 @@ jobs:
         )
       }}
     runs-on: macos-26
-    timeout-minutes: 18
+    # Leave four minutes beyond the bounded stage for failure artifacts.
+    timeout-minutes: 22
     strategy:
       fail-fast: false
       matrix:
@@ -85,7 +86,9 @@ jobs:
           fi
 
       - name: Run bounded full UI stage
-        timeout-minutes: 14
+        # ci-test.sh budgets 4 minutes for build-for-testing and 11 minutes for
+        # the shard, then still needs time to summarize results and collect logs.
+        timeout-minutes: 18
         shell: bash
         env:
           CI_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteFullUI

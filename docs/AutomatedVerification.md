@@ -203,6 +203,12 @@ cancel an in-progress Full UI run from a successful push. A dry run validates se
 repository policy only; a shard is acceptance evidence only after its actual Xcode test execution
 produces a clean result with zero failures and zero skips.
 
+Each Full UI matrix job has a 22-minute bound. Its test step has an 18-minute bound around the
+script's 240-second `build-for-testing` watchdog and 660-second shard watchdog, leaving time for
+result summarization and unified-log collection. The wider job bound preserves additional headroom
+for failure-artifact upload. Watchdog exit status 124 is reported as a timeout; other nonzero Xcode
+statuses are reported as test or build failures rather than being conflated with timeouts.
+
 The approved inventory contains exactly 52 selectors: `core` 13, `settings` 8, `row-actions` 14,
 `media` 9, and `persistence` 8. The manifest is authoritative for shard assignment; source
 discovery and the manifest must remain exhaustive and unique.

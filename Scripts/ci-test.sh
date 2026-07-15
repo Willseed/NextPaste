@@ -347,8 +347,14 @@ run_build_for_testing() {
     -resultBundlePath "${result_bundle}"
     build-for-testing
   )
+  local status=0
   run_with_watchdog "${timeout_seconds}" "build-for-testing" "${RUN_DIR}/build-for-testing.log" "${command[@]}" \
-    || fail "build-for-testing failed or timed out"
+    || status=$?
+  if (( status == 124 )); then
+    fail "build-for-testing timed out after ${timeout_seconds}s"
+  elif (( status != 0 )); then
+    fail "build-for-testing failed with status ${status}"
+  fi
 }
 
 run_test_phase() {
@@ -377,9 +383,12 @@ run_test_phase() {
 
   local status=0
   run_with_watchdog "${timeout_seconds}" "${label}" "${RUN_DIR}/${label}.log" "${command[@]}" || status=$?
-  if (( status != 0 )); then
+  if (( status == 124 )); then
     collect_crash_reports
-    fail "${label} failed or timed out with status ${status}"
+    fail "${label} timed out after ${timeout_seconds}s"
+  elif (( status != 0 )); then
+    collect_crash_reports
+    fail "${label} failed with status ${status}"
   fi
   (( DRY_RUN )) || summarize_test_result "${label}" "${result_bundle}" "${coverage}"
 }
