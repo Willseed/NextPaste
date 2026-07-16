@@ -13,6 +13,7 @@ import AppKit
 struct UITestLaunchEnvironment: Sendable {
     static let identifierKey = "NEXTPASTE_UI_TEST_ID"
     static let defaultsSuiteKey = "NEXTPASTE_UI_TEST_DEFAULTS_SUITE"
+    static let storageNamespaceKey = "NEXTPASTE_UI_TEST_STORAGE_NAMESPACE"
     static let storeURLKey = "NEXTPASTE_UI_TEST_STORE_URL"
     static let dataDirectoryKey = "NEXTPASTE_UI_TEST_DATA_DIRECTORY"
     static let pasteboardNameKey = "NEXTPASTE_UI_TEST_PASTEBOARD_NAME"
@@ -30,14 +31,16 @@ struct UITestLaunchEnvironment: Sendable {
     let dataDirectoryURL: URL
     let defaultsSuiteName: String
     let pasteboardName: String
+    let storageNamespace: UITestStorageNamespace
 
     init(
         testName: String,
         pathConfiguration: UITestPathConfiguration = .systemDefault
     ) throws {
-        let uuid = UUID().uuidString.lowercased()
+        let uuid = UUID()
+        let uuidString = uuid.uuidString.lowercased()
         let readableName = Self.sanitizedPathComponent(testName)
-        let identifier = "\(readableName)-\(uuid)"
+        let identifier = "\(readableName)-\(uuidString)"
         let rootURL = pathConfiguration.artifactRootURL
             .appendingPathComponent(identifier, isDirectory: true)
             .standardizedFileURL
@@ -46,15 +49,26 @@ struct UITestLaunchEnvironment: Sendable {
         self.rootURL = rootURL
         self.storeURL = rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
         self.dataDirectoryURL = rootURL.appendingPathComponent("ImageStore", isDirectory: true)
-        self.defaultsSuiteName = "pylot.NextPaste.UITests.\(uuid)"
-        self.pasteboardName = "pylot.NextPaste.UITests.\(uuid).pasteboard"
+        self.defaultsSuiteName = "pylot.NextPaste.UITests.\(uuidString)"
+        self.pasteboardName = "pylot.NextPaste.UITests.\(uuidString).pasteboard"
+        self.storageNamespace = UITestStorageNamespace(uuid: uuid)
 
+#if !os(iOS)
         try FileManager.default.createDirectory(at: dataDirectoryURL, withIntermediateDirectories: true)
+#endif
         clearPersistentState()
     }
 
     @MainActor
     func configure(_ app: XCUIApplication, onDiskStore: UITestAppLauncher.OnDiskStore?) {
+        app.launchEnvironment[Self.identifierKey] = identifier
+        app.launchEnvironment[Self.defaultsSuiteKey] = defaultsSuiteName
+        app.launchEnvironment[Self.pasteboardNameKey] = pasteboardName
+
+#if os(iOS)
+        let selectedStorageNamespace = onDiskStore?.storageNamespace ?? storageNamespace
+        app.launchEnvironment[Self.storageNamespaceKey] = selectedStorageNamespace.rawValue
+#else
         let selectedStoreURL = onDiskStore?.storeURL ?? storeURL
         let selectedDataDirectoryURL = onDiskStore.map {
             $0.rootURL.appendingPathComponent("ImageStore", isDirectory: true).standardizedFileURL
@@ -73,11 +87,9 @@ struct UITestLaunchEnvironment: Sendable {
             UITestAppLauncher.uiTestOnDiskStoreArgument,
             selectedStoreURL.path
         ])
-        app.launchEnvironment[Self.identifierKey] = identifier
-        app.launchEnvironment[Self.defaultsSuiteKey] = defaultsSuiteName
         app.launchEnvironment[Self.storeURLKey] = selectedStoreURL.path
         app.launchEnvironment[Self.dataDirectoryKey] = selectedDataDirectoryURL.path
-        app.launchEnvironment[Self.pasteboardNameKey] = pasteboardName
+#endif
     }
 
     func cleanup() {
@@ -200,11 +212,16 @@ enum UITestAppLauncher {
     }
 
     struct OnDiskStore {
+        let storageNamespace: UITestStorageNamespace
+#if !os(iOS)
         let rootURL: URL
         let storeURL: URL
+#endif
 
         func remove() {
+#if !os(iOS)
             try? FileManager.default.removeItem(at: rootURL)
+#endif
         }
     }
 
@@ -320,6 +337,11 @@ enum UITestAppLauncher {
     static func makeOnDiskStore(
         pathConfiguration: UITestPathConfiguration = .systemDefault
     ) throws -> OnDiskStore {
+        let storageNamespace = UITestStorageNamespace()
+#if os(iOS)
+        _ = pathConfiguration
+        return OnDiskStore(storageNamespace: storageNamespace)
+#else
         // Debug macOS builds grant only this dedicated shared test root to the
         // sandboxed app and UI-test runner. Keeping relaunch stores here avoids
         // both the user's Application Support data and either process's private
@@ -329,9 +351,11 @@ enum UITestAppLauncher {
             .standardizedFileURL
         try FileManager.default.createDirectory(at: rootURL, withIntermediateDirectories: true)
         return OnDiskStore(
+            storageNamespace: storageNamespace,
             rootURL: rootURL,
             storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false)
         )
+#endif
     }
 
     /// Safely removes stale test-root directories that are older than the given
@@ -442,10 +466,16 @@ enum UITestAppLauncher {
     }
 #endif
 
-    static func background(_: XCUIApplication) {
+    static func background(_ app: XCUIApplication) {
 #if os(macOS)
         let finder = XCUIApplication(bundleIdentifier: "com.apple.finder")
         finder.activate()
+#elseif os(iOS)
+        XCUIDevice.shared.press(.home)
+        XCTAssertTrue(
+            app.wait(for: .runningBackground, timeout: ClipboardFixture.defaultTimeout),
+            "Expected NextPaste to enter the background after pressing the Home button"
+        )
 #endif
     }
 

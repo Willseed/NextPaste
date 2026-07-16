@@ -13,6 +13,7 @@ import Testing
 // Duplicated so the path/key contract can be verified without launching an
 // XCUIApplication. Keep this in sync with the UI-test source when it changes.
 private enum UITestPathConfigurationContract {
+    static let storageNamespaceKey = "NEXTPASTE_UI_TEST_STORAGE_NAMESPACE"
     static let storeURLKey = "NEXTPASTE_UI_TEST_STORE_URL"
     static let dataDirectoryKey = "NEXTPASTE_UI_TEST_DATA_DIRECTORY"
     static let rowActionTraceFileEnvironmentKey = "NEXTPASTE_ROW_ACTION_TRACE_FILE"
@@ -22,6 +23,14 @@ private enum UITestPathConfigurationContract {
     static let onDiskStoreFolderPrefix = "NextPaste-ui-store-"
     static let traceFileNamePrefix = "row-actions-"
     static let traceFileExtension = "jsonl"
+}
+
+private struct UITestStorageNamespace: Equatable, Sendable {
+    let rawValue: String
+
+    init(uuid: UUID) {
+        rawValue = uuid.uuidString.lowercased()
+    }
 }
 
 private struct UITestPathConfiguration: Sendable {
@@ -105,6 +114,13 @@ private func configure(
     sink.environment[UITestPathConfigurationContract.dataDirectoryKey] = environment.dataDirectoryURL.path
 }
 
+private func configureIOSStorage(
+    _ sink: inout LaunchEnvironmentSink,
+    namespace: UITestStorageNamespace
+) {
+    sink.environment[UITestPathConfigurationContract.storageNamespaceKey] = namespace.rawValue
+}
+
 private func configureTrace(
     _ sink: inout LaunchEnvironmentSink,
     traceURL: URL
@@ -143,6 +159,26 @@ private enum UITestTracePaths {
 
 @Suite("UI-test path configuration contract")
 struct UITestPathConfigurationTests {
+    @Test("iOS launch contract passes one logical UUID namespace instead of runner paths")
+    func iosLaunchContractUsesLogicalNamespaceInsteadOfRunnerPaths() throws {
+        let namespace = UITestStorageNamespace(
+            uuid: try #require(UUID(uuidString: "5dc97e97-474a-4b86-8418-d0a843d99035"))
+        )
+        var sink = LaunchEnvironmentSink()
+
+        configureIOSStorage(&sink, namespace: namespace)
+
+        #expect(
+            sink.environment[UITestPathConfigurationContract.storageNamespaceKey]
+                == "5dc97e97-474a-4b86-8418-d0a843d99035"
+        )
+        #expect(sink.environment[UITestPathConfigurationContract.storeURLKey] == nil)
+        #expect(sink.environment[UITestPathConfigurationContract.dataDirectoryKey] == nil)
+        #expect(sink.arguments.contains(UITestPathConfigurationContract.uiTestOnDiskStoreArgument) == false)
+        #expect(namespace.rawValue.hasPrefix("/") == false)
+        #expect(UUID(uuidString: namespace.rawValue) != nil)
+    }
+
     @Test("default path configuration feeds the active launch environment")
     func defaultPathConfigurationFeedsTheActiveLaunchEnvironment() {
         let configuration = UITestPathConfiguration.systemDefault

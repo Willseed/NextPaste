@@ -44,7 +44,6 @@ struct DebugUITestSurfaceIsolationTests {
         )
 
 #if DEBUG
-        let defaultStorageFixture = LaunchStorageFixture()
         let debugEnvironment = try #require(
             DebugUITestLaunchEnvironment(
                 arguments: Self.simulationArguments,
@@ -53,8 +52,26 @@ struct DebugUITestSurfaceIsolationTests {
         )
         #expect(monitor.isEnabled == false)
         #expect(monitor.pollInterval == 0.125)
+#if os(iOS)
+        let namespace = try #require(
+            Self.completeEnvironment[DebugUITestLaunchEnvironment.storageNamespaceKey]
+        )
+        let applicationSupportDirectory = try #require(
+            FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+        )
+        let expectedPaths = try #require(
+            DebugUITestLaunchEnvironment.appContainerStoragePaths(
+                namespace: namespace,
+                applicationSupportDirectory: applicationSupportDirectory
+            )
+        )
+        #expect(debugEnvironment.storeURL == expectedPaths.storeURL)
+        #expect(debugEnvironment.dataDirectoryURL == expectedPaths.dataDirectoryURL)
+#else
+        let defaultStorageFixture = LaunchStorageFixture()
         #expect(debugEnvironment.storeURL == defaultStorageFixture.storeURL)
         #expect(debugEnvironment.dataDirectoryURL == defaultStorageFixture.dataDirectoryURL)
+#endif
         #expect(
             ClipboardWriter.shouldSimulateFailureForApplicationLaunch(
                 arguments: Self.simulationArguments,
@@ -95,6 +112,73 @@ struct DebugUITestSurfaceIsolationTests {
     }
 
 #if DEBUG
+    @Test("logical iOS storage namespace resolves only inside the app container")
+    func logicalIOSStorageNamespaceResolvesInsideAppContainer() throws {
+        let appContainerRoot = FileManager.default.temporaryDirectory
+            .appendingPathComponent("NextPaste-simulated-app-container", isDirectory: true)
+        let namespace = "5dc97e97-474a-4b86-8418-d0a843d99035"
+        let paths = try #require(
+            DebugUITestLaunchEnvironment.appContainerStoragePaths(
+                namespace: namespace,
+                applicationSupportDirectory: appContainerRoot
+            )
+        )
+
+        let expectedRoot = appContainerRoot
+            .appendingPathComponent("NextPasteUITests", isDirectory: true)
+            .appendingPathComponent(namespace, isDirectory: true)
+            .standardizedFileURL
+        #expect(paths.rootURL == expectedRoot)
+        #expect(paths.storeURL == expectedRoot.appendingPathComponent("NextPaste.store"))
+        #expect(
+            paths.dataDirectoryURL
+                == expectedRoot.appendingPathComponent("ImageStore", isDirectory: true)
+        )
+        #expect(
+            DebugUITestLaunchEnvironment.appContainerStoragePaths(
+                namespace: "../outside-container",
+                applicationSupportDirectory: appContainerRoot
+            ) == nil
+        )
+    }
+
+#if os(iOS)
+    @Test("iOS Debug UI-test environment requires a logical storage namespace")
+    func iosDebugEnvironmentRequiresLogicalStorageNamespace() throws {
+        let environment = Self.completeEnvironment
+        let configuration = try #require(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: environment
+            )
+        )
+
+        #expect(environment[DebugUITestLaunchEnvironment.storageNamespaceKey] != nil)
+        #expect(environment[DebugUITestLaunchEnvironment.storeURLKey] == nil)
+        #expect(environment[DebugUITestLaunchEnvironment.dataDirectoryKey] == nil)
+        #expect(configuration.storeURL.lastPathComponent == "NextPaste.store")
+        #expect(configuration.dataDirectoryURL.lastPathComponent == "ImageStore")
+
+        var missingNamespace = environment
+        missingNamespace.removeValue(forKey: DebugUITestLaunchEnvironment.storageNamespaceKey)
+        #expect(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: missingNamespace
+            ) == nil
+        )
+
+        var malformedNamespace = environment
+        malformedNamespace[DebugUITestLaunchEnvironment.storageNamespaceKey] = "not-a-uuid"
+        #expect(
+            DebugUITestLaunchEnvironment(
+                arguments: Self.simulationArguments,
+                environment: malformedNamespace
+            ) == nil
+        )
+    }
+#endif
+
     @Test("launch readiness configuration requires a complete valid pair")
     func launchReadinessConfigurationRequiresACompleteValidPair() {
         var validEnvironment = Self.completeEnvironment
@@ -219,6 +303,7 @@ struct DebugUITestSurfaceIsolationTests {
         )
     }
 
+#if os(macOS)
     @Test("custom UI-test storage URLs propagate through the Debug launch environment")
     func customStorageURLsPropagateThroughDebugLaunchEnvironment() throws {
         let customRootURL = FileManager.default.temporaryDirectory
@@ -241,6 +326,7 @@ struct DebugUITestSurfaceIsolationTests {
         )
     }
 #endif
+#endif
 
     private static let simulationArguments = [
         "-ui-testing",
@@ -256,6 +342,14 @@ struct DebugUITestSurfaceIsolationTests {
     private static func makeCompleteEnvironment(
         storageFixture: LaunchStorageFixture = LaunchStorageFixture()
     ) -> [String: String] {
+#if os(iOS)
+        [
+            DebugUITestLaunchEnvironment.identifierKey: "surface-isolation",
+            DebugUITestLaunchEnvironment.defaultsSuiteKey: "pylot.NextPaste.Tests.surface-isolation",
+            DebugUITestLaunchEnvironment.storageNamespaceKey: "d17077a1-a752-4bed-bb5d-53f9c664e53a",
+            DebugUITestLaunchEnvironment.pasteboardNameKey: "pylot.NextPaste.Tests.surface-isolation.pasteboard"
+        ]
+#else
         [
             DebugUITestLaunchEnvironment.identifierKey: "surface-isolation",
             DebugUITestLaunchEnvironment.defaultsSuiteKey: "pylot.NextPaste.Tests.surface-isolation",
@@ -263,6 +357,7 @@ struct DebugUITestSurfaceIsolationTests {
             DebugUITestLaunchEnvironment.dataDirectoryKey: storageFixture.dataDirectoryURL.path,
             DebugUITestLaunchEnvironment.pasteboardNameKey: "pylot.NextPaste.Tests.surface-isolation.pasteboard"
         ]
+#endif
     }
 
     private static let incompleteEnvironments: [[String: String]] = {

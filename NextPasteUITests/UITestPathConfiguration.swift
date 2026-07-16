@@ -35,3 +35,14 @@ internal struct UITestPathConfiguration: Sendable {
         )
     }
 }
+
+/// A logical identifier that the iOS UI-test runner can safely pass across the
+/// process boundary. The app resolves this namespace inside its own container;
+/// no runner-private absolute path crosses the sandbox boundary.
+internal struct UITestStorageNamespace: Equatable, Sendable {
+    let rawValue: String
+
+    init(uuid: UUID = UUID()) {
+        rawValue = uuid.uuidString.lowercased()
+    }
+}

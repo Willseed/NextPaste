@@ -19,6 +19,7 @@ import SwiftUI
 nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     static let identifierKey = "NEXTPASTE_UI_TEST_ID"
     static let defaultsSuiteKey = "NEXTPASTE_UI_TEST_DEFAULTS_SUITE"
+    static let storageNamespaceKey = "NEXTPASTE_UI_TEST_STORAGE_NAMESPACE"
     static let storeURLKey = "NEXTPASTE_UI_TEST_STORE_URL"
     static let dataDirectoryKey = "NEXTPASTE_UI_TEST_DATA_DIRECTORY"
     static let pasteboardNameKey = "NEXTPASTE_UI_TEST_PASTEBOARD_NAME"
@@ -43,6 +44,12 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
     let pinScrollContextMenuTargetID: UUID?
     let launchReadinessConfiguration: DebugUITestLaunchReadinessConfiguration?
 
+    struct AppContainerStoragePaths: Equatable, Sendable {
+        let rootURL: URL
+        let storeURL: URL
+        let dataDirectoryURL: URL
+    }
+
     init?(
         arguments: [String] = ProcessInfo.processInfo.arguments,
         environment: [String: String] = ProcessInfo.processInfo.environment
@@ -50,17 +57,39 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
         guard arguments.contains("-ui-testing"),
               let identifier = Self.nonemptyValue(for: Self.identifierKey, in: environment),
               let defaultsSuiteName = Self.nonemptyValue(for: Self.defaultsSuiteKey, in: environment),
-              let storePath = Self.nonemptyValue(for: Self.storeURLKey, in: environment),
-              let dataDirectoryPath = Self.nonemptyValue(for: Self.dataDirectoryKey, in: environment),
               let pasteboardName = Self.nonemptyValue(for: Self.pasteboardNameKey, in: environment) else {
             return nil
         }
 
         self.identifier = identifier
         self.defaultsSuiteName = defaultsSuiteName
-        self.storeURL = URL(fileURLWithPath: storePath).standardizedFileURL
-        self.dataDirectoryURL = URL(fileURLWithPath: dataDirectoryPath, isDirectory: true).standardizedFileURL
         self.pasteboardName = pasteboardName
+
+#if os(iOS)
+        guard let namespace = Self.nonemptyValue(for: Self.storageNamespaceKey, in: environment),
+              let applicationSupportDirectory = FileManager.default.urls(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask
+              ).first,
+              let storagePaths = Self.appContainerStoragePaths(
+                namespace: namespace,
+                applicationSupportDirectory: applicationSupportDirectory
+              ) else {
+            return nil
+        }
+        self.storeURL = storagePaths.storeURL
+        self.dataDirectoryURL = storagePaths.dataDirectoryURL
+#else
+        guard let storePath = Self.nonemptyValue(for: Self.storeURLKey, in: environment),
+              let dataDirectoryPath = Self.nonemptyValue(for: Self.dataDirectoryKey, in: environment) else {
+            return nil
+        }
+        self.storeURL = URL(fileURLWithPath: storePath).standardizedFileURL
+        self.dataDirectoryURL = URL(
+            fileURLWithPath: dataDirectoryPath,
+            isDirectory: true
+        ).standardizedFileURL
+#endif
 
         if let rawScenario = environment[Self.ocrScenarioKey] {
             guard let scenario = DebugUITestOCRScenario(rawValue: rawScenario) else {
@@ -126,6 +155,27 @@ nonisolated struct DebugUITestLaunchEnvironment: Sendable {
             preconditionFailure("Unable to create isolated UI-test defaults suite")
         }
         return defaults
+    }
+
+    static func appContainerStoragePaths(
+        namespace: String,
+        applicationSupportDirectory: URL
+    ) -> AppContainerStoragePaths? {
+        guard let namespaceUUID = UUID(uuidString: namespace),
+              namespaceUUID.uuidString.caseInsensitiveCompare(namespace) == .orderedSame else {
+            return nil
+        }
+
+        let canonicalNamespace = namespaceUUID.uuidString.lowercased()
+        let rootURL = applicationSupportDirectory
+            .appendingPathComponent("NextPasteUITests", isDirectory: true)
+            .appendingPathComponent(canonicalNamespace, isDirectory: true)
+            .standardizedFileURL
+        return AppContainerStoragePaths(
+            rootURL: rootURL,
+            storeURL: rootURL.appendingPathComponent("NextPaste.store", isDirectory: false),
+            dataDirectoryURL: rootURL.appendingPathComponent("ImageStore", isDirectory: true)
+        )
     }
 
     private static func nonemptyValue(

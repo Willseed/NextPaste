@@ -146,6 +146,7 @@ class UITestCase: XCTestCase {
             return
         }
 
+#if os(macOS)
         app.activate()
         if app.wait(for: .runningForeground, timeout: 2) {
             app.typeKey("q", modifierFlags: .command)
@@ -159,6 +160,13 @@ class UITestCase: XCTestCase {
             app.wait(for: .notRunning, timeout: 5),
             "Expected UI-test app to reach the not-running terminal state"
         )
+#else
+        app.terminate()
+        XCTAssertTrue(
+            app.wait(for: .notRunning, timeout: 5),
+            "Expected UI-test app to terminate"
+        )
+#endif
     }
 
     @MainActor
