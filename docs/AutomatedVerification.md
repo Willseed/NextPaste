@@ -249,13 +249,16 @@ artifacts directory inside the repository and performs explicit preflight and po
 `DerivedData`, `build`, `.build`, `.xcresult`, `.xcarchive`, `.dSYM`, `.app`, and profiling output;
 the gate does not rely on ignore rules hiding generated files.
 
-`.github/workflows/verify.yml` runs on pushes and pull requests with the `macos-26` runner. Before
-testing it requires the hosted image's Apple `automationmodetool` status to contain
+`.github/workflows/verify.yml` runs on pushes and pull requests. Its primary job uses the
+`macos-26` runner and requires the hosted image's Apple `automationmodetool` status to contain
 `DOES NOT REQUIRE`, writes that preflight evidence into the artifact directory, and installs the
-explicit `actionlint` and `ripgrep` dependencies. Its 90-minute job gives the blocking 80-minute
-`Scripts/ci-test.sh --mode pr` step bounded time to run repository policy checks, the Debug
+explicit `actionlint` and `ripgrep` dependencies. Its 90-minute bound gives the blocking 80-minute
+`Scripts/ci-test.sh --mode pr` step time to run repository policy checks, the Debug
 build-for-testing phase, all unit and integration tests, and the approved UI smoke selectors.
-Failure diagnostics are uploaded under `if: failure()`.
+After that job succeeds, a bounded `macos-15` compatibility job overrides the toolchain with Xcode
+26.3, verifies the resolved deployment targets on the Sequoia host, and reuses the existing
+`row-actions` UI shard to exercise the highest-risk native List, swipe-action, reordering, and
+pin-scroll lifecycle paths. Both jobs upload failure diagnostics under `if: failure()`.
 
 After a successful `main`-branch push run of `Verify`, `.github/workflows/full-ui.yml` starts through
 `workflow_run` and checks out the upstream `head_sha`. A job-level condition rejects unsuccessful
@@ -265,7 +268,7 @@ their own event. Neither workflow uses `continue-on-error` or suppresses a faili
 `Scripts/check-github-actions.sh` runs `actionlint -no-color` and fails closed on invalid YAML,
 expressions, or context placement. `Scripts/check-macos-host-compatibility.sh` resolves Debug and
 Release settings for the app, unit-test, and UI-test targets and rejects any deployment target
-newer than macOS 26.0 or the active host before Xcode attempts test enumeration.
+newer than macOS 15.0 or the active host before Xcode attempts test enumeration.
 
 ## Acceptance traceability
 

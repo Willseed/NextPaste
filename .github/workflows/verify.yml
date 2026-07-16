@@ -12,8 +12,8 @@ permissions:
   contents: read
 
 env:
-  # Keep the blocking workflow on one host-compatible toolchain while the
-  # dedicated CI scheme launches automated tests without debugger attachment.
+  # Keep the primary blocking job on the latest host-compatible toolchain. The
+  # Sequoia compatibility job overrides this with the newest Xcode that runs there.
   DEVELOPER_DIR: /Applications/Xcode_26.4.1.app/Contents/Developer
 
 jobs:
@@ -64,5 +64,39 @@ jobs:
         with:
           name: nextpaste-pr-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: ${{ runner.temp }}/NextPasteVerification
+          if-no-files-found: warn
+          retention-days: 14
+
+  sequoia-compatibility:
+    name: macOS 15 Sequoia row-action compatibility
+    needs: verify
+    runs-on: macos-15
+    timeout-minutes: 25
+    env:
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Run bounded Sequoia compatibility stage
+        timeout-minutes: 21
+        shell: bash
+        env:
+          CI_ARTIFACTS_DIR: ${{ runner.temp }}/NextPasteSequoia
+          CI_DERIVED_DATA_PATH: ${{ runner.temp }}/NextPasteSequoiaDerivedData
+        run: |
+          set -euo pipefail
+          mkdir -p "$CI_ARTIFACTS_DIR"
+          test "$(sw_vers -productVersion | cut -d. -f1)" = "15"
+          Scripts/check-macos-host-compatibility.sh \
+            "$CI_ARTIFACTS_DIR/macos-host-compatibility.txt"
+          Scripts/ci-test.sh --mode full-ui --shard row-actions
+
+      - name: Upload failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: nextpaste-sequoia-row-actions-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/NextPasteSequoia
           if-no-files-found: warn
           retention-days: 14

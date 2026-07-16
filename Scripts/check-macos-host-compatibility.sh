@@ -7,7 +7,7 @@ readonly SCRIPT_DIR
 REPO_ROOT="$(cd -P "${SCRIPT_DIR}/.." && pwd -P)"
 readonly REPO_ROOT
 readonly PROJECT_PATH="${REPO_ROOT}/NextPaste.xcodeproj"
-readonly MAXIMUM_MACOS_DEPLOYMENT_TARGET="26.0"
+readonly MAXIMUM_MACOS_DEPLOYMENT_TARGET="15.0"
 readonly TARGETS=(NextPaste NextPasteTests NextPasteUITests)
 readonly CONFIGURATIONS=(Debug Release)
 

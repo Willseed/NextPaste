@@ -55,7 +55,7 @@ invent a formatting or lint command.
 - `docs/AutomatedVerification.md`: complete test architecture, gate phases, and evidence contract.
 
 The app target currently supports `iphoneos`, `iphonesimulator`, `macosx`, `xros`, and
-`xrsimulator`; deployment targets are macOS 26.0 and iOS/visionOS 26.5. Do not narrow the platform
+`xrsimulator`; deployment targets are macOS 15.0 and iOS/visionOS 26.5. Do not narrow the platform
 matrix accidentally.
 
 ## Development Rules

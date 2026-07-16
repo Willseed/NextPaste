@@ -28,7 +28,7 @@ NextPaste 特別適合這些情境：
 
 ## 系統需求
 
-- macOS 26 Tahoe 或更新版本
+- macOS 15 Sequoia 或更新版本
 - Apple 晶片或 Intel Mac
 
 ## 安裝
