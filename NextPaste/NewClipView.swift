@@ -19,6 +19,10 @@ struct NewClipView: View {
     @State private var draftText = ""
     @State private var validationMessage: String?
     @State private var saveErrorMessage: String?
+#if os(iOS)
+    @State private var isPresentingDiscardConfirmation = false
+    @FocusState private var isEditorFocused: Bool
+#endif
 
     private let simulateSaveFailure: Bool
     // A presented macOS sheet can retain the Locale environment value from
@@ -55,13 +59,95 @@ struct NewClipView: View {
     }
 
     var body: some View {
+#if os(iOS)
+        iOSBody
+#else
+        desktopBody
+#endif
+    }
+
+#if os(iOS)
+    private var iOSBody: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    TextEditor(text: $draftText)
+                        .frame(minHeight: 220)
+                        .id(locale.identifier)
+                        .focused($isEditorFocused)
+                        .accessibilityIdentifier("clip-text-editor")
+                        .accessibilityLabel(Text(verbatim: localizedNewTextClip))
+                } header: {
+                    Text("Clip Content")
+                } footer: {
+                    editorMessages
+                }
+            }
+            .scrollContentBackground(.hidden)
+            .background(appTheme.canvas.color)
+            .navigationTitle(Text(verbatim: localizedNewTextClip))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel", role: .cancel) {
+                        requestIOSCancel()
+                    }
+                    .accessibilityIdentifier("cancel-new-clip-button")
+                    .accessibilityHint(Text("Cancel"))
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveClip()
+                    }
+                    .accessibilityIdentifier("save-clip-button")
+                    .accessibilityHint(Text("Save"))
+                }
+            }
+        }
+        .tint(appTheme.accentPinned.color)
+        .interactiveDismissDisabled(hasUnsavedDraft)
+        .confirmationDialog(
+            "Discard Changes?",
+            isPresented: $isPresentingDiscardConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Discard Changes", role: .destructive) {
+                dismiss()
+            }
+            .accessibilityIdentifier("discard-new-clip-button")
+
+            Button("Keep Editing", role: .cancel) {}
+        } message: {
+            Text("Your clip has unsaved changes.")
+        }
+        .task {
+            isEditorFocused = true
+        }
+        .onChange(of: locale.identifier) { _, _ in
+            refreshLocalizedMessages()
+        }
+    }
+
+    private var hasUnsavedDraft: Bool {
+        draftText.isEmpty == false
+    }
+
+    private func requestIOSCancel() {
+        if hasUnsavedDraft {
+            isPresentingDiscardConfirmation = true
+        } else {
+            dismiss()
+        }
+    }
+#endif
+
+    private var desktopBody: some View {
         // Resolve the editor's AppKit-backed accessibility label from the live
         // environment on every render. A LocalizedStringKey-backed Text can be
         // resolved when NSTextView is first installed and leave the real
         // VoiceOver label stale after an in-app locale change.
-        let localizedNewTextClip = locale.nextPasteLocalized("New Text Clip")
-
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
             Text(verbatim: localizedNewTextClip)
                 .font(.title2)
                 .fontWeight(.semibold)
@@ -76,21 +162,7 @@ struct NewClipView: View {
                 .accessibilityIdentifier("clip-text-editor")
                 .accessibilityLabel(Text(verbatim: localizedNewTextClip))
 
-            if let validationMessage {
-                Text(validationMessage)
-                    .foregroundStyle(appTheme.errorText.color)
-                    .accessibilityIdentifier("text-validation-message")
-                    .accessibilityLabel(validationMessage)
-                    .accessibilityValue(validationMessage)
-            }
-
-            if let saveErrorMessage {
-                Text(saveErrorMessage)
-                    .foregroundStyle(appTheme.errorText.color)
-                    .accessibilityIdentifier("save-error-message")
-                    .accessibilityLabel(saveErrorMessage)
-                    .accessibilityValue(saveErrorMessage)
-            }
+            editorMessages
 
             HStack {
                 Button("Cancel", role: .cancel) {
@@ -122,12 +194,41 @@ struct NewClipView: View {
         .padding()
         .frame(minWidth: 360, minHeight: 280)
         .onChange(of: locale.identifier) { _, _ in
-            if validationMessage != nil {
-                validationMessage = ClipValidation.validationMessage(for: draftText, locale: locale)
-            }
-            if saveErrorMessage != nil {
-                saveErrorMessage = locale.nextPasteLocalized("Clip was not saved. Try again.")
-            }
+            refreshLocalizedMessages()
+        }
+    }
+
+    private var localizedNewTextClip: String {
+        locale.nextPasteLocalized("New Text Clip")
+    }
+
+    @ViewBuilder
+    private var editorMessages: some View {
+        if let validationMessage {
+            Text(validationMessage)
+                .font(DesignTokens.Typography.metadata.font)
+                .foregroundStyle(appTheme.errorText.color)
+                .accessibilityIdentifier("text-validation-message")
+                .accessibilityLabel(validationMessage)
+                .accessibilityValue(validationMessage)
+        }
+
+        if let saveErrorMessage {
+            Text(saveErrorMessage)
+                .font(DesignTokens.Typography.metadata.font)
+                .foregroundStyle(appTheme.errorText.color)
+                .accessibilityIdentifier("save-error-message")
+                .accessibilityLabel(saveErrorMessage)
+                .accessibilityValue(saveErrorMessage)
+        }
+    }
+
+    private func refreshLocalizedMessages() {
+        if validationMessage != nil {
+            validationMessage = ClipValidation.validationMessage(for: draftText, locale: locale)
+        }
+        if saveErrorMessage != nil {
+            saveErrorMessage = locale.nextPasteLocalized("Clip was not saved. Try again.")
         }
     }
 

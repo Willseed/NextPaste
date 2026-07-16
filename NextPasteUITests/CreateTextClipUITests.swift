@@ -45,6 +45,29 @@ final class CreateTextClipUITests: UITestCase {
         XCTAssertFalse(app.staticTexts[text].exists)
     }
 
+#if os(iOS)
+    @MainActor
+    func testDirtyDraftRequiresExplicitDiscardConfirmation() throws {
+        let app = launchApp()
+        let editor = try openNewClip(in: app)
+
+        editor.tap()
+        editor.typeText("Draft that must not disappear")
+        app.buttons["cancel-new-clip-button"].tap()
+
+        let discardButton = app.buttons
+            .matching(identifier: "discard-new-clip-button")
+            .firstMatch
+        XCTAssertTrue(discardButton.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews["clip-text-editor"].exists)
+
+        discardButton.tap()
+
+        XCTAssertTrue(app.staticTexts["empty-state-title"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textViews["clip-text-editor"].exists)
+    }
+#endif
+
     @MainActor
     private func openNewClip(in app: XCUIApplication) throws -> XCUIElement {
         let newClipButton = app.buttons["new-clip-button"]
