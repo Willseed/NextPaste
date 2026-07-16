@@ -71,6 +71,9 @@ struct NextPasteApp: App {
     @StateObject private var historyLimitPreference: HistoryLimitPreference
     @StateObject private var appearancePreference: AppearancePreference
     @StateObject private var appLanguagePreference: AppLanguagePreference
+#if os(iOS)
+    @StateObject private var iosClipboardImportCoordinator: IOSClipboardImportCoordinator
+#endif
 #if os(macOS)
     @StateObject private var globalShortcutPreference: GlobalShortcutPreference
     @StateObject private var globalShortcutLifecycleController: GlobalShortcutLifecycleController
@@ -104,7 +107,8 @@ struct NextPasteApp: App {
         #else
         imageTextRecognitionCoordinator = ImageTextRecognitionCoordinator()
         #endif
-        sharedModelContainer = Self.makeModelContainer(arguments: ProcessInfo.processInfo.arguments)
+        let modelContainer = Self.makeModelContainer(arguments: ProcessInfo.processInfo.arguments)
+        sharedModelContainer = modelContainer
 #if DEBUG
         UITestHistorySeeder.seedIfNeeded(
             arguments: ProcessInfo.processInfo.arguments,
@@ -139,6 +143,22 @@ struct NextPasteApp: App {
         _historyLimitPreference = StateObject(wrappedValue: limitPref)
         _appearancePreference = StateObject(wrappedValue: appearancePref)
         _appLanguagePreference = StateObject(wrappedValue: languagePref)
+#if os(iOS)
+        let iosCaptureService = ClipboardCaptureService(modelContext: modelContainer.mainContext)
+        iosCaptureService.postCaptureRetention = { [limitPref] context in
+            do {
+                _ = try HistoryRetentionService(modelContext: context).enforceLimit(
+                    limit: limitPref.limit
+                )
+            } catch {
+                // Clipboard-derived content is intentionally excluded from diagnostics.
+                NSLog("NextPaste could not enforce history retention after iOS import")
+            }
+        }
+        _iosClipboardImportCoordinator = StateObject(
+            wrappedValue: IOSClipboardImportCoordinator(captureService: iosCaptureService)
+        )
+#endif
 #if os(macOS)
         _globalShortcutPreference = StateObject(wrappedValue: globalShortcutPref)
         _globalShortcutLifecycleController = StateObject(wrappedValue: globalShortcutLifecycleController)
@@ -321,6 +341,9 @@ struct NextPasteApp: App {
         .environmentObject(appearancePreference)
         .environmentObject(historyLimitPreference)
         .environmentObject(appLanguagePreference)
+#if os(iOS)
+        .environmentObject(iosClipboardImportCoordinator)
+#endif
 #if os(macOS)
         .environmentObject(globalShortcutLifecycleController)
 #endif
@@ -331,8 +354,15 @@ struct NextPasteApp: App {
 #if !os(macOS)
         .preferredColorScheme(appearancePreference.mode.preferredColorScheme)
 #endif
+#if os(iOS)
+        // iPhone/iPad use the NavigationStack and safe-area-driven content size.
+        // Applying the desktop minimum width here creates a horizontally cropped
+        // canvas on compact devices.
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+#else
         .frame(minWidth: 520, minHeight: 380)
         .navigationTitle(Text("NextPaste"))
+#endif
 #if os(macOS)
         .background {
             WindowAccessibilityHostBridge(
@@ -385,9 +415,11 @@ private struct ClipboardMonitorHostView<Content: View>: View {
         content()
             .task {
                 await MainActor.run {
+#if !os(iOS)
                     ClipboardMonitorLifecycleController.shared.startIfNeeded(using: modelContext)
 #if os(macOS)
                     globalShortcutLifecycleController.startIfNeeded()
+#endif
 #endif
                 }
             }
@@ -459,4 +491,5 @@ private struct ThemedSettingsContent: View {
         colorSchemeContrast
 #endif
     }
+
 }

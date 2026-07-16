@@ -110,12 +110,10 @@ enum ClipboardWriter {
 #if os(macOS)
         return writeText(text, to: AppPasteboard.current)
 #elseif canImport(UIKit)
-        let originalItems = UIPasteboard.general.items
         UIPasteboard.general.string = text
-        guard UIPasteboard.general.string == text else {
-            UIPasteboard.general.items = originalItems
-            return false
-        }
+        // UIPasteboard writes are synchronous and have no throwing/failable
+        // API. Do not snapshot or read back the previous cross-App value just
+        // to verify a user-initiated Copy operation.
         return true
 #else
         return false
@@ -304,14 +302,9 @@ enum ClipboardWriter {
         typeIdentifier: String,
         to pasteboard: UIPasteboard
     ) -> Bool {
-        let originalItems = pasteboard.items
         pasteboard.items = [[typeIdentifier: imageData]]
-
-        guard pasteboard.data(forPasteboardType: typeIdentifier) == imageData else {
-            pasteboard.items = originalItems
-            return false
-        }
-
+        // Like text writes above, avoid reading the previous or newly written
+        // cross-App value. Assignment is the complete UIKit write contract.
         return true
     }
 #endif
