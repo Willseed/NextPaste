@@ -1,39 +1,30 @@
-# iOS Clipboard Import Contract
+# iOS Explicit Paste Contract
 
 **Feature**: 026-ios-native-clipboard
 **Scope**: iOS/iPadOS only (`#if os(iOS)`); macOS polling and visionOS are excluded.
 
 ## Trigger Contract
 
-- An aggregate transition from no active scene to at least one active scene creates at most one
-  app-wide foreground opportunity.
-- Activating another scene while one is already active does not create a second read.
-- Repeated active events, a system-prompt inactive/active cycle, or scene reconstruction for the
-  same in-flight/completed change token do not repeat content access.
-- A transient inactive scene does not cancel an import because a system paste prompt can cause that
-  transition. When all scenes enter background or are removed, the lifecycle generation changes,
-  in-flight work is cancelled, and late callbacks cannot save.
-- No background monitoring occurs. A later foreground opportunity observes only the current item.
-
-## Automatic Pasteboard Boundary
-
-- Only `IOSPasteboardClient` may access `UIPasteboard.general`.
-- It reads an opaque change-count equality token and snapshots item providers once per automatic
-  request; the token is memory-only and is never treated as content identity or authorization state.
-- Access occurs only while the App has a foreground scene and remains subject to the system's paste
-  permission behavior. Product code must not bypass, imitate, or repeatedly pressure authorization.
-- The App does not persist an allow/deny flag, source application, UTType list, provider filename,
-  clipboard hash, preview, text, or image bytes as opportunity state.
+- Only an actual user click on a visible SwiftUI `PasteButton` (or equivalent system paste control)
+  may create an iOS cross-App clipboard import request.
+- App launch, `onAppear`, `.task`, notifications, timers, and `scenePhase` transitions must not read
+  `UIPasteboard.general` item values or providers and must not create a clip.
+- Foreground lifecycle work may reload only App-owned SwiftData/UI state.
+- No background monitoring occurs. After returning, the user can explicitly paste only the item
+  that is still current.
+- A custom button that programmatically reads the pasteboard, a hidden/covered system control, or
+  a simulated click cannot replace the system control's intent and privacy semantics.
 
 ## PasteButton Boundary
 
-- The fallback is SwiftUI's system `PasteButton` with supported image and text content types.
-- Providers received by the callback are the sole content source for that user-initiated request;
-  the callback must not read `UIPasteboard.general` again.
-- A user-initiated request may supersede an automatic request that has not committed.
-- Explicit paste still uses the shared decoder and `ClipboardCaptureService`, so duplicate content
-  remains duplicate and all existing validation/retention rules apply.
-- A custom lookalike button cannot replace the system control's intent and privacy semantics.
+- The product control is SwiftUI's system `PasteButton` with supported image and plain-text types.
+- It must be genuinely visible, tappable, sufficiently contrasted, and presented as the primary
+  action: inside the empty state when history is empty, or in the trailing toolbar when history exists.
+- Providers received by the callback are the sole content source for that request. The callback,
+  coordinator, and decoder must not read `UIPasteboard.general` again, including `changeCount`.
+- Explicit paste uses the shared decoder and `ClipboardCaptureService`, so existing validation,
+  duplicate handling, image persistence, rollback, and retention rules remain authoritative.
+- Product state must not depend on an App-specific `Paste from Other Apps` allow/deny checkpoint.
 
 ## Payload Selection Contract
 
@@ -48,37 +39,39 @@
 
 ## Serialization and Freshness Contract
 
-Every request owns a request ID, opportunity sequence, lifecycle generation, source, and (for
-automatic requests) observed change count. After every suspension and immediately before capture,
-the coordinator verifies:
+Every explicit paste request owns a monotonically increasing request ID. After every suspension and
+immediately before capture, the coordinator verifies:
 
-1. the task is not cancelled;
-2. the request is still the coordinator owner;
-3. lifecycle generation is unchanged;
-4. the App still has a foreground scene; and
-5. an automatic request's current change count still equals its snapshot token.
+1. the task is not cancelled; and
+2. the request is still the coordinator owner.
 
 The App owns one MainActor coordinator, one capture service, and one owning main `ModelContext`.
-At most one request enters the non-suspending capture/commit section. A cancelled, superseded, or
-stale callback cannot mutate SwiftData/image files, run retention, or replace newer UI feedback.
+Starting a newer explicit paste may cancel an older request that has not committed. At most one
+request enters the non-suspending capture/commit section. A cancelled, superseded, or stale callback
+cannot mutate SwiftData/image files, run retention, or replace newer UI feedback.
+Because the user has already expressed paste intent, a mere inactive/background scene transition does
+not invalidate that request; the OS may suspend work, but lifecycle callbacks neither start nor own it.
 
 ## Privacy Contract
 
 - Payloads may live only in local variables needed for decoding and the existing persistence call.
-- Visible status and diagnostics are restricted to fixed source, content-kind, disposition,
-  sequence, and fixed failure-code enums.
-- `ClipboardCaptureService.CaptureOutcome.captured(String)` is immediately adapted; its text/image
-  hash associated value is never published, logged, persisted, placed in accessibility values, or
-  attached to tests.
+- Visible status and diagnostics are restricted to fixed source, content-kind, and disposition enums.
+- `ClipboardCaptureService.CaptureOutcome.captured(String)` is immediately adapted; its associated
+  text/image hash is never published, logged, persisted, placed in accessibility values, or attached
+  to tests.
 - Provider filenames, localized error descriptions, content hashes, text, image bytes, thumbnails,
-  and previews are forbidden from logs/probes/opportunity state.
+  and previews are forbidden from logs/probes/request state.
+- Release iOS acquisition code must contain no `UIPasteboard.general` read. Writing a clip after an
+  explicit Copy action remains a separate user-initiated output path and must not snapshot old values.
 - No network, analytics, telemetry, sync dependency, or clipboard-derived export is introduced.
 
 ## Verification Boundary
 
-- Unit tests own scene aggregation, request ownership, stale completion, provider ordering,
-  capture-outcome mapping, and 50-transition stress.
+- Unit tests own request ownership, stale completion, provider ordering, capture-outcome mapping,
+  duplicate handling, cancellation, and 50-request stress.
+- Source/runtime contracts own the zero lifecycle-read rule and ensure PasteButton callback providers
+  are the only acquisition input.
 - Deterministic Debug-only UI fixtures own repeatable App integration, but never count as evidence of
-  the real system paste permission prompt.
-- Real Allow/deny/revoke behavior is a manual simulator/device matrix because the prompt and its
-  remembered state are owned by iOS and cannot be reliably controlled by `simctl privacy`.
+  the real system paste control or App-specific Settings presentation.
+- Real copy → open → no automatic prompt/save → tap Paste behavior is a manual simulator/device matrix
+  because system UI and its remembered state are owned by iOS.

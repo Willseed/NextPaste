@@ -1,4 +1,4 @@
-# Quickstart: iOS 原生體驗與前景剪貼簿匯入
+# Quickstart: iOS 原生體驗與明確貼上
 
 **Feature**: 026-ios-native-clipboard
 **Spec**: [spec.md](./spec.md)
@@ -35,7 +35,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPaste \
 ## Targeted Unit Tests
 
 ```bash
-# iOS foreground lifecycle、generation、dedup/cancellation/result mapping
+# iOS explicit request ownership、dedup/cancellation/result mapping
 xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste \
   -only-test-configuration Unit \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
@@ -63,7 +63,7 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste 
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:NextPasteUITests/IOSNativeHomeUITests test
 
-# Deterministic foreground import/fallback integration (not system prompt evidence)
+# Deterministic user-triggered PasteButton integration (not system UI evidence)
 xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste \
   -only-test-configuration UI \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
@@ -87,15 +87,16 @@ xcrun simctl list devices available
 open -a Simulator
 
 # Put text on the booted simulator pasteboard.
-printf '%s' 'NextPaste iOS foreground import' | xcrun simctl pbcopy booted
+printf '%s' 'NextPaste iOS explicit paste' | xcrun simctl pbcopy booted
 
 # Install and launch using the build product path reported by xcodebuild.
 xcrun simctl install booted /path/to/NextPaste.app
-xcrun simctl launch booted com.nextpaste.NextPaste
+xcrun simctl launch booted dev.pylot.NextPaste
 ```
 
-首次 programmatic paste若顯示 iOS system prompt，依 Validation Contract 分別驗證 Allow、deny與
-Settings撤銷。`simctl pbcopy`＋launch只建立操作條件，不能單獨證明匯入或權限行為成功。
+launch後先確認未點Paste前沒有新row或由programmatic read造成的system prompt，再實際點擊可見
+`PasteButton`並確認只新增一筆。`simctl pbcopy`＋launch只建立操作條件，不能單獨證明system
+control、匯入或隱私行為成功。
 
 ## macOS Regression Spot Checks
 
@@ -118,6 +119,6 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste 
 Scripts/verify.sh
 ```
 
-此功能改變 app launch、navigation、clipboard acquisition與shared persistence input，因此完成時
+此功能改變app launch、navigation、explicit clipboard acquisition與shared persistence input，因此完成時
 必須執行完整 gate。保留第一份大型 log/result bundle並依 contract記錄實際結果；不得只為取回
 輸出而無理由重跑。

@@ -26,6 +26,7 @@
 3. **Given** 目前剪貼簿內容已存在於歷史，**When** 使用者再次點擊系統 `PasteButton`，**Then** 歷史不得新增重複項目，並提供不含內容的回饋。
 4. **Given** 使用者只開啟或切回 NextPaste 而未點擊 Paste，**When** scene 進入 active，**Then** App 只能刷新自有資料，不得呼叫跨 App pasteboard value API 或顯示由程式化讀取造成的貼上權限提示。
 5. **Given** NextPaste 位於背景或未執行，**When** 剪貼簿內容改變，**Then** App 不得宣稱已在背景保存；使用者返回後只能明確貼上當下仍存在的最近內容。
+6. **Given** 使用者已點擊系統 `PasteButton` 且 provider 尚在載入，**When** scene 暫時 inactive 或進入 background，**Then** lifecycle 不得啟動新的剪貼簿讀取，也不得單獨使該明確請求失效；請求只能依目前 request ownership 完成、被較新貼上取代或取消。
 
 ---
 
@@ -101,7 +102,7 @@
 - **FR-003**: 系統必須支援從 iOS 剪貼簿匯入既有產品可接受的純文字與點陣圖片類型。
 - **FR-004**: 貼上控制必須是真實、可見、可點擊、對比足夠的系統控制，且不得以普通按鈕、透明控制、覆蓋控制、程式模擬點擊或其他方式繞過其使用者意圖與隱私語意。
 - **FR-005**: 空歷史必須在空狀態中提供系統 `PasteButton` 作為唯一明顯的主要動作；已有歷史時必須在 trailing toolbar 提供該主要動作，且同一畫面不得重複呈現競爭的 Paste primary action。
-- **FR-006**: 系統不得在 iOS 背景、App 未執行或單純回到前景時監測或保存剪貼簿；只在明確貼上時處理當下仍存在的相容內容。
+- **FR-006**: iOS lifecycle 不得在背景、App 未執行或單純回到前景時啟動剪貼簿讀取或新保存；已由使用者點擊系統 `PasteButton` 啟動的請求可跨 inactive／background transition，並只依 FR-008 的 request ownership 完成、被取代或取消。
 - **FR-007**: iOS 剪貼簿處理必須保持完全在裝置上，且狀態、錯誤與診斷不得暴露實際文字、圖片或預覽內容。
 - **FR-008**: 系統必須序列化或以請求所有權保護同一 App 生命週期中的明確貼上請求，使取消、被較新請求取代或晚到的非同步結果不得重複保存內容。
 - **FR-009**: iOS 首頁必須使用平台原生的導覽層級、標題、工具列與搜尋呈現，不得重用需要桌面寬度的卡片式頂端工具列。
@@ -152,6 +153,16 @@
 - iPhone 是本次視覺驗收的主要裝置；iPad 必須保持可用且使用相同原生容器，但不新增獨立多欄資訊架構。
 - 系統 paste control 與 App-specific Paste from Other Apps 設定的最終顯示與行為由目前 iOS 版本控制；基本功能不依賴使用者預先把程式化讀取設為 Allow。
 - 這次不新增雲端同步、分析、廣告、外部處理或任何需要傳送剪貼簿內容的服務。
+
+## Constitutional Platform Exception
+
+Constitution Principles I and IV make automatic clipboard capture the product default, but explicitly
+allow a governing specification to document an intentional exception with regression coverage. iOS is
+that exception for this feature: Apple defines a visible system paste control as the reliable explicit
+user-intent path for cross-App values, while launch／active programmatic reads can enter a modal privacy
+flow. Therefore iOS requires one user tap on `PasteButton`; macOS passive polling remains unchanged.
+FR-001～FR-006 and SC-003 verify the iOS no-read／one-tap boundary, while SC-009 protects automatic
+macOS capture from regression.
 
 ## Out of Scope
 
