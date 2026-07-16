@@ -6,7 +6,7 @@
 
 | ID | Feature | Status | Path |
 | --- | --- | --- | --- |
-| 026 | iOS 原生體驗與前景剪貼簿匯入 | active | `specs/026-ios-native-clipboard/` |
+| 026 | iOS 原生體驗與明確貼上 | active | `specs/026-ios-native-clipboard/` |
 | 025 | Pin/Unpin 與 Auto Capture 重開穩定性 | active | `specs/025-pin-relaunch-stability/` |
 
 ## Completed Specifications

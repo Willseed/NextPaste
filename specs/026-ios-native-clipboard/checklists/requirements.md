@@ -1,4 +1,4 @@
-# Specification Quality Checklist: iOS 原生體驗與前景剪貼簿匯入
+# Specification Quality Checklist: iOS 原生體驗與明確貼上
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-07-17
@@ -32,4 +32,4 @@
 ## Notes
 
 - Validation pass 1: all checklist items passed after explicitly bounding iOS background limitations, system-owned paste permission behavior, supported platforms, privacy, accessibility, and macOS parity.
-- No clarification markers remain; the user's requested foreground behavior and Apple-owned permission prompt are recorded as explicit assumptions.
+- No clarification markers remain; the user-provided Apple research explicitly defines one-tap system Paste as the iOS product flow and forbids lifecycle clipboard value reads.
