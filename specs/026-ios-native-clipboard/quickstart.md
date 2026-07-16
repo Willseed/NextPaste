@@ -30,6 +30,10 @@ Dry run只驗證 configuration，不能當作 build/test pass。
 ```bash
 xcodebuild -project NextPaste.xcodeproj -scheme NextPaste \
   -destination 'generic/platform=iOS Simulator' build
+
+# Platform-isolation compile check; requires the matching visionOS runtime installed in Xcode.
+xcodebuild -project NextPaste.xcodeproj -scheme NextPaste \
+  -destination 'generic/platform=visionOS Simulator' build
 ```
 
 ## Targeted Unit Tests
@@ -63,11 +67,12 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste 
   -destination 'platform=iOS Simulator,name=iPhone 17' \
   -only-testing:NextPasteUITests/IOSNativeHomeUITests test
 
-# Deterministic user-triggered PasteButton integration (not system UI evidence)
+# Simulator pasteboard setup + user-triggered system PasteButton integration;
+# this is not complete system prompt/settings manual evidence.
 xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste \
   -only-test-configuration UI \
   -destination 'platform=iOS Simulator,name=iPhone 17' \
-  -only-testing:NextPasteUITests/IOSClipboardImportUITests test
+  -only-testing:NextPasteUITests/IOSExplicitPasteUITests test
 
 # Native settings and editor flows
 xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste \
@@ -78,6 +83,9 @@ xcodebuild -project NextPaste.xcodeproj -scheme NextPasteCI -testPlan NextPaste 
 ```
 
 UI execution必須serialized；不得parallel啟動共享 simulator pasteboard/store測試。
+目前shared test targets仍含macOS-only test sources；若iOS destination在compile phase遇到既有
+platform-only source錯誤，targeted evidence可用command-line source filtering隔離所選suite，但不得
+把被排除的source視為已在iOS通過。generic iOS product build必須保持unfiltered。
 
 ## Manual Simulator Workflow
 

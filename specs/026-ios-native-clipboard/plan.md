@@ -135,7 +135,7 @@ NextPasteTests/
 
 NextPasteUITests/
 ├── IOSNativeHomeUITests.swift            # NEW：no crop, one search, toolbar/list/empty actions
-├── IOSClipboardImportUITests.swift       # NEW：deterministic fixture-driven explicit paste
+├── IOSExplicitPasteUITests.swift         # NEW：explicit system-Paste integration coverage
 ├── IOSSettingsUITests.swift              # NEW：Form, preferences, destructive confirmation
 ├── CreateTextClipUITests.swift            # extend iOS editor navigation
 ├── UITestAppLauncher.swift                # extend iOS fixture/scene configuration
