@@ -20,17 +20,23 @@ struct ImageClipboardRow: View {
     let onCopy: (() -> Void)?
     let onDelete: (() -> Void)?
     let onTogglePin: (() -> Void)?
+    let tracksHover: Bool
+    let showsInlineCopyControl: Bool
 
     init(
         presentation: ImageClipboardRowPresentation,
         onCopy: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
-        onTogglePin: (() -> Void)? = nil
+        onTogglePin: (() -> Void)? = nil,
+        tracksHover: Bool = true,
+        showsInlineCopyControl: Bool = true
     ) {
         self.presentation = presentation
         self.onCopy = onCopy
         self.onDelete = onDelete
         self.onTogglePin = onTogglePin
+        self.tracksHover = tracksHover
+        self.showsInlineCopyControl = showsInlineCopyControl
     }
 
     var body: some View {
@@ -40,8 +46,9 @@ struct ImageClipboardRow: View {
             isPinned: presentation.isPinned,
             interactionState: presentation.interactionState,
             visualStyle: .interactive,
-            tracksHover: true,
+            tracksHover: tracksHover,
             showsPinnedAccentMarker: true,
+            showsInlineCopyControl: showsInlineCopyControl,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: presentation.rowAccessibilityIdentifier,
                 // AppKit exposes this SwiftUI container as an AXGroup and does

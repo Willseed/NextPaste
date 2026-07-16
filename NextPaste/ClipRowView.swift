@@ -19,6 +19,8 @@ struct ClipRowView: View {
     let onCopy: (() -> Void)?
     let onDelete: (() -> Void)?
     let onTogglePin: (() -> Void)?
+    let tracksHover: Bool
+    let showsInlineCopyControl: Bool
 
     init(
         clip: ClipItem,
@@ -26,7 +28,9 @@ struct ClipRowView: View {
         interactionState: ClipboardRowPresentation.InteractionState = .normal,
         onCopy: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
-        onTogglePin: (() -> Void)? = nil
+        onTogglePin: (() -> Void)? = nil,
+        tracksHover: Bool = true,
+        showsInlineCopyControl: Bool = true
     ) {
         self.clip = clip
         self.copyFeedback = copyFeedback
@@ -34,6 +38,8 @@ struct ClipRowView: View {
         self.onCopy = onCopy
         self.onDelete = onDelete
         self.onTogglePin = onTogglePin
+        self.tracksHover = tracksHover
+        self.showsInlineCopyControl = showsInlineCopyControl
     }
 
     var body: some View {
@@ -47,7 +53,9 @@ struct ClipRowView: View {
                     ),
                     onCopy: onCopy,
                     onDelete: onDelete,
-                    onTogglePin: onTogglePin
+                    onTogglePin: onTogglePin,
+                    tracksHover: tracksHover,
+                    showsInlineCopyControl: showsInlineCopyControl
                 )
             } else {
                 ClipboardRow(
@@ -58,7 +66,9 @@ struct ClipRowView: View {
                     ),
                     onCopy: onCopy,
                     onDelete: onDelete,
-                    onTogglePin: onTogglePin
+                    onTogglePin: onTogglePin,
+                    tracksHover: tracksHover,
+                    showsInlineCopyControl: showsInlineCopyControl
                 )
             }
         }

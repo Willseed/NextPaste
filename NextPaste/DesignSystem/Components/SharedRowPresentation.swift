@@ -54,6 +54,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
     let visualStyle: VisualStyle
     let tracksHover: Bool
     let showsPinnedAccentMarker: Bool
+    let showsInlineCopyControl: Bool
     let accessibility: Accessibility
     let surfaceAccessibility: SurfaceAccessibility?
     let onCopy: (() -> Void)?
@@ -68,6 +69,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         visualStyle: VisualStyle,
         tracksHover: Bool,
         showsPinnedAccentMarker: Bool,
+        showsInlineCopyControl: Bool = true,
         accessibility: Accessibility,
         surfaceAccessibility: SurfaceAccessibility? = nil,
         onCopy: (() -> Void)?,
@@ -81,6 +83,7 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
         self.visualStyle = visualStyle
         self.tracksHover = tracksHover
         self.showsPinnedAccentMarker = showsPinnedAccentMarker
+        self.showsInlineCopyControl = showsInlineCopyControl
         self.accessibility = accessibility
         self.surfaceAccessibility = surfaceAccessibility
         self.onCopy = onCopy
@@ -105,7 +108,9 @@ struct SharedRowPresentation<RowContent: View, TrailingState: View>: View {
 
             trailingState()
 
-            RowActionControlGroup(onCopy: onCopy)
+            if showsInlineCopyControl {
+                RowActionControlGroup(onCopy: onCopy)
+            }
         }
         .padding(.vertical, DesignTokens.Spacing.medium)
         .padding(.horizontal, DesignTokens.Spacing.large)

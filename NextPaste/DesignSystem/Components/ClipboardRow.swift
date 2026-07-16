@@ -13,17 +13,23 @@ struct ClipboardRow: View {
     let onCopy: (() -> Void)?
     let onDelete: (() -> Void)?
     let onTogglePin: (() -> Void)?
+    let tracksHover: Bool
+    let showsInlineCopyControl: Bool
 
     init(
         presentation: ClipboardRowPresentation,
         onCopy: (() -> Void)? = nil,
         onDelete: (() -> Void)? = nil,
-        onTogglePin: (() -> Void)? = nil
+        onTogglePin: (() -> Void)? = nil,
+        tracksHover: Bool = true,
+        showsInlineCopyControl: Bool = true
     ) {
         self.presentation = presentation
         self.onCopy = onCopy
         self.onDelete = onDelete
         self.onTogglePin = onTogglePin
+        self.tracksHover = tracksHover
+        self.showsInlineCopyControl = showsInlineCopyControl
     }
 
     var body: some View {
@@ -31,8 +37,9 @@ struct ClipboardRow: View {
             isPinned: presentation.isPinned,
             interactionState: presentation.interactionState,
             visualStyle: .interactive,
-            tracksHover: true,
+            tracksHover: tracksHover,
             showsPinnedAccentMarker: true,
+            showsInlineCopyControl: showsInlineCopyControl,
             accessibility: SharedRowPresentation.Accessibility(
                 identifier: "clip-row-\(presentation.id.uuidString)",
                 label: accessibilityLabel

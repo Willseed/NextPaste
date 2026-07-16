@@ -315,6 +315,9 @@ struct HomeView: View {
     @Environment(\.appMotion) private var appMotion
     @Environment(\.modelContext) private var modelContext
     @Environment(\.locale) private var locale
+#if os(iOS)
+    @EnvironmentObject private var iosClipboardImportCoordinator: IOSClipboardImportCoordinator
+#endif
     @Query(sort: ClipItem.historySortDescriptors) private var clips: [ClipItem]
     @StateObject private var imageTextRecognitionCoordinator: ImageTextRecognitionCoordinator
     @State private var initialLoadState = InitialLoadState()
@@ -339,6 +342,11 @@ struct HomeView: View {
     @State private var isShowingSettingsPlaceholder = false
     @State private var copiedClipID: UUID?
     @State private var copyFeedbackTask: Task<Void, Never>?
+#if os(iOS)
+    @State private var iosImportFeedback: IOSClipboardImportResult?
+    @State private var iosImportFeedbackTask: Task<Void, Never>?
+    @State private var isPresentingIOSSettings = false
+#endif
     @State private var headerFrame: CGRect = .null
     @State private var settingsMessageFrame: CGRect = .null
     @State private var listViewportFrame: CGRect = .null
@@ -426,6 +434,10 @@ struct HomeView: View {
 
             uiTestWindowSizeControls
 
+#if os(iOS)
+            iOSHistoryContent
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+#else
             VStack(alignment: .leading, spacing: DesignTokens.Spacing.large) {
                 AppToolbar(title: "Clips") {
                     adaptiveToolbarContent
@@ -455,6 +467,7 @@ struct HomeView: View {
             }
             .padding(DesignTokens.Spacing.xLarge)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+#endif
 
 #if DEBUG && os(macOS)
             uiTestPinScrollContextMenuTrigger
@@ -488,8 +501,71 @@ struct HomeView: View {
         .sheet(isPresented: $isPresentingNewClip) {
             NewClipView()
         }
+#if os(iOS)
+        .searchable(
+            text: $searchText,
+            placement: .navigationBarDrawer(displayMode: .always),
+            prompt: "Search clips"
+        )
+        .searchFocused($isSearchFieldFocused)
+        .navigationTitle("Clips")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                if clips.isEmpty == false {
+                    IOSPasteButton(presentation: .toolbar)
+
+                    Button {
+                        isPresentingNewClip = true
+                    } label: {
+                        Label("New Clip", systemImage: "plus")
+                    }
+                    .accessibilityIdentifier("new-clip-button")
+                    .accessibilityLabel(Text("New Clip"))
+                }
+
+                Menu {
+                    Menu {
+                        ForEach(HistoryFilter.allCases) { filter in
+                            Button {
+                                historyFilter = filter
+                            } label: {
+                                if historyFilter == filter {
+                                    Label(LocalizedStringKey(filter.titleKey), systemImage: "checkmark")
+                                } else {
+                                    Text(LocalizedStringKey(filter.titleKey))
+                                }
+                            }
+                            .accessibilityIdentifier(filter.accessibilityIdentifier)
+                        }
+                    } label: {
+                        Label("Filter", systemImage: DesignTokens.Icons.filter)
+                    }
+
+                    Button {
+                        isPresentingIOSSettings = true
+                    } label: {
+                        Label("Settings", systemImage: DesignTokens.Icons.settings)
+                    }
+                    .accessibilityIdentifier("settings-menu-item")
+                } label: {
+                    Label("More", systemImage: "ellipsis.circle")
+                }
+                .accessibilityIdentifier("ios-more-menu")
+                .accessibilityLabel(Text("More"))
+                .accessibilityValue(Text(LocalizedStringKey(historyFilter.titleKey)))
+            }
+        }
+        .navigationDestination(isPresented: $isPresentingIOSSettings) {
+            IOSSettingsView()
+        }
+        .onChange(of: iosClipboardImportCoordinator.latestResult) { _, result in
+            presentIOSImportFeedback(result)
+        }
+#else
         .searchable(text: $searchText, isPresented: $isSearchPresented, prompt: "Search clips")
         .searchFocused($isSearchFieldFocused)
+#endif
         // One stable publisher owns the scene-wide command payload. The dispatcher
         // resolves requests through the current HomeView generation rather than
         // publishing newly-created closure identities during every body evaluation.
@@ -575,6 +651,9 @@ struct HomeView: View {
         .onDisappear {
             uninstallFocusedSceneCommandHandler()
             copyFeedbackTask?.cancel()
+#if os(iOS)
+            iosImportFeedbackTask?.cancel()
+#endif
             pinScrollTask?.cancel()
             pinScrollRequestState.cancel()
             pinScrollLayoutObservationState.reset()
@@ -596,6 +675,7 @@ struct HomeView: View {
         }
     }
 
+    #if os(macOS)
     /// T029: cancel the in-flight `reconciliationTask` for view teardown and
     /// record the `.teardown` exit path + cleanup ownership trace (FR-012,
     /// SC-007). Cancelling unblocks a task parked at the safe-boundary awaiter
@@ -615,6 +695,7 @@ struct HomeView: View {
         storage.pendingMutations.removeAll()
         storage.task?.cancel()
     }
+    #endif
 
     private func copyClip(_ clip: ClipItem) {
         let didCopy: Bool
@@ -1312,6 +1393,214 @@ struct HomeView: View {
         }
     }
 
+#if os(iOS)
+    @ViewBuilder
+    private var iOSHistoryContent: some View {
+        if visibleClips.isEmpty {
+            iOSEmptyState
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(appTheme.canvas.color)
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    iOSImportStatusSurface
+                }
+        } else {
+            historyList
+                .safeAreaInset(edge: .bottom, spacing: 0) {
+                    iOSImportStatusSurface
+                }
+        }
+    }
+
+    private var iOSEmptyState: some View {
+        ContentUnavailableView {
+            iOSEmptyStateLabel
+        } description: {
+            Text(LocalizedStringKey(iOSEmptyStateDescription))
+                .font(DesignTokens.Typography.body.font)
+                .foregroundStyle(appTheme.textSecondary.color)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier(iOSEmptyStateDescriptionIdentifier)
+        } actions: {
+            iOSEmptyStateActions
+        }
+        .tint(appTheme.accentPinned.color)
+    }
+
+    @ViewBuilder
+    private var iOSEmptyStateLabel: some View {
+        switch emptyStateKind {
+        case .history:
+            VStack(spacing: DesignTokens.Spacing.medium) {
+                EmptyStateIllustration()
+                    .accessibilityHidden(true)
+
+                Text(LocalizedStringKey(iOSEmptyStateTitle))
+                    .font(DesignTokens.Typography.title.font)
+                    .foregroundStyle(appTheme.textPrimary.color)
+                    .multilineTextAlignment(.center)
+                    .accessibilityIdentifier(iOSEmptyStateTitleIdentifier)
+            }
+        case .search:
+            Label(LocalizedStringKey(iOSEmptyStateTitle), systemImage: "magnifyingglass")
+                .accessibilityIdentifier(iOSEmptyStateTitleIdentifier)
+        case .filter:
+            Label(LocalizedStringKey(iOSEmptyStateTitle), systemImage: DesignTokens.Icons.filter)
+                .accessibilityIdentifier(iOSEmptyStateTitleIdentifier)
+        }
+    }
+
+    @ViewBuilder
+    private var iOSEmptyStateActions: some View {
+        switch emptyStateKind {
+        case .history:
+            IOSPasteButton()
+
+            Button {
+                isPresentingNewClip = true
+            } label: {
+                Label("New Clip", systemImage: "plus")
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+            .accessibilityIdentifier("new-clip-button")
+            .accessibilityHint(Text("New Clip"))
+        case .search:
+            Button {
+                searchText = ""
+            } label: {
+                Label("Clear Search", systemImage: "xmark.circle")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .accessibilityIdentifier("clear-search-empty-state-button")
+        case .filter:
+            Button {
+                historyFilter = .all
+            } label: {
+                Label("Reset Filter", systemImage: "arrow.counterclockwise")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .accessibilityIdentifier("reset-filter-empty-state-button")
+        }
+    }
+
+    private var iOSEmptyStateTitle: String {
+        switch emptyStateKind {
+        case .history: "No clips yet"
+        case .search: "No matching clips"
+        case .filter: "No clips match this filter"
+        }
+    }
+
+    private var iOSEmptyStateDescription: String {
+        switch emptyStateKind {
+        case .history: "Copy text or an image in another app, then return and tap Paste."
+        case .search: "Try another search or clear the current search."
+        case .filter: "Choose another filter or show all clips."
+        }
+    }
+
+    private var iOSEmptyStateTitleIdentifier: String {
+        switch emptyStateKind {
+        case .history: "empty-state-title"
+        case .search: "search-empty-state-title"
+        case .filter: "filter-empty-state-title"
+        }
+    }
+
+    private var iOSEmptyStateDescriptionIdentifier: String {
+        switch emptyStateKind {
+        case .history: "empty-state-description"
+        case .search: "search-empty-state-description"
+        case .filter: "filter-empty-state-description"
+        }
+    }
+
+    @ViewBuilder
+    private var iOSImportStatusSurface: some View {
+        if let feedbackText = iOSImportFeedbackText {
+            Label(feedbackText, systemImage: iOSImportFeedbackSymbolName)
+                .font(DesignTokens.Typography.feedback.font)
+                .foregroundStyle(iOSImportFeedbackColor)
+                .padding(.horizontal, DesignTokens.Spacing.large)
+                .frame(minHeight: 44)
+                .frame(maxWidth: .infinity)
+                .background(appTheme.surface.color)
+                .accessibilityIdentifier("ios-clipboard-import-feedback")
+        }
+    }
+
+    private var iOSImportFeedbackText: LocalizedStringKey? {
+        guard let feedback = iosImportFeedback else { return nil }
+        switch feedback.disposition {
+        case .saved:
+            return "Clipboard Item Added"
+        case .duplicate:
+            return "Already in History"
+        case .emptyOrWhitespace:
+            return "The Clipboard Is Empty"
+        case .unsupported:
+            return "Clipboard Type Not Supported"
+        case .failed:
+            return "Clipboard Item Could Not Be Added"
+        case .cancelled:
+            return nil
+        }
+    }
+
+    private var iOSImportFeedbackSymbolName: String {
+        switch iosImportFeedback?.disposition {
+        case .saved:
+            DesignTokens.Icons.copied
+        case .duplicate:
+            "equal.circle"
+        case .emptyOrWhitespace:
+            "doc"
+        case .unsupported:
+            "exclamationmark.triangle"
+        case .cancelled, .failed, .none:
+            "info.circle"
+        }
+    }
+
+    private var iOSImportFeedbackColor: Color {
+        switch iosImportFeedback?.disposition {
+        case .saved:
+            appTheme.accentSuccess.color
+        case .duplicate, .emptyOrWhitespace:
+            appTheme.textSecondary.color
+        case .unsupported:
+            appTheme.warningText.color
+        case .cancelled, .none:
+            appTheme.textSecondary.color
+        case .failed:
+            appTheme.errorText.color
+        }
+    }
+
+    private func presentIOSImportFeedback(_ result: IOSClipboardImportResult?) {
+        iosImportFeedbackTask?.cancel()
+        guard let result else {
+            iosImportFeedback = nil
+            return
+        }
+
+        switch result.disposition {
+        case .saved, .duplicate, .emptyOrWhitespace, .unsupported, .failed:
+            iosImportFeedback = result
+            iosImportFeedbackTask = Task { @MainActor in
+                try? await Task.sleep(for: .seconds(2))
+                guard Task.isCancelled == false else { return }
+                iosImportFeedback = nil
+            }
+        case .cancelled:
+            iosImportFeedback = nil
+        }
+    }
+#endif
+
     private var emptyStateKind: EmptyStateView.Kind {
         if searchText.isEmpty == false {
             return .search
@@ -1333,6 +1622,33 @@ struct HomeView: View {
             )
 #endif
             List {
+#if os(iOS)
+                if historyFilter != .all {
+                    HStack(spacing: DesignTokens.Spacing.small) {
+                        Label(LocalizedStringKey(historyFilter.titleKey), systemImage: DesignTokens.Icons.filter)
+                            .font(DesignTokens.Typography.metadata.font)
+                            .foregroundStyle(appTheme.textSecondary.color)
+
+                        Spacer(minLength: DesignTokens.Spacing.small)
+
+                        Button("Reset Filter") {
+                            historyFilter = .all
+                        }
+                        .frame(minHeight: 44)
+                        .accessibilityIdentifier("reset-active-filter-button")
+                    }
+                    .padding(.horizontal, DesignTokens.Spacing.medium)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                }
+
+                ForEach(rows, id: \.id) { clip in
+                    clipRow(for: clip)
+                        .id(clip.id)
+                }
+                .scrollTargetLayout()
+#else
                 // Keep AppKit row slots stable while a Pin/Unpin mutation changes
                 // the pinned-first projection. The logical clip UUID remains on the
                 // row content and actions, but NSTableView does not have to remove
@@ -1347,12 +1663,22 @@ struct HomeView: View {
                 // Mark stable UUID targets for `ScrollViewProxy` and for the
                 // non-AppKit aggregate visibility callback below.
                 .scrollTargetLayout()
+#endif
             }
+#if os(iOS)
+            .contentMargins(.horizontal, DesignTokens.Spacing.medium, for: .scrollContent)
+            .contentMargins(.vertical, DesignTokens.Spacing.small, for: .scrollContent)
+#else
             .padding(DesignTokens.Spacing.small)
             .contentMargins(.top, historyTopInset, for: .scrollContent)
+#endif
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
+#if os(iOS)
+            .background(appTheme.canvas.color)
+#else
             .background(appTheme.surface.color)
+#endif
 #if os(macOS)
             .background(
                 RowActionTableViewResolver { ownerID, tableView in
@@ -2465,7 +2791,9 @@ struct HomeView: View {
                 },
                 onTogglePin: {
                     togglePinImmediately(clip)
-                }
+                },
+                tracksHover: rowTracksHover,
+                showsInlineCopyControl: rowShowsInlineCopyControl
             )
         }
         .contentShape(Rectangle())
@@ -2514,6 +2842,22 @@ struct HomeView: View {
             .help(Text(LocalizedStringKey(RowActionControlGroup.pinActionLabel(isPinned: clip.isPinned))))
             .lineLimit(1)
         }
+    }
+
+    private var rowTracksHover: Bool {
+#if os(iOS)
+        false
+#else
+        true
+#endif
+    }
+
+    private var rowShowsInlineCopyControl: Bool {
+#if os(iOS)
+        false
+#else
+        true
+#endif
     }
 
     @ViewBuilder
